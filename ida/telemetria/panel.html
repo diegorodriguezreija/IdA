@@ -62,7 +62,11 @@
   <span class="chip" id="afecto">—</span>
   <span class="chip aviso" id="sinexp" hidden>sin experiencia</span>
   <span class="dato" id="estado">esperando datos…</span>
-  <button id="btn-cambiar-mundo" class="chip" style="margin-left:auto;cursor:pointer;background:var(--riel);border:1px solid var(--borde);color:var(--texto);font-weight:600;padding:4px 10px;" title="Detener simulación y volver a la antesala">⟵ Cambiar mundo</button>
+  <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+    <a href="http://localhost:3000" target="_blank" class="chip" style="text-decoration:none; color:inherit; font-size:11px;" title="Grafana (localhost:3000)">📊 Grafana</a>
+    <a href="http://localhost:16686" target="_blank" class="chip" style="text-decoration:none; color:inherit; font-size:11px;" title="Jaeger (localhost:16686)">🔍 Jaeger</a>
+    <button id="btn-cambiar-mundo" class="chip" style="cursor:pointer;background:var(--riel);border:1px solid var(--borde);color:var(--texto);font-weight:600;padding:4px 10px;" title="Detener simulación y volver a la antesala">⟵ Cambiar mundo</button>
+  </div>
 </header>
 <main>
   <section>
