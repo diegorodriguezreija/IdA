@@ -1,0 +1,19 @@
+{
+  "name": "IdA",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev"
+  },
+  "workspaceFolder": "/app",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/app,type=bind",
+  "postCreateCommand": "pip install -e \".[dev,crafter,ajedrez,observabilidad]\"",
+  "forwardPorts": [8000],
+  "portsAttributes": { "8000": { "label": "Panel de IdA" } },
+  "containerEnv": { "IDA_TELEMETRIA_HOST": "0.0.0.0" },
+  "customizations": {
+    "vscode": {
+      "extensions": ["ms-python.python", "charliermarsh.ruff", "ms-python.mypy-type-checker"]
+    }
+  }
+}

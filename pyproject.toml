@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ida-identidad-artificial"
+version = "1.0.0"
+description = "Agentes con cuerpo, carácter y linaje: un framework de arquitectura cognitiva bioinspirada que vive en varios mundos."
+readme = "README.md"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "ida/mundos/ajedrez/LICENSE", "ida/mundos/ajedrez/LICENCIA.md"]
+authors = [{ name = "Diego Rodriguez Reija" }]
+keywords = ["cognitive architecture", "embodied agents", "ports and adapters", "Crafter", "artificial life"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.15",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+# El framework base no tiene dependencias: cada mundo trae las suyas como extra.
+dependencies = []
+
+[project.optional-dependencies]
+crafter = ["crafter>=1.8"]
+snake = ["playwright>=1.40"]
+ajedrez = ["chess>=1.10"]   # GPL-3.0-or-later: solo se importa en ida/mundos/ajedrez/ (ver NOTICE)
+observabilidad = [
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
+]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
+
+[project.scripts]
+ida = "ida.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["ida*"]
+
+[tool.setuptools.package-data]
+"ida.telemetria" = ["*.html"]
+"ida.mundos.ajedrez" = ["*.md"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 160
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "B", "C4"]
+ignore = [
+    "E741",   # nombres cortos como «l» (lugar) en comprensiones: legibles en el contexto
+    "B027",   # Mundo.cerrar es un gancho opcional, vacío a propósito
+]
+
+[tool.ruff.lint.per-file-ignores]
+"ida/sistemas/s2.py" = ["B007"]
+
+[tool.mypy]
+python_version = "3.12"
+warn_unused_ignores = true
+# Las librerías de los mundos (crafter, playwright, chess) no publican tipos completos.
+ignore_missing_imports = true

@@ -1,0 +1,67 @@
+IdA – Identidad Artificial
+Copyright 2026 Diego Rodriguez Reija
+
+Este aviso no es asesoramiento legal. Resume cómo se licencia el repositorio y qué licencias
+tienen sus dependencias, según los metadatos de los paquetes instalados el 10 de noviembre de 2026.
+
+==============================================================================
+1. Licencias del propio repositorio
+==============================================================================
+
+- Todo el repositorio, salvo la carpeta indicada abajo, se distribuye bajo la licencia
+  Apache License 2.0 (fichero LICENSE en la raíz).
+
+- La carpeta ida/mundos/ajedrez/ (mundo de ajedrez) se distribuye bajo la GNU General Public
+  License versión 3 o posterior (GPL-3.0-or-later; ficheros LICENSE y LICENCIA.md dentro de
+  esa carpeta), porque importa la librería python-chess, que es GPL-3.0-or-later.
+
+- Ningún fichero fuera de esa carpeta importa python-chess. El framework base y el resto de
+  mundos funcionan sin tenerla instalada; tests/test_licencias.py lo comprueba y la integración
+  continua ejecuta los tests también sin ninguna dependencia de mundo. python-chess solo se
+  instala con el extra opcional [ajedrez].
+
+- Si combinas el mundo de ajedrez con el resto del código y lo distribuyes, revisa las
+  obligaciones de la GPL. Si te importa la cuestión de la obra combinada, consúltalo con un
+  profesional.
+
+==============================================================================
+2. Software de terceros (dependencias; ninguna se incluye en el repositorio)
+==============================================================================
+
+El framework base (ida/core, ida/sistemas) solo usa la biblioteca estándar de Python.
+
+Dependencia                            | Versión probada | Licencia                     | Dónde se usa
+---------------------------------------|-----------------|------------------------------|-------------------------------
+crafter                                | 1.8.3           | MIT                          | Mundo Crafter (extra [crafter])
+chess (python-chess)                   | 1.11.2          | GPL-3.0-or-later             | Solo ida/mundos/ajedrez/ (extra [ajedrez])
+playwright                             | 1.64.1          | Apache-2.0                   | Mundo Snake (extra [snake])
+opentelemetry-api / -sdk               | 1.45.2          | Apache-2.0                   | ida/telemetria/otel.py (extra [observabilidad])
+opentelemetry-exporter-otlp-proto-http | 1.45.2          | Apache-2.0                   | ida/telemetria/otel.py (extra [observabilidad])
+pytest                                 | 9.2.0           | MIT                          | Tests (extra [dev])
+ruff                                   | 0.17.4          | MIT                          | Linter (extra [dev])
+mypy                                   | 2.4.1           | MIT                          | Comprobación de tipos (extra [dev])
+
+Dependencias transitivas relevantes: numpy (BSD-3-Clause y otras permisivas), imageio
+(BSD-2-Clause), Pillow (MIT-CMU), opensimplex (MIT), ruamel.yaml (MIT), protobuf (BSD-3-Clause),
+requests (Apache-2.0), greenlet (MIT AND PSF-2.0), pyee (MIT).
+
+Servicios externos que no se incluyen ni se redistribuyen:
+- Imágenes Docker de la pila de observabilidad (docker-compose.yml), que se descargan de sus
+  autores: OpenTelemetry Collector (Apache-2.0), Jaeger (Apache-2.0), Prometheus (Apache-2.0)
+  y Grafana (AGPL-3.0). Se usan sin modificar, como servicios separados.
+- Stockfish (GPL-3.0), rival opcional del mundo de ajedrez. El binario no se incluye; se indica
+  con --opcion stockfish=RUTA.
+- El sitio web https://playsnake.org/, que el mundo Snake automatiza con Playwright. Es un sitio
+  de terceros con sus propias condiciones de uso.
+
+==============================================================================
+3. Fuentes
+==============================================================================
+
+- python-chess: https://github.com/niklasf/python-chess (GPL 3 o posterior).
+- Crafter: https://github.com/danijar/crafter (MIT).
+- Playwright para Python: https://github.com/microsoft/playwright-python (Apache-2.0).
+- OpenTelemetry Python: https://github.com/open-telemetry/opentelemetry-python (Apache-2.0).
+
+El texto de LICENSE (Apache-2.0) coincide con el LICENSE.APACHE distribuido con packaging 26.3;
+el de ida/mundos/ajedrez/LICENSE (GPL-3.0) procede del LICENSE.txt distribuido con chess 1.11.2.

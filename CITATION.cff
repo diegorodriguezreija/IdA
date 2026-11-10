@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "Si usas este software, cítalo con estos metadatos."
+title: "IdA – Identidad Artificial: agentes con cuerpo, carácter y linaje"
+type: software
+authors:
+  - family-names: "Rodriguez Reija"
+    given-names: "Diego"
+version: "1.0.0"
+license: Apache-2.0
+repository-code: "https://github.com/diegorodriguezreija/IdA"
+keywords:
+  - cognitive architecture
+  - embodied agents
+  - ports and adapters
+  - artificial life
+  - Crafter
+  - OpenTelemetry

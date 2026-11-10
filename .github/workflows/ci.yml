@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: ruff + mypy
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.15"
+          allow-prereleases: true
+      - run: pip install -e ".[dev]"
+      - run: ruff check ida tests
+      - run: mypy ida
+
+  tests:
+    name: tests (Python ${{ matrix.python }}, ${{ matrix.extras }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.15"]
+        extras: ["dev,crafter,ajedrez,observabilidad"]
+        include:
+          # El núcleo funciona sin las dependencias de ningún mundo (y sin python-chess, que es GPL).
+          - python: "3.15"
+            extras: "dev"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          allow-prereleases: true
+      - run: pip install -e ".[${{ matrix.extras }}]"
+      - run: python -m pytest -q
+      - name: Vida corta con semilla
+        run: python -m ida --mundo minimo --latidos 60 --semilla 3 --tabula-rasa --cada 20

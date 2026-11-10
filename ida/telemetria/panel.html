@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IdA · Telemetría</title>
+<style>
+  :root {
+    --fondo: #f4f3ee; --panel: #ffffff; --texto: #1d1d1b; --suave: #6b6a65; --borde: #e2e0d8; --riel: #ecebe5;
+    --s1: #c2410c; --s2: #7c3aed; --s3: #0f766e; --core: #475569; --mundo: #a16207;
+    --ok: #15803d; --mal: #b91c1c; --aviso: #b45309; --acento: #2563eb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --fondo: #121211; --panel: #1d1c1a; --texto: #ecebe6; --suave: #a3a19a; --borde: #33322e; --riel: #2a2926;
+            --s1: #fb923c; --s2: #a78bfa; --s3: #2dd4bf; --core: #94a3b8; --mundo: #facc15;
+            --ok: #4ade80; --mal: #f87171; --aviso: #fbbf24; --acento: #60a5fa; }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--fondo); color: var(--texto); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--borde); background: var(--panel); position: sticky; top: 0; z-index: 1; }
+  header h1 { font-size: 18px; margin: 0 6px 0 0; letter-spacing: -.01em; }
+  .dato { color: var(--suave); white-space: nowrap; } .dato b { color: var(--texto); font-variant-numeric: tabular-nums; }
+  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+  main { display: grid; gap: 14px; padding: 14px 20px 30px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
+  section { background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--suave); margin: 0 0 8px; font-weight: 600; }
+  section h2 + * { margin-top: 0; } .sub { margin-top: 14px; }
+  .barra { display: grid; grid-template-columns: 104px 1fr 54px; gap: 8px; align-items: center; margin: 5px 0; }
+  .riel { height: 9px; background: var(--riel); border-radius: 5px; overflow: hidden; display: flex; }
+  .lleno { height: 100%; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .decision { font-size: 20px; font-weight: 650; letter-spacing: -.01em; }
+  .motivo { color: var(--suave); margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  td, th { padding: 4px 4px; border-bottom: 1px solid var(--borde); text-align: left; font-size: 12.5px; vertical-align: middle; }
+  th { color: var(--suave); font-weight: 500; }
+  .S1 { color: var(--s1); } .S2 { color: var(--s2); } .S3 { color: var(--s3); } .CORE { color: var(--core); } .MUNDO { color: var(--mundo); }
+  pre { margin: 0; font: 12.5px/1.3 ui-monospace, Consolas, monospace; white-space: pre; overflow-x: auto; }
+  ul { margin: 0; padding-left: 0; list-style: none; } li { margin: 3px 0; }
+  .ok { color: var(--ok); } .mal { color: var(--mal); } .aviso { color: var(--aviso); }
+  .vacio { color: var(--suave); font-style: italic; }
+  .insignia { font-size: 11px; padding: 0 6px; border-radius: 4px; margin-right: 6px; border: 1px solid currentColor; }
+  .cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; }
+  .cifra { border: 1px solid var(--borde); border-radius: 8px; padding: 6px 8px; }
+  .cifra b { display: block; font-size: 18px; font-variant-numeric: tabular-nums; }
+  .cifra span { color: var(--suave); font-size: 11.5px; }
+  .leyenda { display: flex; flex-wrap: wrap; gap: 12px; color: var(--suave); font-size: 12px; margin: 4px 0 6px; }
+  .leyenda i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  #historial { width: 100%; height: 110px; display: block; }
+  .ancho { grid-column: 1 / -1; }
+  .pila { height: 14px; border-radius: 6px; }
+  @media (max-width: 520px) { main, header { padding-left: 12px; padding-right: 12px; } .barra { grid-template-columns: 86px 1fr 46px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>IdA · <span id="mundo">—</span></h1>
+  <span class="dato">individuo <b id="individuo">—</b></span>
+  <span class="dato">generación <b id="generacion">—</b></span>
+  <span class="dato">latido <b id="latido">—</b></span>
+  <span class="chip" id="afecto">—</span>
+  <span class="chip aviso" id="sinexp" hidden>sin experiencia</span>
+  <span class="dato" id="estado">esperando datos…</span>
+</header>
+<main>
+  <section>
+    <h2>Cuerpo</h2>
+    <div id="soma"></div>
+    <h2 class="sub">Química</h2>
+    <div id="quimica"></div>
+  </section>
+
+  <section>
+    <h2>Latido: presupuesto y guillotina</h2>
+    <div id="presupuesto"></div>
+    <div class="motivo mal" id="guillotina"></div>
+    <h2 class="sub">Indicadores generales</h2>
+    <div id="indicadores"></div>
+  </section>
+
+  <section>
+    <h2>Decisión del Tribunal</h2>
+    <div class="decision" id="decision">—</div>
+    <div class="motivo" id="motivo"></div>
+    <h2 class="sub">Candidatos · base + experiencia activa + proactiva</h2>
+    <table><thead><tr><th>sis.</th><th>acción</th><th style="width:38%">puntuación</th><th class="num">total</th></tr></thead>
+      <tbody id="candidatos"></tbody></table>
+  </section>
+
+  <section>
+    <h2>Sistemas (últimos 100 latidos)</h2>
+    <div class="riel pila" id="reparto"></div>
+    <div class="leyenda" id="reparto_leyenda"></div>
+    <div class="cifras" id="sistemas_cifras"></div>
+  </section>
+
+  <section>
+    <h2>Experiencia y memoria</h2>
+    <div class="cifras" id="memoria"></div>
+    <h2 class="sub">Este latido</h2>
+    <ul id="experiencia"></ul>
+  </section>
+
+  <section>
+    <h2>Lo que sabe</h2>
+    <ul id="conocimiento"></ul>
+  </section>
+
+  <section>
+    <h2>Mundo</h2>
+    <pre id="vista"></pre>
+    <h2 class="sub">Puntuación del mundo</h2>
+    <div id="puntuacion"></div>
+  </section>
+
+  <section>
+    <h2>Carácter (arquetipo)</h2>
+    <div id="arquetipo"></div>
+    <h2 class="sub">Onda: piezas en ev</h2>
+    <div id="onda"></div>
+    <h2 class="sub">Componentes más lentos (ms)</h2>
+    <table><tbody id="tiempos"></tbody></table>
+  </section>
+
+  <section class="ancho">
+    <h2>Historial</h2>
+    <div class="leyenda">
+      <span><i style="background:var(--mal)"></i>vitalidad</span><span><i style="background:var(--ok)"></i>alimentación</span>
+      <span><i style="background:var(--acento)"></i>energía</span><span><i style="background:var(--aviso)"></i>estrés</span>
+    </div>
+    <canvas id="historial"></canvas>
+    <h2 class="sub">Últimas decisiones</h2>
+    <table><tbody id="log"></tbody></table>
+  </section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const hist = [], log = [], ventana = [];
+const SISTEMAS = ["S1", "S2", "S3", "CORE", "MUNDO"];
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const esc = t => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"})[c]);
+const color = s => css("--" + String(s || "core").toLowerCase()) || css("--core");
+
+function barra(nombre, valor, max, col, texto) {
+  const pct = Math.max(0, Math.min(100, 100 * valor / max));
+  return `<div class="barra"><span>${esc(nombre)}</span><div class="riel"><div class="lleno" style="width:${pct}%;background:${col}"></div></div>` +
+         `<span class="num">${texto ?? (+valor).toFixed(max > 1 ? 0 : 2)}</span></div>`;
+}
+const nivel = v => v >= 60 ? css("--ok") : v >= 30 ? css("--aviso") : css("--mal");
+const cifra = (v, t, cls = "") => `<div class="cifra"><b class="${cls}">${esc(v)}</b><span>${esc(t)}</span></div>`;
+
+function dibujar() {
+  const c = $("historial"), ctx = c.getContext("2d"), dpr = devicePixelRatio || 1;
+  const w = c.width = c.clientWidth * dpr, h = c.height = c.clientHeight * dpr;
+  ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = css("--borde"); ctx.lineWidth = dpr;
+  [0.25, 0.5, 0.75].forEach(f => { ctx.beginPath(); ctx.moveTo(0, h * f); ctx.lineTo(w, h * f); ctx.stroke(); });
+  [["vitalidad", "--mal", 1], ["alimentacion", "--ok", 1], ["energia", "--acento", 1], ["estres", "--aviso", 100]].forEach(([k, col, esc_]) => {
+    ctx.strokeStyle = css(col); ctx.lineWidth = 2 * dpr; ctx.beginPath();
+    hist.forEach((s, i) => { const x = i * w / Math.max(1, hist.length - 1), y = h - (s[k] * esc_ / 100) * (h - 4) - 2;
+      i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.stroke();
+  });
+}
+
+function pintar(d) {
+  $("estado").textContent = "en directo";
+  $("mundo").textContent = d.mundo || "—";
+  $("individuo").textContent = d.individuo || "—";
+  $("generacion").textContent = d.generacion ?? "—";
+  $("latido").textContent = d.latido;
+  const af = $("afecto"); af.textContent = d.afecto;
+  af.style.color = ({PANICO: css("--mal"), MIEDO: css("--mal"), ALERTA: css("--aviso"), CALMA: css("--ok"), CURIOSIDAD: css("--s2"), DORMIDO: css("--core"), CANSANCIO: css("--core")})[d.afecto] || css("--texto");
+  $("sinexp").hidden = !d.sin_experiencia;
+
+  const s = d.soma;
+  $("soma").innerHTML = ["vitalidad", "alimentacion", "energia", "descanso"].map(k => barra(k, s[k], 100, nivel(s[k]))).join("") +
+    (d.cargando ? `<div class="motivo">lleva: ${esc(d.cargando)}</div>` : "");
+  $("quimica").innerHTML = barra("dopamina", s.dopamina, 100, css("--s2")) + barra("placer", s.placer, 100, css("--ok")) + barra("estrés", s.estres, 1, css("--aviso"));
+
+  const [usada, maxA] = d.amplitud, cont = d.contadores || {};
+  $("presupuesto").innerHTML = barra("tiempo", d.ms, d.plazo_ms, d.ms > d.plazo_ms ? css("--mal") : css("--acento"), `${d.ms.toFixed(1)}/${d.plazo_ms.toFixed(0)}`) +
+    barra("amplitud", usada, maxA, usada >= maxA ? css("--mal") : css("--acento"), `${usada}/${maxA}`) +
+    `<div class="motivo">guillotinas en esta vida: <b>${cont.guillotinas ?? 0}</b></div>`;
+  $("guillotina").textContent = d.guillotina ? `✂ ${d.guillotina}` : "";
+  $("indicadores").innerHTML = barra("peligro", d.indicadores.peligro, 1, css("--mal")) + barra("tensión", d.indicadores.tension, 1, css("--aviso")) + barra("calma", d.indicadores.calma, 1, css("--ok"));
+
+  const dec = d.decision;
+  $("decision").innerHTML = `<span style="color:${color(dec.sistema)}">${esc(dec.verbo)}</span> ${esc(dec.objetivo)}` +
+    (dec.exito === false ? ` <small class="mal">✗ ${esc(dec.mensaje)}</small>` : (dec.mensaje ? ` <small class="ok">${esc(dec.mensaje)}</small>` : ""));
+  $("motivo").innerHTML = `<span class="chip" style="color:${color(dec.sistema)}">${esc(dec.sistema)}</span> ${d.motivo ? "«" + esc(d.motivo) + "»" : ""}`;
+  const ev = d.evaluados || [], maxT = Math.max(1, ...ev.map(e => e.total + Math.abs(e.activa) + Math.abs(e.proactiva)));
+  $("candidatos").innerHTML = ev.map(e => {
+    const seg = (v, col) => v > 0 ? `<div class="lleno" style="width:${100 * v / maxT}%;background:${col}"></div>` : "";
+    return `<tr><td style="color:${color(e.sistema)}">${esc(e.sistema)}</td><td title="${esc(e.motivo)}">${esc(e.verbo)} ${esc(e.objetivo)}</td>` +
+      `<td><div class="riel">${seg(e.base, color(e.sistema))}${seg(e.activa * 0.2, css("--acento"))}${seg(e.proactiva * 0.2, css("--s3"))}</div></td>` +
+      `<td class="num"><b>${e.total.toFixed(2)}</b></td></tr>`;
+  }).join("") || `<tr><td colspan="4" class="vacio">sin candidatos</td></tr>`;
+
+  ventana.push({sis: dec.sistema || "CORE", cambio: !!d.experiencia.cambio_decision}); if (ventana.length > 100) ventana.shift();
+  const cuenta = Object.fromEntries(SISTEMAS.map(x => [x, ventana.filter(v => v.sis === x).length]));
+  $("reparto").innerHTML = SISTEMAS.filter(x => cuenta[x]).map(x => `<div class="lleno" title="${x}: ${cuenta[x]}" style="width:${100 * cuenta[x] / ventana.length}%;background:${color(x)}"></div>`).join("");
+  $("reparto_leyenda").innerHTML = SISTEMAS.filter(x => cuenta[x]).map(x => `<span><i style="background:${color(x)}"></i>${x} ${Math.round(100 * cuenta[x] / ventana.length)} %</span>`).join("");
+  const props = d.propuestas || {};
+  $("sistemas_cifras").innerHTML = ["S1", "S2", "S3"].map(x => cifra((props[x] || []).length, `candidatos ${x}`, x)).join("") +
+    cifra(Math.round(100 * ventana.filter(v => v.cambio).length / ventana.length) + " %", "decisiones cambiadas por la experiencia");
+
+  const m = d.memoria || {}, tot = (m.aciertos || 0) + (m.sorpresas || 0);
+  $("memoria").innerHTML = cifra(tot ? Math.round(100 * m.aciertos / tot) + " %" : "—", `expectativas acertadas (${tot})`, "ok") +
+    cifra(m.demostradas ?? 0, "demostradas", "ok") + cifra(m.hipotesis ?? 0, "hipótesis", "aviso") + cifra(m.refutadas ?? 0, "refutadas", "mal") +
+    cifra(m.episodios ?? 0, "episodios") + cifra(m.recuerdos ?? 0, "recuerdos") + cifra(m.heredados ?? 0, "heredados del linaje");
+  const x = d.experiencia, items = [...x.aprendizaje];
+  if (x.expectativa) items.push("proactiva: " + x.expectativa);
+  if (x.cambio_decision) items.push("la experiencia cambió la decisión");
+  if (x.episodio) items.push(x.episodio);
+  $("experiencia").innerHTML = items.length ? items.map(t => `<li>${esc(t)}</li>`).join("") : `<li class="vacio">nada nuevo</li>`;
+
+  const conocimiento = d.conocimiento || [];
+  $("conocimiento").innerHTML = conocimiento.length ? conocimiento.map(t => {
+    const cls = t.includes("(demostrada") ? "ok" : t.includes("(refutada") ? "mal" : "aviso";
+    const est = cls === "ok" ? "demostrada" : cls === "mal" ? "refutada" : "hipótesis";
+    return `<li><span class="insignia ${cls}">${est}</span>${esc(t.replace(/ \((demostrada|refutada|hipótesis)(, )?/, " ("))}</li>`;
+  }).join("") : `<li class="vacio">todavía no sabe nada</li>`;
+
+  $("vista").textContent = d.vista || "";
+  const pt = d.puntuacion || {};
+  const fmt = v => Array.isArray(v) ? v.join(", ") : (v && typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a} ${b}`).join(" · ") : v);
+  $("puntuacion").innerHTML = Object.entries(pt).map(([k, v]) => `<div class="motivo" style="overflow-wrap:anywhere"><b style="color:var(--texto)">${esc(k)}</b>: ${esc(fmt(v))}</div>`).join("") || `<div class="vacio">—</div>`;
+
+  const arq = d.arquetipo || {};
+  $("arquetipo").innerHTML = Object.entries(arq).map(([k, v]) => barra(k.replace("_", " "), v, 1, css("--s2"))).join("");
+  const maxEv = Math.max(1, ...Object.values(d.conteo_ev));
+  $("onda").innerHTML = Object.entries(d.conteo_ev).sort((a, b) => b[1] - a[1]).map(([k, v]) => barra(k, v, maxEv, css("--acento"), String(v))).join("");
+  $("tiempos").innerHTML = Object.entries(d.tiempos_ms).map(([k, v]) => `<tr><td style="color:${color(k.split(".")[0])}">${esc(k)}</td><td class="num">${v.toFixed(2)}</td></tr>`).join("");
+
+  hist.push(s); if (hist.length > 400) hist.shift(); dibujar();
+  log.unshift(`<tr><td class="num">${d.latido}</td><td style="color:${color(dec.sistema)}">${esc(dec.verbo)} ${esc(dec.objetivo)}</td><td>${esc(d.motivo)}</td><td>${esc(d.afecto)}</td></tr>`);
+  if (log.length > 12) log.pop();
+  $("log").innerHTML = log.join("");
+}
+let ultimoIndividuo = null;
+const fuente = new EventSource("/eventos");
+fuente.onmessage = ev => {
+  const d = JSON.parse(ev.data);
+  if (d.individuo !== ultimoIndividuo) { hist.length = 0; ventana.length = 0; log.length = 0; ultimoIndividuo = d.individuo; }
+  pintar(d);
+};
+fuente.onerror = () => { $("estado").textContent = "desconectado"; };
+window.addEventListener("resize", dibujar);
+</script>
+</body>
+</html>

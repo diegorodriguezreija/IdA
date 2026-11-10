@@ -1,0 +1,64 @@
+# IdA – Identidad Artificial (Artificial Identity)
+
+**Agents with a body, a character and a lineage, inspired by biology.**
+
+[![CI](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml/badge.svg)](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml)
+[![License: Apache-2.0 (chess: GPL-3.0-or-later)](https://img.shields.io/badge/license-Apache--2.0%20%2F%20GPL--3.0%20(chess)-blue)](NOTICE)
+![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
+
+This is a short English summary. The full documentation, and the code itself, are in Spanish, starting with [README.md](README.md).
+
+Every IdA individual has a **body** that wears out, a **heartbeat** with an attention and time budget (and a guillotine that cuts thinking when the deadline passes), and **three systems** that propose what to do: S1 (survival), S2 (value) and S3 (truth). A **Tribunal** picks one according to the state of the body: under stress it listens to urgency, when calm to confidence. What the individual lives through is remembered, anticipated, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
+
+The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
+
+<p align="center"><img src="docs/img/panel_ida.png" width="760" alt="IdA's live panel in the file world: body and chemistry, heartbeat budget, the Tribunal's decision and candidates, share per system, memory, what it knows with its status, character, wave contents and history"></p>
+
+## Try it
+
+```bash
+git clone https://github.com/diegorodriguezreija/IdA.git
+cd IdA
+python -m venv .venv
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+pip install -e ".[dev,crafter,ajedrez]"
+python -m pytest -q                       # 64 tests
+python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
+python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://127.0.0.1:8000
+```
+
+Or, with nothing installed: `docker compose up --build`.
+
+## What's inside
+
+- **The wave (Onda).** Each heartbeat travels in a wave with four channels: `ei` (how the previous beat ended, read-only), `ev` (what it perceives), `acc` (competing proposals) and `ef` (the full record, which becomes the next `ei`). Every component runs a reactive, an active and a proactive pass.
+- **The guillotine.** Cooperative and synchronous: every emission checks the clock and the attention budget. If either runs out, the remaining components are skipped and the Tribunal still acts on what is already proposed.
+- **Memory.** Expectations, episodes and propositions with a status (hypothesis, proven, refuted). Taste aversion and mortal trauma are learned fast; proven knowledge is inherited as a hypothesis the descendant must confirm.
+- **A core blind to the world.** Worlds plug in through one port (`ida/core/mundo.py`). An AST test forbids world vocabulary and imports in the core; another keeps the GPL chess dependency inside its folder.
+
+## Observability
+
+Besides its own panel, IdA exports standard traces and metrics with **OpenTelemetry** (`--otel`). `docker compose up --build` starts IdA, an **OpenTelemetry Collector**, **Jaeger**, **Prometheus** and **Grafana** with a provisioned dashboard. In Jaeger every heartbeat is a trace with one span per phase (perceive, sense, learn, S1, S2, S3, act, close), so a guillotine cut is visible. The core does not depend on any of it: the wave only records when each phase starts and ends.
+
+<p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="One IdA heartbeat in Jaeger: the latido span and its phases as a waterfall"></p>
+
+## Milestones
+
+- The same core runs unchanged in five very different worlds.
+- Reproducible with a seed in the minimal, file, Crafter and chess worlds.
+- By improving only each world's own code: Snake goes from about 232 to 916 points on average at the hardest level (best 1,605); toxic bites in the file world drop from 7.2 to 2.2 per life; Crafter goes from 6.6 to 8.2 achievements per life; in chess it wins 7 of 8 games against the 1-ply bot and 3 of 8 against the 2-ply bot.
+- Negative results are published too: it loses against the 3-ply bot, and in Crafter lives do not get longer.
+
+Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](doc-repositorio/05_METRICAS_E_HITOS.md).
+
+## Engineering
+
+Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 64 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+
+## Honesty
+
+A personal prototype, not a study: few lives per measurement. Biological names are inspiration, not equivalence. Much of the code was written with AI agents under the author's direction and review.
+
+## License
+
+[Apache-2.0](LICENSE), except `ida/mundos/ajedrez/`, which is [GPL-3.0-or-later](ida/mundos/ajedrez/LICENSE) because it depends on `python-chess`. See [NOTICE](NOTICE).
