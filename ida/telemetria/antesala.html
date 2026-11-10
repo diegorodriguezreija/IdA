@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IdA · Lanzador de Mundos</title>
+<style>
+  :root {
+    --fondo: #f4f3ee; --panel: #ffffff; --texto: #1d1d1b; --suave: #6b6a65; --borde: #e2e0d8; --riel: #ecebe5;
+    --s1: #c2410c; --s2: #7c3aed; --s3: #0f766e; --core: #475569; --acento: #2563eb; --acento-hover: #1d4ed8;
+    --ok: #15803d; --mal: #b91c1c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #121211; --panel: #1d1c1a; --texto: #ecebe6; --suave: #a3a19a; --borde: #33322e; --riel: #2a2926;
+      --s1: #fb923c; --s2: #a78bfa; --s3: #2dd4bf; --core: #94a3b8; --acento: #3b82f6; --acento-hover: #60a5fa;
+      --ok: #4ade80; --mal: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--fondo); color: var(--texto);
+    font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px 16px;
+  }
+  .contenedor {
+    width: 100%; max-width: 820px; background: var(--panel); border: 1px solid var(--borde);
+    border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.04); overflow: hidden;
+  }
+  header {
+    padding: 24px 28px 18px; border-bottom: 1px solid var(--borde);
+    display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px;
+  }
+  h1 { font-size: 22px; margin: 0; letter-spacing: -0.02em; display: flex; align-items: center; gap: 8px; }
+  h1 span.badge {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; background: var(--riel);
+    color: var(--suave); padding: 3px 8px; border-radius: 999px;
+  }
+  p.subtitulo { margin: 6px 0 0; color: var(--suave); font-size: 13.5px; }
+  form { padding: 24px 28px 28px; }
+  
+  .seccion-titulo {
+    font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--suave);
+    margin: 0 0 12px; font-weight: 700;
+  }
+  
+  /* Selector de mundos */
+  .grid-mundos {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(136px, 1fr)); gap: 10px; margin-bottom: 24px;
+  }
+  .card-mundo {
+    border: 1.5px solid var(--borde); border-radius: 12px; padding: 12px 10px; cursor: pointer;
+    background: var(--panel); transition: all .15s ease; position: relative; text-align: center;
+  }
+  .card-mundo:hover { border-color: var(--acento); transform: translateY(-1px); }
+  .card-mundo.seleccionado {
+    border-color: var(--acento); background: color-mix(in srgb, var(--acento) 8%, var(--panel));
+    box-shadow: 0 0 0 1px var(--acento);
+  }
+  .card-mundo input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+  .card-icono { font-size: 26px; line-height: 1; margin-bottom: 6px; }
+  .card-nombre { font-weight: 650; font-size: 13.5px; }
+  .card-tag { font-size: 11px; color: var(--suave); margin-top: 2px; }
+
+  /* Descripción del mundo */
+  .desc-mundo {
+    background: var(--riel); border-radius: 10px; padding: 12px 14px; margin-bottom: 24px;
+    font-size: 13px; line-height: 1.45; color: var(--texto);
+  }
+
+  /* Grid de parámetros */
+  .grid-params {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;
+  }
+  .campo { display: flex; flex-direction: column; gap: 6px; }
+  label { font-size: 12.5px; font-weight: 600; color: var(--texto); }
+  label span.pista { font-weight: normal; color: var(--suave); font-size: 11px; }
+  input[type="number"], select {
+    padding: 8px 10px; border: 1px solid var(--borde); border-radius: 8px; font-size: 13.5px;
+    background: var(--panel); color: var(--texto); outline: none; transition: border-color .15s ease;
+  }
+  input[type="number"]:focus, select:focus { border-color: var(--acento); }
+  .fila-input { display: flex; gap: 6px; }
+  .fila-input input { flex: 1; min-width: 0; }
+  .btn-mini {
+    padding: 0 10px; background: var(--riel); border: 1px solid var(--borde); border-radius: 8px;
+    color: var(--texto); font-size: 12px; cursor: pointer; white-space: nowrap;
+  }
+  .btn-mini:hover { background: color-mix(in srgb, var(--acento) 15%, var(--riel)); }
+
+  /* Checkboxes */
+  .grid-checks {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;
+    padding: 14px; background: color-mix(in srgb, var(--riel) 50%, transparent); border-radius: 10px; margin-bottom: 24px;
+  }
+  .check-item { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+  .check-item input { margin-top: 2px; cursor: pointer; }
+  .check-texto { font-size: 12.5px; }
+  .check-texto b { display: block; font-weight: 600; }
+  .check-texto span { color: var(--suave); font-size: 11.5px; }
+
+  /* Botón de acción */
+  .acciones { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
+  .estado-lanzador { font-size: 12.5px; color: var(--suave); }
+  .btn-lanzar {
+    padding: 11px 22px; font-size: 14px; font-weight: 650; border-radius: 10px; border: none;
+    background: var(--acento); color: #ffffff; cursor: pointer; transition: all .15s ease;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-lanzar:hover { background: var(--acento-hover); transform: translateY(-1px); }
+  .btn-lanzar:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+</style>
+</head>
+<body>
+
+<div class="contenedor">
+  <header>
+    <div>
+      <h1>IdA · Identidad Artificial <span class="badge">Antesala</span></h1>
+      <p class="subtitulo">Selecciona un mundo y ajusta sus parámetros vitales antes de comenzar la simulación.</p>
+    </div>
+  </header>
+
+  <form id="form-lanzador">
+    <div class="seccion-titulo">1. Elige el Entorno (Mundo)</div>
+    <div class="grid-mundos">
+      <label class="card-mundo seleccionado" data-mundo="minimo">
+        <input type="radio" name="mundo" value="minimo" checked>
+        <div class="card-icono">🌿</div>
+        <div class="card-nombre">Mínimo</div>
+        <div class="card-tag">Pradera 9×9</div>
+      </label>
+
+      <label class="card-mundo" data-mundo="archivos">
+        <input type="radio" name="mundo" value="archivos">
+        <div class="card-icono">📁</div>
+        <div class="card-nombre">Archivos</div>
+        <div class="card-tag">Sandbox Disco</div>
+      </label>
+
+      <label class="card-mundo" data-mundo="crafter">
+        <input type="radio" name="mundo" value="crafter">
+        <div class="card-icono">⛏️</div>
+        <div class="card-nombre">Crafter</div>
+        <div class="card-tag">22 Logros 2D</div>
+      </label>
+
+      <label class="card-mundo" data-mundo="ajedrez">
+        <input type="radio" name="mundo" value="ajedrez">
+        <div class="card-icono">♟️</div>
+        <div class="card-nombre">Ajedrez</div>
+        <div class="card-tag">Táctica / Rival</div>
+      </label>
+
+      <label class="card-mundo" data-mundo="snake">
+        <input type="radio" name="mundo" value="snake">
+        <div class="card-icono">🐍</div>
+        <div class="card-nombre">Snake</div>
+        <div class="card-tag">Playwright Web</div>
+      </label>
+    </div>
+
+    <div class="desc-mundo" id="desc-mundo">
+      <b>Mundo Mínimo:</b> Entorno sintético con bayas que nutren (+10), setas venenosas (-12) y un lobo móvil. Permite comprobar reflejos inmediatos de supervivencia (S1), formación rápida de hipótesis causales en memoria y aversión a toxinas.
+    </div>
+
+    <!-- Opciones específicas de mundo (visibles condicionalmente) -->
+    <div id="opciones-especificas" style="display:none; margin-bottom: 20px;">
+      <div class="seccion-titulo">2. Opciones de este Mundo</div>
+      <div class="grid-params" id="contenedor-opciones-mundo"></div>
+    </div>
+
+    <div class="seccion-titulo">3. Parámetros Vitales y Cognitivos</div>
+    <div class="grid-params">
+      <div class="campo">
+        <label for="latidos">Latidos máximos <span class="pista">(duración de vida)</span></label>
+        <input type="number" id="latidos" name="latidos" value="300" min="10" max="5000" step="10">
+      </div>
+
+      <div class="campo">
+        <label for="semilla">Semilla aleatoria <span class="pista">(reproducibilidad)</span></label>
+        <div class="fila-input">
+          <input type="number" id="semilla" name="semilla" value="1" min="0" max="999999">
+          <button type="button" class="btn-mini" id="btn-azar" title="Generar semilla aleatoria">🎲 Azar</button>
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="generaciones">Generaciones <span class="pista">(vidas sucesivas)</span></label>
+        <input type="number" id="generaciones" name="generaciones" value="1" min="1" max="20">
+      </div>
+
+      <div class="campo">
+        <label for="cada">Ritmo en consola <span class="pista">(1 de cada N)</span></label>
+        <input type="number" id="cada" name="cada" value="10" min="1" max="100">
+      </div>
+    </div>
+
+    <div class="grid-checks">
+      <label class="check-item">
+        <input type="checkbox" id="tabula_rasa" name="tabula_rasa">
+        <div class="check-texto">
+          <b>Tábula rasa</b>
+          <span>Borrar el linaje previo y empezar desde cero.</span>
+        </div>
+      </label>
+
+      <label class="check-item">
+        <input type="checkbox" id="sin_experiencia" name="sin_experiencia">
+        <div class="check-texto">
+          <b>Sin experiencia</b>
+          <span>Apagar dimensiones activa y proactiva para comparar.</span>
+        </div>
+      </label>
+    </div>
+
+    <div class="acciones">
+      <span class="estado-lanzador" id="estado-lanzador"></span>
+      <button type="submit" class="btn-lanzar" id="btn-lanzar">
+        <span>Comenzar Simulación</span>
+        <span>→</span>
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+const DESCRIPCIONES = {
+  minimo: "<b>Mundo Mínimo:</b> Entorno sintético 9×9 con bayas (+10), setas (-12) y un lobo móvil. Permite comprobar reflejos inmediatos de supervivencia (S1), formación rápida de hipótesis causales en memoria y aversión a toxinas.",
+  archivos: "<b>Mundo de Archivos:</b> El mundo original en disco. Las carpetas son biomas y los ficheros son comida o veneno con apariencia de bytes dentro de un sandbox seguro (datos/archivos/bioma).",
+  crafter: "<b>Crafter:</b> Supervivencia 2D con 22 logros tecnológicos (conseguir madera, craftear pico, espada, defenderse). Modo simbólico determinista con semilla.",
+  ajedrez: "<b>Ajedrez:</b> Enfrentamiento táctico en tablero contra un rival local (profundidad 1 a 3 ply) o motor Stockfish externo.",
+  snake: "<b>Snake:</b> Juega en tiempo real en playsnake.org controlando un navegador con Playwright (requiere conexión a internet). Marcapasos a 60ms por latido."
+};
+
+const radiosMundo = document.querySelectorAll('input[name="mundo"]');
+const cardsMundo = document.querySelectorAll('.card-mundo');
+const descMundo = document.getElementById('desc-mundo');
+const opcEsp = document.getElementById('opciones-especificas');
+const contOpc = document.getElementById('contenedor-opciones-mundo');
+
+function actualizarMundo(mundo) {
+  descMundo.innerHTML = DESCRIPCIONES[mundo] || "";
+  cardsMundo.forEach(c => {
+    if (c.getAttribute('data-mundo') === mundo) {
+      c.classList.add('seleccionado');
+    } else {
+      c.classList.remove('seleccionado');
+    }
+  });
+
+  // Opciones específicas
+  contOpc.innerHTML = "";
+  if (mundo === 'ajedrez') {
+    opcEsp.style.display = 'block';
+    contOpc.innerHTML = `
+      <div class="campo">
+        <label for="opc_dificultad">Dificultad del rival</label>
+        <select id="opc_dificultad" name="opcion_dificultad">
+          <option value="1" selected>1 ply (Fácil / Inmediato)</option>
+          <option value="2">2 ply (Medio / Táctico)</option>
+          <option value="3">3 ply (Difícil)</option>
+        </select>
+      </div>
+    `;
+  } else if (mundo === 'snake') {
+    opcEsp.style.display = 'block';
+    contOpc.innerHTML = `
+      <div class="campo">
+        <label for="opc_dificultad">Velocidad del juego</label>
+        <select id="opc_dificultad" name="opcion_dificultad">
+          <option value="babosa">Babosa (Lenta / Fácil)</option>
+          <option value="gusano" selected>Gusano (Normal)</option>
+          <option value="piton">Pitón (Rápida)</option>
+        </select>
+      </div>
+    `;
+  } else {
+    opcEsp.style.display = 'none';
+  }
+}
+
+radiosMundo.forEach(r => {
+  r.addEventListener('change', () => actualizarMundo(r.value));
+});
+
+document.getElementById('btn-azar').addEventListener('click', () => {
+  document.getElementById('semilla').value = Math.floor(Math.random() * 9999) + 1;
+});
+
+const form = document.getElementById('form-lanzador');
+const btnLanzar = document.getElementById('btn-lanzar');
+const estado = document.getElementById('estado-lanzador');
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  btnLanzar.disabled = true;
+  estado.textContent = "Iniciando organismo y abriendo telemetría...";
+
+  const mundo = document.querySelector('input[name="mundo"]:checked').value;
+  const latidos = parseInt(document.getElementById('latidos').value, 10) || 300;
+  const semilla = parseInt(document.getElementById('semilla').value, 10) || 1;
+  const generaciones = parseInt(document.getElementById('generaciones').value, 10) || 1;
+  const cada = parseInt(document.getElementById('cada').value, 10) || 10;
+  const tabula_rasa = document.getElementById('tabula_rasa').checked;
+  const sin_experiencia = document.getElementById('sin_experiencia').checked;
+
+  const opciones = {};
+  const dif = document.getElementById('opc_dificultad');
+  if (dif) {
+    opciones['dificultad'] = dif.value;
+  }
+
+  try {
+    const res = await fetch('/iniciar', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        mundo,
+        latidos,
+        semilla,
+        generaciones,
+        cada,
+        tabula_rasa,
+        sin_experiencia,
+        opciones
+      })
+    });
+    const datos = await res.json();
+    if (datos.ok) {
+      window.location.href = datos.url || '/';
+    } else {
+      estado.textContent = "Error: " + (datos.error || "No se pudo iniciar");
+      btnLanzar.disabled = false;
+    }
+  } catch (err) {
+    estado.textContent = "Error de conexión con el servidor de IdA.";
+    btnLanzar.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

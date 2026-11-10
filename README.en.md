@@ -25,6 +25,7 @@ python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
 python -m pytest -q                       # 64 tests
+python -m ida                             # interactive launcher at http://127.0.0.1:8000
 python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
 python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://127.0.0.1:8000
 ```

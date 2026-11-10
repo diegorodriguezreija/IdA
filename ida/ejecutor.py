@@ -18,6 +18,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS = os.path.join(RAIZ, "datos")
 
 
+class InterrupcionSimulacion(Exception):
+    """Lanzada para detener limpiamente la simulación desde la antesala web."""
+    pass
+
+
 def ejecutar(
     mundo: str,
     latidos: int = 300,
@@ -32,6 +37,8 @@ def ejecutar(
     opciones_mundo: Optional[Dict[str, Any]] = None,
     al_latir: Optional[Callable] = None,
     otel: bool = False,
+    telemetria_instancia: Optional[Any] = None,
+    evento_parada: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
@@ -41,10 +48,14 @@ def ejecutar(
     azar = Azar(semilla)
     linaje = Linaje(os.path.join(datos, "linaje.json"))
     persistencia = Persistencia(os.path.join(datos, "memoria.db") if m.perfil.memoria != "apagada" else None)
-    telemetria = None
-    if ver:
+    telemetria = telemetria_instancia
+    telemetria_propia = False
+    if ver and telemetria is None:
         from ida.telemetria.servidor import Telemetria
         telemetria = Telemetria(mundo=mundo)
+        telemetria_propia = True
+    elif telemetria is not None:
+        telemetria.mundo = mundo
     observabilidad = None
     if otel:
         from ida.telemetria.otel import Observabilidad   # requiere el extra [observabilidad]
@@ -91,8 +102,16 @@ def ejecutar(
                         time.sleep(o.perfil.frecuencia_ms / 1000.0)
                 if al_latir:
                     al_latir(o, onda, r)
+                if evento_parada is not None and evento_parada.is_set():
+                    raise InterrupcionSimulacion()
 
-            vividos = org.vivir(latidos, al_latir=latir)
+            try:
+                vividos = org.vivir(latidos, al_latir=latir)
+            except InterrupcionSimulacion:
+                vividos = org.ciclo
+                if consola:
+                    print(f"\n[simulación interrumpida por el usuario tras {vividos} latidos]")
+                break
             persistencia.volcar(memoria, arq.id, org.ciclo)
             total = max(1, vividos)
             vivencia = {
@@ -121,7 +140,7 @@ def ejecutar(
     finally:
         m.cerrar()
         persistencia.cerrar()
-        if telemetria is not None:
+        if telemetria is not None and telemetria_propia:
             telemetria.detener()
         if observabilidad is not None:
             observabilidad.cerrar()

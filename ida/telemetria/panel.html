@@ -62,6 +62,7 @@
   <span class="chip" id="afecto">—</span>
   <span class="chip aviso" id="sinexp" hidden>sin experiencia</span>
   <span class="dato" id="estado">esperando datos…</span>
+  <button id="btn-cambiar-mundo" class="chip" style="margin-left:auto;cursor:pointer;background:var(--riel);border:1px solid var(--borde);color:var(--texto);font-weight:600;padding:4px 10px;" title="Detener simulación y volver a la antesala">⟵ Cambiar mundo</button>
 </header>
 <main>
   <section>
@@ -248,6 +249,18 @@ fuente.onmessage = ev => {
 };
 fuente.onerror = () => { $("estado").textContent = "desconectado"; };
 window.addEventListener("resize", dibujar);
+
+const btnCambiar = $("btn-cambiar-mundo");
+if (btnCambiar) {
+  btnCambiar.addEventListener("click", async () => {
+    btnCambiar.disabled = true;
+    btnCambiar.textContent = "Deteniendo…";
+    try {
+      await fetch("/detener", { method: "POST" });
+    } catch (_) {}
+    window.location.href = "/antesala";
+  });
+}
 </script>
 </body>
 </html>

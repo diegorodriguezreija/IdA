@@ -89,7 +89,12 @@ flowchart TD
 * O con Docker, sin instalar nada: `docker compose up --build` (ver más abajo).
 
 ### Ejecutar una simulación básica
-Para lanzar una vida en el **Mundo Mínimo sintético**:
+Para abrir la **antesala interactiva** en el navegador y configurar cualquier mundo visualmente:
+```bash
+python -m ida
+```
+
+Para lanzar directamente una vida en el **Mundo Mínimo sintético**:
 ```bash
 python -m ida --mundo minimo --latidos 100 --semilla 42
 ```
