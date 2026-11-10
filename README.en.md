@@ -30,6 +30,8 @@ python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula
 python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://127.0.0.1:8000
 ```
 
+Running `python -m ida` without arguments launches an **interactive web launcher** to choose a world, optionally enable graphical window displays (in Snake or Crafter), and adjust parameters before proceeding to the live panel.
+
 Or, with nothing installed: `docker compose up --build`.
 
 > **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
@@ -41,9 +43,9 @@ Or, with nothing installed: `docker compose up --build`.
 - **Memory.** Expectations, episodes and propositions with a status (hypothesis, proven, refuted). Taste aversion and mortal trauma are learned fast; proven knowledge is inherited as a hypothesis the descendant must confirm.
 - **A core blind to the world.** Worlds plug in through one port (`ida/core/mundo.py`). An AST test forbids world vocabulary and imports in the core; another keeps the GPL chess dependency inside its folder.
 
-## Observability
+## Observabilidad
 
-Besides its own panel, IdA exports standard traces and metrics with **OpenTelemetry** (`--otel`). `docker compose up --build` starts IdA, an **OpenTelemetry Collector**, **Jaeger**, **Prometheus** and **Grafana** with a provisioned dashboard. In Jaeger every heartbeat is a trace with one span per phase (perceive, sense, learn, S1, S2, S3, act, close), so a guillotine cut is visible. The core does not depend on any of it: the wave only records when each phase starts and ends.
+Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** (`--otel`). The stack with **Jaeger**, **Prometheus** and **Grafana** (`docker compose up --build`) is currently in an **early, preliminary phase**: it provides basic heartbeat traces and phase waterfall breakdowns, but IdA's **native live web panel** remains the most informative tool for observing its cognition in real time.
 
 <p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="One IdA heartbeat in Jaeger: the latido span and its phases as a waterfall"></p>
 

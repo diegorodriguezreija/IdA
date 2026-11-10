@@ -30,6 +30,8 @@ python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula
 python -m ida --mundo archivos --latidos 300 --ver     # panel en http://127.0.0.1:8000
 ```
 
+Al ejecutar `python -m ida` sin parámetros se abre en el navegador una **antesala interactiva** para elegir el mundo, activar si se desea ventana gráfica (en Snake o Crafter) y configurar parámetros antes de pasar al panel en vivo.
+
 Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA viviendo en el mundo de archivos junto con la pila de observabilidad (abajo).
 
 ## Los mundos
@@ -58,10 +60,10 @@ Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repos
 
 ## Observabilidad
 
-Además del panel propio, IdA envía trazas y métricas estándar por **OpenTelemetry** (`--otel`, extra `observabilidad`). `docker compose up --build` levanta IdA, un **OpenTelemetry Collector**, **Jaeger**, **Prometheus** y **Grafana** con el panel ya provisionado:
+Además del panel propio en vivo, IdA puede enviar trazas y métricas estándar por **OpenTelemetry** (`--otel`, extra `observabilidad`). La pila con **Jaeger**, **Prometheus** y **Grafana** (`docker compose up --build`) se encuentra todavía en una **fase inicial y preliminar**: aporta trazas básicas de latido y fases, pero el visor más informativo y completo para entender la cognición de IdA en tiempo real sigue siendo su **panel web nativo**.
 
-- **Jaeger** (http://localhost:16686): cada latido es una traza con un tramo por fase. Si salta la guillotina, se ve el corte.
-- **Grafana** (http://localhost:3000): duración del latido y de cada fase, guillotinas, decisiones por sistema y por verbo, decisiones cambiadas por la experiencia, aprendizajes, cuerpo, amplitud y conocimiento.
+- **Jaeger** (http://localhost:16686): trazas básicas de latido con tramos por fase para ver cortes de guillotina.
+- **Grafana** (http://localhost:3000): panel inicial con duraciones de fase, reparto de decisiones y constantes vitales.
 
 <p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="Un latido de IdA en Jaeger: el tramo latido con sus fases percibir, sentir, aprender, S1, S2, S3, actuar y cierre en cascada"></p>
 

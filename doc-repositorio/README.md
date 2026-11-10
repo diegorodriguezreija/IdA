@@ -124,7 +124,7 @@ La mente no sabe en qué mundo está; el mundo es un adaptador intercambiable. Y
 
 ## 🔭 Observabilidad
 
-Además del panel propio (`--ver`), IdA puede enviar trazas y métricas estándar por **OpenTelemetry** (`--otel`). `docker compose up --build` levanta IdA, un OpenTelemetry Collector, **Jaeger**, **Prometheus** y **Grafana** con un panel ya montado:
+Además del panel propio (`--ver`), IdA puede enviar trazas y métricas estándar por **OpenTelemetry** (`--otel`). Esta pila complementaria con **Jaeger**, **Prometheus** y **Grafana** (`docker compose up --build`) se encuentra en una **fase inicial y preliminar** para análisis técnico de fases y cortes de guillotina; el **panel web nativo de IdA** sigue siendo la vista principal y más rica para observar la vida del individuo.
 
 * **Trazas (Jaeger, http://localhost:16686):** cada latido es una traza con un tramo por fase (percibir, sentir, aprender, S1, S2, S3, actuar, cierre). Si salta la guillotina, se ve el corte.
 * **Métricas (Prometheus y Grafana, http://localhost:3000):** duración del latido y de cada fase, guillotinas, decisiones por sistema y verbo, decisiones cambiadas por la experiencia, aprendizajes, cuerpo, amplitud, conocimiento y vidas.
