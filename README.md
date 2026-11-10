@@ -1,12 +1,14 @@
 # IdA – Identidad Artificial
 
-**Agentes con cuerpo, carácter y linaje, inspirados en la biología.**
+**Un framework bioinspirado en Python para crear agentes con cuerpo, carácter y linaje que viven en distintos mundos.**
 
 [![CI](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml/badge.svg)](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml)
 [![Licencia: Apache-2.0 (ajedrez: GPL-3.0-or-later)](https://img.shields.io/badge/licencia-Apache--2.0%20%2F%20GPL--3.0%20(ajedrez)-blue)](NOTICE)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 
 English summary: [README.en.md](README.en.md).
+
+IdA es un **framework**: un núcleo genérico, inspirado en cómo resuelven los seres vivos el problema de seguir vivos, al que se conectan mundos como adaptadores. Está hecho para **ejecutarlo y ver vivir** a sus individuos. No compite con otros agentes ni busca la mejor puntuación; esa pregunta se investiga aparte, en el [Laboratorio IdA](#laboratorio-ida).
 
 Cada individuo de IdA tiene un **cuerpo** que se gasta, un **latido** con un presupuesto de atención y de tiempo (y una guillotina si se pasa), y **tres sistemas** que proponen qué hacer: S1 (supervivencia), S2 (valor) y S3 (verdad). Un **Tribunal** decide según cómo esté el cuerpo. Lo vivido se recuerda, se anticipa, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
 
@@ -41,6 +43,8 @@ Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA 
 
 Opciones comunes: `--latidos`, `--semilla`, `--generaciones`, `--ver` (panel), `--otel` (OpenTelemetry), `--sin-experiencia` (apaga las dimensiones activa y proactiva para comparar), `--tabula-rasa` (borra el linaje), `--cada N` y `--opcion clave=valor`. Los datos se guardan en `datos/<mundo>/`.
 
+> **Nota sobre Snake.** Este mundo juega en [playsnake.org](https://playsnake.org/), un sitio de terceros sin relación con este proyecto, controlando un navegador con Playwright. Es un mundo de demostración: juega una partida cada vez, no usa credenciales ni recoge datos del sitio. Si lo usas, respeta sus condiciones de uso. Si el sitio cambia o deja de estar disponible, este mundo dejará de funcionar; los demás no dependen de internet.
+
 ## Lo conseguido
 
 - **El mismo núcleo vive en cinco mundos** muy distintos, y un test con AST vigila que no aprenda palabras de ninguno.
@@ -66,6 +70,10 @@ El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada 
 
 `ruff` y `mypy` en verde, 64 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
 
+## Laboratorio IdA
+
+Este repositorio es el framework: sirve para ejecutar y ver vivir a los individuos. La pregunta de si el diseño orgánico de IdA **supera a un diseño tradicional** en cada mundo, en qué situaciones y cuánto, se investiga en otro repositorio, el [**Laboratorio IdA**](https://github.com/diegorodriguezreija/laboratorio-ida). Allí se prueban variantes modificadas de IdA frente a líneas base tradicionales de cada mundo, con preguntas fijadas de antemano, las mismas semillas y los resultados negativos publicados. Las variantes del laboratorio no tienen por qué coincidir con la versión de este framework.
+
 ## Documentación
 
 | | |
@@ -74,7 +82,7 @@ El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada 
 | [`doc-repositorio/`](doc-repositorio/README.md) | Documentación completa: filosofía, arquitectura, mundos, guía técnica, métricas e hitos |
 | [`docs/DISENO_FRAMEWORK_BASE.md`](docs/DISENO_FRAMEWORK_BASE.md) | Diseño del framework base y sus principios |
 | [`docs/ESTADO_IMPLEMENTACION.md`](docs/ESTADO_IMPLEMENTACION.md) | Fases, decisiones y pendientes |
-| [`docs/RESULTADOS.md`](docs/RESULTADOS.md) | Ejecuciones de la línea base y sus límites |
+| [`docs/RESULTADOS.md`](docs/RESULTADOS.md) | Primeras ejecuciones de verificación de cada mundo y sus límites |
 | [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) · [`AGENTS.md`](AGENTS.md) | Cambios, cómo contribuir, seguridad y reglas para agentes de IA |
 
 ## Honestidad

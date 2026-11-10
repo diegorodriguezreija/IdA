@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ida-identidad-artificial"
 version = "1.0.0"
-description = "Agentes con cuerpo, carácter y linaje: un framework de arquitectura cognitiva bioinspirada que vive en varios mundos."
+description = "Framework bioinspirado en Python: agentes con cuerpo, carácter y linaje que viven en distintos mundos."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"

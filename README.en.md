@@ -1,12 +1,14 @@
 # IdA – Identidad Artificial (Artificial Identity)
 
-**Agents with a body, a character and a lineage, inspired by biology.**
+**A bio-inspired Python framework for agents with a body, a character and a lineage that live in different worlds.**
 
 [![CI](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml/badge.svg)](https://github.com/diegorodriguezreija/IdA/actions/workflows/ci.yml)
 [![License: Apache-2.0 (chess: GPL-3.0-or-later)](https://img.shields.io/badge/license-Apache--2.0%20%2F%20GPL--3.0%20(chess)-blue)](NOTICE)
 ![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue)
 
 This is a short English summary. The full documentation, and the code itself, are in Spanish, starting with [README.md](README.md).
+
+IdA is a **framework**: a generic core, inspired by how living beings solve the problem of staying alive, to which worlds plug in as adapters. It is made to **run and watch** its individuals live. It does not compete with other agents or chase the best score; that question is studied separately, in the [IdA Laboratory](#ida-laboratory).
 
 Every IdA individual has a **body** that wears out, a **heartbeat** with an attention and time budget (and a guillotine that cuts thinking when the deadline passes), and **three systems** that propose what to do: S1 (survival), S2 (value) and S3 (truth). A **Tribunal** picks one according to the state of the body: under stress it listens to urgency, when calm to confidence. What the individual lives through is remembered, anticipated, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
 
@@ -28,6 +30,8 @@ python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://12
 ```
 
 Or, with nothing installed: `docker compose up --build`.
+
+> **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
 
 ## What's inside
 
@@ -54,6 +58,10 @@ Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](d
 ## Engineering
 
 Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 64 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+
+## IdA Laboratory
+
+This repository is the framework: it is for running IdA and watching its individuals live. Whether IdA's organic design **beats a traditional design** in each world, in which situations and by how much, is studied in a separate repository, the [**IdA Laboratory**](https://github.com/diegorodriguezreija/laboratorio-ida) (in Spanish). It tests modified variants of IdA against traditional baselines for each world, with questions fixed in advance, the same seeds and negative results published. The laboratory's variants do not have to match this framework's version.
 
 ## Honesty
 
