@@ -83,17 +83,21 @@ class MundoCrafter(Mundo):
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=False,
                     peso_experiencia=0.15, vitales_propios=True)
 
-    def __init__(self, radio: Any = 4, **_):
+    def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
         import crafter                     # dependencia solo de este mundo
         from crafter import constants
         self._crafter = crafter
         self.constantes = constants
         self.acciones = {nombre: i for i, nombre in enumerate(constants.actions)}
         self.radio = int(radio)
+        self.ventana = str(ventana) in ("1", "si", "sí", "true")
         self.env: Any = None
         self.visitas: Dict[Pos, int] = {}
         self.t = 0
         self.fin = False
+        self._tk: Any = None
+        self._label: Any = None
+        self._photo: Any = None
 
     # --- ciclo de vida -------------------------------------------------------
     def reiniciar(self, semilla: Optional[int]) -> None:
@@ -111,6 +115,43 @@ class MundoCrafter(Mundo):
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
+        self._actualizar_ventana()
+
+    def _actualizar_ventana(self) -> None:
+        if not self.ventana or self.env is None:
+            return
+        try:
+            import tkinter as tk
+            from PIL import Image, ImageTk
+            if self._tk is None:
+                self._tk = tk.Tk()
+                self._tk.title("Crafter · IdA")
+                self._tk.resizable(False, False)
+                self._label = tk.Label(self._tk)
+                self._label.pack()
+
+                def _al_cerrar():
+                    self.ventana = False
+                    if self._tk:
+                        self._tk.destroy()
+                        self._tk = None
+
+                self._tk.protocol("WM_DELETE_WINDOW", _al_cerrar)
+            img = self.env.render()
+            pil_img = Image.fromarray(img).resize((400, 400), Image.Resampling.NEAREST)
+            self._photo = ImageTk.PhotoImage(pil_img)
+            self._label.config(image=self._photo)
+            self._tk.update()
+        except Exception:
+            pass
+
+    def cerrar(self) -> None:
+        if self._tk is not None:
+            try:
+                self._tk.destroy()
+            except Exception:
+                pass
+            self._tk = None
 
     @property
     def jugador(self):
@@ -245,7 +286,9 @@ class MundoCrafter(Mundo):
             self._paso("sleep")
         else:
             self._paso("noop")
-        return self._efecto(antes, logros_antes, exito)
+        ef = self._efecto(antes, logros_antes, exito)
+        self._actualizar_ventana()
+        return ef
 
     def _efecto(self, antes: Dict[str, int], logros_antes: Set[str], exito: bool) -> Efecto:
         p = self.jugador

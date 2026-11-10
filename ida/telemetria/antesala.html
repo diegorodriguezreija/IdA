@@ -363,7 +363,7 @@ function renderizarOpcionesMundo(mundo) {
     `;
   } else if (mundo === 'crafter') {
     contOpc.innerHTML = `
-      <div class="grid-params" style="margin-bottom:0">
+      <div class="grid-params" style="margin-bottom:8px">
         <div class="campo">
           <label for="opc_radio">Radio de visión simbólica <span class="pista">(alcance de percepción)</span></label>
           <select id="opc_radio">
@@ -374,6 +374,13 @@ function renderizarOpcionesMundo(mundo) {
           </select>
         </div>
       </div>
+      <label class="check-item" style="margin-top:6px">
+        <input type="checkbox" id="opc_crafter_ventana" checked>
+        <div class="check-texto">
+          <b>Ventana gráfica en pantalla (--opcion ventana=1)</b>
+          <span>Abre una ventana gráfica en vivo con el renderizado pixel-art oficial de Crafter.</span>
+        </div>
+      </label>
     `;
   } else if (mundo === 'archivos') {
     contOpc.innerHTML = `
@@ -438,6 +445,8 @@ form.addEventListener('submit', async (e) => {
   } else if (mundo === 'crafter') {
     const rad = document.getElementById('opc_radio');
     if (rad) opciones['radio'] = parseInt(rad.value, 10) || 4;
+    const vent = document.getElementById('opc_crafter_ventana');
+    if (vent) opciones['ventana'] = vent.checked ? 1 : 0;
   }
 
   // Abrir servicios de observabilidad en pestañas si están seleccionados
