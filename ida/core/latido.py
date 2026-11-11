@@ -37,6 +37,7 @@ class Organismo:
         memoria: Memoria,
         azar: Azar,
         con_experiencia: bool = True,
+        biblioteca: Optional[Any] = None,
     ):
         self.mundo = mundo
         self.perfil = mundo.perfil
@@ -45,12 +46,16 @@ class Organismo:
         self.memoria = memoria
         self.azar = azar
         self.con_experiencia = con_experiencia
+        self.biblioteca = biblioteca
         self.soma = Soma(vitales_propios=tuple(VITALES) if self.perfil.vitales_propios else ())
-        self.verbos = set(mundo.verbos())
+        verbos_mundo = sorted(set(mundo.verbos()), key=lambda v: v.value)
+        self.verbos = set(verbos_mundo)
+        if Verbo.ESPERAR in self.verbos:
+            self.verbos.add(Verbo.LEER)
 
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Escena()], exento=True)
-        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in sorted(self.verbos, key=lambda v: v.value)]
+        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
@@ -96,7 +101,18 @@ class Organismo:
             soma.dormido = obs.dormido
         frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
-        ctx = Contexto(onda, soma, self.memoria, self.arquetipo, self.azar, self.perfil, self.verbos, obs, self.con_experiencia)
+        ctx = Contexto(
+            onda,
+            soma,
+            self.memoria,
+            self.arquetipo,
+            self.azar,
+            self.perfil,
+            self.verbos,
+            obs,
+            self.con_experiencia,
+            biblioteca=self.biblioteca,
+        )
         onda.fases.append(("percibir", t_percibir, t_percibido))
 
         # 3. Sentir
@@ -134,7 +150,7 @@ class Organismo:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
         ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
-        if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR):
+        if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None
             if exp is not None:
                 onda.notas["expectativa"] = f"espera {exp.esperado:+.1f} al {exp.verbo.value} {exp.clase}"
@@ -175,7 +191,7 @@ class Organismo:
             clase_obj = c.get("obtenido") or c.get("clase") or ""
             if clase_obj:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
-        verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR,) else None
+        verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -290,6 +306,13 @@ class Organismo:
                 break
             if self.mundo.terminado():
                 break
+            # Cautela 1: si hay una lectura completando y espera respuesta en modo no-tiempo-real,
+            # la espera bloqueante ocurre aquí, entre un latido y otro, fuera de la guillotina.
+            if self.memoria.lectura_activa and not self.perfil.tiempo_real:
+                reg = self.memoria.lectura_activa
+                if reg.ticket and reg.latidos_dedicados >= reg.duracion_requerida:
+                    while not reg.ticket.lista():
+                        time.sleep(0.001)
             if self.perfil.tiempo_real:          # marcapasos: el mundo no espera
                 restante = self.perfil.frecuencia_ms / 1000.0 - (time.perf_counter() - t0)
                 if restante > 0:

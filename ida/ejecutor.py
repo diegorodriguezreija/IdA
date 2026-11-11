@@ -42,6 +42,7 @@ def ejecutar(
     evento_parada: Optional[Any] = None,
     arquetipo_inicial: Optional[Dict[str, float]] = None,
     legado_inicial: Optional[Dict[str, Any]] = None,
+    biblioteca: Optional[Any] = None,
 ) -> List[Dict[str, Any]]:
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
@@ -86,7 +87,21 @@ def ejecutar(
             legado_a_heredar = linaje.legado() or legado_inicial or {}
             heredados = memoria.heredar(legado_a_heredar)
             m.reiniciar(azar_g.semilla)
-            org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia)
+            org_biblioteca: Optional[Any] = None
+            if isinstance(biblioteca, str):
+                if biblioteca == "nula":
+                    from ida.bibliotecas.nula import BibliotecaNula
+                    org_biblioteca = BibliotecaNula()
+                elif biblioteca == "fija":
+                    from ida.bibliotecas.fija import BibliotecaFija
+                    org_biblioteca = BibliotecaFija()
+                elif biblioteca == "erronea":
+                    from ida.bibliotecas.erronea import BibliotecaErronea
+                    semilla_bib = azar_g.semilla if azar_g.semilla is not None else 42
+                    org_biblioteca = BibliotecaErronea(semilla=semilla_bib)
+            elif biblioteca is not None:
+                org_biblioteca = biblioteca
+            org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia, biblioteca=org_biblioteca)
             persistencia.nueva_vida()
             org.al_dormir = lambda o: persistencia.volcar(o.memoria, o.arquetipo.id, o.ciclo)
             if consola:

@@ -39,6 +39,7 @@ class Contexto:
     verbos: Set[Verbo]
     observacion: Optional[Observacion] = None
     con_experiencia: bool = True
+    biblioteca: Optional[Any] = None
     extra: Dict[str, Any] = field(default_factory=dict)
 
     @property

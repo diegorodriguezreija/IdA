@@ -16,9 +16,10 @@ proposiciones **demostradas**.
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import acotar
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import al_alcance, apetito, escena, lugares, mejor, objetos
+from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
+from ida.sistemas.comun import al_alcance, alarma, apetito, escena, lugares, mejor, objetos
 
 
 class Comunicacion(Componente):
@@ -170,9 +171,181 @@ class ImpulsoS3(Componente):
                 c.entradas.append(f"S3:frenado ({frenar})")
 
 
+class Estudio(Componente):
+    """Lectura con atención sostenida en consulta a biblioteca externa sobre hipótesis pendientes."""
+
+    tipo = "Estudio"
+    entradas = ("Proposicion",)
+
+    COOLDOWN_LECTURA = 15
+    MAX_HIPOTESIS_POR_LECTURA = 2
+    L0 = 4
+    L1 = 2
+    MAX_LATIDOS_ESPERA_TR = 10
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if Verbo.ESPERAR not in ctx.verbos:
+            return
+        mem = ctx.memoria
+        if not mem.activa:
+            return
+
+        # 1. Si está dormido, interrumpir si había lectura activa
+        if ctx.soma.dormido:
+            if mem.lectura_activa is not None:
+                mem.lectura_activa.estado = EstadoLectura.INTERRUMPIDO
+                mem.lectura_activa = None
+                mem.ultimo_fin_lectura = ctx.latido
+                ctx.onda.notas["aprendizaje"] = "«deja la lectura: sueño»"
+            return
+
+        # 2. Gestionar lectura activa en curso
+        if mem.lectura_activa is not None:
+            reg = mem.lectura_activa
+
+            # Detectar interrupción: si tras haber empezado no se ejecutó LEER en el latido anterior
+            if ctx.latido > reg.inicio:
+                ej_ant = ctx.onda.ei("Ejecucion").get("Ejecucion")
+                if ej_ant is None or ej_ant.carga.get("verbo") != Verbo.LEER:
+                    reg.estado = EstadoLectura.INTERRUMPIDO
+                    mem.lectura_activa = None
+                    mem.ultimo_fin_lectura = ctx.latido
+                    ctx.onda.notas["aprendizaje"] = "«deja la lectura: interrumpida»"
+                    return
+
+            # Detectar interrupción por alarma o peligro súbito
+            al = alarma(ctx)
+            if al is not None and al.carga.get("peligro", 0.0) >= 0.3:
+                reg.estado = EstadoLectura.INTERRUMPIDO
+                mem.lectura_activa = None
+                mem.ultimo_fin_lectura = ctx.latido
+                ctx.onda.notas["aprendizaje"] = "«deja la lectura: alarma»"
+                return
+
+            reg.latidos_dedicados += 1
+
+            # ¿Completó la duración requerida de atención sostenida?
+            if reg.latidos_dedicados >= reg.duracion_requerida:
+                if reg.ticket and reg.ticket.lista():
+                    resp = reg.ticket.respuesta()
+                    if resp is not None and resp.elementos:
+                        reg.respuesta = {}
+                        for el in resp.elementos:
+                            reg.respuesta[f"{el.sujeto}:{el.relacion.name}"] = {
+                                "veredicto": el.veredicto.value,
+                                "confianza": el.confianza,
+                            }
+                            prop = mem.proposicion(el.sujeto, el.relacion)
+                            if prop is not None:
+                                c_ant = prop.confianza
+                                prop.aplicar_autoridad(
+                                    el.veredicto.value,
+                                    el.confianza,
+                                    ctx.arquetipo.deferencia * 2.0,
+                                    ctx.latido,
+                                )
+                                c_post = prop.confianza
+                                ctx.onda.notas["aprendizaje"] = (
+                                    f"«lee: la biblioteca {el.veredicto.value} "
+                                    f"'{el.sujeto} {el.relacion.value}' ({el.confianza:.2f}); "
+                                    f"confianza {c_ant:.2f} -> {c_post:.2f}»"
+                                )
+                        reg.estado = EstadoLectura.LEIDO
+                    else:
+                        reg.estado = EstadoLectura.INVALIDO
+                    mem.lectura_activa = None
+                    mem.ultimo_fin_lectura = ctx.latido
+                    return
+                elif ctx.perfil.tiempo_real:
+                    if reg.latidos_dedicados >= reg.duracion_requerida + self.MAX_LATIDOS_ESPERA_TR:
+                        reg.estado = EstadoLectura.SIN_RESPUESTA
+                        mem.lectura_activa = None
+                        mem.ultimo_fin_lectura = ctx.latido
+                        return
+
+            # Sigue leyendo: proponer LEER con arousal moderado y confianza media
+            self.proponer(
+                ctx,
+                Verbo.LEER,
+                "biblioteca",
+                arousal=0.25,
+                confianza=0.6,
+                motivo=f"estudio: leyendo ({reg.latidos_dedicados}/{reg.duracion_requerida})",
+            )
+            return
+
+        # 3. Considerar iniciar nueva lectura o relectura
+        al = alarma(ctx)
+        peligro = al.carga.get("peligro", 0.0) if al else 0.0
+        if peligro >= 0.2:
+            return
+        if ctx.soma.hambre() >= 0.5 or ctx.soma.cansancio() >= 0.5:
+            return
+        if ctx.soma.afecto not in (Afecto.CALMA, Afecto.CURIOSIDAD):
+            return
+        if ctx.latido - mem.ultimo_fin_lectura < self.COOLDOWN_LECTURA:
+            return
+
+        # 3a. Relectura de registro disponible previo interrumpido
+        for reg_prev in reversed(mem.lecturas):
+            if reg_prev.estado == EstadoLectura.INTERRUMPIDO and reg_prev.ticket and reg_prev.ticket.lista():
+                reg_prev.estado = EstadoLectura.PENDIENTE
+                reg_prev.latidos_dedicados = 0
+                mem.lectura_activa = reg_prev
+                ctx.onda.notas["aprendizaje"] = f"«relee registro sobre {len(reg_prev.elementos)} hipótesis»"
+                self.proponer(
+                    ctx,
+                    Verbo.LEER,
+                    "biblioteca",
+                    arousal=0.25,
+                    confianza=0.6,
+                    motivo=f"estudio: relectura (0/{reg_prev.duracion_requerida})",
+                )
+                return
+
+        # 3b. Nueva lectura: requiere biblioteca externa y proposiciones en hipótesis
+        if ctx.biblioteca is None:
+            return
+
+        consultadas_recientes = {
+            par for r in mem.lecturas[-5:] for par in r.elementos
+        }
+        hipotesis = [
+            p for p in mem.saber.values()
+            if p.estado(ctx.latido) == EstadoSaber.HIPOTESIS
+            and (p.sujeto, p.relacion.name) not in consultadas_recientes
+        ]
+        if not hipotesis:
+            return
+
+        seleccionadas = hipotesis[: self.MAX_HIPOTESIS_POR_LECTURA]
+        elementos_cons = [ElementoConsulta(p.sujeto, p.relacion) for p in seleccionadas]
+        ticket = ctx.biblioteca.solicitar(Consulta(elementos=elementos_cons))
+        duracion = self.L0 + self.L1 * len(elementos_cons)
+        reg_nuevo = RegistroLectura(
+            id=f"lec_{ctx.latido}",
+            inicio=ctx.latido,
+            elementos=[(e.sujeto, e.relacion.name) for e in elementos_cons],
+            duracion_requerida=duracion,
+            ticket=ticket,
+            estado=EstadoLectura.PENDIENTE,
+        )
+        mem.lecturas.append(reg_nuevo)
+        mem.lectura_activa = reg_nuevo
+        ctx.onda.notas["aprendizaje"] = f"«empieza a leer sobre {len(elementos_cons)} hipótesis»"
+        self.proponer(
+            ctx,
+            Verbo.LEER,
+            "biblioteca",
+            arousal=0.25,
+            confianza=0.6,
+            motivo=f"estudio: lectura (0/{duracion})",
+        )
+
+
 def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), PredicadoProposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Comportamiento(), ImpulsoS3()]),
+        Modulo("Reaccionar", [Comportamiento(), ImpulsoS3(), Estudio()]),
     ])

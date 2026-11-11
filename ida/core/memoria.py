@@ -11,6 +11,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, cast
 
+from ida.core.biblioteca import RegistroLectura
 from ida.core.pieza import Episodio, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 
@@ -205,6 +206,9 @@ class Memoria:
         self.buffer: List[Dict[str, Any]] = []         # piezas salientes pendientes de persistir
         self.episodios: List[Episodio] = []
         self._ultimo_consolidar_ep: int = 0
+        self.lecturas: List[RegistroLectura] = []
+        self.lectura_activa: Optional[RegistroLectura] = None
+        self.ultimo_fin_lectura: int = -100
         self.aciertos = 0
         self.fallos = 0
 

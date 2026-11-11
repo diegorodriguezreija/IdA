@@ -24,6 +24,7 @@ def main(argv=None) -> int:
     p.add_argument("--tabula-rasa", action="store_true", help="borra el linaje y la memoria del mundo antes de empezar")
     p.add_argument("--cada", type=int, default=1, help="imprimir un latido de cada N (siempre se imprimen los aprendizajes)")
     p.add_argument("--opcion", action="append", default=[], metavar="CLAVE=VALOR", help="opción propia del mundo")
+    p.add_argument("--biblioteca", default=None, choices=["nula", "fija", "erronea"], help="biblioteca externa de autoridad")
     a = p.parse_args(argv)
 
     if a.mundo is None or a.web:
@@ -48,7 +49,19 @@ def main(argv=None) -> int:
     for o in a.opcion:
         clave, _, valor = o.partition("=")
         opciones[clave] = int(valor) if valor.isdigit() else valor
-    ejecutar(a.mundo, a.latidos, a.semilla, a.generaciones, a.ver, a.sin_experiencia, a.tabula_rasa, cada=a.cada, opciones_mundo=opciones, otel=a.otel)
+    ejecutar(
+        a.mundo,
+        a.latidos,
+        a.semilla,
+        a.generaciones,
+        a.ver,
+        a.sin_experiencia,
+        a.tabula_rasa,
+        cada=a.cada,
+        opciones_mundo=opciones,
+        otel=a.otel,
+        biblioteca=a.biblioteca,
+    )
     return 0
 
 

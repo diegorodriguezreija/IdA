@@ -24,6 +24,7 @@ class Verbo(_Voz):
     DORMIR = "DORMIR"      # dormir
     ESPERAR = "ESPERAR"    # no hacer nada este latido
     ACECHAR = "ACECHAR"    # interno: el Tribunal aún no se decide
+    LEER = "LEER"          # interno: atención sostenida en consulta a biblioteca
 
 
 # Rasgos con significado que cada mundo calcula para cada entidad, en [0, 1].

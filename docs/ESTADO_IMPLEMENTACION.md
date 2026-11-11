@@ -24,10 +24,17 @@ Diseño: [`DISENO_FRAMEWORK_BASE.md`](DISENO_FRAMEWORK_BASE.md).
 | 7. Preparar la publicación: licencia, `pyproject.toml`, ruff, mypy, CI, Crafter repetible, observabilidad (OpenTelemetry, Prometheus, Jaeger, Grafana) y Docker | hecho (64 tests) |
 | 8. Evolución UI/UX (ficha modal, linaje ordenado, protección tabula rasa) y Crafter biológico (`defensa`, `hitos`) | hecho (68 tests) |
 | 9. **Fase 1 del Plan de Evolución:** Hipocampo en el Core (`Memoria.mapa`, `donde_esta`, `ruta` BFS), `Hogar` con ruta y `Orientacion` en `S2`; retirada de `hitos` en Crafter | hecho (71 tests) |
+| 10. **Fase 2 del Plan de Evolución:** Replay inverso de trayectorias al dormir (`Memoria.consolidar()`, eliminación de bucles, `valor_replay`, desempate en `ruta()`) | hecho (74 tests) |
+| 11. **Fase 3 del Plan de Evolución:** Confianza ponderada por fuente de evidencia (`c_exp` vs `c_aut`, `w_exp`, `Arquetipo.deferencia`, Weismann intacto) | hecho (77 tests) |
+| 12. **Fase 4a del Plan de Evolución:** Biblioteca de autoridad con atención sostenida (`ida/core/biblioteca.py`, `ida/bibliotecas/{nula,fija,erronea}`, `Verbo.LEER`, componente `Estudio` en S3, persistencia `lecturas`, espera fuera de latido) | hecho (85 tests) |
 
 **Cambios en `ida/core` en la fase 7**, con permiso expreso y en commits propios: anotaciones de tipos para mypy (sin cambiar la lógica; vidas con semilla idénticas antes y después) y el registro pasivo de fases de la Onda (`Onda.fases`) para la observabilidad. `ida/sistemas` no se tocó.
 
-**Cambios en `ida/core` e `ida/sistemas` en la fase 9 (Fase 1 de evolución):** autorización expresa documentada en [`PLAN_EVOLUCION_NUCLEO.md`](PLAN_EVOLUCION_NUCLEO.md). Se integraron `Arista`, `RecuerdoLugar`, `registrar_transicion`, `registrar_donde`, `donde_esta` y `ruta` en `Memoria` (con poda `MAX_NODOS_MAPA = 200` y olvido al dormir en `consolidar()`, verificando **100% invariancia con semilla** antes de activar consumidores), navegación del `Hogar` y componente `Orientacion` en `S2`, y se migró Crafter eliminando `self.hitos` del adaptador.
+**Cambios en `ida/core` e `ida/sistemas` en las fases 9 a 12 (Fases 1 a 4a de evolución):** autorización expresa documentada en [`PLAN_EVOLUCION_NUCLEO.md`](PLAN_EVOLUCION_NUCLEO.md).
+- **Fase 1:** `Arista`, `RecuerdoLugar`, `mapa`, `donde_esta` y `ruta` BFS en `Memoria`, navegación de `Hogar` y componente `Orientacion` en `S2`, y eliminación de `self.hitos` en Crafter.
+- **Fase 2:** *Replay* inverso de trayectorias en `Memoria.consolidar(ahora)` con eliminación de bucles mediante reconstrucción sin ciclos, descuento temporal $\gamma=0.8$, modulación de `Arista.valor_replay` y desempate en `ruta()`. Invarianza 100% en mundos sin sueño (`Snake`, `Ajedrez`).
+- **Fase 3:** Confianza epistémica ponderada por fuentes en `Proposicion` (`c_exp` vs `c_aut`), peso dinámico de la experiencia empírica, derivación analítica de `Arquetipo.deferencia` (sin tocar el PRNG `Azar`) y preservación estricta de la barrera de Weismann (la autoridad no verificada no se hereda).
+- **Fase 4a:** Puerto hexagonal abstracto `ida/core/biblioteca.py`, adaptadores `ida/bibliotecas/{nula, fija, erronea}` (aislados por `test_pureza`), verbo interno `Verbo.LEER` ejecutado en el mundo como `ESPERAR`, componente `Estudio` en `S3.Reaccionar` con lectura dependiente de atención sostenida latido a latido, tabla `lecturas` en SQLite y espera bloqueante determinista en `Organismo.vivir()` entre latidos (fuera de la guillotina).
 
 ## Pendiente para la fase de ajustes (tras probar los mundos)
 

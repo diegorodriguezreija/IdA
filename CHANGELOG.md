@@ -4,10 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
-### Núcleo y Sistemas (Fase 1 del Plan de Evolución)
+### Núcleo y Sistemas (Fases 1, 2, 3 y 4a del Plan de Evolución)
 - **Hipocampo en el Core (`ida/core/memoria.py`, `ida/core/latido.py`):** grafo topológico de transiciones (`mapa: Dict[str, Dict[str, Arista]]`), células de lugar (`donde_esta(clase)`), búsqueda BFS acotada (`ruta`), poda LRU (`MAX_NODOS_MAPA = 200`) y olvido en `consolidar()` sin herencia. Validado con 100% de invariancia con semilla en infraestructura pasiva.
 - **Navegación y Orientación (`ida/sistemas/s2.py`):** `Hogar` utiliza rutas topológicas cuando el refugio queda fuera de la vista inmediata; nuevo componente `Orientacion` en `S2.Reaccionar` para regresar hacia fuentes nutritivas recordadas cuando hay necesidad.
 - **Migración hexagonal en Crafter (`ida/mundos/crafter.py`):** eliminada la estructura `self.hitos` del adaptador del mundo; `PlanTecnologico` ahora consulta el hipocampo del individuo traduciendo localmente los nombres de receta.
+- **Replay Inverso de Trayectorias al Dormir (Fase 2):** consolidación de episodios recientes en sueño SWS con eliminación de ciclos/bucles triviales (`_eliminar_bucles_trayectoria`), descuento temporal $\gamma=0.8$, modulación de `Arista.valor_replay` y desempate heurístico determinista en `Memoria.ruta()`. Invarianza 100% en mundos sin sueño (`Snake`, `Ajedrez`).
+- **Confianza Ponderada por Fuentes de Evidencia (Fase 3):** descomposición epistémica en `Proposicion` entre confianza empírica (`c_exp`, peso dinámico $w_{exp} = 1 + \text{conf} + \text{ref}$) y autoridad externa (`c_aut`, $w_{aut}$); derivación determinista de `Arquetipo.deferencia` a partir de responsabilidad y apertura; preservación intacta de la barrera de Weismann en `legado()`.
+- **Biblioteca de Autoridad con Atención Sostenida (Fase 4a):** puerto hexagonal abstracto `ida/core/biblioteca.py` con adaptadores externos (`nula`, `fija`, `erronea`) protegidos por `test_pureza`; nuevo verbo interno `Verbo.LEER` ejecutado como `ESPERAR`; componente `Estudio` en `S3.Reaccionar` con lectura dependiente de atención sostenida latido a latido, cooldown y relectura; persistencia en tabla `lecturas` y espera bloqueante determinista en `Organismo.vivir()` entre latidos (fuera de la guillotina).
 - **Arnés y Plan de Evolución (`AGENTS.md`, `docs/PLAN_EVOLUCION_NUCLEO.md`):** reglas de consistencia biológica sin atajos y hoja de ruta en cuatro fases.
 
 ### Telemetría y Experiencia de Usuario (UI/UX)
