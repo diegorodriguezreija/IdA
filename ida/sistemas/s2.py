@@ -9,6 +9,7 @@
 | Reaccionar  | ImpulsoS2        | Modula los candidatos existentes según el valor de su objetivo |
 | Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
 | Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
+| Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
 """
 
 import math
@@ -154,9 +155,47 @@ class Hogar(Componente):
             self.proponer(ctx, Verbo.DORMIR, aqui, ar, 0.8, "cansancio: dormir" + (" en el hogar" if hogar == aqui else ""))
 
 
+class Orientacion(Componente):
+    """Orientación espacial (hipocampo): ante necesidad nutritiva sin fuente visible,
+    navega hacia ubicaciones recordadas de clases demostradas o prometedoras como nutritivas.
+    """
+
+    tipo = "Orientacion"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.con_experiencia or not ctx.memoria.activa:
+            return
+        a = alarma(ctx)
+        peligro = a.carga["peligro"] if a else 0.0
+        hambre = ctx.soma.hambre()
+        if peligro >= 0.4 or hambre < 0.35:
+            return
+        # Solo actua si no hay un recurso comestible visible ya cercano en la escena
+        if any(o.rasgo("nutritivo") >= 0.3 for o in objetos(ctx)):
+            return
+        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        if not aqui:
+            return
+        for (clase, rel), prop in ctx.memoria.saber.items():
+            if rel != Relacion.NUTRITIVO or prop.confianza < 0.55:
+                continue
+            if ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido):
+                continue
+            destino = ctx.memoria.donde_esta(clase)
+            if destino and destino != aqui:
+                salto = ctx.memoria.ruta(aqui, destino)
+                if salto:
+                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < 0.6), None)
+                    if puerta is not None:
+                        ar = acotar(0.25 + 0.45 * hambre * prop.confianza)
+                        self.registrar(ctx, self.pieza(ctx, "orientacion", arousal=ar, carga={"hacia": destino, "clase": clase}))
+                        self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.65, f"orientación: recordar {clase}", clase=puerta.clase)
+                        return
+
+
 def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar()]),
+        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar(), Orientacion()]),
     ])
