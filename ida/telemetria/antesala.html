@@ -50,7 +50,7 @@
   
   .seccion-titulo {
     font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--suave);
-    margin: 18px 0 10px; font-weight: 700;
+    margin: 20px 0 10px; font-weight: 700; display: flex; justify-content: space-between; align-items: center;
   }
   .seccion-titulo:first-of-type { margin-top: 0; }
   
@@ -117,6 +117,23 @@
     background: color-mix(in srgb, var(--riel) 60%, transparent); border: 1px solid var(--borde);
     border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
   }
+
+  /* Sección de Arquetipo */
+  .caja-arquetipo {
+    border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; margin-bottom: 18px;
+    background: var(--panel);
+  }
+  .grid-sliders {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; margin-top: 14px;
+  }
+  .campo-slider { display: flex; flex-direction: column; gap: 4px; }
+  .slider-header { display: flex; justify-content: space-between; align-items: baseline; font-size: 12px; }
+  .slider-header b { font-weight: 600; color: var(--texto); }
+  .slider-header span.val { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--acento); }
+  input[type="range"] {
+    width: 100%; accent-color: var(--acento); margin: 4px 0 2px; cursor: pointer;
+  }
+  .slider-desc { font-size: 11px; color: var(--suave); line-height: 1.25; }
 
   /* Checkboxes y Toggles */
   .grid-checks {
@@ -221,7 +238,70 @@
       <div id="contenedor-opciones-mundo"></div>
     </div>
 
-    <div class="seccion-titulo">3. Parámetros Vitales y Cognitivos</div>
+    <!-- Personalidad y Arquetipo del Fundador -->
+    <div class="seccion-titulo">3. Personalidad del Fundador (Arquetipo G1)</div>
+    <div class="caja-arquetipo">
+      <div class="campo" style="margin-bottom:12px">
+        <label for="preset_arquetipo">Perfil de Carácter Inicial <span class="pista">(modula cómo siente y decide IdA)</span></label>
+        <select id="preset_arquetipo">
+          <option value="optimo" selected>⭐ Óptimo para este mundo (Mayor rendimiento probado)</option>
+          <option value="cauto">🛡️ Cauto / Superviviente (Alta prudencia, alerta y aversión a riesgos)</option>
+          <option value="audaz">🧭 Audaz / Explorador (Alta curiosidad, tolerancia al peligro y novedad)</option>
+          <option value="equilibrado">⚖️ Equilibrado (Rasgos neutrales en 0.50)</option>
+          <option value="azar">🎲 Derivado por Azar (Generado puro por la semilla)</option>
+          <option value="personalizado">⚙️ Personalizado (Ajuste fino manual)</option>
+        </select>
+      </div>
+
+      <div class="grid-sliders" id="contenedor-sliders">
+        <div class="campo-slider">
+          <div class="slider-header">
+            <b>Apertura</b>
+            <span class="val" id="val_apertura">0.50</span>
+          </div>
+          <input type="range" id="sl_apertura" min="0.15" max="0.85" step="0.05" value="0.50">
+          <span class="slider-desc">Atracción por lo nuevo y exploración (S2).</span>
+        </div>
+
+        <div class="campo-slider">
+          <div class="slider-header">
+            <b>Responsabilidad</b>
+            <span class="val" id="val_responsabilidad">0.65</span>
+          </div>
+          <input type="range" id="sl_responsabilidad" min="0.15" max="0.85" step="0.05" value="0.65">
+          <span class="slider-desc">Prudencia y respeto a lo aprendido (S3).</span>
+        </div>
+
+        <div class="campo-slider">
+          <div class="slider-header">
+            <b>Neuroticismo</b>
+            <span class="val" id="val_neuroticismo">0.60</span>
+          </div>
+          <input type="range" id="sl_neuroticismo" min="0.15" max="0.85" step="0.05" value="0.60">
+          <span class="slider-desc">Sensibilidad a amenazas y estrés (S1).</span>
+        </div>
+
+        <div class="campo-slider">
+          <div class="slider-header">
+            <b>Extraversión</b>
+            <span class="val" id="val_extraversion">0.40</span>
+          </div>
+          <input type="range" id="sl_extraversion" min="0.15" max="0.85" step="0.05" value="0.40">
+          <span class="slider-desc">Atracción hacia otras criaturas del entorno.</span>
+        </div>
+
+        <div class="campo-slider">
+          <div class="slider-header">
+            <b>Umbral de Miedo</b>
+            <span class="val" id="val_umbral_miedo">0.50</span>
+          </div>
+          <input type="range" id="sl_umbral_miedo" min="0.45" max="0.75" step="0.05" value="0.50">
+          <span class="slider-desc">Peligro mínimo que desata reflejos y pánico.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="seccion-titulo">4. Parámetros Vitales y Cognitivos</div>
     <div class="grid-params">
       <div class="campo">
         <label for="latidos">Latidos máximos <span class="pista">(duración de vida)</span></label>
@@ -265,7 +345,7 @@
       </label>
     </div>
 
-    <div class="seccion-titulo">4. Observabilidad y Servicios Adicionales</div>
+    <div class="seccion-titulo">5. Observabilidad y Servicios Adicionales</div>
     <div class="caja-observabilidad">
       <label class="check-item" style="margin-bottom:8px">
         <input type="checkbox" id="otel" name="otel">
@@ -319,6 +399,7 @@ const CONFIG_OPTIMA = {
     cada: 10,
     tabula_rasa: true,
     sin_experiencia: false,
+    arquetipo: { apertura: 0.50, responsabilidad: 0.65, neuroticismo: 0.60, extraversion: 0.40, umbral_miedo: 0.50 },
     resumen: "Semilla 3, 3 generaciones (198 latidos de media; demuestra «seta hace daño» en G1 y la evita en G2/G3 comiendo 19 bayas y 1 seta)."
   },
   archivos: {
@@ -328,6 +409,7 @@ const CONFIG_OPTIMA = {
     cada: 10,
     tabula_rasa: true,
     sin_experiencia: false,
+    arquetipo: { apertura: 0.45, responsabilidad: 0.70, neuroticismo: 0.55, extraversion: 0.35, umbral_miedo: 0.55 },
     resumen: "Semilla 1, 3 generaciones (media 270 latidos; la Prudencia contiene los mordiscos a bytes tóxicos a 1-2 por vida)."
   },
   crafter: {
@@ -339,6 +421,7 @@ const CONFIG_OPTIMA = {
     sin_experiencia: false,
     radio: 4,
     ventana: true,
+    arquetipo: { apertura: 0.55, responsabilidad: 0.70, neuroticismo: 0.45, extraversion: 0.30, umbral_miedo: 0.65 },
     resumen: "Semilla 1 determinista (9 a 12 logros por vida: herramientas de madera/piedra, mesa, horno y ciclo de sueño)."
   },
   ajedrez: {
@@ -350,6 +433,7 @@ const CONFIG_OPTIMA = {
     sin_experiencia: false,
     dificultad: 1,
     color: "blancas",
+    arquetipo: { apertura: 0.40, responsabilidad: 0.75, neuroticismo: 0.35, extraversion: 0.30, umbral_miedo: 0.70 },
     resumen: "Semilla 1 contra rival dificultad 1 (87,5% victorias; partidas resueltas en 20-40 latidos)."
   },
   snake: {
@@ -362,8 +446,15 @@ const CONFIG_OPTIMA = {
     dificultad: "piton",
     ritmo: 60,
     ventana: true,
+    arquetipo: { apertura: 0.45, responsabilidad: 0.65, neuroticismo: 0.60, extraversion: 0.30, umbral_miedo: 0.50 },
     resumen: "Ritmo de 60 ms en dificultad Pitón (media de 916 puntos, récord 1605; aprende «pared hace daño» al morir)."
   }
+};
+
+const PRESETS_ARQUETIPO = {
+  cauto: { apertura: 0.35, responsabilidad: 0.75, neuroticismo: 0.70, extraversion: 0.30, umbral_miedo: 0.48 },
+  audaz: { apertura: 0.75, responsabilidad: 0.40, neuroticismo: 0.35, extraversion: 0.60, umbral_miedo: 0.70 },
+  equilibrado: { apertura: 0.50, responsabilidad: 0.50, neuroticismo: 0.50, extraversion: 0.50, umbral_miedo: 0.60 }
 };
 
 const radiosMundo = document.querySelectorAll('input[name="mundo"]');
@@ -372,7 +463,61 @@ const descMundo = document.getElementById('desc-mundo');
 const bannerResumen = document.getElementById('banner-resumen');
 const contOpc = document.getElementById('contenedor-opciones-mundo');
 
+// Sliders de Arquetipo
+const slApertura = document.getElementById('sl_apertura');
+const slResponsabilidad = document.getElementById('sl_responsabilidad');
+const slNeuroticismo = document.getElementById('sl_neuroticismo');
+const slExtraversion = document.getElementById('sl_extraversion');
+const slUmbralMiedo = document.getElementById('sl_umbral_miedo');
+
+const valApertura = document.getElementById('val_apertura');
+const valResponsabilidad = document.getElementById('val_responsabilidad');
+const valNeuroticismo = document.getElementById('val_neuroticismo');
+const valExtraversion = document.getElementById('val_extraversion');
+const valUmbralMiedo = document.getElementById('val_umbral_miedo');
+const presetArquetipo = document.getElementById('preset_arquetipo');
+
 let mundoActual = 'minimo';
+
+function sincronizarTextosSliders() {
+  valApertura.textContent = parseFloat(slApertura.value).toFixed(2);
+  valResponsabilidad.textContent = parseFloat(slResponsabilidad.value).toFixed(2);
+  valNeuroticismo.textContent = parseFloat(slNeuroticismo.value).toFixed(2);
+  valExtraversion.textContent = parseFloat(slExtraversion.value).toFixed(2);
+  valUmbralMiedo.textContent = parseFloat(slUmbralMiedo.value).toFixed(2);
+}
+
+function fijarSliders(vals, deshabilitar = false) {
+  slApertura.value = vals.apertura;
+  slResponsabilidad.value = vals.responsabilidad;
+  slNeuroticismo.value = vals.neuroticismo;
+  slExtraversion.value = vals.extraversion;
+  slUmbralMiedo.value = vals.umbral_miedo;
+  sincronizarTextosSliders();
+
+  [slApertura, slResponsabilidad, slNeuroticismo, slExtraversion, slUmbralMiedo].forEach(s => {
+    s.disabled = deshabilitar;
+    s.style.opacity = deshabilitar ? "0.4" : "1";
+  });
+}
+
+[slApertura, slResponsabilidad, slNeuroticismo, slExtraversion, slUmbralMiedo].forEach(s => {
+  s.addEventListener('input', () => {
+    sincronizarTextosSliders();
+    presetArquetipo.value = 'personalizado';
+  });
+});
+
+presetArquetipo.addEventListener('change', () => {
+  const p = presetArquetipo.value;
+  if (p === 'optimo') {
+    fijarSliders(CONFIG_OPTIMA[mundoActual].arquetipo, false);
+  } else if (p === 'azar') {
+    fijarSliders({ apertura: 0.5, responsabilidad: 0.5, neuroticismo: 0.5, extraversion: 0.5, umbral_miedo: 0.6 }, true);
+  } else if (PRESETS_ARQUETIPO[p]) {
+    fijarSliders(PRESETS_ARQUETIPO[p], false);
+  }
+});
 
 function aplicarConfiguracionOptima(mundo) {
   const cfg = CONFIG_OPTIMA[mundo];
@@ -385,6 +530,9 @@ function aplicarConfiguracionOptima(mundo) {
   document.getElementById('tabula_rasa').checked = cfg.tabula_rasa;
   document.getElementById('sin_experiencia').checked = cfg.sin_experiencia;
   bannerResumen.textContent = cfg.resumen;
+
+  presetArquetipo.value = 'optimo';
+  fijarSliders(cfg.arquetipo, false);
 
   if (mundo === 'snake') {
     const dif = document.getElementById('opc_dificultad');
@@ -542,6 +690,17 @@ form.addEventListener('submit', async (e) => {
   const sin_experiencia = document.getElementById('sin_experiencia').checked;
   const otel = document.getElementById('otel').checked;
 
+  let arquetipo = null;
+  if (presetArquetipo.value !== 'azar') {
+    arquetipo = {
+      apertura: parseFloat(slApertura.value),
+      responsabilidad: parseFloat(slResponsabilidad.value),
+      neuroticismo: parseFloat(slNeuroticismo.value),
+      extraversion: parseFloat(slExtraversion.value),
+      umbral_miedo: parseFloat(slUmbralMiedo.value)
+    };
+  }
+
   const opciones = {};
   if (mundo === 'snake') {
     const dif = document.getElementById('opc_dificultad');
@@ -590,6 +749,7 @@ form.addEventListener('submit', async (e) => {
         tabula_rasa,
         sin_experiencia,
         otel,
+        arquetipo,
         opciones
       })
     });

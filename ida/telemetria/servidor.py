@@ -156,6 +156,7 @@ class Telemetria:
                     telemetria_instancia=self,
                     evento_parada=self.evento_parada,
                     otel=bool(config.get("otel", False)),
+                    arquetipo_inicial=config.get("arquetipo"),
                 )
             except Exception as exc:
                 print(f"[telemetría] error en la simulación: {exc}")

@@ -39,6 +39,7 @@ def ejecutar(
     otel: bool = False,
     telemetria_instancia: Optional[Any] = None,
     evento_parada: Optional[Any] = None,
+    arquetipo_inicial: Optional[Dict[str, float]] = None,
 ) -> List[Dict[str, Any]]:
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
@@ -66,7 +67,19 @@ def ejecutar(
         for g in range(generaciones):
             azar_g = azar.derivar(g + 1 + len(linaje.generaciones))
             padre = linaje.ultimo_arquetipo()
-            arq = padre.mutar(azar_g, vivencia) if padre else Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
+            if padre:
+                arq = padre.mutar(azar_g, vivencia)
+            elif arquetipo_inicial:
+                arq = Arquetipo(
+                    linaje=mundo.capitalize(),
+                    apertura=float(arquetipo_inicial.get("apertura", 0.5)),
+                    responsabilidad=float(arquetipo_inicial.get("responsabilidad", 0.5)),
+                    neuroticismo=float(arquetipo_inicial.get("neuroticismo", 0.5)),
+                    extraversion=float(arquetipo_inicial.get("extraversion", 0.5)),
+                    umbral_miedo=float(arquetipo_inicial.get("umbral_miedo", 0.6)),
+                )
+            else:
+                arq = Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
             memoria = Memoria(m.perfil.memoria)
             heredados = memoria.heredar(linaje.legado())
             m.reiniciar(azar_g.semilla)
