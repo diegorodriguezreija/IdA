@@ -5,7 +5,7 @@ import pytest
 from ida.core.arquitectura import Componente, Contexto, Modulo
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
+from ida.core.memoria import Memoria, Proposicion
 from ida.core.mundo import Entidad, Perfil
 from ida.core.onda import LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -260,6 +260,52 @@ def test_replay_sueno_desempate_en_ruta():
     mem_sin.episodios.append(ep)
     mem_sin.consolidar(10)
     assert mem_sin.ruta("A", "D") == "B"
+
+
+# --- Confianza ponderada por fuentes (Fase 3) --------------------------------
+def test_confianza_fuentes_experiencia_pura_invariante():
+    p = Proposicion("baya", Relacion.NUTRITIVO, confianza=0.3)
+    assert p.c_exp == 0.3
+    assert p.confianza == 0.3
+    p.confirmar(1)
+    assert p.confianza == pytest.approx(0.405)
+    p.refutar(2)
+    assert p.confianza == pytest.approx(0.2335)
+    assert "autoridad" not in p.texto(2)
+
+
+def test_confianza_fuentes_autoridad_concordancia_y_conflicto():
+    p1 = Proposicion("baya", Relacion.NUTRITIVO, confianza=0.3)
+    p1.aplicar_autoridad("afirma", confianza_fuente=0.9, peso_fuente=2.0, ahora=1)
+    assert p1.confianza == pytest.approx(0.7)
+    assert "autoridad" in p1.texto(1)
+    assert p1.estado(1) == EstadoSaber.HIPOTESIS
+
+    p2 = Proposicion("seta", Relacion.NUTRITIVO, confianza=0.3)
+    p2.aplicar_autoridad("afirma", confianza_fuente=0.9, peso_fuente=2.0, ahora=1)
+    conf_inicial = p2.confianza
+    for lat in range(2, 7):
+        p2.refutar(lat)
+    assert p2.confianza < conf_inicial
+    assert p2.confianza < 0.3
+    assert p2.c_exp < 0.1
+
+    p3 = Proposicion("manzana", Relacion.NUTRITIVO, confianza=0.3)
+    p3.aplicar_autoridad("niega", confianza_fuente=0.8, peso_fuente=1.0, ahora=1)
+    assert p3.confianza < 0.3
+    # Experiencia repetida confirma que sí nutre: requiere más evidencia para vencer a la autoridad escéptica
+    for lat in range(2, 12):
+        p3.confirmar(lat)
+    assert p3.confianza > 0.7
+    assert p3.estado(100) == EstadoSaber.DEMOSTRADA
+
+
+def test_arquetipo_deferencia():
+    a_docil = Arquetipo(responsabilidad=0.9, apertura=0.1)
+    assert a_docil.deferencia == pytest.approx(0.9)
+
+    a_rebelde = Arquetipo(responsabilidad=0.1, apertura=0.9)
+    assert a_rebelde.deferencia == pytest.approx(0.1)
 
 
 # --- Soma, linaje y contrato -------------------------------------------------

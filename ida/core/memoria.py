@@ -20,22 +20,48 @@ PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guard
 # ---------------------------------------------------------------------------
 # Conocimiento formal (lenguaje interno de S3)
 # ---------------------------------------------------------------------------
-@dataclass
 class Proposicion:
-    """«<clase> <relación>», con confianza. Solo cuenta como sabido lo que la experiencia confirma."""
-
-    sujeto: str
-    relacion: Relacion
-    confianza: float = 0.3
-    confirmaciones: int = 0
-    refutaciones: int = 0
-    ultima_refutacion: int = -10**9
-    heredada: bool = False
-    actualizada: int = 0
+    """«<clase> <relación>», con confianza ponderada por fuente de evidencia."""
 
     CONFIRMACIONES_MINIMAS = 3
     CONFIANZA_DEMOSTRADA = 0.7
     LATIDOS_SIN_REFUTAR = 30
+
+    def __init__(
+        self,
+        sujeto: str,
+        relacion: Relacion,
+        confianza: float = 0.3,
+        confirmaciones: int = 0,
+        refutaciones: int = 0,
+        ultima_refutacion: int = -10**9,
+        heredada: bool = False,
+        actualizada: int = 0,
+        c_aut: Optional[float] = None,
+        w_aut: float = 0.0,
+        c_exp: Optional[float] = None,
+    ):
+        self.sujeto = sujeto
+        self.relacion = relacion
+        self.c_exp = c_exp if c_exp is not None else confianza
+        self.confirmaciones = confirmaciones
+        self.refutaciones = refutaciones
+        self.ultima_refutacion = ultima_refutacion
+        self.heredada = heredada
+        self.actualizada = actualizada
+        self.c_aut = c_aut
+        self.w_aut = w_aut
+
+    @property
+    def confianza(self) -> float:
+        if self.c_aut is None or self.w_aut <= 0.0:
+            return self.c_exp
+        w_exp = float(1 + self.confirmaciones + self.refutaciones)
+        return (w_exp * self.c_exp + self.w_aut * self.c_aut) / (w_exp + self.w_aut)
+
+    @confianza.setter
+    def confianza(self, valor: float) -> None:
+        self.c_exp = valor
 
     def estado(self, ahora: int) -> EstadoSaber:
         if self.refutaciones > 0 and self.confianza < 0.15:
@@ -51,19 +77,57 @@ class Proposicion:
     def confirmar(self, ahora: int) -> None:
         """La confianza sube despacio."""
         self.confirmaciones += 1
-        self.confianza = acotar(self.confianza + 0.15 * (1.0 - self.confianza))
+        self.c_exp = acotar(self.c_exp + 0.15 * (1.0 - self.c_exp))
         self.actualizada = ahora
 
     def refutar(self, ahora: int) -> None:
         """...y baja más rápido."""
         self.refutaciones += 1
-        self.confianza = acotar(self.confianza * 0.7 - 0.05)
+        self.c_exp = acotar(self.c_exp * 0.7 - 0.05)
         self.ultima_refutacion = ahora
         self.actualizada = ahora
 
+    def aplicar_autoridad(self, veredicto: str, confianza_fuente: float, peso_fuente: float, ahora: int) -> None:
+        """Aplica testimonio externo de autoridad. Modula c_aut y w_aut."""
+        if veredicto == "afirma":
+            c_val = acotar(confianza_fuente)
+        elif veredicto == "niega":
+            c_val = acotar(1.0 - confianza_fuente)
+        else:
+            return
+        if self.c_aut is None:
+            self.c_aut = c_val
+            self.w_aut = max(0.0, peso_fuente)
+        else:
+            w_total = self.w_aut + peso_fuente
+            if w_total > 0:
+                self.c_aut = (self.w_aut * self.c_aut + peso_fuente * c_val) / w_total
+                self.w_aut = w_total
+        self.actualizada = ahora
+
     def texto(self, ahora: int) -> str:
-        origen = ", heredada" if self.heredada else ""
+        partes_origen = []
+        if self.heredada:
+            partes_origen.append("heredada")
+        if self.c_aut is not None and self.w_aut > 0.0:
+            partes_origen.append("autoridad")
+        origen = f", {', '.join(partes_origen)}" if partes_origen else ""
         return f"«{self.sujeto} {self.relacion.value}» ({self.estado(ahora).value}{origen}, {self.confianza:.2f})"
+
+    def __repr__(self) -> str:
+        return f"Proposicion({self.sujeto!r}, {self.relacion!r}, confianza={self.confianza:.3f})"
+
+    def __eq__(self, otro: object) -> bool:
+        if not isinstance(otro, Proposicion):
+            return False
+        return (
+            self.sujeto == otro.sujeto
+            and self.relacion == otro.relacion
+            and self.confirmaciones == otro.confirmaciones
+            and self.refutaciones == otro.refutaciones
+            and self.heredada == otro.heredada
+            and round(self.confianza, 4) == round(otro.confianza, 4)
+        )
 
 
 @dataclass
