@@ -384,12 +384,27 @@ class DefensaCrafter(Componente):
         hostiles_cerca = [p for p in ctx.onda.ev("Escena").values()
                           if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9]
 
+        # 1. Hostiles inmediatos (distancia <= 1): abatir con espada
         if hostiles_cerca and tiene_espada and salud >= 4:
             amenaza = hostiles_cerca[0]
             # Con espada y salud suficiente, el ataque defensivo supera el reflejo de huida (0.75 + 0.25*peligro)
             urgencia = 0.96 if salud >= 6 else 0.88
             self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.95, f"defensa armada: abatir {amenaza.clase}", clase=amenaza.clase)
             return
+
+        # 2. Hostiles a distancia (esqueletos disparando flechas a 2-3 casillas): cerrar distancia
+        # para no ser diezmado en campo abierto, aprovechando que el esqueleto solo tiene 3 de vitalidad.
+        esqueletos = [p for p in ctx.onda.ev("Escena").values()
+                      if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9]
+        if esqueletos and tiene_espada and salud >= 5:
+            esq = esqueletos[0]
+            pos_esq = esq.carga["datos"]["pos"]
+            pos = tuple(self.mundo.jugador.pos)
+            lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+            mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], pos_esq), default=None)
+            if mejor is not None and _dist(mejor.carga["datos"]["pos"], pos_esq) < _dist(pos, pos_esq):
+                self.proponer(ctx, Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
+                return
 
 
 class PlanTecnologico(Componente):
