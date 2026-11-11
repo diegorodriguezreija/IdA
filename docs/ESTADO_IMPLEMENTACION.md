@@ -22,8 +22,12 @@ Diseño: [`DISENO_FRAMEWORK_BASE.md`](DISENO_FRAMEWORK_BASE.md).
 | 4. Ajedrez | hecho (56 tests) |
 | 6. Optimizar el código de cada mundo (sin tocar el framework base) y renovar la telemetría | hecho (58 tests) |
 | 7. Preparar la publicación: licencia, `pyproject.toml`, ruff, mypy, CI, Crafter repetible, observabilidad (OpenTelemetry, Prometheus, Jaeger, Grafana) y Docker | hecho (64 tests) |
+| 8. Evolución UI/UX (ficha modal, linaje ordenado, protección tabula rasa) y Crafter biológico (`defensa`, `hitos`) | hecho (68 tests) |
+| 9. **Fase 1 del Plan de Evolución:** Hipocampo en el Core (`Memoria.mapa`, `donde_esta`, `ruta` BFS), `Hogar` con ruta y `Orientacion` en `S2`; retirada de `hitos` en Crafter | hecho (71 tests) |
 
 **Cambios en `ida/core` en la fase 7**, con permiso expreso y en commits propios: anotaciones de tipos para mypy (sin cambiar la lógica; vidas con semilla idénticas antes y después) y el registro pasivo de fases de la Onda (`Onda.fases`) para la observabilidad. `ida/sistemas` no se tocó.
+
+**Cambios en `ida/core` e `ida/sistemas` en la fase 9 (Fase 1 de evolución):** autorización expresa documentada en [`PLAN_EVOLUCION_NUCLEO.md`](PLAN_EVOLUCION_NUCLEO.md). Se integraron `Arista`, `RecuerdoLugar`, `registrar_transicion`, `registrar_donde`, `donde_esta` y `ruta` en `Memoria` (con poda `MAX_NODOS_MAPA = 200` y olvido al dormir en `consolidar()`, verificando **100% invariancia con semilla** antes de activar consumidores), navegación del `Hogar` y componente `Orientacion` en `S2`, y se migró Crafter eliminando `self.hitos` del adaptador.
 
 ## Pendiente para la fase de ajustes (tras probar los mundos)
 
