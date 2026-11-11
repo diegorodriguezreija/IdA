@@ -486,6 +486,44 @@ const presetArquetipo = document.getElementById('preset_arquetipo');
 let mundoActual = 'minimo';
 let legadoRestaurado = null;
 
+function aplicarIndividuoRestaurado(doc) {
+  const m = (doc.mundo || "").toLowerCase();
+  if (m && document.getElementById('m_' + m)) {
+    document.getElementById('m_' + m).checked = true;
+    actualizarMundo(m);
+  }
+  let arq = doc.arquetipo;
+  if (!arq && doc.arquetipo_actual) arq = doc.arquetipo_actual;
+  if (!arq && doc.generaciones && doc.generaciones.length) {
+    arq = doc.generaciones[doc.generaciones.length - 1].arquetipo;
+  }
+  if (arq) {
+    presetArquetipo.value = 'personalizado';
+    fijarSliders({
+      apertura: arq.apertura ?? 0.5,
+      responsabilidad: arq.responsabilidad ?? 0.5,
+      neuroticismo: arq.neuroticismo ?? 0.5,
+      extraversion: arq.extraversion ?? 0.5,
+      umbral_miedo: arq.umbral_miedo ?? 0.6
+    }, false);
+  }
+  legadoRestaurado = doc.legado || null;
+  const nombreId = doc.individuo ? `individuo ${doc.individuo}` : `linaje de ${doc.mundo || m}`;
+  bannerResumen.innerHTML = `🧬 <b>Restaurado:</b> ${nombreId} (Carácter y memoria cargados).`;
+}
+
+// Carga automática si viene transferido desde el modal del Dashboard
+window.addEventListener('DOMContentLoaded', () => {
+  const guardado = sessionStorage.getItem('ida_restaurar_individuo');
+  if (guardado) {
+    try {
+      const doc = JSON.parse(guardado);
+      sessionStorage.removeItem('ida_restaurar_individuo');
+      aplicarIndividuoRestaurado(doc);
+    } catch (_) {}
+  }
+});
+
 const inputCargarJson = document.getElementById('input-cargar-json');
 if (inputCargarJson) {
   inputCargarJson.addEventListener('change', (e) => {
@@ -495,29 +533,7 @@ if (inputCargarJson) {
     reader.onload = (ev) => {
       try {
         const doc = JSON.parse(ev.target.result);
-        const m = (doc.mundo || "").toLowerCase();
-        if (m && document.getElementById('m_' + m)) {
-          document.getElementById('m_' + m).checked = true;
-          actualizarMundo(m);
-        }
-        let arq = doc.arquetipo;
-        if (!arq && doc.arquetipo_actual) arq = doc.arquetipo_actual;
-        if (!arq && doc.generaciones && doc.generaciones.length) {
-          arq = doc.generaciones[doc.generaciones.length - 1].arquetipo;
-        }
-        if (arq) {
-          presetArquetipo.value = 'personalizado';
-          fijarSliders({
-            apertura: arq.apertura ?? 0.5,
-            responsabilidad: arq.responsabilidad ?? 0.5,
-            neuroticismo: arq.neuroticismo ?? 0.5,
-            extraversion: arq.extraversion ?? 0.5,
-            umbral_miedo: arq.umbral_miedo ?? 0.6
-          }, false);
-        }
-        legadoRestaurado = doc.legado || null;
-        const nombreId = doc.individuo ? `individuo ${doc.individuo}` : `linaje de ${doc.mundo || m}`;
-        bannerResumen.innerHTML = `🧬 <b>Restaurado de JSON:</b> ${nombreId} (Carácter y memoria cargados).`;
+        aplicarIndividuoRestaurado(doc);
       } catch (err) {
         alert("Error al leer el archivo JSON: " + err.message);
       }

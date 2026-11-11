@@ -18,12 +18,25 @@
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   body { margin: 0; background: var(--fondo); color: var(--texto); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 20px; border-bottom: 1px solid var(--borde); background: var(--panel); position: sticky; top: 0; z-index: 1; }
+  header {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; padding: 12px 20px;
+    border-bottom: 1px solid var(--borde); background: var(--panel);
+    position: sticky; top: 0; z-index: 10; backdrop-filter: blur(8px);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
   header h1 { font-size: 18px; margin: 0 6px 0 0; letter-spacing: -.01em; }
   .dato { color: var(--suave); white-space: nowrap; } .dato b { color: var(--texto); font-variant-numeric: tabular-nums; }
-  .chip { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
+  .chip { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid currentColor; }
   main { display: grid; gap: 14px; padding: 14px 20px 30px; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); }
-  section { background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+  section {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 12px; padding: 14px 16px; min-width: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  section:hover { border-color: rgba(0, 0, 0, 0.18); }
+  @media (prefers-color-scheme: dark) {
+    section:hover { border-color: rgba(255, 255, 255, 0.2); }
+  }
   section h2 { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--suave); margin: 0 0 8px; font-weight: 600; }
   section h2 + * { margin-top: 0; } .sub { margin-top: 14px; }
   .barra { display: grid; grid-template-columns: 104px 1fr 54px; gap: 8px; align-items: center; margin: 5px 0; }
@@ -53,6 +66,68 @@
   @media (max-width: 900px) { .doble { grid-column: 1 / -1; } }
   .pila { height: 14px; border-radius: 6px; }
   @media (max-width: 520px) { main, header { padding-left: 12px; padding-right: 12px; } .barra { grid-template-columns: 86px 1fr 46px; } }
+
+  /* Indicador en directo */
+  .pulso-vivo {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--ok);
+    margin-right: 6px; vertical-align: middle;
+    animation: pulse 1.8s infinite;
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(74, 222, 128, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+  }
+
+  /* Filas de linaje interactivas */
+  .fila-individuo { cursor: pointer; transition: background 0.12s ease; }
+  .fila-individuo:hover { background: var(--riel); }
+
+  /* Modal de Ficha de Individuo */
+  .modal-fondo {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); backdrop-filter: blur(5px);
+    display: flex; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    animation: fadeIn 0.15s ease-out;
+  }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .modal-caja {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 16px;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.25), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+    width: 100%; max-width: 660px; max-height: 90vh; display: flex; flex-direction: column;
+    overflow: hidden; animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes popIn { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .modal-header {
+    padding: 14px 20px; border-bottom: 1px solid var(--borde); display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel);
+  }
+  .modal-header h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+  .modal-close {
+    background: none; border: none; font-size: 18px; line-height: 1; cursor: pointer; color: var(--suave);
+    border-radius: 6px; padding: 6px 10px; font-weight: 700;
+  }
+  .modal-close:hover { color: var(--texto); background: var(--riel); }
+  .modal-cuerpo {
+    padding: 16px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px;
+  }
+  .modal-seccion {
+    border: 1px solid var(--borde); border-radius: 10px; padding: 12px 14px; background: var(--fondo);
+  }
+  .modal-seccion h4 {
+    margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--suave);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-grid-tags {
+    display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .tag-logro {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 6px; padding: 4px 8px;
+    font-size: 11.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;
+  }
+  .modal-footer {
+    padding: 12px 20px; border-top: 1px solid var(--borde); display: flex; justify-content: space-between; align-items: center;
+    background: var(--panel); flex-wrap: wrap; gap: 8px;
+  }
 </style>
 </head>
 <body>
@@ -180,6 +255,41 @@
     <table><tbody id="log"></tbody></table>
   </section>
 </main>
+
+<div id="modal-individuo" class="modal-fondo" hidden>
+  <div class="modal-caja">
+    <div class="modal-header">
+      <div>
+        <h3 id="modal-titulo">🧬 Individuo</h3>
+        <div id="modal-subtitulo" style="font-size:12px; color:var(--suave); margin-top:2px;">—</div>
+      </div>
+      <button class="modal-close" id="modal-btn-cerrar" title="Cerrar (Esc)">✕</button>
+    </div>
+    <div class="modal-cuerpo">
+      <div class="modal-seccion">
+        <h4><span>🧬 Carácter y Rasgos Genéticos</span><span id="modal-arquetipo-id" style="font-weight:600; color:var(--texto);"></span></h4>
+        <div id="modal-sliders-arquetipo"></div>
+      </div>
+
+      <div class="modal-seccion">
+        <h4><span>🎯 Desempeño y Puntuación</span><span id="modal-fitness-badge" class="chip" style="font-size:11px;"></span></h4>
+        <div id="modal-contenido-mundo"></div>
+      </div>
+
+      <div class="modal-seccion">
+        <h4><span>📚 Conocimiento Demostrado</span><span id="modal-reglas-conteo" style="color:var(--suave);"></span></h4>
+        <ul id="modal-conocimiento-lista" style="margin:0; padding-left:0; list-style:none;"></ul>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div style="display:flex; gap:8px;">
+        <button id="modal-btn-pin" class="chip" style="cursor:pointer; background:var(--riel); border:1px solid var(--borde); padding:6px 12px; font-weight:600;">📌 Fijar</button>
+        <button id="modal-btn-descargar" class="chip" style="cursor:pointer; background:var(--riel); border:1px solid var(--borde); padding:6px 12px; font-weight:600;">📥 Descargar JSON</button>
+      </div>
+      <button id="modal-btn-restaurar" class="chip" style="cursor:pointer; background:var(--acento); color:#fff; border:none; padding:6px 14px; font-weight:600;" title="Cargar este individuo en la antesala para una nueva simulación">🚀 Restaurar en Antesala</button>
+    </div>
+  </div>
+</div>
 <script>
 const $ = id => document.getElementById(id);
 const hist = [], log = [], ventana = [];
@@ -211,7 +321,7 @@ function dibujar() {
 }
 
 function pintar(d) {
-  $("estado").textContent = "en directo";
+  $("estado").innerHTML = '<span class="pulso-vivo"></span>en directo';
   $("mundo").textContent = d.mundo || "—";
   $("individuo").textContent = d.individuo || "—";
   $("generacion").textContent = d.generacion ?? "—";
@@ -388,10 +498,10 @@ function renderizarTablaLinaje(gens, indActivo) {
     const latidosInfo = `${g.latidos ?? 0} (${estadoVida})`;
     const pinColor = g.fijado ? "opacity:1; filter: drop-shadow(0 0 2px var(--aviso));" : "opacity:0.35;";
 
-    return `<tr>
+    return `<tr class="fila-individuo" onclick="handleFilaClick(event, '${esc(g.individuo)}')">
       <td style="text-align:center; font-weight:700; color:var(--suave); font-size:11px;">${medalla}</td>
       <td style="text-align:center;">
-        <button onclick="conmutarPin('${esc(g.individuo)}')" style="background:none; border:none; cursor:pointer; font-size:14px; ${pinColor}" title="${g.fijado ? 'Fijado 📌 (no se purga). Clic para desfijar' : 'Clic para fijar 📌 (evitar purga)'}">📌</button>
+        <button onclick="event.stopPropagation(); conmutarPin('${esc(g.individuo)}')" style="background:none; border:none; cursor:pointer; font-size:14px; ${pinColor}" title="${g.fijado ? 'Fijado 📌 (no se purga). Clic para desfijar' : 'Clic para fijar 📌 (evitar purga)'}">📌</button>
       </td>
       <td><b>${esc(g.individuo)}</b>${badgeTop}${badgeActivo}</td>
       <td class="num"><b>${Number(g.fitness || 0).toFixed(1)}</b></td>
@@ -399,12 +509,172 @@ function renderizarTablaLinaje(gens, indActivo) {
       <td>${latidosInfo}</td>
       <td>${dom}</td>
       <td class="num">${g.conocimiento ? g.conocimiento.length : 0}</td>
-      <td style="text-align:center;">
-        <a href="/linaje/descargar?individuo=${encodeURIComponent(g.individuo)}&mundo=${encodeURIComponent(mundoActivo)}" download class="chip" style="text-decoration:none; color:inherit; font-size:11px; padding:2px 6px;" title="Descargar JSON reproducible de este individuo">📥</a>
+      <td style="text-align:center; white-space:nowrap;">
+        <button onclick="event.stopPropagation(); abrirModalIndividuo('${esc(g.individuo)}')" class="chip" style="background:var(--riel); border:1px solid var(--borde); font-size:11px; padding:2px 6px; cursor:pointer; margin-right:4px;" title="Ver ficha detallada">🔍</button>
+        <a href="/linaje/descargar?individuo=${encodeURIComponent(g.individuo)}&mundo=${encodeURIComponent(mundoActivo)}" download onclick="event.stopPropagation();" class="chip" style="text-decoration:none; color:inherit; font-size:11px; padding:2px 6px;" title="Descargar JSON reproducible de este individuo">📥</a>
       </td>
     </tr>`;
   }).join("");
 }
+
+function handleFilaClick(event, indId) {
+  if (event.target.closest('button, a')) return;
+  abrirModalIndividuo(indId);
+}
+
+const modalFondo = $("modal-individuo");
+const modalBtnCerrar = $("modal-btn-cerrar");
+let individuoSeleccionadoModal = null;
+
+function cerrarModalIndividuo() {
+  if (modalFondo) modalFondo.hidden = true;
+  individuoSeleccionadoModal = null;
+}
+
+if (modalBtnCerrar) modalBtnCerrar.addEventListener("click", cerrarModalIndividuo);
+if (modalFondo) {
+  modalFondo.addEventListener("click", (e) => {
+    if (e.target === modalFondo) cerrarModalIndividuo();
+  });
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && modalFondo && !modalFondo.hidden) {
+    cerrarModalIndividuo();
+  }
+});
+
+const ICONOS_LOGROS = {
+  collect_wood: "🪵", place_table: "🪑", make_wood_pickaxe: "⛏️", make_wood_sword: "⚔️",
+  collect_stone: "🪨", place_stone: "🧱", make_stone_pickaxe: "⚒️", make_stone_sword: "🗡️",
+  place_furnace: "🔥", collect_coal: "⚫", collect_iron: "⚪", make_iron_pickaxe: "⛏️",
+  make_iron_sword: "⚔️", collect_diamond: "💎", defeat_zombie: "🧟", defeat_skeleton: "💀",
+  eat_cow: "🥩", collect_sapling: "🌱", place_plant: "🌿", eat_plant: "🥗",
+  wake_up: "⏰", collect_drink: "💧"
+};
+
+function abrirModalIndividuo(indId) {
+  const g = cacheLinaje.find(x => x.individuo === indId);
+  if (!g) return;
+  individuoSeleccionadoModal = g;
+
+  const arq = g.arquetipo || {};
+  const pt = g.puntuacion || {};
+  const genNum = arq.generacion || (g.individuo.includes("_G") ? g.individuo.split("_G")[1] : 1);
+  const m = String(mundoActivo || arq.linaje || "").toLowerCase();
+
+  const ordenados = [...cacheLinaje].sort((a, b) => Number(b.fitness || 0) - Number(a.fitness || 0));
+  const pos = ordenados.findIndex(x => x.individuo === indId) + 1;
+  const badgeRank = pos === 1 ? "🥇 Puesto #1 (Récord)" : (pos <= 5 ? `⭐ Puesto #${pos} (Top 5)` : `Puesto #${pos}`);
+
+  $("modal-titulo").innerHTML = `🧬 ${esc(g.individuo)} <span class="chip" style="font-size:11px; margin-left:6px; color:var(--acento); border-color:var(--acento);">${esc(m.toUpperCase())}</span>`;
+
+  const estadoTxt = g.vivo ? `<span class="ok">🟢 Vivo</span>` : `<span class="mal">💀 Fin de ciclo</span>`;
+  const causa = pt.causa_muerte ? ` (${esc(pt.causa_muerte)})` : "";
+  const padreTxt = arq.padre ? ` · Hijo de <b>${esc(arq.padre)}</b>` : " · Fundador (G1)";
+  $("modal-subtitulo").innerHTML = `${badgeRank} · Generación ${genNum}${padreTxt} · ${g.latidos ?? 0} latidos · ${estadoTxt}${causa}`;
+
+  // Sliders de Arquetipo
+  $("modal-arquetipo-id").textContent = g.dominante ? `Dominante: ${g.dominante.nombre} (${Number(g.dominante.valor).toFixed(2)})` : "";
+  const rasgosMeta = [
+    { k: "apertura", n: "Apertura mental", col: css("--s2"), desc: "Curiosidad, atracción por lo nuevo en S2" },
+    { k: "responsabilidad", n: "Responsabilidad", col: css("--s3"), desc: "Prudencia, explotación de hipótesis demostradas en S3" },
+    { k: "neuroticismo", n: "Neuroticismo", col: css("--mal"), desc: "Reactividad al peligro y sensibilidad somática en S1" },
+    { k: "extraversion", n: "Extraversión", col: css("--acento"), desc: "Sesgo interactivo y aproximación activa a entidades" },
+    { k: "umbral_miedo", n: "Umbral de miedo", col: css("--aviso"), desc: "Resistencia al pánico y aversión visceral" }
+  ];
+  $("modal-sliders-arquetipo").innerHTML = rasgosMeta.map(r => {
+    const val = Number(arq[r.k] ?? 0.5);
+    return `<div style="margin:6px 0;">
+      <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:2px;">
+        <span><b>${esc(r.n)}</b> <small style="color:var(--suave)">(${esc(r.desc)})</small></span>
+        <span style="font-weight:700; color:${r.col}">${val.toFixed(2)}</span>
+      </div>
+      <div class="riel" style="height:8px;"><div class="lleno" style="width:${Math.round(val * 100)}%; background:${r.col}"></div></div>
+    </div>`;
+  }).join("");
+
+  // Desempeño y Mundo
+  $("modal-fitness-badge").textContent = `Fitness: ${Number(g.fitness || 0).toFixed(1)} pts`;
+  let contenidoMundoHtml = "";
+  if (m === "crafter") {
+    const logros = pt.logros || [];
+    const n = pt.n_logros ?? logros.length;
+    contenidoMundoHtml = `<div style="margin-bottom:8px; font-size:12.5px;">
+      <b>Logros desbloqueados:</b> <b>${n}</b> de 22 posibles (${esc(pt.pasos ?? g.latidos ?? 0)} pasos en el bioma)
+    </div>
+    <div class="modal-grid-tags">
+      ${logros.length ? logros.map(l => {
+        const ico = ICONOS_LOGROS[l] || "✓";
+        return `<span class="tag-logro">${ico} ${esc(l)}</span>`;
+      }).join("") : `<span class="vacio">Sin logros alcanzados</span>`}
+    </div>`;
+  } else if (m === "snake") {
+    contenidoMundoHtml = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
+      ${cifra(pt.puntos ?? 0, "Puntos máximos", "ok")}
+      ${cifra(pt.longitud ?? 0, "Longitud alcanzada")}
+      ${cifra(pt.causa_muerte || "superviviente", "Causa de fin")}
+    </div>`;
+  } else if (m === "ajedrez") {
+    const mat = Array.isArray(pt.material) ? `${pt.material[0]} vs ${pt.material[1]}` : "—";
+    contenidoMundoHtml = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:8px;">
+      ${cifra(pt.resultado || "—", "Resultado final", pt.resultado === "VICTORIA" ? "ok" : (pt.resultado === "DERROTA" ? "mal" : "aviso"))}
+      ${cifra(pt.jugadas ?? 0, "Jugadas disputadas")}
+      ${cifra(mat, "Material (IdA vs Rival)")}
+    </div>`;
+  } else {
+    contenidoMundoHtml = `<div style="font-size:12.5px;">${formatearPuntuacionMundo(m, pt)}</div>`;
+  }
+  $("modal-contenido-mundo").innerHTML = contenidoMundoHtml;
+
+  // Conocimiento demostrado
+  const conocimiento = g.conocimiento || [];
+  $("modal-reglas-conteo").textContent = `${conocimiento.length} reglas descubiertas`;
+  $("modal-conocimiento-lista").innerHTML = conocimiento.length ? conocimiento.map(t => {
+    const cls = t.includes("(demostrada") ? "ok" : t.includes("(refutada") ? "mal" : "aviso";
+    const est = cls === "ok" ? "demostrada" : cls === "mal" ? "refutada" : "hipótesis";
+    return `<li style="padding:4px 0; font-size:12.5px; border-bottom:1px solid var(--borde); display:flex; align-items:center;">
+      <span class="insignia ${cls}" style="flex-shrink:0;">${est}</span><span>${esc(t.replace(/ \((demostrada|refutada|hipótesis)(, )?/, " ("))}</span>
+    </li>`;
+  }).join("") : `<li class="vacio" style="font-size:12.5px;">No se registraron hipótesis en este ciclo.</li>`;
+
+  // Botones de acción del modal
+  const btnPin = $("modal-btn-pin");
+  btnPin.textContent = g.fijado ? "📌 Desfijar" : "📌 Fijar";
+  btnPin.onclick = async () => {
+    await conmutarPin(g.individuo);
+    const updated = cacheLinaje.find(x => x.individuo === indId);
+    if (updated) {
+      individuoSeleccionadoModal = updated;
+      btnPin.textContent = updated.fijado ? "📌 Desfijar" : "📌 Fijar";
+    }
+  };
+
+  const btnDescargar = $("modal-btn-descargar");
+  btnDescargar.onclick = () => {
+    window.location.href = `/linaje/descargar?individuo=${encodeURIComponent(g.individuo)}&mundo=${encodeURIComponent(mundoActivo || m)}`;
+  };
+
+  const btnRestaurar = $("modal-btn-restaurar");
+  btnRestaurar.onclick = () => {
+    const snap = {
+      tipo: "ida_individuo_v1",
+      mundo: mundoActivo || m,
+      individuo: g.individuo,
+      generacion: genNum,
+      arquetipo: arq,
+      fitness: g.fitness,
+      puntuacion: g.puntuacion,
+      latidos: g.latidos,
+      legado: { proposiciones: [], registros: [] }
+    };
+    sessionStorage.setItem("ida_restaurar_individuo", JSON.stringify(snap));
+    window.location.href = "/antesala";
+  };
+
+  modalFondo.hidden = false;
+}
+
+window.abrirModalIndividuo = abrirModalIndividuo;
 
 async function cargarLinaje() {
   try {
