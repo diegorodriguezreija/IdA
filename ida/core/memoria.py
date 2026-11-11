@@ -124,20 +124,23 @@ class Memoria:
     MAX_NODOS_MAPA = 200
     EDAD_OLVIDO_MAPA = 300
 
-    def __init__(self, perfil: str = "completa"):
+    def __init__(self, perfil: str = "completa", con_replay: bool = True):
         if perfil not in PERFILES_MEMORIA:
             raise ValueError(f"Perfil de memoria desconocido: {perfil}")
         self.perfil = perfil
         self.k = PERFILES_MEMORIA[perfil]
+        self.con_replay = con_replay
         self.saber: Dict[Tuple[str, Relacion], Proposicion] = {}
         self.registros: Dict[Tuple[Verbo, str], Registro] = {}
         self.lugares: Dict[str, float] = {}            # bienestar recordado por lugar (hogar)
         self.clases_vistas: Dict[str, int] = {}        # familiaridad por clase
         self.mapa: Dict[str, Dict[str, Arista]] = {}   # grafo de transiciones (hipocampo)
+        self.mapa_valores: Dict[str, float] = {}       # valor atribuido a lugares por replay
         self.donde: Dict[str, RecuerdoLugar] = {}      # clase -> última ubicación al alcance
         self.expectativa: Optional[Expectativa] = None
         self.buffer: List[Dict[str, Any]] = []         # piezas salientes pendientes de persistir
         self.episodios: List[Episodio] = []
+        self._ultimo_consolidar_ep: int = 0
         self.aciertos = 0
         self.fallos = 0
 
@@ -336,6 +339,29 @@ class Memoria:
         rec = self.donde.get(clase)
         return rec.ubicacion if rec is not None else None
 
+    def valor_lugar(self, lugar: str) -> float:
+        return self.mapa_valores.get(lugar, 0.0)
+
+    @staticmethod
+    def _eliminar_bucles_trayectoria(trayectoria: List[str]) -> List[str]:
+        """Elimina ciclos reteniendo una ruta simple donde cada paso consecutivo fue una transición real."""
+        if not trayectoria:
+            return []
+        pila: List[str] = []
+        posiciones: Dict[str, int] = {}
+        for nodo in trayectoria:
+            if not nodo:
+                continue
+            if nodo in posiciones:
+                idx = posiciones[nodo]
+                for n in pila[idx + 1:]:
+                    posiciones.pop(n, None)
+                pila = pila[:idx + 1]
+            else:
+                posiciones[nodo] = len(pila)
+                pila.append(nodo)
+        return pila
+
     def ruta(self, origen: str, destino: str, max_profundidad: int = 30) -> Optional[str]:
         """Devuelve el siguiente salto desde ``origen`` hacia ``destino`` mediante BFS acotado."""
         if not self.activa or not origen or not destino or origen == destino:
@@ -348,8 +374,12 @@ class Memoria:
             actual, primer_salto, prof = cola.popleft()
             if prof >= max_profundidad:
                 continue
-            # Orden determinista respetando inserción y preferencia por mayor uso en empate
-            vecinos = sorted(self.mapa.get(actual, {}).items(), key=lambda kv: -kv[1].usos)
+            # Orden determinista respetando inserción y preferencia por mayor valor_replay y luego usos
+            vecinos = sorted(
+                self.mapa.get(actual, {}).items(),
+                key=lambda kv: (-kv[1].valor_replay if kv[1].valor_replay != 0.0 else 0.0, -kv[1].usos)
+                if self.con_replay else -kv[1].usos,
+            )
             for sig, _ in vecinos:
                 salto = primer_salto if primer_salto is not None else sig
                 if sig == destino:
@@ -361,7 +391,7 @@ class Memoria:
 
     # --- sueño: lo costoso, fuera del camino crítico --------------------------
     def consolidar(self, ahora: int) -> Dict[str, int]:
-        """Olvido y consolidación. Lo demostrado y lo de arousal extremo no se olvida."""
+        """Olvido, consolidación y replay inverso de trayectorias. Lo demostrado y lo de arousal extremo no se olvida."""
         olvidadas = 0
         for clave, p in list(self.saber.items()):
             estado = p.estado(ahora)
@@ -386,7 +416,58 @@ class Memoria:
                 del self.donde[clase_d]
         # Del búfer solo sobrevive lo de arousal alto (lo demás ya está agregado en registros)
         self.buffer = [p for p in self.buffer if p["arousal"] >= 0.85]
-        return {"hipotesis_olvidadas": olvidadas, "recuerdos_olvidados": recuerdos_olvidados, "aristas_olvidadas": aristas_olvidadas}
+
+        # Replay inverso de trayectorias recientes al dormir (Fase 2)
+        episodios_replay = 0
+        if self.con_replay and self.activa:
+            gamma = 0.8
+            nodos_actualizados: set[str] = set()
+            aristas_actualizadas: set[Tuple[str, str]] = set()
+            for ep in self.episodios[self._ultimo_consolidar_ep:]:
+                episodios_replay += 1
+                if not ep.trayectoria or ep.balance == 0.0:
+                    continue
+                ruta_simple = self._eliminar_bucles_trayectoria(ep.trayectoria)
+                if not ruta_simple:
+                    continue
+                recompensa = ep.balance
+                for i, nodo in enumerate(reversed(ruta_simple)):
+                    descuento = gamma ** i
+                    delta = round(recompensa * descuento, 4)
+                    if nodo not in self.mapa_valores:
+                        self.mapa_valores[nodo] = delta
+                    else:
+                        self.mapa_valores[nodo] = round(0.7 * self.mapa_valores[nodo] + 0.3 * delta, 4)
+                    nodos_actualizados.add(nodo)
+                for orig, dest in zip(ruta_simple[:-1], ruta_simple[1:], strict=False):
+                    if orig in self.mapa and dest in self.mapa[orig]:
+                        ar = self.mapa[orig][dest]
+                        v_dest = self.mapa_valores.get(dest, 0.0)
+                        if ar.valor_replay == 0.0:
+                            ar.valor_replay = v_dest
+                        else:
+                            ar.valor_replay = round(0.7 * ar.valor_replay + 0.3 * v_dest, 4)
+                        aristas_actualizadas.add((orig, dest))
+            self._ultimo_consolidar_ep = len(self.episodios)
+            # Decaimiento pasivo de valores espaciales antiguos no reforzados en este sueño
+            for n in list(self.mapa_valores.keys()):
+                if n not in nodos_actualizados:
+                    self.mapa_valores[n] = round(self.mapa_valores[n] * 0.9, 4)
+                    if abs(self.mapa_valores[n]) < 0.01:
+                        del self.mapa_valores[n]
+            for orig, vecs in self.mapa.items():
+                for dest, ar in vecs.items():
+                    if (orig, dest) not in aristas_actualizadas and ar.valor_replay != 0.0:
+                        ar.valor_replay = round(ar.valor_replay * 0.9, 4)
+                        if abs(ar.valor_replay) < 0.01:
+                            ar.valor_replay = 0.0
+
+        return {
+            "hipotesis_olvidadas": olvidadas,
+            "recuerdos_olvidados": recuerdos_olvidados,
+            "aristas_olvidadas": aristas_olvidadas,
+            "episodios_replay": episodios_replay,
+        }
 
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:

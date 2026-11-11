@@ -8,7 +8,7 @@ from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
 from ida.core.mundo import Entidad, Perfil
 from ida.core.onda import LatidoAgotado, Onda
-from ida.core.pieza import Pieza
+from ida.core.pieza import Episodio, Pieza
 from ida.core.sentidos import Tribunal
 from ida.core.soma import Soma
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
@@ -192,6 +192,74 @@ def test_hipocampo_no_hereda_en_legado():
     hijo = Memoria()
     hijo.heredar(leg)
     assert not hijo.mapa and not hijo.donde
+
+
+def test_replay_sueno_trayectoria_resuelta_y_danio():
+    mem = Memoria()
+    mem.registrar_transicion("A", "B", 1)
+    mem.registrar_transicion("B", "C", 2)
+
+    # Trayectoria resuelta positiva A -> B -> C con balance +1.0
+    ep1 = Episodio(id="ep_test_1", inicio=1, fin=3, balance=1.0, resuelto=True, trayectoria=["A", "B", "C"])
+    mem.episodios.append(ep1)
+    res = mem.consolidar(10)
+    assert res["episodios_replay"] == 1
+    # V(C) = 1.0 > V(B) = 0.8 > V(A) = 0.64 > 0
+    assert mem.valor_lugar("C") > mem.valor_lugar("B") > mem.valor_lugar("A") > 0.0
+    assert mem.mapa["A"]["B"].valor_replay == pytest.approx(0.8)
+    assert mem.mapa["B"]["C"].valor_replay == pytest.approx(1.0)
+
+    # Trayectoria adversa con daño/muerte X -> Y -> Z con balance -2.0
+    mem2 = Memoria()
+    mem2.registrar_transicion("X", "Y", 1)
+    mem2.registrar_transicion("Y", "Z", 2)
+    ep2 = Episodio(id="ep_test_2", inicio=1, fin=3, balance=-2.0, resuelto=False, trayectoria=["X", "Y", "Z"])
+    mem2.episodios.append(ep2)
+    mem2.consolidar(10)
+    # Valencia negativa decreciente en magnitud desde el evento adverso Z:
+    # V(Z) = -2.0 < V(Y) = -1.6 < V(X) = -1.28 < 0
+    assert mem2.valor_lugar("Z") < mem2.valor_lugar("Y") < mem2.valor_lugar("X") < 0.0
+    assert abs(mem2.valor_lugar("Z")) > abs(mem2.valor_lugar("Y")) > abs(mem2.valor_lugar("X"))
+
+
+def test_replay_sueno_eliminacion_bucles():
+    mem = Memoria()
+    mem.registrar_transicion("A", "B", 1)
+    mem.registrar_transicion("B", "C", 2)
+    mem.registrar_transicion("B", "A", 3)
+    # Bucle A -> B -> A -> B -> C
+    ep = Episodio(id="ep_loop", inicio=1, fin=5, balance=1.0, resuelto=True, trayectoria=["A", "B", "A", "B", "C"])
+    mem.episodios.append(ep)
+    mem.consolidar(10)
+    # Tras eliminar bucles, ruta simple es A -> B -> C
+    assert mem.valor_lugar("C") > mem.valor_lugar("B") > mem.valor_lugar("A") > 0.0
+
+
+def test_replay_sueno_desempate_en_ruta():
+    mem = Memoria()
+    # Dos caminos de igual longitud de A a D:
+    # Camino 1: A -> B -> D
+    # Camino 2: A -> C -> D
+    mem.registrar_transicion("A", "B", 1)
+    mem.registrar_transicion("B", "D", 2)
+    mem.registrar_transicion("A", "C", 3)
+    mem.registrar_transicion("C", "D", 4)
+    # Consolidar experiencia positiva sobre el camino 2 (A -> C -> D)
+    ep = Episodio(id="ep_c", inicio=1, fin=3, balance=1.5, resuelto=True, trayectoria=["A", "C", "D"])
+    mem.episodios.append(ep)
+    mem.consolidar(10)
+    # ruta(A, D) debe desempatar eligiendo 'C' porque valor_replay de A->C es mayor que A->B
+    assert mem.ruta("A", "D") == "C"
+
+    # Si con_replay está apagado, desempataría por inserción/usos sin mirar valor_replay
+    mem_sin = Memoria(con_replay=False)
+    mem_sin.registrar_transicion("A", "B", 1)
+    mem_sin.registrar_transicion("B", "D", 2)
+    mem_sin.registrar_transicion("A", "C", 3)
+    mem_sin.registrar_transicion("C", "D", 4)
+    mem_sin.episodios.append(ep)
+    mem_sin.consolidar(10)
+    assert mem_sin.ruta("A", "D") == "B"
 
 
 # --- Soma, linaje y contrato -------------------------------------------------

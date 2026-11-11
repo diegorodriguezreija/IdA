@@ -65,3 +65,4 @@ class Episodio:
     resuelto: bool = False
     arousal_max: float = 0.0
     acciones: List[Dict[str, Any]] = field(default_factory=list)
+    trayectoria: List[str] = field(default_factory=list)

@@ -245,12 +245,17 @@ class Organismo:
             d_vit = abs(soma.vitalidad - self._vit_ep)
             if maximo >= self.perfil.umbral_apertura_episodio or sorpresa or d_vit >= 2.0:
                 self.episodio = Episodio(id=f"ep_{self.arquetipo.id}_{ctx.latido}", inicio=ctx.latido)
+                if ctx.observacion is not None and ctx.observacion.ubicacion:
+                    self.episodio.trayectoria.append(ctx.observacion.ubicacion)
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
             else:
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
                 return
         ep = self.episodio
         ep.arousal_max = max(ep.arousal_max, maximo)
+        if ctx.observacion is not None and ctx.observacion.ubicacion:
+            if not ep.trayectoria or ep.trayectoria[-1] != ctx.observacion.ubicacion:
+                ep.trayectoria.append(ctx.observacion.ubicacion)
         if ej is not None:
             ep.acciones.append({"latido": ctx.latido, "verbo": ej.carga["verbo"].value, "objetivo": ej.carga["objetivo"]})
         calma = maximo < 0.55 and not sorpresa and abs(soma.vitalidad - self._vit_ep) < 0.5
