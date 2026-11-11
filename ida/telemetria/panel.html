@@ -49,6 +49,8 @@
   .leyenda i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
   #historial { width: 100%; height: 110px; display: block; }
   .ancho { grid-column: 1 / -1; }
+  .doble { grid-column: span 2; }
+  @media (max-width: 900px) { .doble { grid-column: 1 / -1; } }
   .pila { height: 14px; border-radius: 6px; }
   @media (max-width: 520px) { main, header { padding-left: 12px; padding-right: 12px; } .barra { grid-template-columns: 86px 1fr 46px; } }
 </style>
@@ -126,6 +128,44 @@
     <div id="onda"></div>
     <h2 class="sub">Componentes más lentos (ms)</h2>
     <table><tbody id="tiempos"></tbody></table>
+  </section>
+
+  <section class="doble">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+      <h2 style="margin:0;">🧬 Linaje e Historial de Individuos</h2>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span id="linaje-conteo" class="chip" style="font-size:11px;">0 guardados</span>
+        <button id="btn-descargar-linaje" class="chip" style="cursor:pointer; background:var(--riel); border:1px solid var(--borde); font-size:11px; padding:3px 8px;" title="Descargar linaje completo en JSON">📥 Descargar Linaje</button>
+      </div>
+    </div>
+    
+    <div style="margin-bottom:10px;">
+      <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--suave); margin-bottom:4px;">
+        <span>Evolución de Fitness / Rendimiento por Generación (Top 5 + Pinned + Recientes ≤ 20)</span>
+        <span id="linaje-max-fitness">máx: —</span>
+      </div>
+      <canvas id="grafica-linaje" style="width:100%; height:80px; background:var(--riel); border-radius:6px; display:block;"></canvas>
+    </div>
+
+    <div style="overflow-x:auto; max-height:280px; overflow-y:auto; border:1px solid var(--borde); border-radius:6px;">
+      <table style="width:100%; border-collapse:collapse; font-size:12px;">
+        <thead>
+          <tr style="position:sticky; top:0; background:var(--panel); z-index:2;">
+            <th style="width:32px; text-align:center;">📌</th>
+            <th>Gen / Individuo</th>
+            <th class="num">Fitness</th>
+            <th>Puntuación Mundo</th>
+            <th>Latidos / Fin</th>
+            <th>Carácter Dominante</th>
+            <th class="num">Demostradas</th>
+            <th style="width:40px; text-align:center;">JSON</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-linaje-cuerpo">
+          <tr><td colspan="8" class="vacio" style="text-align:center; padding:12px;">Cargando historial de linaje…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <section class="ancho">
@@ -244,15 +284,165 @@ function pintar(d) {
   if (log.length > 12) log.pop();
   $("log").innerHTML = log.join("");
 }
+
 let ultimoIndividuo = null;
+let cacheLinaje = [];
+let mundoActivo = "";
+
+function formatearPuntuacionMundo(mundo, pt) {
+  if (!pt || typeof pt !== "object") return esc(pt ?? "—");
+  const m = String(mundo || "").toLowerCase();
+  if (m === "snake") {
+    const causa = pt.causa_muerte ? ` (${esc(pt.causa_muerte)})` : "";
+    return `<b>${esc(pt.puntos ?? 0)}</b> pts · long <b>${esc(pt.longitud ?? 0)}</b>${causa}`;
+  }
+  if (m === "crafter") {
+    const n = pt.n_logros ?? (pt.logros ? pt.logros.length : 0);
+    return `<b>${esc(n)}</b> logros (${esc(pt.pasos ?? 0)} pasos)`;
+  }
+  if (m === "ajedrez") {
+    const res = pt.resultado || "—";
+    const mat = Array.isArray(pt.material) ? ` [${pt.material[0]}-${pt.material[1]}]` : "";
+    return `<b>${esc(res)}</b>${mat} · ${esc(pt.jugadas ?? 0)} jug`;
+  }
+  if (m === "archivos") {
+    const com = pt.comido || {};
+    const txt = Object.entries(com).map(([k, v]) => `${esc(v)} ${esc(k)}`).join(", ");
+    return txt || "0 archivos";
+  }
+  if (m === "minimo") {
+    return `<b>${esc(pt.bayas ?? 0)}</b> bayas · <b>${esc(pt.setas ?? 0)}</b> setas`;
+  }
+  return Object.entries(pt).map(([k, v]) => `${esc(k)}:${esc(v)}`).join(" · ") || "—";
+}
+
+function dibujarGraficaLinaje(gens) {
+  const c = $("grafica-linaje");
+  if (!c || !gens || !gens.length) return;
+  const ctx = c.getContext("2d"), dpr = devicePixelRatio || 1;
+  const w = c.width = c.clientWidth * dpr, h = c.height = c.clientHeight * dpr;
+  ctx.clearRect(0, 0, w, h);
+
+  const fits = gens.map(g => Number(g.fitness || 0));
+  const maxF = Math.max(1, ...fits);
+  const minF = Math.min(0, ...fits);
+  $("linaje-max-fitness").textContent = `máx: ${maxF.toFixed(1)} pts`;
+
+  ctx.strokeStyle = css("--borde"); ctx.lineWidth = dpr;
+  [0.25, 0.5, 0.75].forEach(f => {
+    ctx.beginPath(); ctx.moveTo(0, h * f); ctx.lineTo(w, h * f); ctx.stroke();
+  });
+
+  ctx.strokeStyle = css("--acento"); ctx.lineWidth = 2 * dpr;
+  ctx.beginPath();
+  gens.forEach((g, i) => {
+    const x = gens.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (gens.length - 1)) + 12 * dpr;
+    const y = h - ((Number(g.fitness || 0) - minF) / Math.max(1, maxF - minF)) * (h - 20 * dpr) - 10 * dpr;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  gens.forEach((g, i) => {
+    const x = gens.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (gens.length - 1)) + 12 * dpr;
+    const y = h - ((Number(g.fitness || 0) - minF) / Math.max(1, maxF - minF)) * (h - 20 * dpr) - 10 * dpr;
+    ctx.beginPath();
+    const radio = g.es_top1 ? 5 * dpr : (g.es_top5 ? 4 * dpr : 3 * dpr);
+    ctx.arc(x, y, radio, 0, Math.PI * 2);
+    ctx.fillStyle = g.es_top1 ? css("--aviso") : (g.es_top5 ? css("--ok") : css("--acento"));
+    ctx.fill();
+    if (g.fijado) {
+      ctx.strokeStyle = css("--texto");
+      ctx.lineWidth = 1.5 * dpr;
+      ctx.stroke();
+    }
+  });
+}
+
+function renderizarTablaLinaje(gens, indActivo) {
+  const tbody = $("tabla-linaje-cuerpo");
+  $("linaje-conteo").textContent = `${gens.length}/20 guardados`;
+  if (!gens || !gens.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="vacio" style="text-align:center; padding:12px;">No hay generaciones en el linaje todavía.</td></tr>`;
+    return;
+  }
+
+  const copia = [...gens].reverse();
+  tbody.innerHTML = copia.map(g => {
+    const esActivo = g.individuo === indActivo;
+    const badgeTop = g.es_top1 ? `<span class="chip" style="color:var(--aviso); border-color:var(--aviso); font-size:10px; margin-left:4px;">⭐ TOP 1</span>` :
+                     (g.es_top5 ? `<span class="chip" style="color:var(--ok); border-color:var(--ok); font-size:10px; margin-left:4px;">TOP 5</span>` : "");
+    const badgeActivo = esActivo ? `<span class="chip" style="color:var(--acento); border-color:var(--acento); font-size:10px; margin-left:4px;">EN VIVO</span>` : "";
+    const dom = g.dominante ? `<span title="${esc(g.dominante.descripcion)}">${esc(g.dominante.nombre)} (<b>${Number(g.dominante.valor).toFixed(2)}</b>)</span>` : "—";
+    const estadoVida = g.vivo ? `<span class="ok">vive</span>` : `<span class="mal">muere</span>`;
+    const latidosInfo = `${g.latidos ?? 0} (${estadoVida})`;
+    const pinColor = g.fijado ? "opacity:1; filter: drop-shadow(0 0 2px var(--aviso));" : "opacity:0.35;";
+
+    return `<tr>
+      <td style="text-align:center;">
+        <button onclick="conmutarPin('${esc(g.individuo)}')" style="background:none; border:none; cursor:pointer; font-size:14px; ${pinColor}" title="${g.fijado ? 'Fijado 📌 (no se purga). Clic para desfijar' : 'Clic para fijar 📌 (evitar purga)'}">📌</button>
+      </td>
+      <td><b>${esc(g.individuo)}</b>${badgeTop}${badgeActivo}</td>
+      <td class="num"><b>${Number(g.fitness || 0).toFixed(1)}</b></td>
+      <td>${formatearPuntuacionMundo(mundoActivo || g.arquetipo?.linaje, g.puntuacion)}</td>
+      <td>${latidosInfo}</td>
+      <td>${dom}</td>
+      <td class="num">${g.conocimiento ? g.conocimiento.length : 0}</td>
+      <td style="text-align:center;">
+        <a href="/linaje/descargar?individuo=${encodeURIComponent(g.individuo)}&mundo=${encodeURIComponent(mundoActivo)}" download class="chip" style="text-decoration:none; color:inherit; font-size:11px; padding:2px 6px;" title="Descargar JSON reproducible de este individuo">📥</a>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+async function cargarLinaje() {
+  try {
+    const url = "/linaje" + (mundoActivo ? "?mundo=" + encodeURIComponent(mundoActivo) : "");
+    const resp = await fetch(url);
+    if (!resp.ok) return;
+    const data = await resp.json();
+    cacheLinaje = data.generaciones || [];
+    renderizarTablaLinaje(cacheLinaje, ultimoIndividuo);
+    dibujarGraficaLinaje(cacheLinaje);
+  } catch (_) {}
+}
+
+async function conmutarPin(indId) {
+  try {
+    await fetch("/linaje/fijar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ individuo: indId, mundo: mundoActivo })
+    });
+    await cargarLinaje();
+  } catch (_) {}
+}
+
+window.conmutarPin = conmutarPin;
+
+const btnDescargarLinaje = $("btn-descargar-linaje");
+if (btnDescargarLinaje) {
+  btnDescargarLinaje.addEventListener("click", () => {
+    window.location.href = "/linaje/descargar?todo=true" + (mundoActivo ? "&mundo=" + encodeURIComponent(mundoActivo) : "");
+  });
+}
+
 const fuente = new EventSource("/eventos");
 fuente.onmessage = ev => {
   const d = JSON.parse(ev.data);
-  if (d.individuo !== ultimoIndividuo) { hist.length = 0; ventana.length = 0; log.length = 0; ultimoIndividuo = d.individuo; }
+  if (d.mundo && d.mundo !== mundoActivo) {
+    mundoActivo = d.mundo;
+    cargarLinaje();
+  }
+  if (d.individuo !== ultimoIndividuo) {
+    hist.length = 0; ventana.length = 0; log.length = 0;
+    ultimoIndividuo = d.individuo;
+    cargarLinaje();
+  }
   pintar(d);
 };
 fuente.onerror = () => { $("estado").textContent = "desconectado"; };
-window.addEventListener("resize", dibujar);
+window.addEventListener("resize", () => { dibujar(); dibujarGraficaLinaje(cacheLinaje); });
+cargarLinaje();
 
 const btnCambiar = $("btn-cambiar-mundo");
 if (btnCambiar) {
