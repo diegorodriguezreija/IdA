@@ -74,9 +74,23 @@
 
   /* Descripción del mundo */
   .desc-mundo {
-    background: var(--riel); border-radius: 10px; padding: 12px 14px; margin-bottom: 18px;
+    background: var(--riel); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px;
     font-size: 13px; line-height: 1.45; color: var(--texto);
   }
+
+  /* Banner de configuración recomendada / óptima */
+  .banner-optimo {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    background: color-mix(in srgb, var(--ok) 8%, var(--panel)); border: 1px solid color-mix(in srgb, var(--ok) 30%, var(--borde));
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 18px; font-size: 12px; line-height: 1.4;
+  }
+  .banner-optimo-texto b { color: var(--ok); font-weight: 650; }
+  .banner-optimo-texto span { color: var(--texto); }
+  .btn-restablecer {
+    background: var(--panel); border: 1px solid var(--borde); border-radius: 6px; padding: 4px 9px;
+    font-size: 11px; cursor: pointer; color: var(--suave); white-space: nowrap; font-weight: 600;
+  }
+  .btn-restablecer:hover { color: var(--texto); border-color: var(--acento); }
 
   /* Grid de parámetros */
   .grid-params {
@@ -146,8 +160,8 @@
       <p class="subtitulo">Selecciona un mundo, ajusta sus parámetros y observa la simulación en tiempo real.</p>
     </div>
     <div class="links-servicios">
-      <a href="http://localhost:3000" target="_blank" class="link-pill" title="Dashboard provisionado de Grafana">📊 Grafana</a>
-      <a href="http://localhost:16686" target="_blank" class="link-pill" title="Trazas de latidos en Jaeger">🔍 Jaeger</a>
+      <a href="http://localhost:3000" target="_blank" class="link-pill" title="Dashboard provisionado de Grafana (fase inicial)">📊 Grafana</a>
+      <a href="http://localhost:16686" target="_blank" class="link-pill" title="Trazas de latidos en Jaeger (fase inicial)">🔍 Jaeger</a>
       <a href="http://localhost:9090" target="_blank" class="link-pill" title="Métricas Prometheus">📈 Prometheus</a>
     </div>
   </header>
@@ -191,8 +205,14 @@
       </label>
     </div>
 
-    <div class="desc-mundo" id="desc-mundo">
-      <b>Mundo Mínimo:</b> Entorno sintético con bayas que nutren (+10), setas venenosas (-12) y un lobo móvil. Permite comprobar reflejos inmediatos de supervivencia (S1), formación rápida de hipótesis causales en memoria y aversión a toxinas.
+    <div class="desc-mundo" id="desc-mundo"></div>
+
+    <div class="banner-optimo">
+      <div class="banner-optimo-texto">
+        <b>✓ Configuración recomendada activa:</b>
+        <span id="banner-resumen">Cargando parámetros de alto rendimiento...</span>
+      </div>
+      <button type="button" class="btn-restablecer" id="btn-restablecer" title="Restablecer los valores óptimos probados para este mundo">Restablecer</button>
     </div>
 
     <!-- Opciones específicas de mundo -->
@@ -205,20 +225,20 @@
     <div class="grid-params">
       <div class="campo">
         <label for="latidos">Latidos máximos <span class="pista">(duración de vida)</span></label>
-        <input type="number" id="latidos" name="latidos" value="300" min="10" max="5000" step="10">
+        <input type="number" id="latidos" name="latidos" value="400" min="10" max="5000" step="10">
       </div>
 
       <div class="campo">
         <label for="semilla">Semilla aleatoria <span class="pista">(reproducibilidad)</span></label>
         <div class="fila-input">
-          <input type="number" id="semilla" name="semilla" value="1" min="0" max="999999">
+          <input type="number" id="semilla" name="semilla" value="3" min="0" max="999999">
           <button type="button" class="btn-mini" id="btn-azar" title="Generar semilla aleatoria">🎲 Azar</button>
         </div>
       </div>
 
       <div class="campo">
         <label for="generaciones">Generaciones <span class="pista">(vidas sucesivas)</span></label>
-        <input type="number" id="generaciones" name="generaciones" value="1" min="1" max="20">
+        <input type="number" id="generaciones" name="generaciones" value="3" min="1" max="20">
       </div>
 
       <div class="campo">
@@ -229,10 +249,10 @@
 
     <div class="grid-checks">
       <label class="check-item">
-        <input type="checkbox" id="tabula_rasa" name="tabula_rasa">
+        <input type="checkbox" id="tabula_rasa" name="tabula_rasa" checked>
         <div class="check-texto">
           <b>Tábula rasa</b>
-          <span>Borrar el linaje previo y empezar desde cero.</span>
+          <span>Borrar el linaje previo del mundo y empezar el aprendizaje desde cero.</span>
         </div>
       </label>
 
@@ -240,7 +260,7 @@
         <input type="checkbox" id="sin_experiencia" name="sin_experiencia">
         <div class="check-texto">
           <b>Sin experiencia</b>
-          <span>Apagar dimensiones activa y proactiva para comparar.</span>
+          <span>Apagar dimensiones activa y proactiva (control experimental).</span>
         </div>
       </label>
     </div>
@@ -251,7 +271,7 @@
         <input type="checkbox" id="otel" name="otel">
         <div class="check-texto">
           <b>Activar OpenTelemetry (--otel)</b>
-          <span>Exporta trazas de cada latido y métricas de fases al OTLP Collector (http://localhost:4318).</span>
+          <span>Exporta trazas de cada latido y métricas de fases al OTLP Collector (http://localhost:4318). Fase preliminar.</span>
         </div>
       </label>
 
@@ -291,12 +311,103 @@ const DESCRIPCIONES = {
   snake: "<b>Snake:</b> Juega en tiempo real en playsnake.org controlando un navegador con Playwright (requiere conexión a internet). Marcapasos a 60ms por latido."
 };
 
+const CONFIG_OPTIMA = {
+  minimo: {
+    latidos: 400,
+    semilla: 3,
+    generaciones: 3,
+    cada: 10,
+    tabula_rasa: true,
+    sin_experiencia: false,
+    resumen: "Semilla 3, 3 generaciones (198 latidos de media; demuestra «seta hace daño» en G1 y la evita en G2/G3 comiendo 19 bayas y 1 seta)."
+  },
+  archivos: {
+    latidos: 400,
+    semilla: 1,
+    generaciones: 3,
+    cada: 10,
+    tabula_rasa: true,
+    sin_experiencia: false,
+    resumen: "Semilla 1, 3 generaciones (media 270 latidos; la Prudencia contiene los mordiscos a bytes tóxicos a 1-2 por vida)."
+  },
+  crafter: {
+    latidos: 600,
+    semilla: 1,
+    generaciones: 3,
+    cada: 10,
+    tabula_rasa: true,
+    sin_experiencia: false,
+    radio: 4,
+    ventana: true,
+    resumen: "Semilla 1 determinista (9 a 12 logros por vida: herramientas de madera/piedra, mesa, horno y ciclo de sueño)."
+  },
+  ajedrez: {
+    latidos: 150,
+    semilla: 1,
+    generaciones: 2,
+    cada: 5,
+    tabula_rasa: true,
+    sin_experiencia: false,
+    dificultad: 1,
+    color: "blancas",
+    resumen: "Semilla 1 contra rival dificultad 1 (87,5% victorias; partidas resueltas en 20-40 latidos)."
+  },
+  snake: {
+    latidos: 1000,
+    semilla: 1,
+    generaciones: 3,
+    cada: 10,
+    tabula_rasa: true,
+    sin_experiencia: false,
+    dificultad: "piton",
+    ritmo: 60,
+    ventana: true,
+    resumen: "Ritmo de 60 ms en dificultad Pitón (media de 916 puntos, récord 1605; aprende «pared hace daño» al morir)."
+  }
+};
+
 const radiosMundo = document.querySelectorAll('input[name="mundo"]');
 const cardsMundo = document.querySelectorAll('.card-mundo');
 const descMundo = document.getElementById('desc-mundo');
+const bannerResumen = document.getElementById('banner-resumen');
 const contOpc = document.getElementById('contenedor-opciones-mundo');
 
+let mundoActual = 'minimo';
+
+function aplicarConfiguracionOptima(mundo) {
+  const cfg = CONFIG_OPTIMA[mundo];
+  if (!cfg) return;
+
+  document.getElementById('latidos').value = cfg.latidos;
+  document.getElementById('semilla').value = cfg.semilla;
+  document.getElementById('generaciones').value = cfg.generaciones;
+  document.getElementById('cada').value = cfg.cada;
+  document.getElementById('tabula_rasa').checked = cfg.tabula_rasa;
+  document.getElementById('sin_experiencia').checked = cfg.sin_experiencia;
+  bannerResumen.textContent = cfg.resumen;
+
+  if (mundo === 'snake') {
+    const dif = document.getElementById('opc_dificultad');
+    if (dif) dif.value = cfg.dificultad;
+    const ritmo = document.getElementById('opc_ritmo');
+    if (ritmo) ritmo.value = cfg.ritmo;
+    const vent = document.getElementById('opc_ventana');
+    if (vent) vent.checked = cfg.ventana;
+  } else if (mundo === 'ajedrez') {
+    const dif = document.getElementById('opc_dificultad');
+    if (dif) dif.value = String(cfg.dificultad);
+    const col = document.getElementById('opc_color');
+    if (col) col.value = cfg.color;
+  } else if (mundo === 'crafter') {
+    const rad = document.getElementById('opc_radio');
+    if (rad) rad.value = String(cfg.radio);
+    const vent = document.getElementById('opc_crafter_ventana');
+    if (vent) vent.checked = cfg.ventana;
+  }
+}
+
 function renderizarOpcionesMundo(mundo) {
+  mundoActual = mundo;
   descMundo.innerHTML = DESCRIPCIONES[mundo] || "";
   cardsMundo.forEach(c => {
     if (c.getAttribute('data-mundo') === mundo) {
@@ -312,9 +423,9 @@ function renderizarOpcionesMundo(mundo) {
         <div class="campo">
           <label for="opc_dificultad">Velocidad del juego (dificultad)</label>
           <select id="opc_dificultad">
+            <option value="piton" selected>Pitón (Rápida / Óptimo métricas)</option>
+            <option value="gusano">Gusano (Normal)</option>
             <option value="babosa">Babosa (Lenta / Fácil)</option>
-            <option value="gusano" selected>Gusano (Normal)</option>
-            <option value="piton">Pitón (Rápida / Difícil)</option>
           </select>
         </div>
         <div class="campo">
@@ -336,9 +447,9 @@ function renderizarOpcionesMundo(mundo) {
         <div class="campo">
           <label for="opc_dificultad">Dificultad del rival local</label>
           <select id="opc_dificultad">
-            <option value="1" selected>1 ply (Fácil / Inmediato)</option>
-            <option value="2">2 ply (Intermedio / Táctico)</option>
-            <option value="3">3 ply (Difícil / Posicional)</option>
+            <option value="1" selected>1 ply (87,5% victorias IdA)</option>
+            <option value="2">2 ply (Equilibrado: 3V-3T-2D)</option>
+            <option value="3">3 ply (Difícil)</option>
             <option value="0">0 ply (Movimientos aleatorios)</option>
           </select>
         </div>
@@ -396,12 +507,18 @@ function renderizarOpcionesMundo(mundo) {
       </div>
     `;
   }
+
+  aplicarConfiguracionOptima(mundo);
 }
 
 radiosMundo.forEach(r => {
   r.addEventListener('change', () => renderizarOpcionesMundo(r.value));
 });
 renderizarOpcionesMundo('minimo');
+
+document.getElementById('btn-restablecer').addEventListener('click', () => {
+  aplicarConfiguracionOptima(mundoActual);
+});
 
 document.getElementById('btn-azar').addEventListener('click', () => {
   document.getElementById('semilla').value = Math.floor(Math.random() * 9999) + 1;
