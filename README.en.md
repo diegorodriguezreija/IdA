@@ -14,7 +14,9 @@ Every IdA individual has a **body** that wears out, a **heartbeat** with an atte
 
 The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
 
-<p align="center"><img src="docs/img/panel_ida.png" width="760" alt="IdA's live panel in the file world: body and chemistry, heartbeat budget, the Tribunal's decision and candidates, share per system, memory, what it knows with its status, character, wave contents and history"></p>
+<p align="center">
+  <img src="docs/img/demo.gif" width="780" alt="IdA Demonstration: Interactive launcher room and live telemetry dashboard with expandable individual modal view">
+</p>
 
 ## Try it
 
@@ -24,13 +26,13 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 64 tests
+python -m pytest -q                       # 68 tests
 python -m ida                             # interactive launcher at http://127.0.0.1:8000
 python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
 python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://127.0.0.1:8000
 ```
 
-Running `python -m ida` without arguments launches an **interactive web launcher** to choose a world, optionally enable graphical window displays (in Snake or Crafter), and adjust parameters before proceeding to the live panel.
+Running `python -m ida` without arguments launches an **interactive web launcher room** ([`docs/img/room.png`](docs/img/room.png)) to choose a world, tune initial personality sliders, optionally enable graphical window displays (in Snake or Crafter), and adjust parameters before proceeding to the **live telemetry dashboard** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), which includes lineage tracking, an evolution chart, and an **expandable individual profile modal** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) with one-click JSON download and restore capabilities.
 
 Or, with nothing installed: `docker compose up --build`.
 
@@ -60,7 +62,7 @@ Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](d
 
 ## Engineering
 
-Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 64 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 68 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
 
 ## IdA Laboratory
 

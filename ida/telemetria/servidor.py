@@ -211,6 +211,11 @@ class Telemetria:
                 )
             except Exception as exc:
                 print(f"[telemetría] error en la simulación: {exc}")
+            finally:
+                self.simulacion_activa = False
+                if self.ultimo is not None:
+                    fin = dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion")
+                    self.publicar(fin)
 
         self.hilo_simulacion = threading.Thread(target=_tarea, daemon=True)
         self.hilo_simulacion.start()
@@ -221,6 +226,9 @@ class Telemetria:
         if self.hilo_simulacion is not None and self.hilo_simulacion.is_alive():
             self.hilo_simulacion.join(timeout=2.0)
         self.simulacion_activa = False
+        if self.ultimo is not None:
+            fin = dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion")
+            self.publicar(fin)
 
     def _suscribir(self) -> queue.Queue:
         cola: queue.Queue = queue.Queue(maxsize=200)
@@ -236,6 +244,8 @@ class Telemetria:
     def publicar(self, datos: Dict[str, Any]) -> None:
         """No bloquea: si un cliente va lento, se descartan sus eventos más antiguos."""
         datos = dict(datos, mundo=self.mundo)
+        if "simulacion_activa" not in datos:
+            datos["simulacion_activa"] = self.simulacion_activa
         self.ultimo = datos
         with self._cerrojo:
             colas = list(self._colas)

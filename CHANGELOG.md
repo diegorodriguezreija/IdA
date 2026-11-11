@@ -2,6 +2,16 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Unreleased]
+
+### Telemetría y Experiencia de Usuario (UI/UX)
+- **Ficha Expandible / Modal de Individuo:** visor interactivo para inspeccionar genoma, arquetipo (Big Five), logros específicos del mundo con iconografía (herramientas de Crafter, capturas de Ajedrez, etc.), reglas epistémicas demostradas, fijado 📌, descarga de JSON reproducible y restauración inmediata en la antesala con un clic.
+- **Rediseño y Consolidación de Tarjetas:** reestructuración a 4 columnas compactas en fila superior (Carácter, Cuerpo, Latido, Tribunal) con altura optimizada (`max-height: 250px; overflow-y: auto;`), fila compartida de Memoria y Linaje a doble ancho, y retirada de métricas redundantes o poco visuales (mapa ASCII).
+- **Evolución del Linaje por Selección Natural:** tabla ordenada por fitness descendente (mejores individuos arriba), política de retención con purga por la base (peores individuos abajo) respetando los elementos fijados 📌 y el Top 5 histórico.
+- **Protección contra Pérdida Involuntaria:** `tabula_rasa` desactivado por defecto en la antesala y verificación dinámica contra sobreescrituras accidentales de linajes existentes.
+- **Detección de Fin de Simulación:** indicador fidedigno `⏹️ finalizada` en el dashboard al concluir las vidas programadas.
+- **Documentación Visual:** incorporación de GIF introductorio animado (`docs/img/demo.gif`) y capturas de alta definición de la antesala (`room.png`) y el dashboard (`dashboard.PNG`, `dashboard2.PNG`, `dashboard3.PNG`).
+
 ## [1.0.0]
 
 Primera versión publicada: un framework genérico (Componentes con tres barridos, Módulos, Sistemas y la Onda) separado de los mundos.
