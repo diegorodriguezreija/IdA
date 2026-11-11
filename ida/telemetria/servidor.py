@@ -9,6 +9,10 @@ Rutas:
 - ``/estado_simulacion``  estado de ejecución del organismo
 - ``POST /iniciar``       inicia una simulación con parámetros
 - ``POST /detener``       detiene la simulación activa
+- ``GET /linaje``         consulta el historial y ranking de generaciones
+- ``GET /linaje/descargar`` descarga un individuo o el linaje completo en JSON
+- ``POST /linaje/fijar``   fija o desfija un individuo para la retención
+- ``POST /linaje/restaurar`` valida y extrae parámetros de un JSON restaurado
 """
 
 import json
@@ -17,6 +21,9 @@ import queue
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qs, urlparse
+
+from ida.historico import cargar_linaje, conmutar_fijado, exportar_individuo, exportar_linaje_completo
 
 PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
 ANTESALA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "antesala.html")
@@ -30,7 +37,11 @@ class _Manejador(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         tel = self.servidor_tel
-        ruta = self.path.split("?")[0]
+        url = urlparse(self.path)
+        ruta = url.path
+        params = parse_qs(url.query)
+        mundo_query = params.get("mundo", [tel.mundo or "minimo"])[0]
+
         if ruta == "/eventos":
             self.send_response(200)
             self.send_header("Content-Type", "text/event-stream; charset=utf-8")
@@ -55,6 +66,27 @@ class _Manejador(BaseHTTPRequestHandler):
         elif ruta == "/estado_simulacion":
             resp = {"activa": tel.simulacion_activa, "mundo": tel.mundo}
             self._responder(json.dumps(resp, ensure_ascii=False).encode("utf-8"), "application/json")
+        elif ruta == "/linaje":
+            datos = cargar_linaje(mundo_query)
+            self._responder(json.dumps(datos, ensure_ascii=False).encode("utf-8"), "application/json")
+        elif ruta == "/linaje/descargar":
+            ind_id = params.get("individuo", [None])[0]
+            if ind_id:
+                doc = exportar_individuo(mundo_query, ind_id)
+                nombre_archivo = f"ida-individuo-{ind_id}.json"
+            else:
+                doc = exportar_linaje_completo(mundo_query)
+                nombre_archivo = f"ida-linaje-{mundo_query}.json"
+            if doc is None:
+                self.send_error(404, "Individuo o linaje no encontrado")
+                return
+            cuerpo = json.dumps(doc, ensure_ascii=False, indent=2).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Disposition", f'attachment; filename="{nombre_archivo}"')
+            self.send_header("Content-Length", str(len(cuerpo)))
+            self.end_headers()
+            self.wfile.write(cuerpo)
         elif ruta == "/antesala":
             with open(ANTESALA, "rb") as f:
                 self._responder(f.read(), "text/html; charset=utf-8")
@@ -86,6 +118,24 @@ class _Manejador(BaseHTTPRequestHandler):
         elif ruta == "/detener":
             tel.detener_simulacion()
             self._responder(json.dumps({"ok": True}).encode("utf-8"), "application/json")
+        elif ruta == "/linaje/fijar":
+            mundo = datos.get("mundo") or tel.mundo or "minimo"
+            ind_id = datos.get("individuo")
+            if not ind_id:
+                self._responder(json.dumps({"ok": False, "error": "falta individuo"}).encode("utf-8"), "application/json", codigo=400)
+                return
+            fijado = datos.get("fijado")
+            nuevo = conmutar_fijado(mundo, ind_id, fijado)
+            self._responder(json.dumps({"ok": True, "fijado": nuevo}).encode("utf-8"), "application/json")
+        elif ruta == "/linaje/restaurar":
+            mundo = datos.get("mundo") or tel.mundo or "minimo"
+            arquetipo = datos.get("arquetipo")
+            legado = datos.get("legado", {})
+            if not arquetipo and "arquetipo_actual" in datos:
+                arquetipo = datos.get("arquetipo_actual")
+            elif not arquetipo and "generaciones" in datos and datos["generaciones"]:
+                arquetipo = datos["generaciones"][-1].get("arquetipo")
+            self._responder(json.dumps({"ok": True, "mundo": mundo, "arquetipo": arquetipo, "legado": legado}).encode("utf-8"), "application/json")
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -157,6 +207,7 @@ class Telemetria:
                     evento_parada=self.evento_parada,
                     otel=bool(config.get("otel", False)),
                     arquetipo_inicial=config.get("arquetipo"),
+                    legado_inicial=config.get("legado"),
                 )
             except Exception as exc:
                 print(f"[telemetría] error en la simulación: {exc}")

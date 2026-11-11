@@ -11,6 +11,7 @@ from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo, Linaje
 from ida.core.memoria import Memoria
 from ida.core.persistencia import Persistencia
+from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
 from ida.sistemas import crear_sistemas
 
@@ -40,6 +41,7 @@ def ejecutar(
     telemetria_instancia: Optional[Any] = None,
     evento_parada: Optional[Any] = None,
     arquetipo_inicial: Optional[Dict[str, float]] = None,
+    legado_inicial: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
@@ -81,7 +83,8 @@ def ejecutar(
             else:
                 arq = Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
             memoria = Memoria(m.perfil.memoria)
-            heredados = memoria.heredar(linaje.legado())
+            legado_a_heredar = linaje.legado() or legado_inicial or {}
+            heredados = memoria.heredar(legado_a_heredar)
             m.reiniciar(azar_g.semilla)
             org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia)
             persistencia.nueva_vida()
@@ -143,8 +146,11 @@ def ejecutar(
                 "episodios": len(memoria.episodios),
                 "conocimiento": memoria.conocimiento(org.ciclo),
                 "sin_experiencia": sin_experiencia,
+                "fitness": round(calcular_fitness(mundo, {"puntuacion": m.puntuacion(), "latidos": vividos}), 2),
+                "fijado": False,
             }
             linaje.registrar(arq, resumen, memoria.legado(org.ciclo))
+            guardar_linaje_con_retencion(mundo, linaje.datos, datos_dir=datos)
             if observabilidad is not None:
                 observabilidad.vida(vividos, org.soma.esta_vivo)
             resumenes.append(resumen)
