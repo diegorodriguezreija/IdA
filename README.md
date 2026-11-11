@@ -14,7 +14,9 @@ Cada individuo de IdA tiene un **cuerpo** que se gasta, un **latido** con un pre
 
 La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabulario común de rasgos (`nutritivo`, `peligro`, `lugar`…) y verbos (`MOVER`, `COMER`…), y el mismo núcleo, sin cambios, vive en cinco: uno mínimo para tests, un **mundo de archivos** en disco, **Snake** en una web real, **Crafter** y **Ajedrez**. El mundo percibe; IdA piensa: ningún sensor calcula por el individuo.
 
-<p align="center"><img src="docs/img/panel_ida.png" width="760" alt="Panel de telemetría de IdA en el mundo de archivos: cuerpo y química, presupuesto del latido, decisión del Tribunal con sus candidatos, reparto por sistemas, memoria, lo que sabe con su estado, carácter, piezas de la Onda e historial"></p>
+<p align="center">
+  <img src="docs/img/demo.gif" width="780" alt="Demostración de IdA: Antesala interactiva y Dashboard de telemetría en vivo con ficha modal de individuo">
+</p>
 
 ## Pruébalo
 
@@ -24,13 +26,13 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 64 tests
+python -m pytest -q                       # 68 tests
 python -m ida                             # antesala interactiva en http://127.0.0.1:8000
 python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
 python -m ida --mundo archivos --latidos 300 --ver     # panel en http://127.0.0.1:8000
 ```
 
-Al ejecutar `python -m ida` sin parámetros se abre en el navegador una **antesala interactiva** para elegir el mundo, activar si se desea ventana gráfica (en Snake o Crafter) y configurar parámetros antes de pasar al panel en vivo.
+Al ejecutar `python -m ida` sin parámetros se abre en el navegador una **antesala interactiva** ([`docs/img/room.png`](docs/img/room.png)) para elegir el mundo, calibrar rasgos de personalidad iniciales, activar si se desea ventana gráfica (en Snake o Crafter) y configurar parámetros antes de pasar al **dashboard en vivo** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), que incluye historial del linaje, mini-gráfica evolutiva y una **ficha modal de individuo** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) con descarga y restauración en un clic.
 
 Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA viviendo en el mundo de archivos junto con la pila de observabilidad (abajo).
 
@@ -71,7 +73,7 @@ El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada 
 
 ## Calidad
 
-`ruff` y `mypy` en verde, 64 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
+`ruff` y `mypy` en verde, 68 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
 
 ## Laboratorio IdA
 
