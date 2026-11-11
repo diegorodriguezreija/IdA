@@ -147,62 +147,58 @@
 </header>
 <main>
   <section>
-    <h2>Cuerpo</h2>
+    <h2>Cuerpo y Vitales</h2>
     <div id="soma"></div>
-    <h2 class="sub">Química</h2>
+    <h2 class="sub">Química y Afecto</h2>
     <div id="quimica"></div>
   </section>
 
   <section>
-    <h2>Latido: presupuesto y guillotina</h2>
+    <h2>Latido y Rendimiento</h2>
     <div id="presupuesto"></div>
     <div class="motivo mal" id="guillotina"></div>
-    <h2 class="sub">Indicadores generales</h2>
+    <h2 class="sub">Indicadores Viscerales</h2>
     <div id="indicadores"></div>
+    <h2 class="sub">Componentes más lentos (ms)</h2>
+    <table><tbody id="tiempos"></tbody></table>
   </section>
 
   <section>
-    <h2>Decisión del Tribunal</h2>
+    <h2>Decisión del Tribunal y Sistemas</h2>
     <div class="decision" id="decision">—</div>
     <div class="motivo" id="motivo"></div>
-    <h2 class="sub">Candidatos · base + experiencia activa + proactiva</h2>
+    <h2 class="sub">Reparto de Sistemas (últimos 100 latidos)</h2>
+    <div class="riel pila" id="reparto" style="margin-top:6px;"></div>
+    <div class="leyenda" id="reparto_leyenda"></div>
+    <div class="cifras" id="sistemas_cifras"></div>
+    <h2 class="sub">Candidatos evaluados</h2>
     <table><thead><tr><th>sis.</th><th>acción</th><th style="width:38%">puntuación</th><th class="num">total</th></tr></thead>
       <tbody id="candidatos"></tbody></table>
   </section>
 
   <section>
-    <h2>Sistemas (últimos 100 latidos)</h2>
-    <div class="riel pila" id="reparto"></div>
-    <div class="leyenda" id="reparto_leyenda"></div>
-    <div class="cifras" id="sistemas_cifras"></div>
-  </section>
-
-  <section>
-    <h2>Experiencia y memoria</h2>
+    <h2>Memoria y Aprendizaje</h2>
     <div class="cifras" id="memoria"></div>
     <h2 class="sub">Este latido</h2>
     <ul id="experiencia"></ul>
+    <h2 class="sub">Conocimiento Demostrado</h2>
+    <div style="max-height:160px; overflow-y:auto; border:1px solid var(--borde); border-radius:6px; padding:6px 8px;">
+      <ul id="conocimiento" style="margin:0;"></ul>
+    </div>
   </section>
 
   <section>
-    <h2>Lo que sabe</h2>
-    <ul id="conocimiento"></ul>
-  </section>
-
-  <section>
-    <h2>Mundo</h2>
+    <h2>Mundo y Entorno</h2>
     <pre id="vista"></pre>
     <h2 class="sub">Puntuación del mundo</h2>
     <div id="puntuacion"></div>
   </section>
 
   <section>
-    <h2>Carácter (arquetipo)</h2>
+    <h2>Carácter (Arquetipo)</h2>
     <div id="arquetipo"></div>
     <h2 class="sub">Onda: piezas en ev</h2>
     <div id="onda"></div>
-    <h2 class="sub">Componentes más lentos (ms)</h2>
-    <table><tbody id="tiempos"></tbody></table>
   </section>
 
   <section class="doble">
