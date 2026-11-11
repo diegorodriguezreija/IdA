@@ -138,8 +138,16 @@ class Hogar(Componente):
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         if hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4):
             puerta = next((l for l in lugares(ctx) if l.id == hogar), None)
+            if puerta is None and ctx.con_experiencia:
+                salto = ctx.memoria.ruta(aqui, hogar)
+                if salto:
+                    # El retorno al hogar por memoria espacial no debe pisar la huida si la casilla implica peligro
+                    umbral_p = 0.2 if peligro >= 0.4 else 0.8
+                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < umbral_p), None)
             if puerta is not None:
-                self.proponer(ctx, Verbo.MOVER, puerta.id, acotar(0.3 + 0.5 * max(cansancio, peligro)), 0.7, "volver al hogar", clase=puerta.clase)
+                # Urgencia mayor cuando es refugio directo sin peligro inmediato o cansancio manda
+                ar = acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7))
+                self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.7, "volver al hogar", clase=puerta.clase)
         if cansancio >= 0.6 and peligro < 0.3 and (hogar is None or hogar == aqui or cansancio >= 0.85):
             ar = acotar(0.4 + 0.5 * cansancio)
             self.registrar(ctx, self.pieza(ctx, "descansar", arousal=ar, carga={"en_hogar": hogar == aqui}))
