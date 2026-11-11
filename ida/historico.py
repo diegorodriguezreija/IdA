@@ -78,7 +78,7 @@ def aplicar_politica_retencion(
     max_total: int = MAX_GENERACIONES,
     top_k: int = TOP_K_FITNESS,
 ) -> List[Dict[str, Any]]:
-    """Aplica la política híbrida: Top 5 fitness + Pinned + Recientes <= max_total."""
+    """Aplica selección natural por fitness: elimina por abajo los peores, respetando fijados."""
     if not generaciones:
         return []
 
@@ -90,26 +90,24 @@ def aplicar_politica_retencion(
             g["fijado"] = False
 
     if len(generaciones) <= max_total:
-        return generaciones
+        return sorted(generaciones, key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
 
-    # 1. Identificar fijados por el usuario
+    # 1. Identificar fijados por el usuario (protegidos contra selección natural)
     fijados_ids: Set[str] = {g["individuo"] for g in generaciones if g.get("fijado")}
 
-    # 2. Identificar top K según fitness
-    ordenados_fitness = sorted(generaciones, key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
-    top_ids: Set[str] = {g["individuo"] for g in ordenados_fitness[:top_k]}
+    # 2. Ordenar por fitness descendente (los mejores primero, los peores abajo)
+    ordenados = sorted(generaciones, key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
 
-    protegidos_ids: Set[str] = fijados_ids | top_ids
+    # 3. Conservar fijados y los mejores no fijados hasta completar max_total
+    a_conservar: Set[str] = set(fijados_ids)
+    for g in ordenados:
+        if len(a_conservar) >= max_total:
+            break
+        a_conservar.add(g["individuo"])
 
-    # 3. Cupo restante para las más recientes
-    huecos = max(0, max_total - len(protegidos_ids))
-    no_protegidas = [g for g in generaciones if g["individuo"] not in protegidos_ids]
-    recientes_ids: Set[str] = {g["individuo"] for g in no_protegidas[-huecos:]} if huecos > 0 else set()
-
-    a_conservar: Set[str] = protegidos_ids | recientes_ids
-
-    # Retener en orden cronológico original
-    return [g for g in generaciones if g["individuo"] in a_conservar]
+    # 4. Retornar los supervivientes ordenados por fitness descendente
+    supervivientes = [g for g in generaciones if g["individuo"] in a_conservar]
+    return sorted(supervivientes, key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
 
 
 def ruta_linaje(mundo: str, datos_dir: Optional[str] = None) -> str:
@@ -138,11 +136,13 @@ def cargar_linaje(mundo: str, datos_dir: Optional[str] = None) -> Dict[str, Any]
         arq = g.get("arquetipo", {})
         g["dominante"] = rasgo_dominante(arq)
 
+    # Ordenar por fitness descendente (el mejor arriba, el peor abajo)
+    generaciones.sort(key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
+
     # Añadir flags de ranking para visualización
     if generaciones:
-        ordenados = sorted(generaciones, key=lambda x: float(x.get("fitness", 0.0)), reverse=True)
-        top1_id = ordenados[0]["individuo"] if ordenados else None
-        top5_ids = {g["individuo"] for g in ordenados[:TOP_K_FITNESS]}
+        top1_id = generaciones[0]["individuo"]
+        top5_ids = {g["individuo"] for g in generaciones[:TOP_K_FITNESS]}
         for g in generaciones:
             g["es_top1"] = (g["individuo"] == top1_id)
             g["es_top5"] = (g["individuo"] in top5_ids)

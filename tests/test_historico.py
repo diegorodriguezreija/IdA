@@ -42,7 +42,7 @@ def test_retencion_bajo_limite():
     assert len(ret) == 15
 
 
-def test_retencion_politica_hibrida():
+def test_retencion_seleccion_natural():
     # Creamos 30 generaciones
     gens = []
     for i in range(30):
@@ -56,7 +56,7 @@ def test_retencion_politica_hibrida():
             "individuo": f"G_{i}",
             "fitness": f,
             "latidos": 10,
-            "fijado": (i == 7),  # G_7 está fijado manualmente por el usuario
+            "fijado": (i == 0),  # G_0 tiene fitness 0 (peor de todos) pero está fijado con chincheta 📌
         })
 
     ret = aplicar_politica_retencion("minimo", gens, max_total=20, top_k=5)
@@ -64,17 +64,21 @@ def test_retencion_politica_hibrida():
     assert len(ret) == 20
     ids_retenidos = {g["individuo"] for g in ret}
 
-    # Debe contener siempre al Top 1 y Top 2 antiguos
+    # Debe contener al Top 1 y Top 2
     assert "G_2" in ids_retenidos
     assert "G_5" in ids_retenidos
 
-    # Debe contener siempre al fijado G_7
-    assert "G_7" in ids_retenidos
+    # Debe contener siempre al fijado G_0 a pesar de tener el peor fitness
+    assert "G_0" in ids_retenidos
 
-    # Debe contener las generaciones más recientes (ej. G_29, G_28...)
+    # Debe contener los individuos de mayor fitness (G_29, G_28...)
     assert "G_29" in ids_retenidos
     assert "G_28" in ids_retenidos
 
-    # Debe mantener el orden cronológico
-    indices = [int(g["individuo"].split("_")[1]) for g in ret]
-    assert indices == sorted(indices)
+    # Los peores no fijados (ej. G_1, G_3, G_4...) deben haber sido eliminados por abajo
+    assert "G_1" not in ids_retenidos
+    assert "G_3" not in ids_retenidos
+
+    # La lista devuelta debe estar ordenada por fitness descendente (mejor arriba, peor abajo)
+    fitnesses = [float(g["fitness"]) for g in ret]
+    assert fitnesses == sorted(fitnesses, reverse=True)

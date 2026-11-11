@@ -151,6 +151,7 @@
       <table style="width:100%; border-collapse:collapse; font-size:12px;">
         <thead>
           <tr style="position:sticky; top:0; background:var(--panel); z-index:2;">
+            <th style="width:28px; text-align:center;">#</th>
             <th style="width:32px; text-align:center;">📌</th>
             <th>Gen / Individuo</th>
             <th class="num">Fitness</th>
@@ -162,7 +163,7 @@
           </tr>
         </thead>
         <tbody id="tabla-linaje-cuerpo">
-          <tr><td colspan="8" class="vacio" style="text-align:center; padding:12px;">Cargando historial de linaje…</td></tr>
+          <tr><td colspan="9" class="vacio" style="text-align:center; padding:12px;">Cargando historial de linaje…</td></tr>
         </tbody>
       </table>
     </div>
@@ -323,7 +324,13 @@ function dibujarGraficaLinaje(gens) {
   const w = c.width = c.clientWidth * dpr, h = c.height = c.clientHeight * dpr;
   ctx.clearRect(0, 0, w, h);
 
-  const fits = gens.map(g => Number(g.fitness || 0));
+  // Ordenamos cronológicamente para la línea temporal de evolución
+  const cronologico = [...gens].sort((a, b) => {
+    const ga = a.arquetipo?.generacion ?? 0, gb = b.arquetipo?.generacion ?? 0;
+    return ga !== gb ? ga - gb : String(a.individuo).localeCompare(String(b.individuo));
+  });
+
+  const fits = cronologico.map(g => Number(g.fitness || 0));
   const maxF = Math.max(1, ...fits);
   const minF = Math.min(0, ...fits);
   $("linaje-max-fitness").textContent = `máx: ${maxF.toFixed(1)} pts`;
@@ -335,15 +342,15 @@ function dibujarGraficaLinaje(gens) {
 
   ctx.strokeStyle = css("--acento"); ctx.lineWidth = 2 * dpr;
   ctx.beginPath();
-  gens.forEach((g, i) => {
-    const x = gens.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (gens.length - 1)) + 12 * dpr;
+  cronologico.forEach((g, i) => {
+    const x = cronologico.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (cronologico.length - 1)) + 12 * dpr;
     const y = h - ((Number(g.fitness || 0) - minF) / Math.max(1, maxF - minF)) * (h - 20 * dpr) - 10 * dpr;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
   ctx.stroke();
 
-  gens.forEach((g, i) => {
-    const x = gens.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (gens.length - 1)) + 12 * dpr;
+  cronologico.forEach((g, i) => {
+    const x = cronologico.length === 1 ? w / 2 : (i * (w - 24 * dpr) / (cronologico.length - 1)) + 12 * dpr;
     const y = h - ((Number(g.fitness || 0) - minF) / Math.max(1, maxF - minF)) * (h - 20 * dpr) - 10 * dpr;
     ctx.beginPath();
     const radio = g.es_top1 ? 5 * dpr : (g.es_top5 ? 4 * dpr : 3 * dpr);
@@ -362,12 +369,16 @@ function renderizarTablaLinaje(gens, indActivo) {
   const tbody = $("tabla-linaje-cuerpo");
   $("linaje-conteo").textContent = `${gens.length}/20 guardados`;
   if (!gens || !gens.length) {
-    tbody.innerHTML = `<tr><td colspan="8" class="vacio" style="text-align:center; padding:12px;">No hay generaciones en el linaje todavía.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" class="vacio" style="text-align:center; padding:12px;">No hay generaciones en el linaje todavía.</td></tr>`;
     return;
   }
 
-  const copia = [...gens].reverse();
-  tbody.innerHTML = copia.map(g => {
+  // Ordenar por fitness descendente: el mejor arriba, el peor abajo
+  const ordenados = [...gens].sort((a, b) => Number(b.fitness || 0) - Number(a.fitness || 0));
+
+  tbody.innerHTML = ordenados.map((g, idx) => {
+    const puesto = idx + 1;
+    const medalla = puesto === 1 ? "🥇" : (puesto === 2 ? "🥈" : (puesto === 3 ? "🥉" : `${puesto}º`));
     const esActivo = g.individuo === indActivo;
     const badgeTop = g.es_top1 ? `<span class="chip" style="color:var(--aviso); border-color:var(--aviso); font-size:10px; margin-left:4px;">⭐ TOP 1</span>` :
                      (g.es_top5 ? `<span class="chip" style="color:var(--ok); border-color:var(--ok); font-size:10px; margin-left:4px;">TOP 5</span>` : "");
@@ -378,6 +389,7 @@ function renderizarTablaLinaje(gens, indActivo) {
     const pinColor = g.fijado ? "opacity:1; filter: drop-shadow(0 0 2px var(--aviso));" : "opacity:0.35;";
 
     return `<tr>
+      <td style="text-align:center; font-weight:700; color:var(--suave); font-size:11px;">${medalla}</td>
       <td style="text-align:center;">
         <button onclick="conmutarPin('${esc(g.individuo)}')" style="background:none; border:none; cursor:pointer; font-size:14px; ${pinColor}" title="${g.fijado ? 'Fijado 📌 (no se purga). Clic para desfijar' : 'Clic para fijar 📌 (evitar purga)'}">📌</button>
       </td>
