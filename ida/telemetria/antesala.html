@@ -335,10 +335,10 @@
 
     <div class="grid-checks">
       <label class="check-item">
-        <input type="checkbox" id="tabula_rasa" name="tabula_rasa" checked>
+        <input type="checkbox" id="tabula_rasa" name="tabula_rasa">
         <div class="check-texto">
           <b>Tábula rasa</b>
-          <span>Borrar el linaje previo del mundo y empezar el aprendizaje desde cero.</span>
+          <span>⚠️ Borra linaje, memoria previa e individuos guardados de este mundo.</span>
         </div>
       </label>
 
@@ -403,7 +403,7 @@ const CONFIG_OPTIMA = {
     semilla: 3,
     generaciones: 3,
     cada: 10,
-    tabula_rasa: true,
+    tabula_rasa: false,
     sin_experiencia: false,
     arquetipo: { apertura: 0.50, responsabilidad: 0.65, neuroticismo: 0.60, extraversion: 0.40, umbral_miedo: 0.50 },
     resumen: "Semilla 3, 3 generaciones (198 latidos de media; demuestra «seta hace daño» en G1 y la evita en G2/G3 comiendo 19 bayas y 1 seta)."
@@ -413,7 +413,7 @@ const CONFIG_OPTIMA = {
     semilla: 1,
     generaciones: 3,
     cada: 10,
-    tabula_rasa: true,
+    tabula_rasa: false,
     sin_experiencia: false,
     arquetipo: { apertura: 0.45, responsabilidad: 0.70, neuroticismo: 0.55, extraversion: 0.35, umbral_miedo: 0.55 },
     resumen: "Semilla 1, 3 generaciones (media 270 latidos; la Prudencia contiene los mordiscos a bytes tóxicos a 1-2 por vida)."
@@ -423,7 +423,7 @@ const CONFIG_OPTIMA = {
     semilla: 1,
     generaciones: 3,
     cada: 10,
-    tabula_rasa: true,
+    tabula_rasa: false,
     sin_experiencia: false,
     radio: 4,
     ventana: true,
@@ -435,7 +435,7 @@ const CONFIG_OPTIMA = {
     semilla: 1,
     generaciones: 2,
     cada: 5,
-    tabula_rasa: true,
+    tabula_rasa: false,
     sin_experiencia: false,
     dificultad: 1,
     color: "blancas",
@@ -447,7 +447,7 @@ const CONFIG_OPTIMA = {
     semilla: 1,
     generaciones: 3,
     cada: 10,
-    tabula_rasa: true,
+    tabula_rasa: false,
     sin_experiencia: false,
     dificultad: "piton",
     ritmo: 60,
@@ -590,9 +590,19 @@ function aplicarConfiguracionOptima(mundo) {
   document.getElementById('semilla').value = cfg.semilla;
   document.getElementById('generaciones').value = cfg.generaciones;
   document.getElementById('cada').value = cfg.cada;
-  document.getElementById('tabula_rasa').checked = cfg.tabula_rasa;
+  document.getElementById('tabula_rasa').checked = false;
   document.getElementById('sin_experiencia').checked = cfg.sin_experiencia;
   bannerResumen.textContent = cfg.resumen;
+
+  // Proteger linajes existentes: verificar si hay generaciones previas
+  fetch('/linaje?mundo=' + encodeURIComponent(mundo))
+    .then(r => r.json())
+    .then(data => {
+      const tieneHistorial = data.generaciones && data.generaciones.length > 0;
+      if (tieneHistorial) {
+        document.getElementById('tabula_rasa').checked = false;
+      }
+    }).catch(() => {});
 
   presetArquetipo.value = 'optimo';
   fijarSliders(cfg.arquetipo, false);
