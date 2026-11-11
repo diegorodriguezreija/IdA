@@ -73,6 +73,7 @@ class Organismo:
         self._vit_ep = self.soma.vitalidad
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0}
+        self._ubicacion_previa: Optional[str] = None
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -157,10 +158,23 @@ class Organismo:
         ctx.onda.registrar("Ejecucion", p)
 
     def _aprender(self, ctx: Contexto) -> None:
+        ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
+        if self.con_experiencia and ubicacion:
+            if self._ubicacion_previa and self._ubicacion_previa != ubicacion:
+                self.memoria.registrar_transicion(self._ubicacion_previa, ubicacion, ctx.latido)
+            self._ubicacion_previa = ubicacion
+            if ctx.observacion:
+                for e in ctx.observacion.entidades:
+                    if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
+                        self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
+        if bool(c.get("exito")) and ubicacion and c["verbo"] in (Verbo.COGER, Verbo.COMER, Verbo.USAR):
+            clase_obj = c.get("obtenido") or c.get("clase") or ""
+            if clase_obj:
+                self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR,) else None
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:

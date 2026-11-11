@@ -7,6 +7,7 @@ cada latido (en RAM) y lo costoso (persistir, olvidar, consolidar) al dormir o a
 """
 
 import math
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple, cast
 
@@ -97,11 +98,32 @@ class Aprendizaje:
     rpe: float = 0.0
 
 
+@dataclass
+class Arista:
+    """Transición espacial observada entre dos ubicaciones en el mapa cognitivo."""
+
+    usos: int = 1
+    ultimo_latido: int = 0
+    valor_replay: float = 0.0
+
+
+@dataclass
+class RecuerdoLugar:
+    """Asociación espacial (célula de lugar): última ubicación donde estuvo al alcance una clase."""
+
+    ubicacion: str
+    ultimo_latido: int = 0
+    confianza: float = 1.0
+
+
 def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
 
 class Memoria:
+    MAX_NODOS_MAPA = 200
+    EDAD_OLVIDO_MAPA = 300
+
     def __init__(self, perfil: str = "completa"):
         if perfil not in PERFILES_MEMORIA:
             raise ValueError(f"Perfil de memoria desconocido: {perfil}")
@@ -111,6 +133,8 @@ class Memoria:
         self.registros: Dict[Tuple[Verbo, str], Registro] = {}
         self.lugares: Dict[str, float] = {}            # bienestar recordado por lugar (hogar)
         self.clases_vistas: Dict[str, int] = {}        # familiaridad por clase
+        self.mapa: Dict[str, Dict[str, Arista]] = {}   # grafo de transiciones (hipocampo)
+        self.donde: Dict[str, RecuerdoLugar] = {}      # clase -> última ubicación al alcance
         self.expectativa: Optional[Expectativa] = None
         self.buffer: List[Dict[str, Any]] = []         # piezas salientes pendientes de persistir
         self.episodios: List[Episodio] = []
@@ -270,6 +294,71 @@ class Memoria:
         lugar, valor = max(self.lugares.items(), key=lambda kv: kv[1])
         return lugar if valor > 0.2 else None
 
+    # --- hipocampo: mapa topológico y células de lugar (sin herencia) -------
+    def registrar_transicion(self, origen: str, destino: str, ahora: int) -> None:
+        if not self.activa or not origen or not destino or origen == destino:
+            return
+        vecinos = self.mapa.setdefault(origen, {})
+        if destino in vecinos:
+            a = vecinos[destino]
+            a.usos += 1
+            a.ultimo_latido = ahora
+        else:
+            vecinos[destino] = Arista(usos=1, ultimo_latido=ahora)
+        self.mapa.setdefault(destino, {})
+        while len(self.mapa) > self.MAX_NODOS_MAPA:
+            self._podar_mapa()
+
+    def _podar_mapa(self) -> None:
+        """Elimina el nodo más antiguo (menor actividad entre aristas salientes/entrantes) si excede MAX_NODOS_MAPA."""
+        if len(self.mapa) <= self.MAX_NODOS_MAPA:
+            return
+        def frescura(nodo: str) -> int:
+            if nodo in self.mapa and self.mapa[nodo]:
+                return max(a.ultimo_latido for a in self.mapa[nodo].values())
+            # Si no tiene aristas salientes, mirar entrantes o 0
+            entrantes = [vecs[nodo].ultimo_latido for vecs in self.mapa.values() if nodo in vecs]
+            return max(entrantes, default=0)
+        # No podar los recién añadidos si tienen 0 todavía excepto si es viejo
+        peor = min(self.mapa.keys(), key=frescura)
+        del self.mapa[peor]
+        for vecinos in self.mapa.values():
+            vecinos.pop(peor, None)
+
+    def registrar_donde(self, clase: str, ubicacion: str, ahora: int, confianza: float = 1.0) -> None:
+        if not self.activa or not clase or not ubicacion:
+            return
+        self.donde[clase] = RecuerdoLugar(ubicacion=ubicacion, ultimo_latido=ahora, confianza=confianza)
+
+    def donde_esta(self, clase: str) -> Optional[str]:
+        if not self.activa:
+            return None
+        rec = self.donde.get(clase)
+        return rec.ubicacion if rec is not None else None
+
+    def ruta(self, origen: str, destino: str, max_profundidad: int = 30) -> Optional[str]:
+        """Devuelve el siguiente salto desde ``origen`` hacia ``destino`` mediante BFS acotado."""
+        if not self.activa or not origen or not destino or origen == destino:
+            return None
+        if origen not in self.mapa or destino not in self.mapa:
+            return None
+        cola: deque[Tuple[str, Optional[str], int]] = deque([(origen, None, 0)])
+        visitados = {origen}
+        while cola:
+            actual, primer_salto, prof = cola.popleft()
+            if prof >= max_profundidad:
+                continue
+            # Orden determinista respetando inserción y preferencia por mayor uso en empate
+            vecinos = sorted(self.mapa.get(actual, {}).items(), key=lambda kv: -kv[1].usos)
+            for sig, _ in vecinos:
+                salto = primer_salto if primer_salto is not None else sig
+                if sig == destino:
+                    return salto
+                if sig not in visitados:
+                    visitados.add(sig)
+                    cola.append((sig, salto, prof + 1))
+        return None
+
     # --- sueño: lo costoso, fuera del camino crítico --------------------------
     def consolidar(self, ahora: int) -> Dict[str, int]:
         """Olvido y consolidación. Lo demostrado y lo de arousal extremo no se olvida."""
@@ -286,9 +375,18 @@ class Memoria:
             if r.n == 1 and abs(r.media) < 0.5 and ahora - r.ultimo > 200:
                 del self.registros[clave_r]
                 recuerdos_olvidados += 1
+        aristas_olvidadas = 0
+        for vecs in list(self.mapa.values()):
+            for dest, ar in list(vecs.items()):
+                if ar.usos <= 1 and ahora - ar.ultimo_latido > self.EDAD_OLVIDO_MAPA:
+                    del vecs[dest]
+                    aristas_olvidadas += 1
+        for clase_d, rec in list(self.donde.items()):
+            if ahora - rec.ultimo_latido > self.EDAD_OLVIDO_MAPA:
+                del self.donde[clase_d]
         # Del búfer solo sobrevive lo de arousal alto (lo demás ya está agregado en registros)
         self.buffer = [p for p in self.buffer if p["arousal"] >= 0.85]
-        return {"hipotesis_olvidadas": olvidadas, "recuerdos_olvidados": recuerdos_olvidados}
+        return {"hipotesis_olvidadas": olvidadas, "recuerdos_olvidados": recuerdos_olvidados, "aristas_olvidadas": aristas_olvidadas}
 
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:

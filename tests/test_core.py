@@ -150,6 +150,50 @@ def test_memoria_apagada_no_aprende():
     assert not mem.saber and not mem.registros
 
 
+def test_hipocampo_grafo_ruta_y_olvido():
+    mem = Memoria()
+    mem.registrar_transicion("A", "B", 1)
+    mem.registrar_transicion("B", "C", 2)
+    mem.registrar_transicion("C", "D", 3)
+    mem.registrar_transicion("D", "A", 4)   # ciclo
+    assert mem.ruta("A", "C") == "B"
+    assert mem.ruta("A", "D") == "B"
+    assert mem.ruta("A", "A") is None
+    assert mem.ruta("A", "Z") is None
+
+    # Recordar dónde está una clase y olvidarla por desuso al dormir
+    mem.registrar_donde("comida", "C", 5)
+    assert mem.donde_esta("comida") == "C"
+    # La transición C->D se refuerza con usos, A->B queda sin refuerzo
+    mem.registrar_transicion("C", "D", 400)
+    res = mem.consolidar(400)
+    assert res["aristas_olvidadas"] >= 1
+    assert mem.donde_esta("comida") is None
+
+
+def test_hipocampo_capacidad_maxima_y_apagada():
+    mem_apagada = Memoria("apagada")
+    mem_apagada.registrar_transicion("A", "B", 1)
+    mem_apagada.registrar_donde("agua", "A", 1)
+    assert mem_apagada.ruta("A", "B") is None
+    assert mem_apagada.donde_esta("agua") is None
+
+    mem = Memoria()
+    for i in range(Memoria.MAX_NODOS_MAPA + 15):
+        mem.registrar_transicion(f"N{i}", f"N{i + 1}", i + 1)
+    assert len(mem.mapa) <= Memoria.MAX_NODOS_MAPA
+
+
+def test_hipocampo_no_hereda_en_legado():
+    padre = Memoria()
+    padre.registrar_transicion("X", "Y", 1)
+    padre.registrar_donde("agua", "Y", 2)
+    leg = padre.legado(10)
+    hijo = Memoria()
+    hijo.heredar(leg)
+    assert not hijo.mapa and not hijo.donde
+
+
 # --- Soma, linaje y contrato -------------------------------------------------
 def test_presupuesto_varia_con_el_estado():
     s = Soma(energia=100.0)
