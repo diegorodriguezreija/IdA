@@ -80,7 +80,7 @@ def _dist(a: Pos, b: Pos) -> int:
 
 class MundoCrafter(Mundo):
     nombre = "crafter"
-    perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=False,
+    perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True)
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
@@ -98,6 +98,8 @@ class MundoCrafter(Mundo):
         self._tk: Any = None
         self._label: Any = None
         self._photo: Any = None
+        # Mapa cognitivo (hipocampo espacial): hitos clave del entorno (mesa, horno, agua, etc.)
+        self.hitos: Dict[str, Pos] = {}
 
     # --- ciclo de vida -------------------------------------------------------
     def reiniciar(self, semilla: Optional[int]) -> None:
@@ -112,6 +114,7 @@ class MundoCrafter(Mundo):
         mundo.reset = reset_ordenado
         self.env.reset()
         self.visitas, self.t, self.fin = {}, 0, False
+        self.hitos = {}
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
@@ -188,10 +191,14 @@ class MundoCrafter(Mundo):
     def _deseo(self, clase: str, obj: Any) -> float:
         """Aliestesia: lo que vale cada cosa para el cuerpo depende de lo que le falta."""
         inv = self.jugador.inventory
+        salud = self.jugador.health
+        # Homeostasis de reparación: si la salud está mermada, comer/beber es aún más prioritario
+        # para activar la regeneración pasiva del organismo (+1 salud cada 25 pasos si hay comida y bebida).
+        urgencia_reparacion = 1.3 if salud < 7 else 1.0
         if clase == "agua":
-            return max(0.1, (9 - inv["drink"]) / 9)
+            return min(1.0, max(0.1, (9 - inv["drink"]) / 9 * urgencia_reparacion))
         if clase == "vaca" or (clase == "planta" and obj is not None and getattr(obj, "ripe", False)):
-            return max(0.1, (9 - inv["food"]) / 9)
+            return min(1.0, max(0.1, (9 - inv["food"]) / 9 * urgencia_reparacion))
         return 0.0
 
     def observar(self) -> Observacion:
@@ -228,6 +235,18 @@ class MundoCrafter(Mundo):
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
+        # Registrar hitos de infraestructura permanente en el mapa cognitivo (hipocampo)
+        for _, clase, cpos, _ in cosas:
+            if clase in ("mesa", "horno", "planta"):
+                self.hitos[clase] = cpos
+                if clase == "mesa":
+                    self.hitos["table"] = cpos
+                elif clase == "horno":
+                    self.hitos["furnace"] = cpos
+            elif clase == "agua" and "agua" not in self.hitos:
+                self.hitos["agua"] = cpos
+                self.hitos["water"] = cpos
+
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping))
 
     # --- acción --------------------------------------------------------------
@@ -317,7 +336,10 @@ class MundoCrafter(Mundo):
         return self.fin
 
     def componentes_propios(self) -> Dict[str, list]:
-        return {"S3.Reaccionar": [PlanTecnologico(self)]}
+        return {
+            "S1.Reaccionar": [DefensaCrafter(self)],
+            "S3.Reaccionar": [PlanTecnologico(self)]
+        }
 
     # --- resultados y vista --------------------------------------------------
     def logros(self) -> List[str]:
@@ -335,6 +357,54 @@ class MundoCrafter(Mundo):
             filas.append("".join("@" if (x, y) == pos else mapa.get((x, y), ".") for x in range(pos[0] - self.radio, pos[0] + self.radio + 1)))
         inv = {k: v for k, v in self.jugador.inventory.items() if v}
         return "\n".join(filas) + f"\nluz {self.env._world.daylight:.2f} · {inv}\nlogros ({len(self.logros())}/{LOGROS}): {', '.join(self.logros())}"
+
+
+class DefensaCrafter(Componente):
+    """Componente propio de Crafter (S1 · Reaccionar): defensa activa armada y evasión crepuscular.
+
+    Principio biológico:
+    - Sin espada o con poca vitalidad (< 35%), luchar contra zombis/esqueletos es suicidio: la prioridad
+      absoluta es la huida hacia un lugar seguro.
+    - Con espada (hace 2-3 de daño) y vitalidad suficiente (>= 40%), el organismo puede abatir al hostil
+      adyacente en 2-3 golpes, convirtiendo una amenaza mortal en defensa efectiva y logro de supervivencia.
+    """
+
+    tipo = "Reflejo"
+
+    def __init__(self, mundo: MundoCrafter):
+        super().__init__("DefensaCrafter")
+        self.mundo = mundo
+
+    def reactiva(self, ctx: Contexto) -> None:
+        inv = self.mundo.inventario()
+        tiene_espada = any(inv.get(k, 0) >= 1 for k in ("iron_sword", "stone_sword", "wood_sword"))
+        salud = self.mundo.jugador.health
+
+        # Buscar hostiles inmediatos (a distancia <= 1)
+        hostiles_cerca = [p for p in ctx.onda.ev("Escena").values()
+                          if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9]
+
+        # 1. Hostiles inmediatos (distancia <= 1): abatir con espada
+        if hostiles_cerca and tiene_espada and salud >= 4:
+            amenaza = hostiles_cerca[0]
+            # Con espada y salud suficiente, el ataque defensivo supera el reflejo de huida (0.75 + 0.25*peligro)
+            urgencia = 0.96 if salud >= 6 else 0.88
+            self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.95, f"defensa armada: abatir {amenaza.clase}", clase=amenaza.clase)
+            return
+
+        # 2. Hostiles a distancia (esqueletos disparando flechas a 2-3 casillas): cerrar distancia
+        # para no ser diezmado en campo abierto, aprovechando que el esqueleto solo tiene 3 de vitalidad.
+        esqueletos = [p for p in ctx.onda.ev("Escena").values()
+                      if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9]
+        if esqueletos and tiene_espada and salud >= 5:
+            esq = esqueletos[0]
+            pos_esq = esq.carga["datos"]["pos"]
+            pos = tuple(self.mundo.jugador.pos)
+            lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+            mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], pos_esq), default=None)
+            if mejor is not None and _dist(mejor.carga["datos"]["pos"], pos_esq) < _dist(pos, pos_esq):
+                self.proponer(ctx, Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
+                return
 
 
 class PlanTecnologico(Componente):
@@ -417,12 +487,42 @@ class PlanTecnologico(Componente):
                 if receta.startswith("make_"):
                     cerca = self.mundo.constantes.make[receta[5:]]["nearby"]
                     if not self._cerca(cerca):
+                        # La mesa o el horno necesarios están lejos: usar el mapa cognitivo (hipocampo) para orientarse
+                        # hacia ellos en vez de congelarse sin candidatos.
+                        if self._ir_hacia_estructura(ctx, cerca[0]):
+                            return
+                        # Si no hay mesa en el mapa y tiene madera de sobra, colocar una mesa nueva
+                        if cerca[0] == "table" and inv.get("wood", 0) >= 2:
+                            self.proponer(ctx, Verbo.USAR, "place_table", 0.52, 0.8,
+                                          "plan: place_table (nueva estación)", clase="place_table", receta="place_table")
+                            return
                         continue
                 self.proponer(ctx, Verbo.USAR, receta, 0.55, 0.8, f"plan: {receta}", clase=receta, receta=receta)
                 return
             faltan = [k for k, v in usos.items() if inv.get(k, 0) < v]
             self._buscar(ctx, faltan[0])
             return
+
+    def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
+        """Orienta el movimiento hacia una estructura del taller (mesa, horno) recordada en el mapa."""
+        # 1. ¿Está visible en la escena actual?
+        candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == estructura and p.rasgo("proximidad") >= 0.1]
+        destino_pos = None
+        if candidatos:
+            objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
+            destino_pos = objetivo.carga["datos"]["pos"]
+        elif estructura in self.mundo.hitos:
+            destino_pos = self.mundo.hitos[estructura]
+        if destino_pos is None:
+            return False
+
+        pos = tuple(self.mundo.jugador.pos)
+        lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+        mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
+        if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
+            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=mejor.clase)
+            return True
+        return False
 
     def _buscar(self, ctx: Contexto, recurso: str) -> None:
         clase = self.RECURSO.get(recurso)

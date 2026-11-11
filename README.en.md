@@ -53,8 +53,8 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
 
 - The same core runs unchanged in five very different worlds.
 - Reproducible with a seed in the minimal, file, Crafter and chess worlds.
-- By improving only each world's own code: Snake goes from about 232 to 916 points on average at the hardest level (best 1,605); toxic bites in the file world drop from 7.2 to 2.2 per life; Crafter goes from 6.6 to 8.2 achievements per life; in chess it wins 7 of 8 games against the 1-ply bot and 3 of 8 against the 2-ply bot.
-- Negative results are published too: it loses against the 3-ply bot, and in Crafter lives do not get longer.
+- By improving only each world's own code: Snake goes from about 232 to 916 points on average at the hardest level (best 1,605); toxic bites in the file world drop from 7.2 to 2.2 per life; Crafter, with spatial memory (hippocampus) and armed defense, increases mean lifespan from 208 to 264 beats (record 443) and achievements to 10.9 (record 16 with stone pickaxe/sword); in chess it wins 7 of 8 games against the 1-ply bot and 3 of 8 against the 2-ply bot.
+- Negative results are published too: it loses against the 3-ply bot, and in Crafter mass nocturnal attacks remain the vital boundary.
 
 Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](doc-repositorio/05_METRICAS_E_HITOS.md).
 
