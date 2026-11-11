@@ -53,8 +53,8 @@ Opciones comunes: `--latidos`, `--semilla`, `--generaciones`, `--ver` (panel), `
 - **El mismo núcleo vive en cinco mundos** muy distintos, y un test con AST vigila que no aprenda palabras de ninguno.
 - **La guillotina es cooperativa y fiable**: con un plazo de 0 ms la cognición se corta y el Tribunal sigue decidiendo.
 - **Repetible con semilla** en el mundo mínimo, el de archivos, Crafter y el ajedrez.
-- **Optimizando solo el código de cada mundo**: Snake pasa de unos 232 a 916 puntos de media en nivel pitón (récord 1605); en el mundo de archivos los mordiscos tóxicos bajan de 7,2 a 2,2 por vida; en Crafter, de 6,6 a 8,2 logros por vida; en ajedrez gana 7 de 8 partidas al rival de 1 ply y 3 de 8 al de 2 ply.
-- **Lo que no funciona, también publicado**: contra el rival de 3 ply pierde, y en Crafter la vida no se alarga.
+- **Optimizando solo el código de cada mundo**: Snake pasa de unos 232 a 916 puntos de media en nivel pitón (récord 1605); en el mundo de archivos los mordiscos tóxicos bajan de 7,2 a 2,2 por vida; en Crafter, con memoria espacial (hipocampo) y defensa armada, la vida media sube de 208 a 264 latidos (máx. 443) y los logros a 10,9 (máx. 16 con pico y espada de piedra); en ajedrez gana 7 de 8 partidas al rival de 1 ply y 3 de 8 al de 2 ply.
+- **Lo que no funciona, también publicado**: contra el rival de 3 ply pierde, y en Crafter los ataques en masa de noche siguen siendo el límite vital.
 
 Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md).
 

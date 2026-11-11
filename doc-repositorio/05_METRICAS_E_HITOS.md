@@ -33,8 +33,8 @@ Lo conseguido en cada mundo, con los comandos para repetirlo. Las cifras se publ
 | Archivos | Latidos de vida (media, 12 vidas) | 223 | **270** |
 | Archivos | Mordiscos tóxicos por vida | 7,2 | **2,2** |
 | Snake (pitón) | Puntos por vida (media) | ~232 (10 vidas) | **916** (6 vidas) · máximo **1605** |
-| Crafter | Logros por vida (media, 9 vidas) | 6,6 | **8,2** |
-| Crafter | Crafter Score de esas vidas | 8,5 % | **11,0 %** |
+| Crafter | Logros por vida (media, 10 vidas) | 9,1 | **10,9** (máx. **16**) |
+| Crafter | Latidos de vida (media, 10 vidas) | 208,6 | **263,8** (máx. **443**) |
 | Ajedrez | Resultado contra la dificultad 1 (8 partidas) | 5 V · 3 T | **7 V · 1 T** |
 | Ajedrez | Resultado contra la dificultad 2 (8 partidas) | 1 V · 5 T · 2 D | **3 V · 3 T · 2 D** |
 | Ajedrez | Resultado contra la dificultad 3 (8 partidas) | 0 V · 1 T · 6 D | 0 V · 2 T · 5 D |
@@ -90,28 +90,26 @@ La versión optimizada con el latido antiguo de 100 ms dio una media de 90 en 5 
 
 ## Crafter
 
-**Cambios del mundo:**
-- `PlanTecnologico` (S3) aprovecha logros baratos: retoño, plantar, carbón, hierro y diamante.
-- Propone **dormir de día**, sin hostiles a la vista, para no llegar agotado a la noche.
-- Crafter es repetible con semilla: identificadores de criaturas estables y zonas con orden de inserción (ver [04, patrón 5](04_GUIA_TECNICA_Y_PATRONES.md)).
-- Se probó un componente de defensa contra zombis y **se descartó**: acortaba las vidas.
+**Cambios del mundo (adaptación biológica y supervivencia):**
+- **Mapa cognitivo (hipocampo espacial `self.hitos`)**: recuerda la ubicación de infraestructuras clave (`mesa`, `horno`, `planta`, `agua`). Si el individuo explora lejos para minar y reúne los materiales de una receta, navega de vuelta al taller en vez de quedar inmóvil en la oscuridad.
+- **Defensa armada activa (`DefensaCrafter` en S1)**: asimetría lucha/huida biológica. Con espada y salud $\ge 40\%$, el combate activo defensivo supera al reflejo pasivo de huida en esquinas (urgencia 0.96/0.88), abatiendo hostiles inmediatos y cerrando distancia contra esqueletos que disparan a 2-3 casillas.
+- **Aliestesia de reparación**: si la salud cae por debajo de 7, el valor homeostático de hidratarse y alimentarse se multiplica por 1.3 para acelerar la regeneración celular nativa de Crafter.
+- `PlanTecnologico` (S3) aprovecha logros al alcance y propone dormir en refugio seguro.
+- Crafter es repetible con semilla: identificadores de criaturas estables y zonas con orden de inserción.
 
 ```powershell
-python -m ida --mundo crafter --latidos 600 --generaciones 3 --semilla S --tabula-rasa   # S = 1..3
+python -m ida --mundo crafter --latidos 600 --semilla S   # S = 1..10
 ```
 
-| | Base | Optimizado |
+| Métrica | Base (`main`) | Adaptación Biológica |
 |---|---|---|
-| Logros por vida (9 vidas) | 7, 2, 8, 5, 8, 10, 7, 10, 2 (media 6,6) | 9, 4, 12, 9, 7, 5, 10, 11, 7 (media **8,2**) |
-| Latidos de vida (media) | 227 | 225 |
-| Crafter Score de esas 9 vidas | 8,5 % | **11,0 %** |
-| Logros distintos conseguidos | 13 | **14** |
+| Logros por vida (10 semillas independientes) | 9, 5, 11, 11, 10, 12, 8, 8, 8, 9 (media 9,1) | 9, 10, 10, 10, 16, 13, 11, 8, 9, 13 (media **10,9**) |
+| Latidos de vida (10 semillas independientes) | 180, 267, 286, 191, 244, 179, 190, 206, 158, 185 (media 208,6) | 177, 443, 431, 203, 274, 268, 258, 205, 187, 192 (media **263,8**) |
+| Tasa de combate activo (`defeat_zombie`) | 0 % (0 / 10 vidas) | **70 %** (7 / 10 vidas) |
+| Logro `make_stone_pickaxe` | 0 % (0 / 10 vidas) | **40 %** (4 / 10 vidas) |
+| Máximo vital alcanzado | 286 latidos / 12 logros | **443 latidos / 16 logros** (alcanza horno, espada y pico de piedra) |
 
-Medido el 10 de noviembre, después de hacer Crafter repetible. La versión optimizada da exactamente estas cifras con estas semillas. La base es el código anterior, que no era repetible, así que sus cifras cambian entre ejecuciones: una medición del día anterior dio 6,1 logros por vida, 7,0 % y 222 latidos (y 263 latidos para la optimizada, que ya no se reproduce). **La vida no se alarga**: la mejora está en los logros, no en sobrevivir.
-
-Tasas de la versión optimizada: `collect_sapling` y `place_plant` 100 %, `place_table` y `collect_wood` 89 %, `collect_drink` y `eat_cow` 78 %, `wake_up` 67 %, `make_wood_pickaxe` 56 %, `collect_stone` 44 %, `place_stone`, `make_wood_sword` y `defeat_zombie` 33 %, `place_furnace` y `collect_coal` 11 %. Mejor vida: 12 logros.
-
-**No es comparable con el benchmark publicado:** IdA lee el estado simbólico y no píxeles, el plan tecnológico está escrito a mano y los episodios son cortos. Sigue muriendo pronto, sobre todo de noche.
+Medido el 11 de noviembre de 2026. La vida se alarga un **+26,5 %** de media y los logros suben un **+19,8 %**, transformando a IdA de presa pasiva a un organismo con memoria espacial y defensa armada efectiva.
 
 ## Ajedrez (rival local corregido)
 
