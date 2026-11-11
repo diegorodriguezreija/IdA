@@ -177,28 +177,27 @@
   </section>
 
   <section>
-    <h2>Memoria y Aprendizaje</h2>
-    <div class="cifras" id="memoria"></div>
-    <h2 class="sub">Este latido</h2>
-    <ul id="experiencia"></ul>
-    <h2 class="sub">Conocimiento Demostrado</h2>
-    <div style="max-height:160px; overflow-y:auto; border:1px solid var(--borde); border-radius:6px; padding:6px 8px;">
-      <ul id="conocimiento" style="margin:0;"></ul>
-    </div>
-  </section>
-
-  <section>
-    <h2>Mundo y Entorno</h2>
-    <pre id="vista"></pre>
-    <h2 class="sub">Puntuación del mundo</h2>
-    <div id="puntuacion"></div>
-  </section>
-
-  <section>
     <h2>Carácter (Arquetipo)</h2>
     <div id="arquetipo"></div>
     <h2 class="sub">Onda: piezas en ev</h2>
     <div id="onda"></div>
+  </section>
+
+  <section class="doble">
+    <h2>Memoria y Aprendizaje (Cerebro)</h2>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; margin-top:8px;">
+      <div>
+        <div class="cifras" id="memoria"></div>
+        <h2 class="sub">Este latido</h2>
+        <ul id="experiencia"></ul>
+      </div>
+      <div>
+        <h2 class="sub" style="margin-top:0;">Conocimiento Demostrado</h2>
+        <div style="max-height:220px; overflow-y:auto; border:1px solid var(--borde); border-radius:8px; padding:6px 10px; background:var(--fondo);">
+          <ul id="conocimiento" style="margin:0;"></ul>
+        </div>
+      </div>
+    </div>
   </section>
 
   <section class="doble">
@@ -317,7 +316,11 @@ function dibujar() {
 }
 
 function pintar(d) {
-  $("estado").innerHTML = '<span class="pulso-vivo"></span>en directo';
+  if (d.simulacion_activa === false) {
+    $("estado").innerHTML = '<span class="chip" style="color:var(--suave); border-color:var(--borde); font-size:11px;">⏹️ finalizada</span>';
+  } else {
+    $("estado").innerHTML = '<span class="pulso-vivo"></span>en directo';
+  }
   $("mundo").textContent = d.mundo || "—";
   $("individuo").textContent = d.individuo || "—";
   $("generacion").textContent = d.generacion ?? "—";
@@ -375,10 +378,12 @@ function pintar(d) {
     return `<li><span class="insignia ${cls}">${est}</span>${esc(t.replace(/ \((demostrada|refutada|hipótesis)(, )?/, " ("))}</li>`;
   }).join("") : `<li class="vacio">todavía no sabe nada</li>`;
 
-  $("vista").textContent = d.vista || "";
-  const pt = d.puntuacion || {};
-  const fmt = v => Array.isArray(v) ? v.join(", ") : (v && typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a} ${b}`).join(" · ") : v);
-  $("puntuacion").innerHTML = Object.entries(pt).map(([k, v]) => `<div class="motivo" style="overflow-wrap:anywhere"><b style="color:var(--texto)">${esc(k)}</b>: ${esc(fmt(v))}</div>`).join("") || `<div class="vacio">—</div>`;
+  if ($("vista")) $("vista").textContent = d.vista || "";
+  if ($("puntuacion")) {
+    const pt = d.puntuacion || {};
+    const fmt = v => Array.isArray(v) ? v.join(", ") : (v && typeof v === "object" ? Object.entries(v).map(([a, b]) => `${a} ${b}`).join(" · ") : v);
+    $("puntuacion").innerHTML = Object.entries(pt).map(([k, v]) => `<div class="motivo" style="overflow-wrap:anywhere"><b style="color:var(--texto)">${esc(k)}</b>: ${esc(fmt(v))}</div>`).join("") || `<div class="vacio">—</div>`;
+  }
 
   const arq = d.arquetipo || {};
   $("arquetipo").innerHTML = Object.entries(arq).map(([k, v]) => barra(k.replace("_", " "), v, 1, css("--s2"))).join("");
@@ -718,7 +723,22 @@ fuente.onmessage = ev => {
   }
   pintar(d);
 };
-fuente.onerror = () => { $("estado").textContent = "desconectado"; };
+fuente.onerror = () => {
+  fetch('/estado_simulacion').then(r => r.json()).then(res => {
+    if (res && res.activa === false) {
+      $("estado").innerHTML = '<span class="chip" style="color:var(--suave); border-color:var(--borde); font-size:11px;">⏹️ finalizada</span>';
+    } else {
+      $("estado").innerHTML = '<span class="chip" style="color:var(--suave); border-color:var(--borde); font-size:11px;">desconectado</span>';
+    }
+  }).catch(() => {
+    $("estado").innerHTML = '<span class="chip" style="color:var(--suave); border-color:var(--borde); font-size:11px;">desconectado</span>';
+  });
+};
+fetch('/estado_simulacion').then(r => r.json()).then(res => {
+  if (res && res.activa === false) {
+    $("estado").innerHTML = '<span class="chip" style="color:var(--suave); border-color:var(--borde); font-size:11px;">⏹️ finalizada</span>';
+  }
+}).catch(() => {});
 window.addEventListener("resize", () => { dibujar(); dibujarGraficaLinaje(cacheLinaje); });
 cargarLinaje();
 
