@@ -18,7 +18,7 @@ La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabu
   <img src="docs/img/demo.gif" width="780" alt="Demostración de IdA: Antesala interactiva y Dashboard de telemetría en vivo con ficha modal de individuo">
 </p>
 
-## Pruébalo
+## Pruébalo en 1 minuto
 
 ```bash
 git clone https://github.com/diegorodriguezreija/IdA.git
@@ -28,8 +28,6 @@ source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
 python -m pytest -q                       # 68 tests
 python -m ida                             # antesala interactiva en http://127.0.0.1:8000
-python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
-python -m ida --mundo archivos --latidos 300 --ver     # panel en http://127.0.0.1:8000
 ```
 
 Al ejecutar `python -m ida` sin parámetros se abre en el navegador una **antesala interactiva** ([`docs/img/room.png`](docs/img/room.png)) para elegir el mundo, calibrar rasgos de personalidad iniciales, activar si se desea ventana gráfica (en Snake o Crafter) y configurar parámetros antes de pasar al **dashboard en vivo** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), que incluye historial del linaje, mini-gráfica evolutiva y una **ficha modal de individuo** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) con descarga y restauración en un clic.

@@ -18,7 +18,7 @@ The mind does not know which world it lives in. Each world translates its realit
   <img src="docs/img/demo.gif" width="780" alt="IdA Demonstration: Interactive launcher room and live telemetry dashboard with expandable individual modal view">
 </p>
 
-## Try it
+## Try it in 1 minute
 
 ```bash
 git clone https://github.com/diegorodriguezreija/IdA.git
@@ -28,8 +28,6 @@ source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
 python -m pytest -q                       # 68 tests
 python -m ida                             # interactive launcher at http://127.0.0.1:8000
-python -m ida --mundo minimo --latidos 300 --generaciones 3 --semilla 3 --tabula-rasa
-python -m ida --mundo archivos --latidos 300 --ver     # live panel at http://127.0.0.1:8000
 ```
 
 Running `python -m ida` without arguments launches an **interactive web launcher room** ([`docs/img/room.png`](docs/img/room.png)) to choose a world, tune initial personality sliders, optionally enable graphical window displays (in Snake or Crafter), and adjust parameters before proceeding to the **live telemetry dashboard** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), which includes lineage tracking, an evolution chart, and an **expandable individual profile modal** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) with one-click JSON download and restore capabilities.
