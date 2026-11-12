@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Ciclo diurno, cobijo y dotación innata (Fase 5)
+- **Percepción continua de luz y modulación circadiana (`ida/core/mundo.py`, `ida/core/soma.py`, `ida/core/latido.py`, `ida/sistemas/s2.py`):** `Observacion.luz`, `Perfil.ciclo_diurno` y parámetros circadianos, `Soma.sincronizar_luz()` (con EMA `luz_tendencia`), `Soma.modular_circadiano()` (`alerta_circadiana`, `necesidad_cobijo`, `factor_curiosidad`), y modulación de `Curiosidad` en `S2`. Invarianza 100 % verificada en `minimo`, `archivos` y `ajedrez`.
+- **Cobijo espacial y memoria de refugios (`ida/core/vocabulario.py`, `ida/core/memoria.py`, `ida/sistemas/s2.py`):** nuevo rasgo `"cobijo"` en `RASGOS` y `Observacion.cobijo`, `Memoria.cobijo_lugares`/`registrar_cobijo()`/`hogar(necesidad_cobijo)`, y tigmotaxis/regreso a refugio en `Hogar` (`S2`).
+- **Dotación innata refutable (`ida/core/mundo.py`, `ida/core/memoria.py`, `ida/ejecutor.py`):** `Mundo.dotacion_innata()`, fuente `instinto` en `Proposicion` (no `DEMOSTRADA` en solitario, refutable por experiencia y preservada en `heredar()`) e `impulsos_innatos` en `Memoria`.
+- **Refugio y anidación en Crafter (`ida/mundos/crafter.py`):** cálculo de recinto cerrado (`_cobijo` 1–2 casillas), propiocepción `al_frente`, componente `Anidar` (`S2`), meta `MetaCobijo` en `PlanTecnologico` y `dotacion_innata()` de Crafter. Reducción del vaivén diurno (`33,2 % → 18,6 %` en `Equilibrado`, `32,2 % → 14,5 %` en `Valiente`); sin mejora aún en muertes nocturnas (`H5.1`) ni logros en esta primera iteración (ver `docs/BENCHMARK_PERFILES_MUNDOS.md`).
+
 ### Núcleo y Sistemas (Fases 1, 2, 3 y 4a del Plan de Evolución)
 - **Hipocampo en el Core (`ida/core/memoria.py`, `ida/core/latido.py`):** grafo topológico de transiciones (`mapa: Dict[str, Dict[str, Arista]]`), células de lugar (`donde_esta(clase)`), búsqueda BFS acotada (`ruta`), poda LRU (`MAX_NODOS_MAPA = 200`) y olvido en `consolidar()` sin herencia. Validado con 100% de invariancia con semilla en infraestructura pasiva.
 - **Navegación y Orientación (`ida/sistemas/s2.py`):** `Hogar` utiliza rutas topológicas cuando el refugio queda fuera de la vista inmediata; nuevo componente `Orientacion` en `S2.Reaccionar` para regresar hacia fuentes nutritivas recordadas cuando hay necesidad.

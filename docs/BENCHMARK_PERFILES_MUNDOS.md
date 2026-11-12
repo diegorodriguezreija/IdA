@@ -85,3 +85,40 @@ De forma **provisional** para la antesala web (hasta incorporar poblaciones con 
 - **Mínimo:** **Reactivo** (`apertura=0,40, responsabilidad=0,60, neuroticismo=0,85, extraversion=0,30, umbral_miedo=0,35`).
 - **Crafter:** **Valiente** (`apertura=0,60, responsabilidad=0,65, neuroticismo=0,20, extraversion=0,60, umbral_miedo=0,85`).
 - **Archivos y Ajedrez:** **Equilibrado** (sin diferencias significativas entre perfiles en $N = 10$ / $N = 3$).
+
+---
+
+## 5. Fase 5 (`feature/fase5-ciclo-y-refugio` vs base `25e1303`)
+
+Evaluación pareada bajo el mismo protocolo ($N = 10$ linajes independientes, semillas `1..10`, `3` generaciones de hasta `600` latidos en `crafter`, IC 95 % con $t_{0,975, 9} = 2,262$, fecha `2026-11-12`):
+
+### 5.1 Invarianza en mundos no diurnos (`ciclo_diurno=False`, semilla `3`, 1 generación)
+
+- **`minimo`:** 100 % invariante (`312` latidos, `vivo=False`, `bayas=19`, `setas=2`, `fitness=702,0`).
+- **`archivos`:** 100 % invariante (`214` latidos, `vivo=False`, `nutritivos=13`, `toxicos=2`, `fitness=878,0`).
+- **`ajedrez`:** 100 % invariante (`64` latidos, `vivo=True`, `VICTORIA`, `material=[22.0, 1.0]`, `fitness=3114,0`).
+
+### 5.2 Crafter ($N = 10$ linajes × 3 generaciones = 30 vidas por grupo)
+
+| Perfil | Fitness Base (`25e1303`) | Fitness Fase 5 | $\Delta$ Fitness pareado | Logros Base | Logros Fase 5 | $\Delta$ Logros pareado | Latidos Base / Fase 5 ($\Delta$) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **A. Equilibrado** | 9392,27 ± 1444,62 | 9175,67 ± 977,32 | -216,60 ± 1054,76 *(IC [-1271,36, +838,16])* | 9,13 ± 1,42 | 8,93 ± 0,96 | -0,20 ± 1,04 *(IC [-1,24, +0,84])* | 246,57 / 232,17 (-14,40 ± 37,45) |
+| **D. Valiente** | 10676,20 ± 1019,71 | 9412,23 ± 1274,60 | -1263,97 ± 1469,70 *(IC [-2733,67, +205,73])* | 10,40 ± 1,04 | 9,20 ± 1,26 | -1,20 ± 1,48 *(IC [-2,68, +0,28])* | 262,17 / 202,47 (**-59,70 ± 39,72**) |
+
+### 5.3 Indicadores específicos de Fase 5 (H5.1–H5.4)
+
+| Indicador | `A. Equilibrado` (Base → Fase 5) | `D. Valiente` (Base → Fase 5) |
+|---|---|---|
+| **H5.4 Vaivén diurno `A→B→A→B` (`daylight >= 0,55`)** | `33,2 %` (`1568/4729`) → **`18,6 %` (`854/4584`)** | `32,2 %` (`1614/5018`) → **`14,5 %` (`605/4172`)** |
+| **Anticipación crepuscular (latidos antes de `daylight < 0,35`)** | `23,8` latidos (`n=28`, min `20`, max `25`) | `23,9` latidos (`n=25`, min `21`, max `25`) |
+| **Fracción de noche con `cobijo >= 0,75` (Fase 5)** | `27,4 %` (`488/1781`) | `16,9 %` (`230/1361`) |
+| **Linajes G1 que alcanzan `cobijo >= 0,99`** | `3/10` (latidos `233, 128, 154`) | `4/10` (latidos `161, 177, 214, 186`) |
+| **Muertes nocturnas (`daylight < 0,35`)** | `19/30` → `22/30` | `18/30` → `18/30` |
+| **Muertes con hambre o sed (`food=0` o `drink=0`)** | `16/30` → `15/30` | `10/30` → `9/30` |
+
+- **Lectura empírica (incluyendo resultados negativos):**
+  - **H5.4 se confirma claramente:** el vaivén diurno se reduce a casi la mitad (`33,2 % → 18,6 %` en `Equilibrado`; `32,2 % → 14,5 %` en `Valiente`) al modular `Curiosidad` con `factor_curiosidad` y `luz_tendencia`.
+  - **H5.1 no mejora en esta primera iteración (resultado negativo):** `Equilibrado` no muestra diferencia significativa en fitness, logros ni muertes nocturnas (TOST `-1,0` logro no se cumple porque el límite inferior del IC es `-1,24`); en `Valiente` los latidos medios caen en `-59,70 ± 39,72` (IC `[-99,42, -19,98]`).
+  - **Diagnóstico en semillas `1..5` de `Valiente` (G1):** en las semillas `3` y `4`, donde `Anidar` y `Hogar` sí ganan latidos (`anidar=57`, `volver al hogar=30` en `s=3`; `refugio=37`, `anidar=19` en `s=4`), la vida se alarga (`185 → 236` y `163 → 227` latidos) pero el individuo termina muriendo por sed (`drink=0`) o sin llegar a ejecutar `place_stone` (`0` ejecuciones en `s=1..5`).
+- **Deuda técnica restante de acceso directo a `env._world` en [`ida/mundos/crafter.py`](../ida/mundos/crafter.py):**
+  - `_transitable` / `_cobijo` (`L173`, `L204`), `observar` (`L248`), `vista` (`L397`), `PlanTecnologico._cerca` (`L544`) y `PlanTecnologico._oportunidades` (`L565` `place_plant`, `L577` `collect_sapling`), además de `_posicion_libre` (`L107`).
