@@ -282,7 +282,7 @@ class Organismo:
             ep.balance = round(d_vit + 0.5 * (soma.alimentacion - self._ali_ep), 3)
             ep.resuelto = soma.esta_vivo and d_vit >= -1.0 and ep.balance >= -2.5
             self.memoria.episodios.append(ep)
-            if self.perfil.hogar and ctx.observacion is not None:
+            if self.con_experiencia and self.perfil.hogar and ctx.observacion is not None:
                 self.memoria.recordar_lugar(ctx.observacion.ubicacion, 1.0 if ep.resuelto and calma else -0.5)
             onda.notas["episodio"] = f"{ep.id} cerrado: balance {ep.balance:+.1f} ({'resuelto' if ep.resuelto else 'sin resolver'})"
             self.episodio = None
@@ -296,7 +296,8 @@ class Organismo:
             estaba_dormido = self.soma.dormido
             onda = self.latir()
             if self.soma.dormido and not estaba_dormido:
-                self.memoria.consolidar(self.ciclo)
+                if self.con_experiencia:
+                    self.memoria.consolidar(self.ciclo)
                 if self.al_dormir:
                     self.al_dormir(self)
             if al_latir:

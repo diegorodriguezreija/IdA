@@ -184,7 +184,7 @@ class Estudio(Componente):
     MAX_LATIDOS_ESPERA_TR = 10
 
     def reactiva(self, ctx: Contexto) -> None:
-        if Verbo.ESPERAR not in ctx.verbos:
+        if not ctx.con_experiencia or Verbo.ESPERAR not in ctx.verbos:
             return
         mem = ctx.memoria
         if not mem.activa:
@@ -263,13 +263,16 @@ class Estudio(Componente):
                         mem.ultimo_fin_lectura = ctx.latido
                         return
 
-            # Sigue leyendo: proponer LEER con arousal bajo y confianza moderada
+            # Inercia atencional: mientras sostiene la lectura, gana arousal y confianza
+            # para proteger la tarea frente a distracciones leves (Curiosidad), pero cede ante
+            # alarmas o reflejos de S1 (arousal >= 0.7).
+            progreso = reg.latidos_dedicados / max(1, reg.duracion_requerida)
             self.proponer(
                 ctx,
                 Verbo.LEER,
                 "biblioteca",
-                arousal=0.18,
-                confianza=0.55,
+                arousal=acotar(0.32 + 0.25 * progreso),
+                confianza=acotar(0.65 + 0.20 * progreso),
                 motivo=f"estudio: leyendo ({reg.latidos_dedicados}/{reg.duracion_requerida})",
             )
             return
@@ -279,14 +282,11 @@ class Estudio(Componente):
         peligro = al.carga.get("peligro", 0.0) if al else 0.0
         if peligro >= 0.2:
             return
-        if ctx.soma.hambre() >= 0.35 or ctx.soma.cansancio() >= 0.4:
+        if ctx.soma.hambre() >= 0.45 or ctx.soma.cansancio() >= 0.45:
             return
         if ctx.soma.afecto not in (Afecto.CALMA, Afecto.CURIOSIDAD):
             return
         if ctx.latido - mem.ultimo_fin_lectura < self.COOLDOWN_LECTURA:
-            return
-        # No empezar a leer si hay un recurso útil o alimento visible en la escena actual
-        if any(o.rasgo("nutritivo") >= 0.4 or o.rasgo("recurso") >= 0.4 for o in objetos(ctx)):
             return
 
         # 3a. Relectura de registro disponible previo interrumpido
@@ -300,8 +300,8 @@ class Estudio(Componente):
                     ctx,
                     Verbo.LEER,
                     "biblioteca",
-                    arousal=0.18,
-                    confianza=0.55,
+                    arousal=0.28,
+                    confianza=0.60,
                     motivo=f"estudio: relectura (0/{reg_prev.duracion_requerida})",
                 )
                 return
@@ -343,8 +343,8 @@ class Estudio(Componente):
             ctx,
             Verbo.LEER,
             "biblioteca",
-            arousal=0.18,
-            confianza=0.55,
+            arousal=0.28,
+            confianza=0.60,
             motivo=f"estudio: lectura (0/{duracion})",
         )
 
