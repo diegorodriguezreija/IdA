@@ -32,7 +32,7 @@ from ida.core.vocabulario import Verbo
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
-HOSTILES = {"zombi": 0.8, "esqueleto": 0.7, "flecha": 0.5, "lava": 1.0}
+HOSTILES = {"zombi": 0.8, "esqueleto": 0.7, "flecha": 0.5, "lava": 0.15}
 MOVIMIENTOS = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
 LETRA = {"arbol": "T", "agua": "~", "piedra": "#", "carbon": "c", "hierro": "i", "diamante": "D", "mesa": "M", "horno": "H",
          "lava": "!", "vaca": "v", "zombi": "Z", "esqueleto": "S", "planta": "p", "flecha": "-"}
@@ -203,8 +203,14 @@ class MundoCrafter(Mundo):
         pos = tuple(p.pos)
         cosas = self._cosas()
         cosas.sort(key=lambda c: (c[1] not in HOSTILES, _dist(pos, c[2])))
+        seleccion = list(cosas[:14])
+        clases_vistas = {c[1] for c in seleccion}
+        for cosa in cosas[14:]:
+            if cosa[1] not in clases_vistas:
+                seleccion.append(cosa)
+                clases_vistas.add(cosa[1])
         entidades: List[Entidad] = []
-        for cid, clase, cpos, obj in cosas[:14]:
+        for cid, clase, cpos, obj in seleccion:
             d = _dist(pos, cpos)
             entidades.append(Entidad(cid, clase, {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
@@ -213,7 +219,8 @@ class MundoCrafter(Mundo):
                 "recurso": 0.6 if clase in ("arbol", "piedra", "carbon", "hierro", "diamante") else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }, {"pos": cpos}))
-        deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) > 0.1]
+        deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) >= 0.30]
+        adyacentes_deseables = {c[1] for c, _ in deseables if _dist(pos, c[2]) <= 1}
         hostiles = [c for c in cosas if c[1] in HOSTILES]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():
@@ -225,7 +232,9 @@ class MundoCrafter(Mundo):
                 continue
             peligro = max([HOSTILES[h[1]] * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
             nutritivo = 0.0
-            for (_, _, dpos, _), valor in deseables:
+            for (_, dclase, dpos, _), valor in deseables:
+                if dclase in adyacentes_deseables:
+                    continue
                 if _dist(c, dpos) < _dist(pos, dpos):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
@@ -451,12 +460,12 @@ class PlanTecnologico(Componente):
             return True
         if "collect_sapling" not in hecho and inv.get("sapling", 0) == 0:
             w, (px, py) = self.mundo.env._world, self.mundo.jugador.pos
-            for dx, dy in MOVIMIENTOS:
-                c = (int(px + dx), int(py + dy))
-                cid = f"hierba_{c[0]}_{c[1]}"
-                if 0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1] and w[c][0] == "grass" and w[c][1] is None and self.fallos.get(cid, 0) < 6:
-                    self.proponer(ctx, Verbo.COGER, cid, 0.4, 0.7, "plan: collect_sapling", clase="hierba")
-                    return True
+            fx, fy = self.mundo.jugador.facing
+            c = (int(px + fx), int(py + fy))
+            cid = f"hierba_{c[0]}_{c[1]}"
+            if 0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1] and w[c][0] == "grass" and w[c][1] is None and self.fallos.get(cid, 0) < 6:
+                self.proponer(ctx, Verbo.COGER, cid, 0.4, 0.7, "plan: collect_sapling", clase="hierba")
+                return True
         return False
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -522,6 +531,15 @@ class PlanTecnologico(Componente):
             return
         candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == clase and self.fallos.get(p.id, 0) < 3]
         if not candidatos:
+            aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+            destino_nodo = ctx.memoria.donde_esta(clase) if ctx.con_experiencia else None
+            if aqui and destino_nodo and destino_nodo != aqui:
+                salto = ctx.memoria.ruta(aqui, destino_nodo)
+                if salto:
+                    lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+                    puerta = next((l for l in lugares if l.id == salto), None)
+                    if puerta is not None:
+                        self.proponer(ctx, Verbo.MOVER, puerta.id, 0.45, 0.7, f"hipocampo: ir a por {recurso}", clase=puerta.clase)
             return
         objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
         if objetivo.rasgo("proximidad") >= 0.9:
