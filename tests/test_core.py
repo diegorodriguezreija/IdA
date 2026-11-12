@@ -341,22 +341,26 @@ def test_ritmo_circadiano_y_etiqueta():
     assert s.necesidad_cobijo == 0.0 and s.factor_curiosidad == 1.0 and s.alerta_circadiana == 0.0
 
     p_on = Perfil(ciclo_diurno=True)
-    s.sincronizar_luz(0.9)
-    s.modular_circadiano(p_on)
-    assert s.etiqueta_luz() == "día"
-    assert s.factor_curiosidad > 1.0 and s.necesidad_cobijo == 0.0
+    s2 = Soma()
+    s2.sincronizar_luz(0.9)
+    s2.modular_circadiano(p_on)
+    assert s2.etiqueta_luz() == "día"
+    assert s2.factor_curiosidad > 1.0 and s2.necesidad_cobijo == 0.0
 
     # Atardecer con tendencia negativa anticipa alerta y necesidad de cobijo
-    s.sincronizar_luz(0.55)
-    s.modular_circadiano(p_on)
-    assert s.etiqueta_luz() == "atardecer"
-    assert s.alerta_circadiana > 0.0 and s.necesidad_cobijo > 0.0
+    s2.sincronizar_luz(0.75)
+    s2.sincronizar_luz(0.55)
+    s2.modular_circadiano(p_on)
+    assert s2.etiqueta_luz() == "atardecer"
+    assert s2.alerta_circadiana > 0.0 and s2.necesidad_cobijo > 0.0
 
-    # Noche inhibe curiosidad y sube necesidad de cobijo
-    s.sincronizar_luz(0.15)
-    s.modular_circadiano(p_on)
-    assert s.etiqueta_luz() == "noche"
-    assert s.factor_curiosidad < 1.0 and s.necesidad_cobijo > 0.5
+    # Noche inhibe curiosidad y sube necesidad de cobijo (suavizado EMA)
+    s2.sincronizar_luz(0.05)
+    s2.modular_circadiano(p_on)
+    s2.sincronizar_luz(0.05)
+    s2.modular_circadiano(p_on)
+    assert s2.etiqueta_luz() == "noche"
+    assert s2.factor_curiosidad < 1.0 and s2.necesidad_cobijo > 0.5
 
 
 def test_memoria_cobijo_seleccion_refugio():
