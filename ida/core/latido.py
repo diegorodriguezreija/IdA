@@ -99,6 +99,8 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
+        if self.perfil.ciclo_diurno:
+            soma.sincronizar_luz(obs.luz)
         frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
         ctx = Contexto(

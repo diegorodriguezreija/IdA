@@ -24,6 +24,8 @@ class Soma:
     indicadores: Dict[str, float] = field(default_factory=lambda: {"peligro": 0.0, "tension": 0.0, "calma": 1.0})
     vitales_propios: Tuple[str, ...] = ()      # constantes que marca el mundo (no el metabolismo)
     agotado_previo: bool = False               # el latido anterior agotó la amplitud
+    luz: Optional[float] = None                # luz ambiental percibida en [0, 1]
+    luz_tendencia: float = 0.0                 # media móvil exponencial de la variación de luz
 
     DOPAMINA_BASAL = 35.0
     HAMBRE_CRITICA = 15.0
@@ -80,6 +82,28 @@ class Soma:
         for nombre, valor in vitales.items():
             if nombre in VITALES:
                 setattr(self, nombre, acotar(valor, 0.0, 100.0))
+
+    def sincronizar_luz(self, luz: Optional[float]) -> None:
+        """Actualiza la percepción continua de luz ambiental y su tendencia (EMA)."""
+        if luz is None:
+            self.luz = None
+            self.luz_tendencia = 0.0
+            return
+        luz_acotada = acotar(luz)
+        if self.luz is not None:
+            delta = luz_acotada - self.luz
+            self.luz_tendencia = 0.7 * self.luz_tendencia + 0.3 * delta
+        self.luz = luz_acotada
+
+    def etiqueta_luz(self) -> str:
+        """Etiqueta legible del momento del día (solo descriptiva; los mecanismos usan valores continuos)."""
+        if self.luz is None:
+            return ""
+        if self.luz < 0.25:
+            return "noche"
+        if self.luz < 0.70:
+            return "amanecer" if self.luz_tendencia >= 0.0 else "atardecer"
+        return "día"
 
     def error_prediccion(self, rpe: float) -> None:
         """Dopamina: sube o baja con el error de predicción de recompensa."""

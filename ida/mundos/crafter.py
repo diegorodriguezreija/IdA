@@ -81,7 +81,7 @@ def _dist(a: Pos, b: Pos) -> int:
 class MundoCrafter(Mundo):
     nombre = "crafter"
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
-                    peso_experiencia=0.15, vitales_propios=True)
+                    peso_experiencia=0.15, vitales_propios=True, ciclo_diurno=True)
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
         import crafter                     # dependencia solo de este mundo
@@ -233,7 +233,13 @@ class MundoCrafter(Mundo):
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
 
-        return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping))
+        return Observacion(
+            ubicacion=f"celda_{pos[0]}_{pos[1]}",
+            entidades=entidades,
+            vitales=self._vitales(),
+            dormido=bool(p.sleeping),
+            luz=float(w.daylight),
+        )
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -445,7 +451,8 @@ class PlanTecnologico(Componente):
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
         hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Escena").values())
-        if inv.get("energy", 9) <= 6 and self.mundo.env._world.daylight >= 0.5 and not hostiles:
+        luz_actual = ctx.soma.luz if ctx.soma.luz is not None else 1.0
+        if inv.get("energy", 9) <= 6 and luz_actual >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
             self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
             return True

@@ -39,6 +39,7 @@ class Observacion:
     entidades: List[Entidad]                         # incluye los lugares (rasgo ``lugar``)
     vitales: Optional[Dict[str, float]] = None       # constantes propias del mundo (0-100), si las tiene
     dormido: Optional[bool] = None                   # si el mundo decide cuándo se duerme y se despierta
+    luz: Optional[float] = None                      # nivel de luz ambiental en [0, 1] si existe ciclo diurno
     mensaje: str = ""                                # texto libre para la consola
 
 
@@ -66,6 +67,7 @@ class Perfil:
     hogar: bool = False               # usa el componente de hogar seguro
     peso_experiencia: float = 0.15    # cuánto sesga la experiencia las puntuaciones del Tribunal
     vitales_propios: bool = False     # el mundo marca las constantes del cuerpo (no el metabolismo interno)
+    ciclo_diurno: bool = False        # el mundo tiene ciclo día/noche percibido mediante luz
     umbral_apertura_episodio: float = 0.65
     latidos_por_episodio: int = 6
 
