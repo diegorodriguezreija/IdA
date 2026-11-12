@@ -144,9 +144,11 @@ class Hogar(Componente):
         a = alarma(ctx)
         peligro = a.carga["peligro"] if a else 0.0
         cansancio = soma.cansancio()
-        hogar = ctx.memoria.hogar() if perfil.hogar else None
+        nec_cobijo = soma.necesidad_cobijo
+        cobijo_actual = ctx.observacion.cobijo if ctx.observacion else 0.0
+        hogar = ctx.memoria.hogar(nec_cobijo) if perfil.hogar else None
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
-        if hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4):
+        if hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4 or nec_cobijo >= 0.35):
             puerta = next((l for l in lugares(ctx) if l.id == hogar), None)
             if puerta is None and ctx.con_experiencia:
                 salto = ctx.memoria.ruta(aqui, hogar)
@@ -155,13 +157,27 @@ class Hogar(Componente):
                     umbral_p = 0.2 if peligro >= 0.4 else 0.8
                     puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < umbral_p), None)
             if puerta is not None:
-                # Urgencia mayor cuando es refugio directo sin peligro inmediato o cansancio manda
-                ar = acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7))
+                # Urgencia mayor cuando es refugio directo sin peligro inmediato o cansancio/cobijo manda
+                ar = acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7, nec_cobijo * 0.85))
                 self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.7, "volver al hogar", clase=puerta.clase)
+        elif nec_cobijo >= 0.35 and cobijo_actual < 0.75 and peligro < 0.4:
+            # Tigmotaxis local: acercarse a una casilla vecina con mayor cobijo natural
+            refugio_local = mejor(
+                [l for l in lugares(ctx) if l.rasgo("cobijo") > cobijo_actual + 0.1 and l.rasgo("peligro") < 0.3],
+                lambda l: l.rasgo("cobijo") - l.rasgo("peligro"),
+            )
+            if refugio_local is not None:
+                ar = acotar(0.25 + 0.4 * nec_cobijo * refugio_local.rasgo("cobijo"))
+                self.proponer(ctx, Verbo.MOVER, refugio_local.id, ar, 0.65, "tigmotaxis: buscar cobijo", clase=refugio_local.clase)
         if cansancio >= 0.6 and peligro < 0.3 and (hogar is None or hogar == aqui or cansancio >= 0.85):
             ar = acotar(0.4 + 0.5 * cansancio)
             self.registrar(ctx, self.pieza(ctx, "descansar", arousal=ar, carga={"en_hogar": hogar == aqui}))
             self.proponer(ctx, Verbo.DORMIR, aqui, ar, 0.8, "cansancio: dormir" + (" en el hogar" if hogar == aqui else ""))
+        elif nec_cobijo >= 0.5 and cobijo_actual >= 0.75 and peligro < 0.3:
+            # A cubierto de noche: permanecer resguardado o descansar
+            ar = acotar(0.45 + 0.4 * nec_cobijo)
+            verbo_ref = Verbo.DORMIR if cansancio >= 0.25 else Verbo.ESPERAR
+            self.proponer(ctx, verbo_ref, aqui, ar, 0.8, "refugio: resguardarse a cubierto")
 
 
 class Orientacion(Componente):

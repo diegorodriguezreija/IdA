@@ -182,6 +182,8 @@ class Organismo:
             if self._ubicacion_previa and self._ubicacion_previa != ubicacion:
                 self.memoria.registrar_transicion(self._ubicacion_previa, ubicacion, ctx.latido)
             self._ubicacion_previa = ubicacion
+            if ctx.observacion and ctx.observacion.cobijo > 0.0:
+                self.memoria.registrar_cobijo(ubicacion, ctx.observacion.cobijo)
             if ctx.observacion:
                 for e in ctx.observacion.entidades:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:

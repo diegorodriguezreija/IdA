@@ -40,6 +40,7 @@ class Observacion:
     vitales: Optional[Dict[str, float]] = None       # constantes propias del mundo (0-100), si las tiene
     dormido: Optional[bool] = None                   # si el mundo decide cuándo se duerme y se despierta
     luz: Optional[float] = None                      # nivel de luz ambiental en [0, 1] si existe ciclo diurno
+    cobijo: float = 0.0                              # protección percibida de la ubicación actual en [0, 1]
     mensaje: str = ""                                # texto libre para la consola
 
 

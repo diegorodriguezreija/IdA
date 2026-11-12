@@ -198,6 +198,7 @@ class Memoria:
         self.saber: Dict[Tuple[str, Relacion], Proposicion] = {}
         self.registros: Dict[Tuple[Verbo, str], Registro] = {}
         self.lugares: Dict[str, float] = {}            # bienestar recordado por lugar (hogar)
+        self.cobijo_lugares: Dict[str, float] = {}     # cobijo percibido por lugar (tigmotaxis)
         self.clases_vistas: Dict[str, int] = {}        # familiaridad por clase
         self.mapa: Dict[str, Dict[str, Arista]] = {}   # grafo de transiciones (hipocampo)
         self.mapa_valores: Dict[str, float] = {}       # valor atribuido a lugares por replay
@@ -359,7 +360,19 @@ class Memoria:
         previo = self.lugares.get(lugar, 0.0)
         self.lugares[lugar] = 0.7 * previo + 0.3 * bienestar
 
-    def hogar(self) -> Optional[str]:
+    def registrar_cobijo(self, lugar: str, cobijo: float) -> None:
+        if not self.activa or not lugar:
+            return
+        if cobijo > 0.0:
+            self.cobijo_lugares[lugar] = acotar(cobijo)
+        elif lugar in self.cobijo_lugares:
+            del self.cobijo_lugares[lugar]
+
+    def hogar(self, necesidad_cobijo: float = 0.0) -> Optional[str]:
+        if necesidad_cobijo >= 0.35 and self.cobijo_lugares:
+            candidatos = [l for l, c in self.cobijo_lugares.items() if c >= 0.5]
+            if candidatos:
+                return max(candidatos, key=lambda l: 0.5 * self.lugares.get(l, 0.0) + self.cobijo_lugares[l])
         if not self.lugares:
             return None
         lugar, valor = max(self.lugares.items(), key=lambda kv: kv[1])

@@ -198,6 +198,34 @@ class MundoCrafter(Mundo):
             return min(1.0, max(0.1, (9 - inv["food"]) / 9 * urgencia_reparacion))
         return 0.0
 
+    def _transitable(self, c: Tuple[int, int]) -> bool:
+        w = self.env._world
+        if not (0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1]):
+            return False
+        mat, obj = w[c]
+        if mat not in self.constantes.walkable:
+            return False
+        return obj is None or obj is self.jugador
+
+    def _cobijo(self, pos: Tuple[int, int]) -> float:
+        """Cobijo percibido [0, 1] evaluando si el recinto transitable de hasta 2 casillas está cerrado."""
+        abiertos = []
+        for dx, dy in MOVIMIENTOS:
+            v = (int(pos[0] + dx), int(pos[1] + dy))
+            if self._transitable(v):
+                abiertos.append(v)
+        if not abiertos:
+            return 1.0
+        if len(abiertos) == 1:
+            n1 = abiertos[0]
+            cerrados_n1 = sum(
+                1 for dx, dy in MOVIMIENTOS
+                if (int(n1[0] + dx), int(n1[1] + dy)) != (int(pos[0]), int(pos[1]))
+                and not self._transitable((int(n1[0] + dx), int(n1[1] + dy)))
+            )
+            return round((3 + cerrados_n1) / 6.0, 3)
+        return round((4 - len(abiertos)) / 8.0, 3)
+
     def observar(self) -> Observacion:
         p = self.jugador
         pos = tuple(p.pos)
@@ -230,8 +258,12 @@ class MundoCrafter(Mundo):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
-            entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
-                                                                       "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
+            entidades.append(Entidad(
+                f"celda_{c[0]}_{c[1]}",
+                "suelo",
+                {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro, "nutritivo": nutritivo, "novedad": novedad, "cobijo": self._cobijo(c)},
+                {"pos": c},
+            ))
 
         return Observacion(
             ubicacion=f"celda_{pos[0]}_{pos[1]}",
@@ -239,6 +271,7 @@ class MundoCrafter(Mundo):
             vitales=self._vitales(),
             dormido=bool(p.sleeping),
             luz=float(w.daylight),
+            cobijo=self._cobijo((int(pos[0]), int(pos[1]))),
         )
 
     # --- acción --------------------------------------------------------------

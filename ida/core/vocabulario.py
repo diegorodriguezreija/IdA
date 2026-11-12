@@ -36,6 +36,7 @@ RASGOS = (
     "recurso",     # utilidad instrumental (sirve para algo aunque no se coma)
     "lugar",       # es un destino al que se puede ir
     "agente",      # actúa por sí mismo
+    "cobijo",      # protección física del entorno inmediato (tigmotaxis)
 )
 
 
