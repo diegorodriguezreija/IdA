@@ -223,6 +223,7 @@ class MundoCrafter(Mundo):
         adyacentes_deseables = {c[1] for c, _ in deseables if _dist(pos, c[2]) <= 1}
         hostiles = [c for c in cosas if c[1] in HOSTILES]
         w = self.env._world
+        fx, fy = tuple(p.facing)
         for (dx, dy), _ in MOVIMIENTOS.items():
             c = (pos[0] + dx, pos[1] + dy)
             if not (0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1]):
@@ -238,7 +239,10 @@ class MundoCrafter(Mundo):
                 if _dist(c, dpos) < _dist(pos, dpos):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
-            novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
+            novedad_base = 1.0 if ultima is None else min(0.45, (self.t - ultima) / 250.0)
+            dot = dx * fx + dy * fy
+            sesgo_rumbo = 0.0 if dot > 0 else (-0.06 if dot == 0 else -0.22)
+            novedad = max(0.0, min(1.0, novedad_base + sesgo_rumbo))
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
 
@@ -539,16 +543,16 @@ class PlanTecnologico(Componente):
                     lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
                     puerta = next((l for l in lugares if l.id == salto), None)
                     if puerta is not None:
-                        self.proponer(ctx, Verbo.MOVER, puerta.id, 0.45, 0.7, f"hipocampo: ir a por {recurso}", clase=puerta.clase)
+                        self.proponer(ctx, Verbo.MOVER, puerta.id, 0.52, 0.7, f"hipocampo: ir a por {recurso}", clase=puerta.clase)
             return
         objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
         if objetivo.rasgo("proximidad") >= 0.9:
-            self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, 0.75, f"plan: conseguir {recurso}", clase=clase)
+            self.proponer(ctx, Verbo.COGER, objetivo.id, 0.56, 0.75, f"plan: conseguir {recurso}", clase=clase)
             return
         destino_pos = objetivo.carga["datos"]["pos"]
         pos = tuple(self.mundo.jugador.pos)
         lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
         mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
         if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
-            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
+            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.52, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
 
