@@ -15,7 +15,7 @@
 import math
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
-from ida.core.pieza import acotar
+from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas.comun import al_alcance, alarma, apetito, lugares, mejor, objetos
 
@@ -109,7 +109,15 @@ class Curiosidad(Componente):
         if peligro >= 0.3 or ctx.soma.hambre() >= 0.6:
             return
         apertura = ctx.arquetipo.apertura
-        nuevo = mejor(lugares(ctx), lambda l: l.rasgo("novedad") - l.rasgo("peligro"))
+
+        def _score_lugar(l: Pieza) -> float:
+            s = l.rasgo("novedad") - l.rasgo("peligro")
+            if ctx.con_experiencia and ctx.memoria.activa:
+                val = ctx.memoria.valor_lugar(l.id)
+                s += max(-0.4, min(0.3, val * 0.15))
+            return s
+
+        nuevo = mejor(lugares(ctx), _score_lugar)
         if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5:
             ar = acotar(0.15 + 0.25 * apertura * nuevo.rasgo("novedad"))
             self.registrar(ctx, self.pieza(ctx, "curiosidad", arousal=ar, carga={"hacia": nuevo.id}))
