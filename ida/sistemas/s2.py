@@ -184,12 +184,21 @@ class Orientacion(Componente):
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         if not aqui:
             return
-        for (clase, rel), prop in ctx.memoria.saber.items():
-            if rel != Relacion.NUTRITIVO or prop.confianza < 0.55:
-                continue
-            if ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido):
-                continue
+        candidatos = sorted(
+            (
+                (clase, prop)
+                for (clase, rel), prop in ctx.memoria.saber.items()
+                if rel == Relacion.NUTRITIVO
+                and prop.confianza >= 0.55
+                and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)
+            ),
+            key=lambda item: -item[1].confianza,
+        )
+        for clase, prop in candidatos:
             destino = ctx.memoria.donde_esta(clase)
+            if destino == aqui and not any(o.clase == clase for o in objetos(ctx)):
+                ctx.memoria.olvidar_donde(clase)
+                continue
             if destino and destino != aqui:
                 salto = ctx.memoria.ruta(aqui, destino)
                 if salto:

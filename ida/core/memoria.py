@@ -407,6 +407,9 @@ class Memoria:
         rec = self.donde.get(clase)
         return rec.ubicacion if rec is not None else None
 
+    def olvidar_donde(self, clase: str) -> None:
+        self.donde.pop(clase, None)
+
     def valor_lugar(self, lugar: str) -> float:
         return self.mapa_valores.get(lugar, 0.0)
 
