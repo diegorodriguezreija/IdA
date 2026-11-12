@@ -459,7 +459,7 @@ class RefugioCrafter(Componente):
                     self.proponer(ctx, Verbo.COGER, piedras[0].id, 0.62, 0.85, "refugio: abrir salida al amanecer", clase="piedra")
             return
 
-        if luz >= 0.55:
+        if luz >= 0.60:
             return
 
         # Al anochecer/noche: si ya está en recinto cerrado, dormir o aguardar a salvo
@@ -473,17 +473,40 @@ class RefugioCrafter(Componente):
         if inv.get("stone", 0) < 1:
             return
 
-        fx, fy = tuple(self.mundo.jugador.facing)
-        frente = (pos[0] + fx, pos[1] + fy)
-        if self.mundo._transitable(frente) and (
-            self.mundo._paredes_vecinas(pos) >= 1 or self.mundo._paredes_vecinas(frente) >= 1 or inv.get("stone", 0) >= 6
-        ):
-            self.proponer(ctx, Verbo.USAR, "place_stone", 0.60, 0.82, "refugio: colocar piedra", clase="piedra", receta="place_stone")
-            return
+        paredes_aqui = self.mundo._paredes_vecinas(pos)
+        if luz < 0.55:
+            fx, fy = tuple(self.mundo.jugador.facing)
+            frente = (pos[0] + fx, pos[1] + fy)
+            if self.mundo._transitable(frente) and (
+                paredes_aqui >= 1 or self.mundo._paredes_vecinas(frente) >= 1 or inv.get("stone", 0) >= 6
+            ):
+                self.proponer(ctx, Verbo.USAR, "place_stone", 0.60, 0.82, "refugio: colocar piedra", clase="piedra", receta="place_stone")
+                return
 
         lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-        if lugares:
-            mejor = max(lugares, key=lambda l: (self.mundo._paredes_vecinas(l.carga["datos"]["pos"]), -l.rasgo("peligro")))
+        if not lugares:
+            return
+
+        # Si está en campo abierto sin paredes vecinas, acercarse al obstáculo natural más próximo (roca/árbol/agua)
+        if paredes_aqui == 0:
+            paredes_vis = [p for p in ctx.onda.ev("Escena").values()
+                           if p.clase in ("piedra", "arbol", "agua", "mesa", "horno") and p.rasgo("lugar") < 0.5]
+            if paredes_vis:
+                objetivo = max(paredes_vis, key=lambda p: p.rasgo("proximidad"))
+                dpos = objetivo.carga["datos"]["pos"]
+                mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], dpos))
+                if _dist(mejor.carga["datos"]["pos"], dpos) < _dist(pos, dpos):
+                    self.proponer(ctx, Verbo.MOVER, mejor.id, 0.54, 0.78, "refugio: acercarse a pared natural", clase=mejor.clase)
+                    return
+
+        if luz < 0.55:
+            def _score_rincón(l: Any) -> Tuple[int, int, float]:
+                lx, ly = l.carga["datos"]["pos"]
+                tras = (2 * lx - pos[0], 2 * ly - pos[1])
+                frente_abierto = 1 if self.mundo._transitable(tras) else 0
+                return (self.mundo._paredes_vecinas((lx, ly)), frente_abierto, -l.rasgo("peligro"))
+
+            mejor = max(lugares, key=_score_rincón)
             self.proponer(ctx, Verbo.MOVER, mejor.id, 0.54, 0.78, "refugio: buscar rincón o girar", clase=mejor.clase)
 
 
@@ -540,9 +563,9 @@ class PlanTecnologico(Componente):
                 return True
         hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Escena").values())
         luz = float(self.mundo.env._world.daylight)
-        if inv.get("energy", 9) <= 6 and luz >= 0.5 and not hostiles:
-            # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
-            self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
+        if inv.get("energy", 9) <= 2 and luz >= 0.5 and not hostiles:
+            # Solo dormir de día si está realmente agotado; si no, aprovechar el día para acopiar.
+            self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día por agotamiento", clase="")
             return True
         if luz >= 0.45 and not hostiles and ctx.soma.alimentacion >= 65.0 and ctx.soma.vitalidad >= 60.0:
             tiene_pico = any(inv.get(k, 0) >= 1 for k in ("iron_pickaxe", "stone_pickaxe", "wood_pickaxe"))
@@ -583,6 +606,9 @@ class PlanTecnologico(Componente):
                 if receta.startswith("make_"):
                     cerca = self.mundo.constantes.make[receta[5:]]["nearby"]
                     if not self._cerca(cerca):
+                        if receta in ("make_stone_pickaxe", "make_stone_sword") and inv.get("stone", 0) < 5:
+                            self._buscar(ctx, "stone")
+                            return
                         # La mesa o el horno necesarios están lejos: usar el mapa cognitivo (hipocampo) para orientarse
                         # hacia ellos en vez de congelarse sin candidatos.
                         if self._ir_hacia_estructura(ctx, cerca[0]):
