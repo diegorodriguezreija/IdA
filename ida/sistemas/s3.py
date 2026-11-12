@@ -263,13 +263,13 @@ class Estudio(Componente):
                         mem.ultimo_fin_lectura = ctx.latido
                         return
 
-            # Sigue leyendo: proponer LEER con arousal moderado y confianza media
+            # Sigue leyendo: proponer LEER con arousal bajo y confianza moderada
             self.proponer(
                 ctx,
                 Verbo.LEER,
                 "biblioteca",
-                arousal=0.25,
-                confianza=0.6,
+                arousal=0.18,
+                confianza=0.55,
                 motivo=f"estudio: leyendo ({reg.latidos_dedicados}/{reg.duracion_requerida})",
             )
             return
@@ -279,11 +279,14 @@ class Estudio(Componente):
         peligro = al.carga.get("peligro", 0.0) if al else 0.0
         if peligro >= 0.2:
             return
-        if ctx.soma.hambre() >= 0.5 or ctx.soma.cansancio() >= 0.5:
+        if ctx.soma.hambre() >= 0.35 or ctx.soma.cansancio() >= 0.4:
             return
         if ctx.soma.afecto not in (Afecto.CALMA, Afecto.CURIOSIDAD):
             return
         if ctx.latido - mem.ultimo_fin_lectura < self.COOLDOWN_LECTURA:
+            return
+        # No empezar a leer si hay un recurso útil o alimento visible en la escena actual
+        if any(o.rasgo("nutritivo") >= 0.4 or o.rasgo("recurso") >= 0.4 for o in objetos(ctx)):
             return
 
         # 3a. Relectura de registro disponible previo interrumpido
@@ -297,8 +300,8 @@ class Estudio(Componente):
                     ctx,
                     Verbo.LEER,
                     "biblioteca",
-                    arousal=0.25,
-                    confianza=0.6,
+                    arousal=0.18,
+                    confianza=0.55,
                     motivo=f"estudio: relectura (0/{reg_prev.duracion_requerida})",
                 )
                 return
@@ -310,11 +313,14 @@ class Estudio(Componente):
         consultadas_recientes = {
             par for r in mem.lecturas[-5:] for par in r.elementos
         }
-        hipotesis = [
-            p for p in mem.saber.values()
-            if p.estado(ctx.latido) == EstadoSaber.HIPOTESIS
-            and (p.sujeto, p.relacion.name) not in consultadas_recientes
-        ]
+        hipotesis = sorted(
+            (
+                p for p in mem.saber.values()
+                if p.estado(ctx.latido) == EstadoSaber.HIPOTESIS
+                and (p.sujeto, p.relacion.name) not in consultadas_recientes
+            ),
+            key=lambda p: (p.confirmaciones + p.refutaciones, abs(p.confianza - 0.5)),
+        )
         if not hipotesis:
             return
 
@@ -337,8 +343,8 @@ class Estudio(Componente):
             ctx,
             Verbo.LEER,
             "biblioteca",
-            arousal=0.25,
-            confianza=0.6,
+            arousal=0.18,
+            confianza=0.55,
             motivo=f"estudio: lectura (0/{duracion})",
         )
 
