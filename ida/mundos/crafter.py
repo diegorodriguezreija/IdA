@@ -27,7 +27,9 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
-from ida.core.vocabulario import Verbo
+from ida.core.pieza import acotar
+from ida.core.vocabulario import Relacion, Verbo
+from ida.sistemas.comun import alarma, lugares
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}
@@ -244,6 +246,7 @@ class MundoCrafter(Mundo):
         deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) > 0.1]
         hostiles = [c for c in cosas if c[1] in HOSTILES]
         w = self.env._world
+        frente = (int(pos[0] + p.facing[0]), int(pos[1] + p.facing[1]))
         for (dx, dy), _ in MOVIMIENTOS.items():
             c = (pos[0] + dx, pos[1] + dy)
             if not (0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1]):
@@ -262,7 +265,7 @@ class MundoCrafter(Mundo):
                 f"celda_{c[0]}_{c[1]}",
                 "suelo",
                 {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro, "nutritivo": nutritivo, "novedad": novedad, "cobijo": self._cobijo(c)},
-                {"pos": c},
+                {"pos": c, "al_frente": c == frente},
             ))
 
         return Observacion(
@@ -363,7 +366,17 @@ class MundoCrafter(Mundo):
     def componentes_propios(self) -> Dict[str, list]:
         return {
             "S1.Reaccionar": [DefensaCrafter(self)],
-            "S3.Reaccionar": [PlanTecnologico(self)]
+            "S2.Reaccionar": [Anidar(self)],
+            "S3.Reaccionar": [PlanTecnologico(self)],
+        }
+
+    def dotacion_innata(self) -> Dict[str, Any]:
+        return {
+            "proposiciones": [
+                ("zombi", Relacion.PELIGROSO, 0.75),
+                ("esqueleto", Relacion.PELIGROSO, 0.75),
+            ],
+            "impulsos": {"anidar": 0.45},
         }
 
     # --- resultados y vista --------------------------------------------------
@@ -430,6 +443,77 @@ class DefensaCrafter(Componente):
             if mejor is not None and _dist(mejor.carga["datos"]["pos"], pos_esq) < _dist(pos, pos_esq):
                 self.proponer(ctx, Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
                 return
+
+
+class Anidar(Componente):
+    """Impulso de anidar (S2 · Reaccionar): busca cerrar un refugio con piedra y salir al amanecer."""
+
+    tipo = "MetaCobijo"
+
+    def __init__(self, mundo: MundoCrafter):
+        super().__init__("Anidar")
+        self.mundo = mundo
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.con_experiencia or ctx.soma.dormido:
+            return
+        inv = self.mundo.inventario()
+        nec = ctx.soma.necesidad_cobijo
+        cobijo_actual = ctx.observacion.cobijo if ctx.observacion else 0.0
+        luz = ctx.soma.luz if ctx.soma.luz is not None else 1.0
+        al = alarma(ctx)
+        peligro = al.carga["peligro"] if al else 0.0
+
+        # Al amanecer, si quedó encerrado en un refugio cerrado y tiene pico, abrir una salida
+        abiertos = lugares(ctx)
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("iron_pickaxe", "stone_pickaxe", "wood_pickaxe"))
+        if luz >= 0.65 and nec < 0.2 and cobijo_actual >= 0.99 and tiene_pico:
+            piedras = [p for p in ctx.onda.ev("Escena").values() if p.clase == "piedra" and p.rasgo("proximidad") >= 0.9]
+            if piedras:
+                self.proponer(ctx, Verbo.COGER, piedras[0].id, 0.58, 0.82, "amanecer: abrir salida del refugio", clase="piedra")
+                return
+
+        peso_innato = ctx.memoria.impulsos_innatos.get("anidar", 0.35)
+        tiene_refugio = any(c >= 0.85 for c in ctx.memoria.cobijo_lugares.values())
+        urgencia_noche = nec if (nec >= 0.35 and cobijo_actual < 0.99) else 0.0
+        impulso_dia = peso_innato * 0.7 if (luz >= 0.65 and peligro < 0.2 and ctx.soma.hambre() < 0.45 and not tiene_refugio) else 0.0
+        intensidad = max(urgencia_noche, impulso_dia)
+        if intensidad <= 0.0 or peligro >= 0.5:
+            return
+
+        # Si no tiene piedra, emitir meta con coste de atención para que PlanTecnologico la resuelva
+        if inv.get("stone", 0) == 0:
+            self.percibir(
+                ctx,
+                self.pieza(ctx, "meta_cobijo", arousal=acotar(intensidad), carga={"meta": "stone", "intensidad": round(intensidad, 3)}),
+            )
+            return
+
+        # Si tiene piedra y el recinto aún no está cerrado, colocar piedra delante o acomodarse en el nido
+        if cobijo_actual < 0.99 and abiertos:
+            frente_libre = next((l for l in abiertos if l.carga.get("datos", {}).get("al_frente")), None)
+            if frente_libre is not None and (cobijo_actual >= 0.25 or len(abiertos) <= 2 or inv.get("stone", 0) >= 3):
+                self.proponer(
+                    ctx,
+                    Verbo.USAR,
+                    "place_stone",
+                    acotar(0.35 + 0.45 * intensidad),
+                    0.75,
+                    "anidar: colocar piedra",
+                    clase="piedra",
+                    receta="place_stone",
+                )
+            elif len(abiertos) >= 1:
+                mejor_l = max(abiertos, key=lambda l: l.rasgo("cobijo") - l.rasgo("peligro"))
+                self.proponer(
+                    ctx,
+                    Verbo.MOVER,
+                    mejor_l.id,
+                    acotar(0.30 + 0.40 * intensidad),
+                    0.65,
+                    "anidar: acomodarse en el nido",
+                    clase=mejor_l.clase,
+                )
 
 
 class PlanTecnologico(Componente):
@@ -505,6 +589,11 @@ class PlanTecnologico(Componente):
         hecho = set(self.mundo.logros())
         if self._oportunidades(ctx, inv, hecho):
             return
+        meta = ctx.onda.ev("MetaCobijo").get("meta_cobijo")
+        if meta is not None and inv.get("stone", 0) == 0 and inv.get("wood_pickaxe", 0) >= 1:
+            intensidad = float(meta.carga.get("intensidad", 0.4))
+            self._buscar(ctx, "stone", arousal=acotar(0.45 + 0.30 * intensidad))
+            return
         for receta in self.OBJETIVOS:
             if receta in hecho or self.fallos.get(receta, 0) >= 3:
                 continue
@@ -556,7 +645,7 @@ class PlanTecnologico(Componente):
                     return True
         return False
 
-    def _buscar(self, ctx: Contexto, recurso: str) -> None:
+    def _buscar(self, ctx: Contexto, recurso: str, arousal: Optional[float] = None) -> None:
         clase = self.RECURSO.get(recurso)
         if clase is None:
             return
@@ -565,12 +654,12 @@ class PlanTecnologico(Componente):
             return
         objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
         if objetivo.rasgo("proximidad") >= 0.9:
-            self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, 0.75, f"plan: conseguir {recurso}", clase=clase)
+            self.proponer(ctx, Verbo.COGER, objetivo.id, arousal if arousal is not None else 0.5, 0.75, f"plan: conseguir {recurso}", clase=clase)
             return
         destino_pos = objetivo.carga["datos"]["pos"]
         pos = tuple(self.mundo.jugador.pos)
         lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
         mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
         if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
-            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
+            self.proponer(ctx, Verbo.MOVER, mejor.id, arousal if arousal is not None else 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
 

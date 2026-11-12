@@ -330,3 +330,54 @@ def test_arquetipos_distintos_por_individuo():
 def test_entidad_rechaza_rasgos_desconocidos():
     with pytest.raises(ValueError):
         Entidad("x", "cosa", {"brillo": 1.0})
+
+
+# --- Fase 5: Ritmo circadiano, cobijo e instinto -----------------------------
+def test_ritmo_circadiano_y_etiqueta():
+    s = Soma()
+    p_off = Perfil(ciclo_diurno=False)
+    s.sincronizar_luz(0.1)
+    s.modular_circadiano(p_off)
+    assert s.necesidad_cobijo == 0.0 and s.factor_curiosidad == 1.0 and s.alerta_circadiana == 0.0
+
+    p_on = Perfil(ciclo_diurno=True)
+    s.sincronizar_luz(0.9)
+    s.modular_circadiano(p_on)
+    assert s.etiqueta_luz() == "día"
+    assert s.factor_curiosidad > 1.0 and s.necesidad_cobijo == 0.0
+
+    # Atardecer con tendencia negativa anticipa alerta y necesidad de cobijo
+    s.sincronizar_luz(0.55)
+    s.modular_circadiano(p_on)
+    assert s.etiqueta_luz() == "atardecer"
+    assert s.alerta_circadiana > 0.0 and s.necesidad_cobijo > 0.0
+
+    # Noche inhibe curiosidad y sube necesidad de cobijo
+    s.sincronizar_luz(0.15)
+    s.modular_circadiano(p_on)
+    assert s.etiqueta_luz() == "noche"
+    assert s.factor_curiosidad < 1.0 and s.necesidad_cobijo > 0.5
+
+
+def test_memoria_cobijo_seleccion_refugio():
+    mem = Memoria()
+    mem.recordar_lugar("abierto", 0.8)
+    mem.registrar_cobijo("cueva", 1.0)
+    assert mem.hogar(0.0) == "abierto"
+    assert mem.hogar(0.6) == "cueva"
+
+
+def test_dotacion_innata_instinto_refutable():
+    mem = Memoria()
+    mem.aplicar_dotacion({
+        "proposiciones": [("depredador", Relacion.PELIGROSO, 0.75)],
+        "impulsos": {"anidar": 0.45},
+    })
+    assert mem.impulsos_innatos["anidar"] == 0.45
+    p = mem.proposicion("depredador", Relacion.PELIGROSO)
+    assert p is not None and p.instinto and "instinto" in p.texto(1)
+    assert p.estado(1) == EstadoSaber.HIPOTESIS
+    for lat in range(1, 6):
+        p.refutar(lat)
+    assert p.confianza < 0.5
+
