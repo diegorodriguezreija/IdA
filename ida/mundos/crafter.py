@@ -337,8 +337,35 @@ class MundoCrafter(Mundo):
     def componentes_propios(self) -> Dict[str, list]:
         return {
             "S1.Reaccionar": [DefensaCrafter(self)],
-            "S3.Reaccionar": [PlanTecnologico(self)]
+            "S2.Reaccionar": [RefugioCrafter(self)],
+            "S3.Reaccionar": [PlanTecnologico(self)],
         }
+
+    def _transitable(self, c: Pos) -> bool:
+        w = self.env._world
+        if not (0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1]):
+            return False
+        mat, obj = w[c]
+        return mat in self.constantes.walkable and obj is None
+
+    def _paredes_vecinas(self, c: Pos) -> int:
+        return sum(0 if self._transitable((c[0] + dx, c[1] + dy)) else 1 for dx, dy in MOVIMIENTOS)
+
+    def _en_recinto_cerrado(self, pos: Pos, max_casillas: int = 4) -> bool:
+        """True si ``pos`` pertenece a un recinto transitable cerrado de hasta ``max_casillas``."""
+        visitadas = {pos}
+        cola = collections.deque([pos])
+        while cola:
+            actual = cola.popleft()
+            for dx, dy in MOVIMIENTOS:
+                vec = (actual[0] + dx, actual[1] + dy)
+                if vec in visitadas or not self._transitable(vec):
+                    continue
+                visitadas.add(vec)
+                if len(visitadas) > max_casillas:
+                    return False
+                cola.append(vec)
+        return True
 
     # --- resultados y vista --------------------------------------------------
     def logros(self) -> List[str]:
@@ -406,6 +433,60 @@ class DefensaCrafter(Componente):
                 return
 
 
+class RefugioCrafter(Componente):
+    """Componente propio de Crafter (S2 · Reaccionar): refugio nocturno con piedra y salida al amanecer."""
+
+    tipo = "Refugio"
+
+    def __init__(self, mundo: MundoCrafter):
+        super().__init__("RefugioCrafter")
+        self.mundo = mundo
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if ctx.soma.dormido:
+            return
+        inv = self.mundo.inventario()
+        pos = tuple(self.mundo.jugador.pos)
+        luz = float(self.mundo.env._world.daylight)
+        cerrado = self.mundo._en_recinto_cerrado(pos)
+
+        # Al amanecer, abrir salida picando una piedra adyacente si quedó encerrado
+        if luz >= 0.60 and cerrado:
+            tiene_pico = any(inv.get(k, 0) >= 1 for k in ("iron_pickaxe", "stone_pickaxe", "wood_pickaxe"))
+            if tiene_pico:
+                piedras = [p for p in ctx.onda.ev("Escena").values() if p.clase == "piedra" and p.rasgo("proximidad") >= 0.9]
+                if piedras:
+                    self.proponer(ctx, Verbo.COGER, piedras[0].id, 0.62, 0.85, "refugio: abrir salida al amanecer", clase="piedra")
+            return
+
+        if luz >= 0.55:
+            return
+
+        # Al anochecer/noche: si ya está en recinto cerrado, dormir o aguardar a salvo
+        if cerrado:
+            if inv.get("energy", 9) < 9:
+                self.proponer(ctx, Verbo.DORMIR, "", 0.65, 0.90, "refugio: dormir a salvo", clase="")
+            else:
+                self.proponer(ctx, Verbo.ESPERAR, "", 0.55, 0.85, "refugio: aguardar al amanecer", clase="")
+            return
+
+        if inv.get("stone", 0) < 1:
+            return
+
+        fx, fy = tuple(self.mundo.jugador.facing)
+        frente = (pos[0] + fx, pos[1] + fy)
+        if self.mundo._transitable(frente) and (
+            self.mundo._paredes_vecinas(pos) >= 1 or self.mundo._paredes_vecinas(frente) >= 1 or inv.get("stone", 0) >= 6
+        ):
+            self.proponer(ctx, Verbo.USAR, "place_stone", 0.60, 0.82, "refugio: colocar piedra", clase="piedra", receta="place_stone")
+            return
+
+        lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+        if lugares:
+            mejor = max(lugares, key=lambda l: (self.mundo._paredes_vecinas(l.carga["datos"]["pos"]), -l.rasgo("peligro")))
+            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.54, 0.78, "refugio: buscar rincón o girar", clase=mejor.clase)
+
+
 class PlanTecnologico(Componente):
     """Componente propio de Crafter (S3 · Reaccionar): avanza por el árbol tecnológico del juego.
 
@@ -458,10 +539,24 @@ class PlanTecnologico(Componente):
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
         hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Escena").values())
-        if inv.get("energy", 9) <= 6 and self.mundo.env._world.daylight >= 0.5 and not hostiles:
+        luz = float(self.mundo.env._world.daylight)
+        if inv.get("energy", 9) <= 6 and luz >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
             self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
             return True
+        if luz >= 0.45 and not hostiles and ctx.soma.alimentacion >= 65.0 and ctx.soma.vitalidad >= 60.0:
+            tiene_pico = any(inv.get(k, 0) >= 1 for k in ("iron_pickaxe", "stone_pickaxe", "wood_pickaxe"))
+            if tiene_pico and inv.get("stone", 0) < 9:
+                for p in ctx.onda.ev("Escena").values():
+                    if p.clase == "piedra" and p.rasgo("proximidad") >= 0.9 and self.fallos.get(p.id, 0) < 3:
+                        self.proponer(ctx, Verbo.COGER, p.id, 0.58, 0.8, "plan: acopiar piedra", clase="piedra")
+                        return True
+            tope_madera = 9 if tiene_pico else 5
+            if inv.get("wood", 0) < tope_madera:
+                for p in ctx.onda.ev("Escena").values():
+                    if p.clase == "arbol" and p.rasgo("proximidad") >= 0.9 and self.fallos.get(p.id, 0) < 3:
+                        self.proponer(ctx, Verbo.COGER, p.id, 0.57, 0.8, "plan: acopiar madera", clase="arbol")
+                        return True
         if "collect_sapling" not in hecho and inv.get("sapling", 0) == 0:
             w, (px, py) = self.mundo.env._world, self.mundo.jugador.pos
             fx, fy = self.mundo.jugador.facing
@@ -480,6 +575,8 @@ class PlanTecnologico(Componente):
             return
         for receta in self.OBJETIVOS:
             if receta in hecho or self.fallos.get(receta, 0) >= 3:
+                continue
+            if receta == "place_stone" and float(self.mundo.env._world.daylight) >= 0.55:
                 continue
             usos = self._falta(receta)
             if all(inv.get(k, 0) >= v for k, v in usos.items()):
