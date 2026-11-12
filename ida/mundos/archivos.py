@@ -80,6 +80,8 @@ class MundoArchivos(Mundo):
         self.t = 0
         self.mochila: Optional[Dict[str, Any]] = None
         self.comido: Dict[str, int] = {}
+        self.nutritivos = 0
+        self.toxicos = 0
 
     # --- seguridad -----------------------------------------------------------
     def _seguro(self, ruta: str) -> str:
@@ -116,6 +118,8 @@ class MundoArchivos(Mundo):
         self._escribir(self.raiz, "musgo_suave.env", AMBIENTE["musgo_suave.env"])
         self.actual = self.raiz
         self.visitas, self.vistos, self.t, self.mochila, self.comido = {"raiz": 0}, {}, 0, None, {}
+        self.nutritivos = 0
+        self.toxicos = 0
 
     def _poblar(self, carpeta: str, bioma: str) -> None:
         az = self.azar
@@ -244,8 +248,10 @@ class MundoArchivos(Mundo):
         clase = clase_de(nombre)
         self.comido[clase] = self.comido.get(clase, 0) + 1
         if ALCALOIDE[:8] in bocado:
+            self.toxicos += 1
             return Efecto(True, {"vitalidad": -10.0, "alimentacion": -4.0}, obtenido=clase, mensaje="alcaloide tóxico")
         if NUTRIENTE[:8] in bocado or bocado.startswith("0101"):
+            self.nutritivos += 1
             return Efecto(True, {"alimentacion": 8.0}, obtenido=clase)
         return Efecto(True, obtenido=clase, mensaje="no alimenta")
 
@@ -271,7 +277,7 @@ class MundoArchivos(Mundo):
 
     # --- resultados y vista --------------------------------------------------
     def puntuacion(self) -> Dict[str, Any]:
-        return {"comido": dict(self.comido)}
+        return {"comido": dict(self.comido), "nutritivos": self.nutritivos, "toxicos": self.toxicos}
 
     def vista(self) -> str:
         lineas = []
