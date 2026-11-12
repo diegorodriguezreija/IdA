@@ -1,7 +1,7 @@
 """El cuerpo: constantes vitales, química, indicadores generales y presupuesto del latido."""
 
 from dataclasses import dataclass, field
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Afecto
@@ -26,6 +26,9 @@ class Soma:
     agotado_previo: bool = False               # el latido anterior agotó la amplitud
     luz: Optional[float] = None                # luz ambiental percibida en [0, 1]
     luz_tendencia: float = 0.0                 # media móvil exponencial de la variación de luz
+    alerta_circadiana: float = 0.0             # alerta anticipatoria al crepúsculo/noche en [0, 1]
+    necesidad_cobijo: float = 0.0              # impulso homeostático de cobijo en [0, 1]
+    factor_curiosidad: float = 1.0             # modulador diurno/nocturno de la curiosidad
 
     DOPAMINA_BASAL = 35.0
     HAMBRE_CRITICA = 15.0
@@ -105,6 +108,51 @@ class Soma:
             return "amanecer" if self.luz_tendencia >= 0.0 else "atardecer"
         return "día"
 
+    def modular_circadiano(self, perfil: Any) -> None:
+        """Modulación circadiana genérica: anticipa el crepúsculo, regula curiosidad y genera necesidad de cobijo."""
+        if not getattr(perfil, "ciclo_diurno", False) or self.luz is None:
+            self.alerta_circadiana = 0.0
+            self.necesidad_cobijo = 0.0
+            self.factor_curiosidad = 1.0
+            return
+
+        u_crep = float(getattr(perfil, "umbral_luz_crepusculo", 0.65))
+        u_noch = float(getattr(perfil, "umbral_luz_noche", 0.30))
+        g_alerta = float(getattr(perfil, "ganancia_alerta_crepusculo", 0.25))
+        g_dia = float(getattr(perfil, "ganancia_curiosidad_diurna", 1.25))
+        g_noche = float(getattr(perfil, "inhibicion_curiosidad_nocturna", 0.45))
+
+        # 1. Alerta anticipatoria por tendencia negativa de la luz o nivel nocturno
+        alerta = 0.0
+        if self.luz_tendencia < 0.0 and self.luz < u_crep:
+            caida = acotar((-self.luz_tendencia) / 0.02)
+            nivel = acotar((u_crep - self.luz) / max(0.05, u_crep))
+            alerta = acotar(g_alerta * max(caida, nivel))
+        if self.luz < u_noch:
+            oscuridad = acotar((u_noch - self.luz) / max(0.05, u_noch))
+            alerta = max(alerta, acotar(g_alerta * (0.5 + 0.5 * oscuridad)))
+        self.alerta_circadiana = alerta
+
+        # 2. Necesidad de cobijo en [0, 1]: sube en crepúsculo descendente y alcanza máximo nocturno
+        rango = max(0.05, u_crep - u_noch * 0.5)
+        nivel_cobijo = acotar((u_crep - self.luz) / rango)
+        if self.luz < u_noch:
+            objetivo_cobijo = max(nivel_cobijo, 0.85)
+        elif self.luz_tendencia < 0.0 and self.luz < u_crep:
+            objetivo_cobijo = max(nivel_cobijo, 0.35)
+        else:
+            objetivo_cobijo = 0.0
+        self.necesidad_cobijo = acotar(0.6 * self.necesidad_cobijo + 0.4 * objetivo_cobijo)
+
+        # 3. Factor de curiosidad: alto de día en calma, inhibido de noche
+        if self.luz >= u_crep:
+            self.factor_curiosidad = g_dia
+        elif self.luz <= u_noch:
+            self.factor_curiosidad = g_noche
+        else:
+            frac = acotar((self.luz - u_noch) / max(0.05, u_crep - u_noch))
+            self.factor_curiosidad = g_noche + frac * (1.0 - g_noche)
+
     def error_prediccion(self, rpe: float) -> None:
         """Dopamina: sube o baja con el error de predicción de recompensa."""
         self.dopamina = acotar(self.dopamina + rpe, 0.0, 100.0)
@@ -112,7 +160,8 @@ class Soma:
     # --- indicadores y afecto ----------------------------------------------
     def actualizar_indicadores(self, peligro: float, tension: float, novedad: float) -> None:
         """Los tres indicadores generales (peligro, tensión, calma), con el arousal como base."""
-        urgencia = max(peligro, self.hambre() if self.alimentacion <= self.HAMBRE_CRITICA else 0.0)
+        peligro_total = max(peligro, self.alerta_circadiana)
+        urgencia = max(peligro_total, self.hambre() if self.alimentacion <= self.HAMBRE_CRITICA else 0.0)
         self.estres = acotar(0.7 * self.estres + 0.3 * urgencia)
         calma = acotar(1.0 - max(peligro, tension, self.estres))
         self.indicadores = {"peligro": round(peligro, 3), "tension": round(tension, 3), "calma": round(calma, 3)}

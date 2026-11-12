@@ -119,9 +119,10 @@ class Curiosidad(Componente):
 
         nuevo = mejor(lugares(ctx), _score_lugar)
         if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5:
-            ar = acotar(0.15 + 0.25 * apertura * nuevo.rasgo("novedad"))
+            ar = acotar((0.15 + 0.25 * apertura * nuevo.rasgo("novedad")) * ctx.soma.factor_curiosidad)
+            conf = acotar(0.5 * ctx.soma.factor_curiosidad)
             self.registrar(ctx, self.pieza(ctx, "curiosidad", arousal=ar, carga={"hacia": nuevo.id}))
-            self.proponer(ctx, Verbo.MOVER, nuevo.id, ar, 0.5, "curiosidad: explorar", clase=nuevo.clase)
+            self.proponer(ctx, Verbo.MOVER, nuevo.id, ar, conf, "curiosidad: explorar", clase=nuevo.clase)
         util = mejor([o for o in objetos(ctx) if al_alcance(o) and o.rasgo("recurso") >= 0.4 and o.rasgo("peligro") < 0.3],
                      lambda o: o.rasgo("recurso") + o.rasgo("novedad"))
         if util is not None and ctx.soma.cargando is None:

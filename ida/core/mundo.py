@@ -68,6 +68,11 @@ class Perfil:
     peso_experiencia: float = 0.15    # cuánto sesga la experiencia las puntuaciones del Tribunal
     vitales_propios: bool = False     # el mundo marca las constantes del cuerpo (no el metabolismo interno)
     ciclo_diurno: bool = False        # el mundo tiene ciclo día/noche percibido mediante luz
+    ganancia_curiosidad_diurna: float = 1.25
+    inhibicion_curiosidad_nocturna: float = 0.45
+    umbral_luz_crepusculo: float = 0.65
+    umbral_luz_noche: float = 0.30
+    ganancia_alerta_crepusculo: float = 0.25
     umbral_apertura_episodio: float = 0.65
     latidos_por_episodio: int = 6
 

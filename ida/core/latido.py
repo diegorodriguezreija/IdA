@@ -101,6 +101,7 @@ class Organismo:
             soma.dormido = obs.dormido
         if self.perfil.ciclo_diurno:
             soma.sincronizar_luz(obs.luz)
+            soma.modular_circadiano(self.perfil)
         frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
         ctx = Contexto(
