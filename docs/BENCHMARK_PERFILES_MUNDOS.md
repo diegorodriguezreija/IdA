@@ -1,131 +1,100 @@
-# Investigación y Medición de Fitness por Perfiles y Mundos
+# Investigación de Perfiles, Linajes y Fitness por Mundo
 
-Evaluación sistemática multi-generacional por *batches* comparando **`main`** (`5c8ae1e`) frente a **`feature/ajustes-cognitivos`** (`cd2a8b7`, que integra las Fases 1, 2, 3, 4a y los ajustes en S2/S3). El objetivo es determinar empíricamente qué prototipo de arquetipo (Big Five) obtiene mejor desempeño y fitness en cada mundo para poder proponer configuraciones recomendadas en la antesala web.
-
----
-
-## 1. Metodología y Protocolo Experimental
-
-- **Fecha de medición:** 12 de noviembre de 2026 (Windows, Python 3.15).
-- **Aislamiento por semilla (*tabula rasa*):** cada pareja `(batch, semilla)` se ejecutó en un directorio temporal independiente (`tempfile.TemporaryDirectory()`), garantizando arranque desde cero sin contaminación entre semillas ni entre ramas.
-- **Linajes multi-generacionales:** en cada semilla se encadenaron varias generaciones sucesivas para permitir la herencia cultural (`legado()` / `heredar()`) y la mutación de arquetipos (`mutar()`):
-  - **`minimo`** y **`archivos`:** `3` semillas × `5` generaciones (`15` vidas por batch, límite `400` latidos/vida).
-  - **`crafter`:** `3` semillas × `4` generaciones (`12` vidas por batch, límite `600` latidos/vida).
-  - **`ajedrez`:** `3` semillas × `4` generaciones (`12` partidas por batch, límite `200` latidos/partida, dificultades `1` y `2`).
-  - **`snake`:** excluido de la batería automatizada por depender de navegador externo en tiempo real (`playsnake.org`). Al tener `duerme=False` y ausencia de biblioteca activa por defecto, mantiene invariancia conductual respecto a `main`.
-- **Cálculo de fitness:** fórmula oficial de [`calcular_fitness()`](file:///f:/code/IdA/ida/historico.py#L16-L51).
-
-### Prototipos de Arquetipo Evaluados
-
-| Prototipo | `apertura` | `responsabilidad` | `neuroticismo` | `extraversion` | `umbral_miedo` | Perfil conductual |
-|---|---:|---:|---:|---:|---:|---|
-| **A. Equilibrado** | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 | Línea base neutra por defecto |
-| **B. Explorador** | 0,85 | 0,30 | 0,35 | 0,70 | 0,70 | Alta curiosidad por lo nuevo, baja prudencia |
-| **C. Prudente** | 0,30 | 0,85 | 0,55 | 0,40 | 0,50 | Alto peso epistémico de lo aprendido y cautela |
-| **D. Valiente / Resiliente** | 0,60 | 0,65 | 0,20 | 0,60 | 0,85 | Resiste más tiempo antes de disparar reflejos de huida |
-| **E. Reactivo / Cauteloso** | 0,40 | 0,60 | 0,85 | 0,30 | 0,35 | Alta sensibilidad al peligro; huye muy temprano |
-| **F. Sin Experiencia** | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 | Control ablativo (`sin_experiencia=True`) |
-| **G. Bib. Fija** *(solo rama ajustes)* | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 | `Equilibrado` + `BibliotecaFija` con datos del mundo |
+Estudio empírico multi-generacional comparando **`main`** (`5c8ae1e`) frente a **`feature/ajustes-cognitivos`** (`2e03175`, que integra las Fases 1, 2, 3, 4a, los ajustes en S2/S3 y la corrección de fitness en `archivos`).
 
 ---
 
-## 2. Resumen Ejecutivo: Configuración Recomendada por Mundo (Antesala)
+## 1. Hallazgos Principales
 
-| Mundo | Prototipo Ganador | Fitness medio (`main` → `ajustes`) | Métrica clave del ganador | Por qué funciona mejor |
-|---|---|---:|---|---|
-| **Mínimo** | **E. Reactivo** | `780,40` → **`791,87`** | **387,87 latidos** · 24 setas en 15 vidas | El lobo es letal; huir en cuanto aparece (`umbral_miedo=0,35`, `neuroticismo=0,85`) casi duplica la supervivencia respecto al perfil equilibrado. |
-| **Archivos** | **E. Reactivo** *(o **D. Valiente**)* | `1023,33` → **`1028,20`** | **274,87 latidos** · 15,07 comidos/vida | Evita amenazas tempranas sin frenar la recolección; `Prudencia` ya filtra bien los tóxicos independientemente del arquetipo. |
-| **Crafter** | **D. Valiente** | `10 145,42` → **`10 403,25`** | **10,17 logros** (máx. 14) · 221,33 latidos | Un umbral de miedo alto (`0,85`) y bajo neuroticismo (`0,20`) evita el pánico prematuro y permite minar, fabricar y defenderse con espada. |
-| **Ajedrez** | **C. Prudente** | `3022,17` → **`3022,17`** | **12 V · 0 T · 0 D (100 % victorias en d1)** | La alta responsabilidad (`0,85`) y baja apertura (`0,30`) consolidan líneas sólidas sin distracciones exploratorias. |
+1. **El carácter pesa mucho más que las diferencias entre ramas, y su óptimo depende del mundo.**
+   - En **Mínimo**, el perfil **E. Reactivo** casi duplica la supervivencia del perfil **A. Equilibrado** (`365,90 ± 14,47` latidos frente a `171,57 ± 35,71` en `main`, intervalos al 95 % sin solapamiento).
+   - En **Crafter**, la relación se invierte: **D. Valiente** alcanza la mayor puntuación (`10,30`–`10,40` logros) y **E. Reactivo** queda por debajo (`8,57`–`8,90` logros), porque huir pronto frena la recolección y el avance tecnológico.
+   - Esta inversión entre mundos (análogo biológico al continuo audaz-tímido) refuerza la conveniencia de **poblaciones y selección natural** para que cada entorno seleccione el arquetipo adecuado sin tener que fijarlo a mano.
+2. **Equivalencia estadística entre `main` y `feature/ajustes-cognitivos`.**
+   - Con $N = 10$ linajes independientes por grupo, **todos los intervalos de confianza al 95 % de la diferencia pareada ($\Delta = \text{ajustes} - \text{main}$) incluyen el `0`** en `minimo`, `archivos` y `crafter` (y en `ajedrez` la invariancia es del 100 %). La migración del hipocampo desde `MundoCrafter.hitos` al Core no produce pérdida significativa de logros ni supervivencia.
+3. **Resultado negativo en `Estudio` (`G_BibFija`) tras `cd2a8b7`: 0 % de lecturas completadas.**
+   - Al bajar el arousal de `LEER` a `0,18` en [`Estudio`](../ida/sistemas/s3.py#L174-L348) y añadir el filtro de objetos visibles, se iniciaron `7` lecturas en `minimo` y `19` en `crafter`, pero **todas (`7/7` y `19/19`) quedaron interrumpidas** antes de terminar. Por eso `G_BibFija` en Crafter coincide exactamente al decimal con `A_Equilibrado`.
+4. **Corrección del cálculo de fitness en `archivos`.**
+   - Con la métrica anterior ([`calcular_fitness`](../ida/historico.py#L41-L48)), `F. Sin Exp.` puntuaba más alto que ningún otro grupo (`1089,55`) pese a morir en `142` latidos comiendo `9,25` tóxicos por vida. Tras distinguir `nutritivos` y `toxicos` en [`archivos.py`](../ida/mundos/archivos.py#L279-L280), su fitness cae a `297,45 ± 213,58` ($\Delta = -792,10 \pm 208,52$).
 
 ---
 
-## 3. Resultados Detallados por Mundo
+## 2. Metodología y Protocolo ($N = 10$ linajes)
 
-### 3.1 Mundo Mínimo (3 semillas × 5 generaciones = 15 vidas/batch, máx. 400 latidos)
+- **Fecha:** 12 de noviembre de 2026 (Windows, Python 3.15).
+- **Unidad muestral independiente:** $N = 10$ linajes independientes por grupo (semillas `1..10`), cada uno en un directorio temporal limpio (`tabula rasa`). Las generaciones sucesivas dentro de un mismo linaje heredan conocimiento y mutan su arquetipo (`mutar()`), por lo que **no** se cuentan como muestras independientes: primero se promedia cada linaje y sobre los $10$ linajes se calculan la media y el **IC 95 %** ($\bar{x} \pm 1,96 \cdot \text{SE}$).
+- **Profundidad por linaje:**
+  - `minimo` y `archivos`: `4` generaciones por linaje (`40` vidas/grupo, máx. `400` latidos/vida).
+  - `crafter`: `3` generaciones por linaje (`30` vidas/grupo, máx. `600` latidos/vida).
+  - *(Nota sobre `ajedrez` y los perfiles `B. Explorador` / `C. Prudente`: proceden de una exploración previa con $N = 3$ linajes y se marcan como provisionales en la §4).*
+- **Nota sobre `snake`:** excluido de la batería automatizada por depender de navegador externo en tiempo real (`playsnake.org`). Con `duerme=False` y sin biblioteca activa, es conductualmente invariante respecto a `main`.
 
-| Batch | Fitness `main` | Fitness `ajustes` | Latidos `main` | Latidos `ajustes` | Bayas med. (`main` / `ajustes`) | Setas tot. (`main` / `ajustes`) | G1 → G5 (`ajustes`) |
+### Perfiles Evaluados (valores iniciales en G1)
+
+| Prototipo | `apertura` | `responsabilidad` | `neuroticismo` | `extraversion` | `umbral_miedo` |
+|---|---:|---:|---:|---:|---:|
+| **A. Equilibrado** | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 |
+| **D. Valiente** | 0,60 | 0,65 | 0,20 | 0,60 | 0,85 |
+| **E. Reactivo** | 0,40 | 0,60 | 0,85 | 0,30 | 0,35 |
+| **F. Sin Experiencia** | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 |
+| **G. Bib. Fija** *(solo `ajustes`)* | 0,50 | 0,50 | 0,50 | 0,50 | 0,60 |
+
+---
+
+## 3. Resultados con Intervalos de Confianza al 95 % ($N = 10$ linajes)
+
+### 3.1 Mundo Mínimo (10 linajes × 4 generaciones)
+
+| Grupo | Fitness `main` | Fitness `ajustes` | $\Delta$ Fitness pareado | Latidos `main` | Latidos `ajustes` | $\Delta$ Latidos pareado | Setas/vida (`main` / `ajustes`) |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| **A. Equilibrado** | 454,07 | 452,93 | 193,40 | 193,60 | 12,40 / 12,33 | 38 / 38 | 375,67 → 405,33 |
-| **B. Explorador** | 398,20 | **416,53** | 184,87 | 183,53 | 9,93 / **11,00** | 44 / **39** | 217,00 → 503,33 |
-| **C. Prudente** | 584,53 | 577,53 | 250,87 | **253,87** | 16,20 / 15,67 | 29 / 31 | 748,33 → 647,67 |
-| **D. Valiente** | 650,60 | 620,87 | 321,93 | 319,53 | 15,60 / 14,20 | 50 / 52 | 645,33 → 757,00 |
-| **E. Reactivo** | 780,40 | **791,87** | 366,07 | **387,87** | 20,33 / 19,80 | 23 / 24 | 823,33 → 704,33 |
-| **F. Sin Exp.** | 471,53 | 471,53 | 169,20 | 169,20 | 13,07 / 13,07 | 123 / 123 | 488,67 → 437,00 |
-| **G. Bib. Fija** | — | 447,20 | — | 190,53 | — / 12,27 | — / 34 | 400,67 → 386,00 |
+| **A. Equilibrado** | 415,70 ± 75,47 | 420,15 ± 72,65 | +4,45 ± 11,79 | 171,57 ± 35,71 | 174,28 ± 34,16 | +2,70 ± 6,07 | 2,33 / 2,27 |
+| **D. Valiente** | 623,15 ± 89,92 | 608,02 ± 83,06 | -15,12 ± 60,57 | 303,52 ± 32,60 | 312,77 ± 34,93 | +9,25 ± 23,82 | 3,33 / 3,45 |
+| **E. Reactivo** | **780,77 ± 34,32** | **742,52 ± 56,47** | -38,25 ± 57,89 | **365,90 ± 14,47** | **355,52 ± 23,77** | -10,38 ± 25,14 | **1,68 / 1,70** |
+| **F. Sin Exp.** | 472,25 ± 73,01 | 470,45 ± 73,51 | -1,80 ± 2,77 | 170,62 ± 26,32 | 169,57 ± 26,45 | -1,05 ± 1,42 | **7,53 / 7,47** |
+| **G. Bib. Fija** | — | 409,95 ± 78,45 | — | — | 165,45 ± 31,83 | — | — / 2,10 |
 
-- **Hallazgos clave:**
-  - La experiencia y la herencia marcan una diferencia abismal en toxicidad: **123 setas tóxicas** comidas sin experiencia frente a **23–52** con memoria activa.
-  - **`E. Reactivo`** domina por amplio margen (**+75 % de fitness** sobre `Equilibrado` y casi el límite completo de 400 latidos por vida).
-  - En **`B. Explorador`**, `ajustes` mejora de `398,20` a `416,53` (pico máximo de `1095,0` frente a `885,0` en `main`) y el linaje crece claramente de G1 (`217,00`) a G5 (`503,33`).
+- **Lecturas en `G. Bib. Fija`:** `7` iniciadas, **`0` completadas**, `7` interrumpidas.
+- **Diferencia de carácter:** `E. Reactivo` casi duplica los latidos de `A. Equilibrado`; sin experiencia se ingieren ~3,5× más setas tóxicas (`7,5` frente a `1,7`–`2,3` por vida).
 
 ---
 
-### 3.2 Mundo Archivos (3 semillas × 5 generaciones = 15 vidas/batch, máx. 400 latidos)
+### 3.2 Mundo Archivos (10 linajes × 4 generaciones, fitness corregido)
 
-| Batch | Fitness `main` | Fitness `ajustes` | Latidos `main` | Latidos `ajustes` | Comidos med. (`main` / `ajustes`) | G1 → G5 (`ajustes`) |
+| Grupo | Fitness `main` *(fórmula ant.)* | Fitness `ajustes` *(corregido)* | Latidos `main` | Latidos `ajustes` | $\Delta$ Latidos pareado | Nutritivos / Tóxicos (`ajustes`) |
 |---|---:|---:|---:|---:|---:|---:|
-| **A. Equilibrado** | 989,40 | 984,93 | 269,40 | 264,93 | 14,40 / 14,40 | 917,33 → 1008,00 |
-| **B. Explorador** | 952,67 | **960,53** | 269,33 | 263,87 | 13,67 / **13,93** | 914,00 → 778,00 |
-| **C. Prudente** | 983,93 | 976,20 | 270,60 | 262,87 | 14,27 / 14,27 | 918,33 → 1008,00 |
-| **D. Valiente** | 1022,13 | 1021,53 | 272,13 | 271,53 | 15,00 / 15,00 | 1066,67 → 915,67 |
-| **E. Reactivo** | 1023,33 | **1028,20** | 276,67 | 274,87 | 14,93 / **15,07** | 1013,00 → 1008,00 |
-| **F. Sin Exp.** *(ver nota)* | 1182,73 | 1182,73 | 129,40 | 129,40 | 21,07 / 21,07 | 1153,33 → 1327,00 |
+| **A. Equilibrado** | 940,45 ± 158,46 | 924,25 ± 151,10 | 262,95 ± 24,47 | 260,88 ± 24,31 | -2,08 ± 3,51 | 11,65 ± 2,39 / 1,80 ± 0,31 |
+| **D. Valiente** | 981,42 ± 153,13 | **960,40 ± 146,00** | 273,93 ± 20,25 | **272,07 ± 19,56** | -1,85 ± 3,82 | 11,93 ± 2,44 / 1,80 ± 0,27 |
+| **E. Reactivo** | 934,92 ± 157,97 | 904,05 ± 99,72 | 263,68 ± 25,79 | 257,65 ± 19,79 | -6,03 ± 10,68 | 11,32 ± 1,69 / 1,77 ± 0,29 |
+| **F. Sin Exp.** | 1089,55 ± 93,57 | **297,45 ± 213,58** | 142,05 ± 50,07 | 142,05 ± 50,07 | 0,00 ± 0,00 | 9,70 ± 1,64 / **9,25 ± 1,73** |
 
-- **Hallazgos clave y nota metodológica:**
-  - Entre perfiles con experiencia, **`E. Reactivo`** (`1028,20`) y **`D. Valiente`** (`1021,53`) encabezan la tabla con ~272–275 latidos medios y 15 recursos ingeridos por vida.
-  - **Anomalía detectada en el cálculo de fitness de `archivos`:** `F. Sin Exp.` obtiene el mayor escalar (`1182,73`) pese a vivir **menos de la mitad** (`129,40` latidos frente a `274,87`), porque [`calcular_fitness()`](file:///f:/code/IdA/ida/historico.py#L41-L44) suma `total_comido * 50 + latidos` sin penalizar los alimentos tóxicos ingeridos. Se recomienda revisar esa fórmula en el futuro si se usa selección automática en `archivos`.
-  - Entre `main` y `ajustes` las diferencias son mínimas (`±0,5 %`), con ligera ventaja de `ajustes` en `E. Reactivo` y `B. Explorador` y ligera desventaja en `A/C`.
+*(Nota: `main` ejecutó la fórmula anterior porque no incluye el commit `2e03175`; la comparación directa de supervivencia `ΔLatidos` entre ramas no muestra diferencias significativas).*
 
 ---
 
-### 3.3 Crafter (3 semillas × 4 generaciones = 12 vidas/batch, máx. 600 latidos)
+### 3.3 Crafter (10 linajes × 3 generaciones)
 
-| Batch | Fitness `main` | Fitness `ajustes` | Logros med. (`main` / `ajustes`) | Logros máx. (`main` / `ajustes`) | Latidos med. (`main` / `ajustes`) | G1 → G4 (`ajustes`) |
-|---|---:|---:|---:|---:|---:|---:|
-| **A. Equilibrado** | **9406,50** | 8559,25 | **9,17** / 8,33 | 12 / 12 | **226,75** / 213,00 | 8186,33 → 8199,00 |
-| **B. Explorador** | 9747,58 | **9850,08** | 9,50 / **9,58** | 14 / 13 | 234,25 / **252,33** | 10310,33 → 8875,33 |
-| **C. Prudente** | 9065,25 | 8978,17 | 8,83 / 8,75 | 12 / 12 | 218,75 / 215,25 | 8532,00 → 9202,67 |
-| **D. Valiente** | 10145,42 | **10403,25** | 9,92 / **10,17** | 14 / 14 | 214,67 / **221,33** | 9184,67 → 9171,33 |
-| **E. Reactivo** | 8493,08 | 8414,58 | 8,25 / 8,17 | 12 / 12 | 231,25 / **235,33** | 7540,67 → 8917,33 |
-| **F. Sin Exp.** | 10116,08 | 9117,33 | 9,83 / 8,83 | 16 / 12 | 268,42 / **269,08** | 9660,00 → 9258,00 |
-| **G. Bib. Fija** | — | 8559,25 | — / 8,33 | — / 12 | — / 213,00 | 8186,33 → 8199,00 |
+| Grupo | Fitness `main` | Fitness `ajustes` | $\Delta$ Fitness pareado | Logros `main` | Logros `ajustes` | $\Delta$ Logros pareado | Latidos `main` / `ajustes` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **A. Equilibrado** | 9545,00 ± 957,40 | 9392,27 ± 1251,75 | -152,73 ± 1228,56 | 9,30 ± 0,94 | 9,13 ± 1,23 | -0,17 ± 1,23 | 233,73 / 246,57 |
+| **D. Valiente** | **10573,57 ± 924,25** | **10676,20 ± 883,57** | +102,63 ± 875,26 | **10,30 ± 0,91** | **10,40 ± 0,90** | +0,10 ± 0,86 | 260,10 / 262,17 |
+| **E. Reactivo** | 9138,63 ± 1086,03 | 8812,20 ± 1234,54 | -326,43 ± 432,90 | 8,90 ± 1,07 | 8,57 ± 1,21 | -0,33 ± 0,42 | 228,07 / 234,73 |
+| **F. Sin Exp.** | 10164,57 ± 1008,03 | 9509,60 ± 1145,42 | -654,97 ± 680,26 | 9,90 ± 0,98 | 9,23 ± 1,12 | -0,67 ± 0,67 | 252,60 / 264,13 |
+| **G. Bib. Fija** | — | 9392,27 ± 1251,75 | — | — | 9,13 ± 1,23 | — | — / 246,57 |
 
-- **Hallazgos clave:**
-  - **Invertido respecto a `minimo`:** en Crafter, **`D. Valiente`** (`umbral_miedo=0,85`, `neuroticismo=0,20`) es el claro ganador en ambas ramas y mejora aún más en `ajustes` (**`10 403,25`** de fitness, **`10,17`** logros medios), mientras que `E. Reactivo` es el peor (`8414,58` / `8,17` logros) porque huye demasiado pronto y frena el avance tecnológico.
-  - **`B. Explorador`** también sube en `ajustes` tanto en fitness (`9850,08`) como en supervivencia (`234,25` → `252,33` latidos).
-  - En cambio, **`A. Equilibrado`** bajó en este protocolo de 4 generaciones respecto a `main` (`9,17` → `8,33` logros), señal de que la interacción entre el hipocampo genérico (`Orientacion` / `ruta`) y los ciclos de Crafter tiene margen de mejora en perfiles medios (precisamente lo que vas a observar cualitativamente).
-  - **`G. Bib. Fija`** empata exactamente al decimal con `A. Equilibrado` (`8559,25` / `8,33` logros) tras el ajuste `cd2a8b7` de [`Estudio`](file:///f:/code/IdA/ida/sistemas/s3.py#L174-L348), confirmando que ya no penaliza los logros.
+- **Lecturas en `G. Bib. Fija`:** `19` iniciadas, **`0` completadas**, `19` interrumpidas.
+- **Análisis de causas de muerte (`A. Equilibrado` vs `F. Sin Exp.`, 30 vidas/grupo):**
+  - `A. Equilibrado`: `main` (`22` zombi, `3` esqueleto, `5` hostil/noche) · `ajustes` (`19` zombi, `5` esqueleto, `6` hostil/noche).
+  - `F. Sin Exp.`: `main` (`16` zombi, `5` esqueleto, `9` hostil/noche) · `ajustes` (`20` zombi, `2` esqueleto, `8` hostil/noche).
+  - El **100 % de las muertes** (`120/120` en los cuatro grupos registrados) se debe a combate nocturno o daño hostil (`0` muertes por hambre o sed). Aunque `F. Sin Exp.` promedia `+17`–`+19` latidos más que `A. Equilibrado`, esa diferencia entra holgadamente en el margen de error (`±27`–`±36`), y en logros `F. Sin Exp.` queda igual o por debajo en `ajustes` (`9,23` vs `9,13`) y por debajo de `D. Valiente` (`10,40`). La experiencia no reduce el riesgo nocturno actual porque [`DefensaCrafter`](../ida/mundos/crafter.py#L348-L390) opera directamente sobre el estado somático y la escena sin depender de proposiciones aprendidas.
 
 ---
 
-### 3.4 Ajedrez (3 semillas × 4 generaciones = 12 partidas/batch, máx. 200 latidos)
+## 4. Datos Provisionales ($N = 3$ linajes) y Recomendación Provisional para la Antesala
 
-| Batch (dificultad) | Fitness `main` | Fitness `ajustes` | Resultado (`V / T / D`) | Latidos medios | G1 → G4 (`ajustes`) |
-|---|---:|---:|---|---:|---:|
-| **A. Equilibrado (d1)** | 2827,08 | 2827,08 | `11 / 1 / 0` | 27,08 | 2739,33 → 2946,67 |
-| **B. Explorador (d1)** | 2716,92 | 2716,92 | `11 / 1 / 0` | 20,67 | 2739,33 → 2910,33 |
-| **C. Prudente (d1)** | **3022,17** | **3022,17** | **`12 / 0 / 0`** | 26,75 | 2897,67 → 2981,67 |
-| **D. Valiente (d1)** | 2611,00 | 2611,00 | `11 / 1 / 0` | 17,67 | 2538,00 → 2211,00 |
-| **E. Reactivo (d1)** | 2911,58 | 2911,58 | `11 / 1 / 0` | 29,08 | 2503,67 → 3262,00 |
-| **F. Sin Exp. (d1)** | 2827,08 | 2827,08 | `11 / 1 / 0` | 27,08 | 2739,33 → 2946,67 |
-| **A. Equilibrado (d2)** | 1267,67 | 1267,67 | `3 / 6 / 3` | 35,58 | 1878,33 → 1619,67 |
+Las pruebas previas con $N = 3$ linajes incluyeron además **B. Explorador**, **C. Prudente** y **Ajedrez**. Con $N = 3$, las diferencias pequeñas no son concluyentes (por ejemplo, en **Ajedrez** dificultad 1: `C. Prudente` obtuvo `12 V · 0 T · 0 D` frente a `11 V · 1 T · 0 D` de los demás, una sola partida de diferencia, con **100 % de invariancia** entre `main` y `ajustes`).
 
-- **Hallazgos clave:**
-  - **Invariancia absoluta del 100 %** entre `main` y `feature/ajustes-cognitivos` en todas las 84 partidas por rama.
-  - **`C. Prudente`** logra **100 % de victorias (`12/12`)** frente al nivel 1 y el mayor fitness medio (`3022,17`).
-  - La experiencia entre partidas (`F. Sin Exp.` vs `A. Equilibrado`) no altera el resultado porque en ajedrez el aprendizaje episódico actual no modela posiciones de tablero, solo refuerza acciones genéricas.
+De forma **provisional** para la antesala web (hasta implementar selección natural sobre poblaciones):
 
----
-
-## 4. Conclusiones para la Antesala y Próximos Pasos
-
-1. **Perfiles recomendados listos para la antesala:** cada mundo tiene un perfil óptimo distinto y coherente con su ecología:
-   - **Mínimo / Archivos:** `Reactivo` (`apertura=0,40, responsabilidad=0,60, neuroticismo=0,85, extraversion=0,30, umbral_miedo=0,35`).
-   - **Crafter:** `Valiente` (`apertura=0,60, responsabilidad=0,65, neuroticismo=0,20, extraversion=0,60, umbral_miedo=0,85`).
-   - **Ajedrez:** `Prudente` (`apertura=0,30, responsabilidad=0,85, neuroticismo=0,55, extraversion=0,40, umbral_miedo=0,50`).
-2. **Estado comparativo de `feature/ajustes-cognitivos` frente a `main`:**
-   - **Ajedrez:** invariancia perfecta (`100 %`).
-   - **Mínimo / Archivos:** equivalencia práctica con ligera mejora en los mejores perfiles (`E. Reactivo`: `791,87` vs `780,40` en mínimo; `1028,20` vs `1023,33` en archivos).
-   - **Crafter:** mejora en los dos perfiles superiores (`D. Valiente`: `10 403` vs `10 145`; `B. Explorador`: `9850` vs `9748`), pero retroceso en `A. Equilibrado` (`8559` vs `9406`) — punto clave a observar cualitativamente en tus pruebas manuales en Crafter.
-3. **Mejora técnica recomendada aparte:** ajustar [`calcular_fitness()`](file:///f:/code/IdA/ida/historico.py#L41-L44) en `archivos` para ponderar supervivencia/alimentos sanos y no premiar la ingesta tóxica acelerada.
+- **Mínimo:** perfil **Reactivo** (`apertura=0,40, responsabilidad=0,60, neuroticismo=0,85, extraversion=0,30, umbral_miedo=0,35`), avalado por la diferencia clara con $N=10$ (`~356`–`366` latidos frente a `~172`–`174` del equilibrado).
+- **Crafter:** perfil **Valiente** (`apertura=0,60, responsabilidad=0,65, neuroticismo=0,20, extraversion=0,60, umbral_miedo=0,85`), el único en superar los `10` logros medios en ambas ramas con $N=10$.
+- **Archivos y Ajedrez:** mantener **Equilibrado** (o **Valiente** en Archivos) mientras no haya diferencias estadísticamente significativas entre perfiles.
