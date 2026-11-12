@@ -84,6 +84,8 @@ def ejecutar(
             else:
                 arq = Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
             memoria = Memoria(m.perfil.memoria)
+            if not sin_experiencia:
+                memoria.aplicar_dotacion(m.dotacion_innata())
             legado_a_heredar = linaje.legado() or legado_inicial or {}
             heredados = memoria.heredar(legado_a_heredar)
             m.reiniciar(azar_g.semilla)

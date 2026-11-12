@@ -106,6 +106,10 @@ class Mundo(ABC):
         """Componentes adicionales por destino, p. ej. ``{"S3.Reaccionar": [MiComponente()]}``."""
         return {}
 
+    def dotacion_innata(self) -> Dict[str, Any]:
+        """Predisposiciones genéticas innatas del mundo (proposiciones de instinto y pesos de impulsos)."""
+        return {}
+
     def puntuacion(self) -> Dict[str, Any]:
         """Resultado del mundo para el resumen de la vida (puntos, logros, resultado...)."""
         return {}

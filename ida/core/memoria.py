@@ -41,6 +41,9 @@ class Proposicion:
         c_aut: Optional[float] = None,
         w_aut: float = 0.0,
         c_exp: Optional[float] = None,
+        c_inst: Optional[float] = None,
+        w_inst: float = 0.0,
+        instinto: bool = False,
     ):
         self.sujeto = sujeto
         self.relacion = relacion
@@ -52,13 +55,26 @@ class Proposicion:
         self.actualizada = actualizada
         self.c_aut = c_aut
         self.w_aut = w_aut
+        self.c_inst = c_inst
+        self.w_inst = w_inst
+        self.instinto = instinto
 
     @property
     def confianza(self) -> float:
-        if self.c_aut is None or self.w_aut <= 0.0:
+        hay_aut = self.c_aut is not None and self.w_aut > 0.0
+        hay_inst = self.c_inst is not None and self.w_inst > 0.0
+        if not hay_aut and not hay_inst:
             return self.c_exp
         w_exp = float(1 + self.confirmaciones + self.refutaciones)
-        return (w_exp * self.c_exp + self.w_aut * self.c_aut) / (w_exp + self.w_aut)
+        num = w_exp * self.c_exp
+        den = w_exp
+        if hay_aut and self.c_aut is not None:
+            num += self.w_aut * self.c_aut
+            den += self.w_aut
+        if hay_inst and self.c_inst is not None:
+            num += self.w_inst * self.c_inst
+            den += self.w_inst
+        return num / den
 
     @confianza.setter
     def confianza(self, valor: float) -> None:
@@ -106,10 +122,18 @@ class Proposicion:
                 self.w_aut = w_total
         self.actualizada = ahora
 
+    def aplicar_instinto(self, confianza_instinto: float, peso_instinto: float = 1.5) -> None:
+        """Aplica dotación genética innata al nacer (fuente refutable por experiencia)."""
+        self.c_inst = acotar(confianza_instinto)
+        self.w_inst = max(0.0, peso_instinto)
+        self.instinto = True
+
     def texto(self, ahora: int) -> str:
         partes_origen = []
         if self.heredada:
             partes_origen.append("heredada")
+        if self.instinto:
+            partes_origen.append("instinto")
         if self.c_aut is not None and self.w_aut > 0.0:
             partes_origen.append("autoridad")
         origen = f", {', '.join(partes_origen)}" if partes_origen else ""
@@ -210,6 +234,7 @@ class Memoria:
         self.lecturas: List[RegistroLectura] = []
         self.lectura_activa: Optional[RegistroLectura] = None
         self.ultimo_fin_lectura: int = -100
+        self.impulsos_innatos: Dict[str, float] = {}
         self.aciertos = 0
         self.fallos = 0
 
@@ -569,16 +594,36 @@ class Memoria:
             ],
         }
 
+    def aplicar_dotacion(self, dotacion: Dict[str, Any]) -> int:
+        """Aplica la dotación genética innata al nacer (antes de heredar)."""
+        if not self.activa or not dotacion:
+            return 0
+        n = 0
+        for sujeto, rel, conf in dotacion.get("proposiciones", []):
+            p = cast(Proposicion, self.proposicion(sujeto, rel, crear=True))
+            p.aplicar_instinto(float(conf))
+            n += 1
+        for k, v in dotacion.get("impulsos", {}).items():
+            self.impulsos_innatos[str(k)] = float(v)
+            n += 1
+        return n
+
     def heredar(self, legado: Dict[str, Any]) -> int:
         """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo."""
         if not self.activa:
             return 0
         n = 0
         for d in legado.get("proposiciones", []):
+            clave = (d["sujeto"], Relacion[d["relacion"]])
+            existente = self.saber.get(clave)
             p = Proposicion(d["sujeto"], Relacion[d["relacion"]], confianza=float(d["confianza"]) * 0.8)
             p.confirmaciones = Proposicion.CONFIRMACIONES_MINIMAS - 1
             p.heredada = True
-            self.saber[(p.sujeto, p.relacion)] = p
+            if existente is not None and existente.instinto:
+                p.c_inst = existente.c_inst
+                p.w_inst = existente.w_inst
+                p.instinto = True
+            self.saber[clave] = p
             n += 1
         for d in legado.get("registros", []):
             r = Registro(n=max(1, int(d["n"]) // 2))
