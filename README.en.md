@@ -10,7 +10,7 @@ This is a short English summary. The full documentation, and the code itself, ar
 
 IdA is a **framework**: a generic core, inspired by how living beings solve the problem of staying alive, to which worlds plug in as adapters. It is made to **run and watch** its individuals live. It does not compete with other agents or chase the best score; that question is studied separately, in the [IdA Laboratory](#ida-laboratory).
 
-Every IdA individual has a **body** that wears out, a **heartbeat** with an attention and time budget (and a guillotine that cuts thinking when the deadline passes), and **three systems** that propose what to do: S1 (survival), S2 (value) and S3 (truth). A **Tribunal** picks one according to the state of the body: under stress it listens to urgency, when calm to confidence. What the individual lives through is remembered, anticipated, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
+Every IdA individual has a **body** that wears out (vital constants, stress, pleasure and valence) and a **heartbeat**. On each beat the core senses the world (interoception, proprioception, **exteroception** and ambient conditions) and creates a **Wave** (*Onda*) with a frequency (the deadline; past it, a guillotine cuts thinking), an amplitude (how many pieces fit in attention) and a power (how much arousal can be granted or changed), set by a pacemaker. Three systems work on it in order: S1 (survival), S2 (value) and S3 (truth). Each one interprets (image and **objects**; the value of each subject; propositions, logic and **beliefs**), feels its **impulses** (bodily needs and safety, exploration, intentions such as knowing), chooses **strategies** with phases, progress and exhaustion, and turns them into **actions**. A **Tribunal** picks one according to the state of the body, with a small bonus for continuing the current strategy. Each component only produces and changes pieces of its own type. What the individual lives through is remembered, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
 
 The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
 
@@ -26,7 +26,7 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 68 tests
+python -m pytest -q                       # 138 tests
 python -m ida                             # interactive launcher at http://127.0.0.1:8000
 ```
 
@@ -60,7 +60,7 @@ Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](d
 
 ## Engineering
 
-Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 68 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 138 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
 
 ## IdA Laboratory
 
