@@ -401,3 +401,21 @@ def test_feedback_de_s2_placer_y_estres():
     ctx2 = Contexto(onda2, Soma(placer=40.0, estres=0.3), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
     fb.reactiva(ctx2)
     assert onda2.ef("Feedback")["feedback:S2"].carga["valor"] == pytest.approx(0.2 + 0.2)     # más placer, menos estrés
+
+
+def test_intencion_saber_y_las_del_mundo():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.vocabulario import Relacion
+    from ida.sistemas.s3 import Intencion
+
+    mem = Memoria()
+    mem.saber[("x", Relacion.NUTRITIVO)] = Proposicion("x", Relacion.NUTRITIVO, confianza=0.3)
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(), mem, Arquetipo(), Azar(1), Perfil(intenciones=("progresar",)), {Verbo.MOVER})
+    onda.percibir("Objeto", Pieza("o1", "Objeto", 0.5, carga={"clase": "x", "rasgos": {}}))
+    i = _comp(Intencion)
+    i.sistema = "S3"
+    i.reactiva(ctx)
+    assert onda.ef("Intencion")["saber"].carga["intensidad"] == 1.0          # todo lo que sabe de x es hipótesis
+    assert onda.ef("Intencion")["progresar"].carga["intensidad"] == 0.5

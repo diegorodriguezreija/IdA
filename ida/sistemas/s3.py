@@ -12,6 +12,7 @@ proposiciones **demostradas**.
 | Interpretar | Proposicion          | Proposición: lo que se sabe de su clase (pasada activa) |
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
+| Reaccionar  | Intencion            | Intención: saber y las que declare el mundo (el qué deliberado) |
 | Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
 | Reaccionar  | Impulso            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
 """
@@ -356,10 +357,34 @@ class Estudio(Componente):
         )
 
 
+SABER = "saber"
+INTENSIDAD_INTENCION_DEL_MUNDO = 0.5
+
+
+class Intencion(Componente):
+    """El «qué» deliberado de S3 (decisión 11), frente al impulso, que surge:
+    - **saber**: reducir la incertidumbre; intensidad = fracción de lo que se sabe de las clases a la
+      vista que aún es hipótesis (0 si no se sabe nada de ellas);
+    - las que declara el mundo (``Perfil.intenciones``), con intensidad fija: son metas sostenidas, no
+      necesidades que se sacian.
+    """
+
+    tipo = "Intencion"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        clases = {o.clase for o in objetos(ctx)}
+        props = [p for (clase, _), p in ctx.memoria.saber.items() if clase in clases] if ctx.con_experiencia else []
+        saber = sum(1 for p in props if p.estado(ctx.latido) == EstadoSaber.HIPOTESIS) / len(props) if props else 0.0
+        intenciones = {SABER: saber, **dict.fromkeys(ctx.perfil.intenciones, INTENSIDAD_INTENCION_DEL_MUNDO)}
+        for nombre, intensidad in intenciones.items():
+            self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
+                                           carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": None}))
+
+
 def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Comportamiento(), Impulso(), Estudio()]),
+        Modulo("Reaccionar", [Intencion(), Comportamiento(), Impulso(), Estudio()]),
         Modulo("Actuar", [Accion(Catalogo())]),
     ])

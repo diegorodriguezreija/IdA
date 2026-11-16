@@ -100,6 +100,7 @@ class Perfil:
     umbral_apertura_episodio: float = 0.65
     latidos_por_episodio: int = 6
     necesidades: Tuple[Necesidad, ...] = NECESIDADES_BASE   # de cada una sale un impulso de S1
+    intenciones: Tuple[str, ...] = ()         # intenciones deliberadas propias del mundo (S3), además de «saber»
     # Estrategias y reflejo (bloque C, decisiones 4, 6 y 16)
     umbral_reflejo: float = 0.4               # salto del peligro entre latidos que dispara el reflejo
     duracion_reflejo: int = 3                 # latidos fijos que dura el reflejo

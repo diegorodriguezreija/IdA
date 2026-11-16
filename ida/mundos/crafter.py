@@ -85,7 +85,8 @@ class MundoCrafter(Mundo):
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
-                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)))
+                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),
+                    intenciones=("progresar",))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
         import crafter                     # dependencia solo de este mundo
