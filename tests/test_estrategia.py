@@ -121,9 +121,9 @@ def test_necesidades_declaradas_y_feedback_de_s1():
 
     ctx, onda = latido(1, 47.5)
     assert deficits(ctx)["hambre"] == pytest.approx(0.5) and deficits(ctx)["seguridad"] == 0.0
-    assert onda.ef("Feedback")["feedback"].carga["valor"] == 0.0                     # sin latido previo
+    assert onda.ef("Feedback")["feedback:S1"].carga["valor"] == 0.0                     # sin latido previo
     _, onda2 = latido(2, 71.25, ef_anterior=onda.reactiva.ef)
-    assert onda2.ef("Feedback")["feedback"].carga["por_impulso"]["hambre"] == pytest.approx(0.25)   # bajó el hambre
+    assert onda2.ef("Feedback")["feedback:S1"].carga["por_impulso"]["hambre"] == pytest.approx(0.25)   # bajó el hambre
 
 
 def test_tribunal_suma_el_plus_a_la_estrategia_en_curso():
@@ -192,7 +192,7 @@ def test_agotar_seguridad_cambia_de_estrategia_y_al_final_ultimo_recurso():
     from ida.sistemas.s1 import Estrategia
 
     perfil = Perfil(gracia_estrategia=0, enfriamiento_estrategia=1000)
-    comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10), _def("b", 5), _def("ultimo", 0, ultimo=True)])))
+    comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10), _def("b", 5), _def("ultimo", 0, ultimo=True)]), impulso_critico="seguridad"))
     activas: dict = {}
     vistas = []
     for n in range(1, 50):
@@ -311,7 +311,7 @@ def _latido_con_feedback(n, activas, comp, intensidad, feedback, ejecutada):
     onda = Onda(n, 100, 1e9, ef_anterior=ef_anterior, estrategias=activas)
     ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.ESPERAR})
     fb = _comp(lambda: _Tipo("Feedback"))
-    fb.registrar(ctx, fb.pieza(ctx, "feedback", 0.0, carga={"por_impulso": {"seguridad": feedback}}))
+    fb.registrar(ctx, fb.pieza(ctx, "feedback:S1", 0.0, carga={"por_impulso": {"seguridad": feedback}}))
     imp = _comp(lambda: _Tipo("Impulso"))
     imp.registrar(ctx, imp.pieza(ctx, "seguridad", intensidad, carga={"intensidad": intensidad, "objetivo": 0.0, "rasgo": None}))
     comp.reactiva(ctx)

@@ -61,12 +61,15 @@ class Definicion:
     - ``ultimo_recurso``: respuesta innata cuando todas las demás del impulso están agotadas.
     - ``rasgo``: sirve también a cualquier impulso cuya necesidad se satisface con ese rasgo.
     - ``cualquier_impulso``: sirve a cualquier impulso (respuestas de último recurso genéricas).
+    - ``agotable``: si se abandona por agotamiento. Los planes deliberados de S3 que llevan su propio
+      control de fallos no se agotan por falta de progreso de la necesidad.
     """
 
     nombre: str = "estrategia"
     impulsos: Tuple[str, ...] = ()
     rasgo: Optional[str] = None
     cualquier_impulso: bool = False
+    agotable: bool = True
     prioridad: int = 0
     reflejo: bool = False
     ultimo_recurso: bool = False
