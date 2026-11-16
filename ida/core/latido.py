@@ -17,6 +17,7 @@ from typing import Any, Callable, Dict, List, Optional, cast
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
+from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import Canales, LatidoAgotado, Onda
@@ -53,6 +54,7 @@ class Organismo:
         if Verbo.ESPERAR in self.verbos:
             self.verbos.add(Verbo.LEER)
 
+        self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
@@ -99,7 +101,7 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
+        frecuencia, amplitud = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
         ctx = Contexto(
             onda,

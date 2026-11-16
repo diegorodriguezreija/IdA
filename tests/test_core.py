@@ -5,6 +5,7 @@ import pytest
 from ida.core.arquitectura import Componente, Contexto, Modulo
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
+from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import Memoria, Proposicion
 from ida.core.mundo import Entidad, Perfil
 from ida.core.onda import LatidoAgotado, Onda
@@ -310,14 +311,15 @@ def test_arquetipo_deferencia():
 
 # --- Soma, linaje y contrato -------------------------------------------------
 def test_presupuesto_varia_con_el_estado():
+    m = Marcapasos()
     s = Soma(energia=100.0)
-    f1, a1 = s.presupuesto(100.0, 100)
+    f1, a1 = m.ritmo(s, 100.0, 100)
     s.energia = 20.0
     s.indicadores["peligro"] = 1.0
-    f2, a2 = s.presupuesto(100.0, 100)
+    f2, a2 = m.ritmo(s, 100.0, 100)
     assert a2 < a1 and f2 < f1
     s.dormido = True
-    assert s.presupuesto(100.0, 100)[1] == 20
+    assert m.ritmo(s, 100.0, 100)[1] == 20
 
 
 def test_arquetipos_distintos_por_individuo():
