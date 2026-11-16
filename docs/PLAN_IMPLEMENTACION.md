@@ -16,7 +16,7 @@ Cinco pasos, en este orden, antes de dar el primer encargo al agente. **Hecha el
 
 - [x] **Corregir las métricas públicas.** El README y `05_METRICAS_E_HITOS.md` decían 10,9 logros en Crafter. Con el protocolo aislado, `5c8ae1e` da 9,30 ± 1,09 y `25e1303` (mismo árbol que `7e335ae`) da 9,13 ± 1,42 (diferencia pareada −0,17 ± 1,42). Cambio explicado en el CHANGELOG (`d1af17a`). Además, `05_METRICAS_E_HITOS.md` pasa de 64 a 85 tests y deja de describir `self.hitos` (`de6b01d`).
 - [x] **Fusionar `feature/ajustes-cognitivos` en `main`.** Ya estaba fusionada por el PR #4: `main` está en `7e335ae`, con el mismo árbol que `25e1303`. En `7e335ae`, pytest da 85 passed, ruff no da errores y mypy no encuentra problemas en 38 ficheros (Python 3.15.1, 16/11/2026).
-- [x] **Pausar la Fase 5.** `feature/fase5-ciclo-y-refugio` y `feature/fase5-ritmo-y-vaiven` quedan pausadas y, en principio, descartadas. Sus impulsos (cobijo) y estrategias (anidar, refugio) se reharán en el bloque C con el nuevo modelo. No se rescata nada, tampoco la percepción de la luz (`a7adb3f`).
+- [x] **Pausar la Fase 5.** `feature/fase5-ciclo-y-refugio` y `feature/fase5-ritmo-y-vaiven` quedan pausadas y, en principio, descartadas. Sus impulsos (cobijo) y estrategias (anidar, refugio) se reharán en el bloque C con el nuevo modelo. La percepción de la luz (`a7adb3f`) no entra en el bloque A: se rescatará cuando un bloque la necesite.
 - [x] **Exportar el borrador del rediseño a `docs/REDISENO_BASE.md`.** Es la referencia fija del agente para todos los bloques: el contexto completo, aunque cada encargo implemente solo una parte (`4934fb9`).
 - [x] **Actualizar `AGENTS.md`** para que remita a `docs/REDISENO_BASE.md` y a este plan. La regla de no tocar `ida/core/` ni `ida/sistemas/` se mantiene, con el permiso que conceda cada encargo para su bloque (`80850dc`).
 
@@ -83,4 +83,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | Fecha | Cambio |
 | --- | --- |
 | 2026-11-16 | Creación del plan: preparación, encargo del bloque A, resumen de los bloques B a F. |
-| 2026-11-16 | Preparación hecha en `prep/rediseno-base`. Rama base: `main` en `7e335ae`. Las dos ramas de la Fase 5 quedan descartadas, sin rescatar la luz. Rutas del bloque A comprobadas en `7e335ae` (A2 suma `onda.py`, `pieza.py` y `test_biblioteca.py`; A4 pasa a las líneas 43-46). |
+| 2026-11-16 | Preparación hecha en `prep/rediseno-base`. Rama base: `main` en `7e335ae`. Las dos ramas de la Fase 5 quedan descartadas; la luz (`a7adb3f`) se rescatará cuando un bloque la necesite. Rutas del bloque A comprobadas en `7e335ae` (A2 suma `onda.py`, `pieza.py` y `test_biblioteca.py`; A4 pasa a las líneas 43-46). |
