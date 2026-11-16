@@ -120,6 +120,10 @@ Se autoriza modificar `ida/core/` e `ida/sistemas/` **solo** para los pasos de e
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 3 a 6, 10, 11, 13, 16, 17 y 23. Base: `main` con los bloques A y B fusionados.
 
+**Criterio del autor (16/11/2026):** hasta llegar al bloque E, una pérdida ligera de fitness es aceptable. La prioridad es completar el diseño base; el margen se recuperará después, mejorando los componentes propios de cada mundo. Las pérdidas se miden y se publican igualmente.
+
+**Estrategias con fases:** buscar y consumir son fases de una misma estrategia (por ejemplo, alimentarse: buscar, acercarse, comer), no estrategias que compiten. A lo sumo son acciones distintas dentro de la misma máquina de estados. La regla de "ceder ante otra estrategia con mejor valor" que añadió el agente en C1.5 se revisa con esto; si se mantiene, debe exigir un margen claro (histéresis).
+
 | Parte | Contenido | ¿Cambia la conducta? |
 | --- | --- | --- |
 | C0 | Inventario y propuesta de correspondencia. Sin código. **Se detiene para que el autor la apruebe** | No |
@@ -162,9 +166,28 @@ Incluir al menos `Reflejo`, los tres `Impulso`, `Curiosidad`, `Hogar`, `Orientac
 
 **Entrega de C1:** tabla del benchmark; latidos por estrategia y abandonos por agotamiento; cuántas veces gana el plus por estrategia activa; cuántas veces interrumpe un reflejo.
 
-### C2 y C3
+### Estado de C1 (16/11/2026)
 
-Se detallan tras aceptar C1, con lo aprendido en C0 y C1. C3 termina el bloque quitando las dos excepciones transitorias de `EXCEPCIONES_TRANSITORIAS`.
+Primer benchmark: Crafter mejora (Equilibrado +1,30 logros; Reactivo +1,63, significativo) y Archivos mejora el fitness (+170 a +193). Pérdidas en Mínimo y Archivos por más tóxicos comidos: S1 ofrecía una sola acción por necesidad y los frenos de S2 y S3 se quedaban sin alternativa. Correcciones aplicadas: `alimentarse` como una sola estrategia con fases (buscar → acercarse → comer) que elige el objeto por `Valor` y por lo demostrado, y se abstiene si solo hay algo dañino; sustitución con margen 0,2; umbral del reflejo escalado por `umbral_miedo`; `seguir_en_movimiento` como estrategia de S1. Diagnóstico rápido: setas comidas por Valiente en Mínimo, 10 (frente a 43 en `main`). Benchmark final: aceptado. Mínimo mejora en latidos (Equilibrado +172,5 ± 43,4; Reactivo +31,1 ± 28,6) y baja las setas en los tres perfiles; Archivos mejora latidos (+32 a +47), fitness (+322 a +405) y nutritivos (+6 a +7), con una pérdida ligera en tóxicos (+0,33 a +0,40 por vida); Crafter cumple la no inferioridad (+0,70 a +1,33 logros, sin significación). A vigilar: 3 de 10 vidas del Valiente en Mínimo murieron sin causa registrada.
+
+### C2 y C3, en un solo encargo
+
+Se juntan para ahorrar un benchmark: C1 ya adelantó la elección del objeto por `Valor` y lo demostrado, así que C2 y C3 son sobre todo trasladar componentes que ya funcionan al modelo nuevo. Se sigue la tabla aprobada en `docs/C0_CORRESPONDENCIA.md`.
+
+| Paso | Cambio | Decisión |
+| --- | --- | --- |
+| C2.1 | S2: `Impulso` emite sus impulsos propios (Exploración: apertura × novedad) y deja de modular `Accion`, porque el "no comas esto" ya lo resuelve la elección del objeto | 10, 14 |
+| C2.2 | S2: `Estrategia` con las estrategias de valor según el C0 (`Curiosidad`, `Hogar` y `Orientacion` dejan de ser componentes). Refugiarse elige el refugio que valora | 10 |
+| C2.3 | Feedback de S2: placer y estrés | 5 |
+| C3.1 | S3: `Intencion` (Saber y las intenciones que el C0 asigne) | 11 |
+| C3.2 | S3: `Estrategia` con `Comportamiento`, `Estudio`, `PlanTecnologico` (Crafter) y `Prudencia` (Archivos) según el C0. `PlanTecnologico` deja de leer el estado interno del mundo y usa la percepción (regla 3) | 11, 13 |
+| C3.3 | S3: `Impulso` como control gradual según la certeza, solo sobre piezas `Impulso` | 13 |
+| C3.4 | Feedback de S3: error de predicción | 5 |
+| C3.5 | Se quitan las dos excepciones de `EXCEPCIONES_TRANSITORIAS`: solo los componentes `Accion` proponen acciones y nadie modula piezas `Accion` ajenas | 14 |
+
+**Fuera de alcance:** bloques D a F; pasar el vocabulario exterior a cada mundo; calibrar la escasez de atención (se hace después del bloque C).
+
+**Verificación:** `pytest -q -x` por paso; al final, `ruff`, `mypy` y un solo benchmark (N = 10, pareado) frente a `main`. **Criterio:** hasta el bloque E, una pérdida ligera es aceptable; se mide y se publica. Informe: solo la tabla resumen y si se cumple el criterio; análisis detallado solo si no se cumple.
 
 ## Bloques B a F
 
@@ -203,3 +226,6 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Encargo del bloque B (pasos B0 a B4). |
 | 2026-11-16 | Bloque B hecho (feature/bloque-b, sin diferencias en el benchmark). Calibración de la escasez aplazada a después de C. Notas del bloque B para C. |
 | 2026-11-16 | Encargo del bloque C: partes C0 a C3; C0 y C1 detallados. |
+| 2026-11-16 | Bloque C: criterio de pérdida ligera aceptable hasta E; estrategias con fases (buscar y consumir en la misma estrategia). |
+| 2026-11-16 | Estado de C1 tras correcciones; C2 y C3 en un solo encargo. |
+| 2026-11-16 | C1 aceptado tras el benchmark final. Lanzados C2 y C3. |
