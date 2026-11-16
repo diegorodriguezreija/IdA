@@ -20,7 +20,7 @@ from typing import List, Optional, Tuple
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import Accion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
@@ -78,10 +78,31 @@ class Recuerdo(Componente):
 
     tipo = "Recuerdo"
     POTENCIA_MINIMA = 0.25     # fracción de potencia que debe sobrar para recordar
+    POTENCIA_REPASO = 0.5      # E6: fracción de potencia que debe sobrar para repasar
 
     def activa(self, ctx: Contexto) -> None:
-        if not (ctx.perfil.mecanismos.evocacion and ctx.con_experiencia and ctx.memoria.activa):
+        if not (ctx.con_experiencia and ctx.memoria.activa):
             return
+        if ctx.perfil.mecanismos.evocacion:
+            self._evocar(ctx)
+        if ctx.perfil.mecanismos.repaso:
+            self._repasar(ctx)
+
+    def _repasar(self, ctx: Contexto) -> None:
+        """Repaso en calma (bloque E, E6; decisión 21): en calma, con potencia de sobra y sin recuerdos
+        evocados en este latido, trae lo reciente de más fuerza y lo refuerza. Solo en calma, para que
+        repasar lo negativo no se convierta en rumiación."""
+        onda = ctx.onda
+        if ctx.soma.afecto != Afecto.CALMA or onda.ev("Recuerdo"):
+            return
+        if onda.potencia_max <= 0 or onda.potencia_restante() < self.POTENCIA_REPASO * onda.potencia_max:
+            return
+        for nodo, clase in ctx.memoria.recientes_para_repaso(ctx.latido):
+            if self.percibir(ctx, self.pieza(ctx, f"repaso:{nodo}", arousal=0.2, carga={"clase": clase, "relacion": None,
+                                                                                    "demostrada": False, "donde": None, "repaso": True})) is not None:
+                ctx.memoria.repasar(nodo, clase, ctx.latido)
+
+    def _evocar(self, ctx: Contexto) -> None:
         onda, mem, ahora = ctx.onda, ctx.memoria, ctx.latido
         if onda.potencia_max <= 0 or onda.potencia_restante() < self.POTENCIA_MINIMA * onda.potencia_max:
             return
@@ -142,7 +163,7 @@ class Valor(Componente):
             recuerdos = patron.carga.get("recuerdos", {}) if patron else {}
             sentimental = math.tanh(sum(recuerdos.values()) / 5.0) if recuerdos else 0.0
             if ctx.perfil.mecanismos.evocacion:   # bloque E, E5: lo recuperado, no la memoria
-                peligrosa = (r := _recordado(ctx, o.clase, Relacion.PELIGROSO)) is not None and bool(r.carga["demostrada"])
+                peligrosa = (r := _recordado(ctx, o.clase, Relacion.PELIGROSO)) is not None and bool(r.carga.get("demostrada"))
             else:
                 peligrosa = mem.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido)
             if peligrosa:
@@ -305,7 +326,7 @@ class RecordarComida(Definicion):
             return None
         if ctx.perfil.mecanismos.evocacion:   # bloque E, E5: lo recuperado (piezas Recuerdo), no la memoria
             candidatos = sorted(((r.carga["clase"], r.confianza, r.carga["donde"]) for r in ctx.onda.ev("Recuerdo").values()
-                                 if r.carga["relacion"] == Relacion.NUTRITIVO), key=lambda item: -item[1])
+                                 if r.carga.get("relacion") == Relacion.NUTRITIVO), key=lambda item: -item[1])
         else:
             candidatos = sorted(
                 ((clase, prop.confianza, ctx.memoria.donde_esta(clase)) for (clase, rel), prop in ctx.memoria.saber.items()

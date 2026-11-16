@@ -444,6 +444,28 @@ class Memoria:
         cid = self._concepto_de.get(clase)
         return self.conceptos.get(cid) if cid else None
 
+    REPASO_FUERZA = 1.1            # E6: refuerzo de un nodo repasado
+    REPASO_CONFIANZA = 0.02        # E6: refuerzo de las hipótesis de la clase repasada
+    REPASO_VENTANA = 100           # E6: latidos hacia atrás que cuentan como «reciente»
+
+    def recientes_para_repaso(self, ahora: int, n: int = 2) -> List[Tuple[str, str]]:
+        """Lo reciente de más fuerza (decisión 21): nodos del grafo de los últimos ``REPASO_VENTANA``
+        latidos o, si aún no hay grafo, lo mejor del búfer del día. Devuelve (nodo, clase)."""
+        nodos = [(d["fuerza"], k, d.get("clase", "")) for k, d in self.grafo.items() if ahora - d.get("ultimo", 0) <= self.REPASO_VENTANA]
+        if not nodos:
+            nodos = [(punt, self.nodo(p), p.get("clase", "")) for punt, _, p in self.diurno]
+        return [(k, c) for _, k, c in sorted(nodos, reverse=True)[:n]]
+
+    def repasar(self, nodo: str, clase: str, ahora: int) -> None:
+        """Repaso en calma: refuerza el nodo y las hipótesis de su clase, y las refresca."""
+        if nodo in self.grafo:
+            self.grafo[nodo]["fuerza"] = round(self.grafo[nodo]["fuerza"] * self.REPASO_FUERZA, 4)
+            self.grafo[nodo]["ultimo"] = ahora
+        for (c, _), p in self.saber.items():
+            if c == clase and p.estado(ahora) == EstadoSaber.HIPOTESIS:
+                p.c_exp = acotar(p.c_exp + self.REPASO_CONFIANZA)
+                p.actualizada = max(p.actualizada, ahora)
+
     def reconsolidar(self, clave: Tuple[str, Relacion], ahora: int, arousal: float) -> None:
         """Decisión 22: un recuerdo recuperado vuelve a ser modificable; se refresca (no envejece) y, si
         hay búfer diurno, entra en él para persistirse de noche."""

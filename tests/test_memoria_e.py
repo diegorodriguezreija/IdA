@@ -1,5 +1,7 @@
 """Bloque E: mecanismos de memoria (decisiones 19 a 22), cada uno detrás de su interruptor."""
 
+import pytest
+
 from ida.core.memoria import Memoria
 from ida.core.mundo import MecanismosMemoria, Perfil
 
@@ -90,3 +92,34 @@ def test_recuperacion_evocada_trae_y_reconsolida():
     apagado = Contexto(Onda(51, 100, 1e9), Soma(alimentacion=20.0), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
     r.activa(apagado)
     assert not apagado.onda.ev("Recuerdo")                                                   # sin el interruptor, nada
+
+
+def test_repaso_en_calma_refuerza_lo_reciente():
+    from dataclasses import replace
+
+    from ida.core.arquitectura import Contexto
+    from ida.core.azar import Azar
+    from ida.core.linaje import Arquetipo
+    from ida.core.memoria import Proposicion
+    from ida.core.onda import Onda
+    from ida.core.soma import Soma
+    from ida.core.vocabulario import Afecto, Relacion, Verbo
+    from ida.sistemas.s2 import Recuerdo
+
+    mem = Memoria()
+    mem.grafo = {"Objeto:seta": {"fuerza": 1.0, "ultimo": 90, "clase": "seta"}}
+    h = Proposicion("seta", Relacion.PELIGROSO, confianza=0.4, actualizada=10)
+    mem.saber[("seta", Relacion.PELIGROSO)] = h
+    perfil = replace(Perfil(), mecanismos=MecanismosMemoria(repaso=True))
+    soma = Soma()
+    soma.afecto = Afecto.CALMA
+    ctx = Contexto(Onda(100, 100, 1e9), soma, mem, Arquetipo(), Azar(1), perfil, {Verbo.MOVER})
+    r = Recuerdo()
+    r.sistema = "S2"
+    r.activa(ctx)
+    assert "repaso:Objeto:seta" in ctx.onda.ev("Recuerdo")
+    assert mem.grafo["Objeto:seta"]["fuerza"] == pytest.approx(1.1) and h.c_exp == pytest.approx(0.42) and h.actualizada == 100
+    soma.afecto = Afecto.MIEDO                                       # sin calma no se repasa
+    ctx2 = Contexto(Onda(101, 100, 1e9), soma, mem, Arquetipo(), Azar(1), perfil, {Verbo.MOVER})
+    r.activa(ctx2)
+    assert not ctx2.onda.ev("Recuerdo")
