@@ -312,7 +312,7 @@ def test_arquetipo_deferencia():
 
 
 # --- Soma, linaje y contrato -------------------------------------------------
-def test_presupuesto_varia_con_el_estado():
+def test_marcapasos_varia_con_el_estado():
     m = Marcapasos()
     s = Soma(energia=100.0)
     f1, a1, p1 = m.ritmo(s, 100.0, 100)

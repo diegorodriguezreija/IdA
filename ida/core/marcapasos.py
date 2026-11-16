@@ -5,7 +5,7 @@ puede cambiar el ritmo sin tocar el resto. Devuelve frecuencia (plazo), amplitud
 caben en el latido) y potencia (arousal que se puede otorgar o cambiar en total).
 
 Valores por defecto (bloque B, sin algoritmo adaptativo):
-- Frecuencia y amplitud: la fórmula que estaba en ``Soma.presupuesto``.
+- Frecuencia y amplitud: dependen de la energía, el sueño, la taquicardia y el peligro (ver ``ritmo``).
 - Potencia = amplitud, así que la fuerza máxima por pieza (potencia / amplitud) es 1: ningún
   componente ve recortado un arousal de 0 a 1 ni un cambio completo. Con menos, un reflejo de
   arousal 1 quedaría recortado en cualquier latido.
