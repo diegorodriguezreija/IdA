@@ -76,6 +76,7 @@ class Organismo:
 
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
+        self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos
         self.ultimo_efecto: Optional[Efecto] = None
         self.episodio: Optional[Episodio] = None
         self._vit_ep = self.soma.vitalidad
@@ -103,7 +104,7 @@ class Organismo:
         if obs.dormido is not None:
             soma.dormido = obs.dormido
         frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
-        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia)
+        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias)
         ctx = Contexto(
             onda,
             soma,

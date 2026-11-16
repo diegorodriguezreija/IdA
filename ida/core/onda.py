@@ -87,6 +87,7 @@ class Onda:
         frecuencia_ms: float,
         ef_anterior: Optional[Canales] = None,
         potencia_max: Optional[float] = None,
+        estrategias: Optional[Dict[str, Pieza]] = None,
         reloj: Callable[[], float] = time.perf_counter,
     ):
         self.ciclo = ciclo
@@ -97,6 +98,9 @@ class Onda:
         self.potencia_consumida = 0.0
         self.consumo: Dict[str, Dict[str, float]] = {}   # por sistema: gasto, rechazos y recortes
         self.amplitud_agotada = False                     # algún sistema se quedó sin amplitud
+        # Estrategias activas de todos los sistemas. El Core pasa el mismo diccionario en cada latido,
+        # así que se conservan entre latidos (decisión 4); solo ``activar`` y ``cerrar`` las cambian.
+        self.estrategias: Dict[str, Pieza] = estrategias if estrategias is not None else {}
         self.reactiva = DimensionReactiva(ef_anterior)
         self._reloj = reloj
         self._t0 = reloj()
@@ -283,7 +287,27 @@ class Onda:
         self._anotar(pieza, autor, "modificar", excepcion, cambios)
         return pieza
 
+    # --- estrategias ------------------------------------------------------
+    def activar(self, pieza: Pieza, autor: Optional[Autor] = None) -> Pieza:
+        """Pone una estrategia entre las activas (se conserva entre latidos) y la registra en ``ef``."""
+        excepcion = self._propiedad(autor, pieza, "activar")
+        self._anotar(pieza, autor, "activar", excepcion)
+        self.estrategias[pieza.id] = pieza
+        self.reactiva.ef.setdefault(pieza.tipo, {})[pieza.id] = pieza
+        return pieza
+
+    def cerrar(self, pieza: Pieza, estado: str, autor: Optional[Autor] = None) -> Pieza:
+        """Saca una estrategia de las activas con su estado final."""
+        self.modificar(pieza, autor, carga={"estado": estado})
+        self.estrategias.pop(pieza.id, None)
+        self.reactiva.ef.setdefault(pieza.tipo, {})[pieza.id] = pieza
+        return pieza
+
     # --- lectura -----------------------------------------------------------
+    def ef(self, canal: str) -> Dict[str, Pieza]:
+        """Estado final de un canal en este latido (lo registrado, con o sin atención)."""
+        return self.reactiva.ef.get(canal, {})
+
     def ev(self, canal: str) -> Dict[str, Pieza]:
         return self.reactiva.ev.get(canal, {})
 
