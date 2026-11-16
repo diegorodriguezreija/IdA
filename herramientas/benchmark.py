@@ -10,7 +10,9 @@ versiones es pareada por semilla. Reloj real, como en el protocolo original.
 
 ``--raiz`` es la carpeta del código que se mide (por ejemplo, un ``git worktree`` de ``main``).
 Además de las métricas de vida, recoge por latido, si la versión los tiene: plazo agotado, S3 sin
-amplitud o potencia y potencia gastada por sistema (``Onda.consumo``, bloque B).
+amplitud o potencia y potencia gastada por sistema (``Onda.consumo``, bloque B); y de S1 (bloque C):
+latidos por estrategia activa y ejecutada, abandonos por agotamiento, sustituciones, reflejos y sus
+interrupciones, y latidos en que el plus por estrategia activa decide el ganador.
 """
 
 import argparse
@@ -53,12 +55,26 @@ def ejecutar(raiz: str, mundo: str, salida: str) -> None:
     filas: List[Dict[str, Any]] = []
     for grupo, perfil, sin_exp in GRUPOS:
         for semilla in SEMILLAS:
-            ind = {"latidos": 0, "plazo": 0, "s3_sin_recursos": 0, "potencia": {"S1": 0.0, "S2": 0.0, "S3": 0.0}}
+            ind: Dict[str, Any] = {"latidos": 0, "plazo": 0, "s3_sin_recursos": 0, "potencia": {"S1": 0.0, "S2": 0.0, "S3": 0.0},
+                                   "estrategias": {}, "reflejos": 0, "interrumpe": 0, "plus": 0, "sustituciones": 0}
 
             def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
                 ind["latidos"] += 1   # noqa: B023 (se usa en la misma iteración)
                 if onda.guillotina and "plazo" in onda.motivo_guillotina:
                     ind["plazo"] += 1   # noqa: B023
+                if onda.notas.get("plus_decide"):
+                    ind["plus"] += 1   # noqa: B023
+                e1 = onda.notas.get("estrategias_S1")
+                if e1:
+                    for n in e1["activas"]:
+                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["activa"] += 1   # noqa: B023
+                    if e1["ejecutada"]:
+                        ind["estrategias"].setdefault(e1["ejecutada"], {"activa": 0, "ejecutada": 0, "abandonos": 0})["ejecutada"] += 1  # noqa: B023
+                    for n in e1["abandonos"]:
+                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["abandonos"] += 1   # noqa: B023
+                    ind["reflejos"] += int(e1["reflejo"])   # noqa: B023
+                    ind["interrumpe"] += int(e1["interrumpe"])   # noqa: B023
+                    ind["sustituciones"] += int(e1.get("sustituciones", 0))   # noqa: B023
                 consumo = getattr(onda, "consumo", None)
                 if consumo is None:
                     return
@@ -111,6 +127,23 @@ def comparar(base: str, nueva: str) -> None:
             n = sum(i["latidos"] for i in ind) or 1
             pot = " / ".join(f"{sum(i['potencia'][s] for i in ind) / n:.2f}" for s in ("S1", "S2", "S3"))
             print(f"| {grupo} | {nombre} | {n} | {sum(i['plazo'] for i in ind)} | {sum(i['s3_sin_recursos'] for i in ind)} | {pot} |")
+    filas_b = [r for r in b["filas"] if r["indicadores"].get("estrategias")]
+    if not filas_b:
+        return
+    print("\n| Grupo | Latidos | Plus decide | Reflejos | Reflejo interrumpe | Sustituciones |\n|---|---|---|---|---|---|")
+    for grupo, _, _ in GRUPOS:
+        ind = [r["indicadores"] for r in b["filas"] if r["grupo"] == grupo]
+        print(f"| {grupo} | {sum(i['latidos'] for i in ind)} | {sum(i['plus'] for i in ind)} | {sum(i['reflejos'] for i in ind)} | "
+              f"{sum(i['interrumpe'] for i in ind)} | {sum(i['sustituciones'] for i in ind)} |")
+    total: Dict[str, Dict[str, int]] = {}
+    for r in filas_b:
+        for nombre, c in r["indicadores"]["estrategias"].items():
+            t = total.setdefault(nombre, {"activa": 0, "ejecutada": 0, "abandonos": 0})
+            for k in t:
+                t[k] += c[k]
+    print("\n| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |\n|---|---|---|---|")
+    for nombre, t in sorted(total.items(), key=lambda kv: -kv[1]["activa"]):
+        print(f"| {nombre} | {t['activa']} | {t['ejecutada']} | {t['abandonos']} |")
 
 
 def main() -> int:
