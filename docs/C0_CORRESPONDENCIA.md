@@ -95,11 +95,11 @@ Leyenda del destino: **I** impulso, **E** estrategia, **R** reflejo, **M** modul
 7. **Control sin experiencia.** El valor aprendido por estrategia (C1, detalle de elección) es experiencia. Con `sin_experiencia`, propongo elegir estrategia sin ese valor (innato fijo) para que el control siga limpio.
 8. **Coste de atención.** Cada latido añade piezas `Impulso` (3-5) y `Estrategia` (las activas). Con los márgenes de B0 (p95 de 17 a 55 piezas frente a una amplitud de 50 a 120) cabe, pero aumenta la diferencia con la calibración aplazada tras C.
 
-## 7. Decisiones que pido al autor
+## 7. Decisiones del autor (16/11/2026)
 
-1. ¿Se aprueban los cinco impulsos de la sección 2 (y que Descanso sea de S1)?
-2. `_candidato_core(DORMIR)` por agotamiento: ¿opción A (impulso Descanso) u opción B (límite del Core)?
-3. Regla del Tribunal en C1: ¿mantener la `base` actual + plus (propuesta) o pasar ya a solo arousal + plus?
-4. Umbral del reflejo por cambio brusco: ¿parámetro del `Perfil` con valor inicial 0,4, a medir en C1?
-5. Riesgo 5: ¿se mueve a la percepción lo que usa `DefensaCrafter` dentro de C1?
-6. Riesgo 4: ¿se adelanta a C1 el mecanismo de «la estrategia elige objeto leyendo `Valor` y lo demostrado», o se deja para C2?
+1. **Impulsos aprobados, con un cambio:** los impulsos de S1 salen de las **constantes vitales que declara cada mundo**, un impulso por déficit (hambre, sed, cansancio, salud…), más **Seguridad**. Exploración en S2 y Saber como intención de S3, como se propone. Sustituye a Alimentación y Descanso como impulsos fijos de la sección 2.
+2. **El sueño forzado por agotamiento extremo (`_candidato_core(DORMIR)`, `latido.py:144`) se queda en el Core** como límite fisiológico (opción B).
+3. **Tribunal en C1:** se mantiene la fórmula actual y se añade solo el plus por estrategia activa.
+4. **Umbral del reflejo:** parámetro del `Perfil`, valor inicial 0,4. Además, **agotar una estrategia de Seguridad cambia de estrategia, no abandona el impulso**; si se agotan todas, respuesta innata de último recurso (quedarse quieto o huir).
+5. **Defensas en C1 por la percepción:** la salud por interocepción y la espada por el inventario percibido. `PlanTecnologico` queda para C3.
+6. **Elegir el objeto leyendo `Valor` y lo demostrado queda para C2/C3**; en C1 siguen las excepciones transitorias del bloque B. **Nota:** ese mecanismo es el **sustituto del «no comas esto»** (riesgo 4) cuando se quiten `impulso_modula_accion` y el freno por acción de `S2.Impulso`, `S3.Impulso` y `Prudencia`.
