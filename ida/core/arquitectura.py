@@ -27,6 +27,35 @@ ETAPAS = ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 BARRIDOS = ("reactiva", "activa", "proactiva")
 
 
+SIN_EXPECTATIVA = (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER)   # acciones sin efecto propio que predecir
+
+
+def expectativa_ejecutada(onda: Onda, sistema: str) -> Optional[Pieza]:
+    """Bloque F, F1: la expectativa que ``sistema`` dejó en el latido anterior (``ei``), si la acción
+    ejecutada fue aquella sobre la que esperaba. Si no se ejecutó, no hay nada que contrastar."""
+    e = onda.ei("Expectativa").get(f"expectativa:{sistema}")
+    previa = onda.ei("Accion").get("Accion")
+    if e is None or previa is None:
+        return None
+    if previa.carga.get("verbo") != e.carga.get("verbo") or previa.carga.get("objetivo") != e.carga.get("objetivo"):
+        return None
+    return e
+
+
+def variables_proactivas(onda: Onda, soma: Soma, perfil: Perfil) -> Dict[str, float]:
+    """Variables sobre las que S1 y S2 dejan expectativas: el déficit de cada necesidad que declara el
+    mundo (desde la interocepción) y el placer (/100) y el estrés del cuerpo."""
+    valores = {n: float(p.carga["valor"]) for n, p in onda.ev("Interocepcion").items()}
+    v: Dict[str, float] = {}
+    for necesidad in perfil.necesidades:
+        d = necesidad.deficit(valores)
+        if d is not None:
+            v[necesidad.nombre] = round(d, 4)
+    v["placer"] = round(float(soma.placer) / 100.0, 4)
+    v["estres"] = round(float(soma.estres), 4)
+    return v
+
+
 @dataclass
 class Contexto:
     """Todo lo que un componente puede consultar durante un latido."""

@@ -10,7 +10,7 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.biblioteca import RegistroLectura
 from ida.core.pieza import Episodio, acotar
@@ -233,6 +233,9 @@ class Memoria:
         self.conceptos: Dict[str, Dict[str, Any]] = {}       # id -> {"etiqueta", "prototipo", "n"}
         self._concepto_de: Dict[str, str] = {}               # etiqueta legible -> id
         self.instancias: Dict[str, Dict[str, Any]] = {}      # id de la instancia -> {"concepto", "visto"}
+        # F1: modelo de transiciones (sistema, verbo, clase) -> cambio medio de cada variable, aprendido de lo vivido.
+        self.modelo: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
+        self._modelo_por: Dict[Tuple[str, str], Set[str]] = {}
 
     @property
     def activa(self) -> bool:
@@ -456,6 +459,76 @@ class Memoria:
     def concepto(self, clase: str) -> Optional[Dict[str, Any]]:
         cid = self._concepto_de.get(clase)
         return self.conceptos.get(cid) if cid else None
+
+    # --- F1: expectativas (dimensión proactiva, decisión 24) ----------------------
+    MAX_MODELO = 1000            # entradas (sistema, verbo, clase); se olvida la usada hace más tiempo
+    N_MAX_MODELO = 10            # la media del modelo pesa como mucho 10 experiencias (sigue los cambios)
+    UMBRAL_SORPRESA = 0.1        # error de predicción a partir del cual hay sorpresa
+    PARECIDO_CONCEPTO = 0.2      # distancia máxima entre prototipos para generalizar de un concepto a otro
+
+    @staticmethod
+    def _distancia(a: Dict[str, float], b: Dict[str, float]) -> float:
+        claves = set(a) | set(b)
+        return sum(abs(a.get(k, 0.0) - b.get(k, 0.0)) for k in claves) / len(claves) if claves else 1.0
+
+    def esperar(self, sistema: str, verbo: str, clase: str) -> Optional[Tuple[Dict[str, float], str]]:
+        """Lo que se espera que cambie cada variable si ``sistema`` hace ``verbo`` sobre ``clase``, y de dónde
+        sale: lo vivido con esa clase («episodios»); si no, lo vivido con la clase de concepto más parecido
+        («concepto»); para S2, la valencia del nodo del grafo semántico («grafo»). None si no hay base."""
+        entrada = self.modelo.get((sistema, verbo, clase))
+        if entrada is not None:
+            return {k: m for k, (_, m) in entrada["vars"].items()}, "episodios"
+        propio = self.concepto(clase)
+        if propio is not None:
+            mejor: Optional[Tuple[float, str]] = None
+            for otra in sorted(self._modelo_por.get((sistema, verbo), ())):
+                otro = self.concepto(otra)
+                if otro is None:
+                    continue
+                d = self._distancia(propio["prototipo"], otro["prototipo"])
+                if d <= self.PARECIDO_CONCEPTO and (mejor is None or d < mejor[0]):
+                    mejor = (d, otra)
+            if mejor is not None:
+                return {k: m for k, (_, m) in self.modelo[(sistema, verbo, mejor[1])]["vars"].items()}, "concepto"
+        nodo = self.grafo.get(f"Objeto:{clase}")
+        if sistema == "S2" and nodo is not None and nodo.get("usos", 0) > 0:
+            return {"valencia": round(float(nodo["valencia"]) / float(nodo["usos"]), 4)}, "grafo"
+        return None
+
+    def contrastar(self, sistema: str, verbo: str, clase: str, observado: Dict[str, float], ahora: int) -> Optional[float]:
+        """Compara lo observado con lo esperado (si había expectativa), cuenta acierto o fallo (los contadores
+        del error de predicción que ya usa el feedback de S3) y aprende la transición. Devuelve el error."""
+        esperado = self.esperar(sistema, verbo, clase)
+        error: Optional[float] = None
+        if esperado is not None:
+            exp = esperado[0]
+            if "valencia" in exp:
+                obs_val = observado.get("placer", 0.0) - observado.get("estres", 0.0)
+                error = abs(obs_val - exp["valencia"])
+            else:
+                error = sum(abs(observado.get(k, 0.0) - e) for k, e in exp.items())
+            error = round(error, 4)
+            if error >= self.UMBRAL_SORPRESA:
+                self.fallos += 1
+            else:
+                self.aciertos += 1
+        clave = (sistema, verbo, clase)
+        entrada = self.modelo.setdefault(clave, {"vars": {}, "ultimo": ahora})
+        entrada["ultimo"] = ahora
+        variables = dict(observado)
+        if sistema == "S2":
+            variables["valencia"] = observado.get("placer", 0.0) - observado.get("estres", 0.0)
+            variables = {"valencia": variables["valencia"]}
+        for k, v in variables.items():
+            n, m = entrada["vars"].get(k, (0, 0.0))
+            n = min(n + 1, self.N_MAX_MODELO)
+            entrada["vars"][k] = (n, round(m + (v - m) / n, 4))
+        self._modelo_por.setdefault((sistema, verbo), set()).add(clase)
+        if len(self.modelo) > self.MAX_MODELO:
+            viejo = min(self.modelo, key=lambda c: self.modelo[c]["ultimo"])
+            del self.modelo[viejo]
+            self._modelo_por.get((viejo[0], viejo[1]), set()).discard(viejo[2])
+        return error
 
     REPASO_FUERZA = 1.1            # E6: refuerzo de un nodo repasado
     REPASO_CONFIANZA = 0.02        # E6: refuerzo de las hipótesis de la clase repasada

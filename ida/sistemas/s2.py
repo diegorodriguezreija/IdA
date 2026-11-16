@@ -12,16 +12,17 @@
 | Reaccionar  | Feedback         | Feedback de S2: mejora del placer y bajada del estrés |
 | Reaccionar  | Estrategia       | Estrategias de valor: explorar, refugiarse (hogar valorado), recordar_comida |
 | Actuar      | Accion           | Acción de cada estrategia activa de S2, con su origen |
+| Actuar      | Anticipacion     | Expectativa: valencia esperada si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
 
 import math
 from typing import List, Optional, Tuple
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import Accion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas.comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
 EXPLORACION = "exploracion"
@@ -367,6 +368,12 @@ class Feedback(Componente):
         previo = ctx.onda.ei("Feedback").get(f"feedback:{self.sistema}")
         antes = previo.carga["estado"] if previo is not None else {"placer": placer, "estres": estres}
         valor = round((placer - antes["placer"]) / 100.0 - (estres - antes["estres"]), 4)
+        e = expectativa_ejecutada(ctx.onda, self.sistema) if ctx.perfil.mecanismos.expectativa else None
+        if e is not None and "valencia" in e.carga["esperado"]:
+            # Bloque F, F1: error de predicción con signo sobre la valencia esperada.
+            b = e.carga["base"]
+            obtenida = (placer / 100.0 - float(b.get("placer", placer / 100.0))) - (estres - float(b.get("estres", estres)))
+            valor = round(valor + PESO_PREDICCION * (obtenida - float(e.carga["esperado"]["valencia"])), 4)
         impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
         self.registrar(ctx, self.pieza(ctx, f"feedback:{self.sistema}", arousal=0.0,
                                        carga={"valor": valor, "por_impulso": dict.fromkeys(impulsos, valor),
@@ -383,5 +390,5 @@ def crear_s2() -> Sistema:
         Modulo("Sentir", [Patron(), Emocion(), Recuerdo()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
         Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
-        Modulo("Actuar", [Accion(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo), Anticipacion(("placer", "estres"))]),
     ])

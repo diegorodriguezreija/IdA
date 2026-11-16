@@ -171,3 +171,44 @@ def test_reduccion_respeta_el_decay_del_dano():
     mem.reducir(100)
     assert alto.c_exp == c_alto
     assert leve.c_exp == pytest.approx(c_leve * 0.96) and nutre.c_exp == pytest.approx(c_nutre * 0.95)
+
+
+# --- Bloque F --------------------------------------------------------------
+
+
+def test_expectativa_modelo_y_generalizacion_por_concepto():
+    mem = Memoria()
+    assert mem.esperar("S1", "comer", "baya") is None
+    assert mem.contrastar("S1", "comer", "baya", {"hambre": -0.3}, 1) is None       # sin expectativa: solo aprende
+    assert mem.esperar("S1", "comer", "baya") == ({"hambre": -0.3}, "episodios")
+    aciertos = mem.aciertos
+    assert mem.contrastar("S1", "comer", "baya", {"hambre": -0.28}, 2) == pytest.approx(0.02) and mem.aciertos == aciertos + 1
+    fallos = mem.fallos
+    assert mem.contrastar("S1", "comer", "baya", {"hambre": 0.2}, 3) >= Memoria.UMBRAL_SORPRESA and mem.fallos == fallos + 1
+    mem.instancia("b1", "baya", {"nutritivo": 0.8, "color": 0.5}, 1)
+    mem.instancia("m1", "mora", {"nutritivo": 0.75, "color": 0.55}, 1)
+    mem.instancia("p1", "piedra", {"nutritivo": 0.0, "color": 0.1}, 1)
+    assert mem.esperar("S1", "comer", "mora")[1] == "concepto"                       # se parece a la baya
+    assert mem.esperar("S1", "comer", "piedra") is None
+    mem.grafo["Objeto:piedra"] = {"fuerza": 1.0, "valencia": -0.6, "usos": 2}
+    assert mem.esperar("S2", "comer", "piedra") == ({"valencia": -0.3}, "grafo")
+
+
+def test_expectativas_en_una_vida_con_el_interruptor():
+    from dataclasses import replace
+
+    from ida.core.azar import Azar
+    from ida.core.latido import Organismo
+    from ida.core.linaje import Arquetipo
+    from ida.mundos.minimo import MundoMinimo
+    from ida.sistemas import crear_sistemas
+
+    mundo = MundoMinimo()
+    mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True))
+    mundo.reiniciar(3)
+    azar = Azar(3)
+    org = Organismo(mundo, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar, True)
+    sistemas = set()
+    org.vivir(300, al_latir=lambda o, onda: sistemas.update(p.sistema for p in onda.reactiva.ef.get("Expectativa", {}).values()))
+    assert sistemas == {"S1", "S2"}
+    assert any(k[0] == "S1" for k in org.memoria.modelo) and any(k[0] == "S2" for k in org.memoria.modelo)

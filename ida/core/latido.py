@@ -15,7 +15,7 @@ Orden de un latido:
 import time
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
@@ -134,6 +134,8 @@ class Organismo:
         # 4. Aprender del efecto de la acción anterior (el cuarteto)
         with onda.fase("aprender"):
             self._aprender(ctx)
+            if self.con_experiencia and self.perfil.mecanismos.expectativa:
+                self._contrastar(ctx)
 
         # 5. Cognición (o sueño)
         if soma.dormido:
@@ -228,6 +230,28 @@ class Organismo:
         agotadas = [(d, n.nombre) for n in self.perfil.necesidades if "vitalidad" not in n.constantes
                     for d in [n.deficit(valores)] if d is not None and d >= 0.99]
         return max(agotadas)[1] if agotadas else "desgaste"
+
+    def _contrastar(self, ctx: Contexto) -> None:
+        """Bloque F, F1 (decisión 24): contrasta las expectativas que S1 y S2 dejaron en el latido anterior
+        con lo que ha llegado. Aprende la transición; con error alto, la ``Sorpresa`` de siempre (por
+        sistema) entra en el foco y lo percibido de esa clase gana arousal (atrae atención)."""
+        onda = ctx.onda
+        ahora = variables_proactivas(onda, ctx.soma, self.perfil)
+        for sistema in ("S1", "S2"):
+            e = expectativa_ejecutada(onda, sistema)
+            if e is None:
+                continue
+            c = e.carga
+            observado = {k: round(ahora[k] - float(b), 4) for k, b in c["base"].items() if k in ahora}
+            error = self.memoria.contrastar(sistema, c["verbo"].value, c["clase"], observado, ctx.latido)
+            if error is None or error < Memoria.UMBRAL_SORPRESA:
+                continue
+            s = Pieza(id=f"sorpresa_{sistema}_{ctx.latido}", tipo="Sorpresa", arousal=min(1.0, 0.5 + error),
+                      carga={"sistema": sistema, "clase": c["clase"], "error": error}, sistema="CORE", creada=ctx.latido)
+            onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))
+            for p in list(onda.ev("Exterocepcion").values()):
+                if p.clase == c["clase"]:
+                    onda.modificar(p, None, arousal=min(1.0, p.arousal + 0.2 * min(1.0, error)))   # el Core, sin autor
 
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
