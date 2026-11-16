@@ -220,16 +220,21 @@ def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
     from ida.core.pieza import Pieza
     from ida.sistemas.s1 import Reflejo
 
-    def sobresalto(antes, ahora):
+    def sobresalto(antes, ahora, umbral_miedo=0.6):
         ef_anterior = {"Supervivencia": {"alarma": Pieza("alarma", "Supervivencia", carga={"peligro": antes})}}
         onda = Onda(2, 100, 1e9, ef_anterior=ef_anterior)
         ctx = _ctx(onda)
+        ctx.arquetipo = Arquetipo(umbral_miedo=umbral_miedo)
         onda.percibir("Supervivencia", Pieza("alarma", "Supervivencia", carga={"peligro": ahora, "clase_amenaza": "x"}))
         _comp(Reflejo).reactiva(ctx)
         return "sobresalto" in onda.ef("Reflejo")
 
-    assert sobresalto(0.1, 0.6)                 # salto de 0,5 ≥ 0,4
+    assert sobresalto(0.1, 0.6)                 # salto de 0,5 ≥ 0,4 (umbral de miedo de referencia, 0,6)
     assert not sobresalto(0.7, 0.9)             # peligro alto pero sostenido: no es reflejo
+    # El umbral escala con umbral_miedo: valiente (0,85) necesita ≥ 0,567; reactivo (0,35), ≥ 0,233
+    assert not sobresalto(0.1, 0.6, umbral_miedo=0.85)
+    assert sobresalto(0.1, 0.7, umbral_miedo=0.85)
+    assert sobresalto(0.1, 0.35, umbral_miedo=0.35)
 
 
 def test_defensa_armada_de_crafter_lee_la_percepcion():
