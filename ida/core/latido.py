@@ -21,11 +21,11 @@ from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Actuador, Escena, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
+from ida.core.sentidos import Actuador, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
-CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Escena"}
+CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion"}
 
 
 class Organismo:
@@ -54,7 +54,7 @@ class Organismo:
             self.verbos.add(Verbo.LEER)
 
         self.tribunal = Tribunal()
-        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Escena()], exento=True)
+        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
@@ -215,7 +215,7 @@ class Organismo:
     def _dormir(self, ctx: Contexto) -> None:
         """Parálisis motora. Despierta por alarma (peligro cercano, hambre crítica) o al descansar."""
         soma = self.soma
-        peligro = max((p.rasgo("peligro") * p.rasgo("proximidad") for p in ctx.onda.ev("Escena").values()), default=0.0)
+        peligro = max((p.rasgo("peligro") * p.rasgo("proximidad") for p in ctx.onda.ev("Exterocepcion").values()), default=0.0)
         if peligro >= 0.6 or soma.alimentacion <= soma.HAMBRE_CRITICA or (soma.descanso >= 95.0 and soma.energia >= 85.0):
             soma.dormido = False
             ctx.onda.notas["despierta"] = "alarma" if peligro >= 0.6 or soma.alimentacion <= soma.HAMBRE_CRITICA else "descansado"
@@ -225,14 +225,14 @@ class Organismo:
 
     def _indicadores(self, ctx: Contexto) -> None:
         onda = ctx.onda
-        escena = onda.ev("Escena").values()
-        peligro = max((p.rasgo("peligro") * max(p.rasgo("proximidad"), 0.3) for p in escena), default=0.0)
+        exterocepcion = onda.ev("Exterocepcion").values()
+        peligro = max((p.rasgo("peligro") * max(p.rasgo("proximidad"), 0.3) for p in exterocepcion), default=0.0)
         sup = [p.arousal for p in onda.ev("Supervivencia").values()]
         if sup:
             peligro = max(peligro, max(sup) if ctx.soma.alimentacion > ctx.soma.HAMBRE_CRITICA else 0.0)
         cognitivas = [p.arousal for canal, piezas in onda.reactiva.ev.items() if canal not in CANALES_SENSORES for p in piezas.values()]
         tension = sum(cognitivas) / len(cognitivas) if cognitivas else 0.0
-        novedad = max((p.rasgo("novedad") for p in escena), default=0.0)
+        novedad = max((p.rasgo("novedad") for p in exterocepcion), default=0.0)
         ctx.soma.actualizar_indicadores(peligro, tension, novedad)
         if ctx.soma.afecto in (Afecto.MIEDO, Afecto.PANICO):
             self.contadores["miedo"] += 1

@@ -29,10 +29,10 @@ def _ctx(onda, soma=None, memoria=None, verbos=None):
 
 # --- Onda y guillotina -------------------------------------------------------
 def test_ei_es_de_solo_lectura():
-    p = Pieza("x", "Escena")
-    onda = Onda(2, 10, 100.0, ef_anterior={"Escena": {"x": p}})
+    p = Pieza("x", "Exterocepcion")
+    onda = Onda(2, 10, 100.0, ef_anterior={"Exterocepcion": {"x": p}})
     with pytest.raises(TypeError):
-        onda.reactiva.ei["Escena"]["y"] = p
+        onda.reactiva.ei["Exterocepcion"]["y"] = p
 
 
 def test_guillotina_por_amplitud():

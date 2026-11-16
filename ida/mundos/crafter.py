@@ -367,7 +367,7 @@ class DefensaCrafter(Componente):
         salud = self.mundo.jugador.health
 
         # Buscar hostiles inmediatos (a distancia <= 1)
-        hostiles_cerca = [p for p in ctx.onda.ev("Escena").values()
+        hostiles_cerca = [p for p in ctx.onda.ev("Exterocepcion").values()
                           if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9]
 
         # 1. Hostiles inmediatos (distancia <= 1): abatir con espada
@@ -380,13 +380,13 @@ class DefensaCrafter(Componente):
 
         # 2. Hostiles a distancia (esqueletos disparando flechas a 2-3 casillas): cerrar distancia
         # para no ser diezmado en campo abierto, aprovechando que el esqueleto solo tiene 3 de vitalidad.
-        esqueletos = [p for p in ctx.onda.ev("Escena").values()
+        esqueletos = [p for p in ctx.onda.ev("Exterocepcion").values()
                       if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9]
         if esqueletos and tiene_espada and salud >= 5:
             esq = esqueletos[0]
             pos_esq = esq.carga["datos"]["pos"]
             pos = tuple(self.mundo.jugador.pos)
-            lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+            lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
             mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], pos_esq), default=None)
             if mejor is not None and _dist(mejor.carga["datos"]["pos"], pos_esq) < _dist(pos, pos_esq):
                 self.proponer(ctx, Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
@@ -434,7 +434,7 @@ class PlanTecnologico(Componente):
                                           ("collect_coal", "carbon", "wood_pickaxe")):
             if logro in hecho or inv.get(herramienta, 0) < 1:
                 continue
-            for p in ctx.onda.ev("Escena").values():
+            for p in ctx.onda.ev("Exterocepcion").values():
                 if p.clase == clase and p.rasgo("proximidad") >= 0.9 and self.fallos.get(p.id, 0) < 3:
                     self.proponer(ctx, Verbo.COGER, p.id, 0.55, 0.8, f"plan: {logro}", clase=clase)
                     return True
@@ -444,7 +444,7 @@ class PlanTecnologico(Componente):
             if 0 <= frente[0] < w.area[0] and 0 <= frente[1] < w.area[1] and w[frente][0] == "grass" and w[frente][1] is None:
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
-        hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Escena").values())
+        hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Exterocepcion").values())
         if inv.get("energy", 9) <= 6 and self.mundo.env._world.daylight >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
             self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
@@ -490,15 +490,15 @@ class PlanTecnologico(Componente):
             return
 
     def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
-        """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Escena o el hipocampo del Core."""
+        """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Exterocepcion o el hipocampo del Core."""
         clase_percibida = MATERIALES.get(estructura, estructura)
         # 1. ¿Está visible en la escena actual?
-        candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == clase_percibida and p.rasgo("proximidad") >= 0.1]
+        candidatos = [p for p in ctx.onda.ev("Exterocepcion").values() if p.clase == clase_percibida and p.rasgo("proximidad") >= 0.1]
         if candidatos:
             objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
             destino_pos = objetivo.carga["datos"]["pos"]
             pos = tuple(self.mundo.jugador.pos)
-            lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+            lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
             mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
             if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
                 self.proponer(ctx, Verbo.MOVER, mejor.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=mejor.clase)
@@ -509,7 +509,7 @@ class PlanTecnologico(Componente):
         if aqui and destino_nodo and destino_nodo != aqui:
             salto = ctx.memoria.ruta(aqui, destino_nodo)
             if salto:
-                lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+                lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
                 puerta = next((l for l in lugares if l.id == salto), None)
                 if puerta is not None:
                     self.proponer(ctx, Verbo.MOVER, puerta.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=puerta.clase)
@@ -520,7 +520,7 @@ class PlanTecnologico(Componente):
         clase = self.RECURSO.get(recurso)
         if clase is None:
             return
-        candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == clase and self.fallos.get(p.id, 0) < 3]
+        candidatos = [p for p in ctx.onda.ev("Exterocepcion").values() if p.clase == clase and self.fallos.get(p.id, 0) < 3]
         if not candidatos:
             return
         objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
@@ -529,7 +529,7 @@ class PlanTecnologico(Componente):
             return
         destino_pos = objetivo.carga["datos"]["pos"]
         pos = tuple(self.mundo.jugador.pos)
-        lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+        lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
         mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
         if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
             self.proponer(ctx, Verbo.MOVER, mejor.id, 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)

@@ -307,7 +307,7 @@ class Defensa(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         if ctx.soma.vitalidad < 30.0:
             return
-        for p in ctx.onda.ev("Escena").values():
+        for p in ctx.onda.ev("Exterocepcion").values():
             if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9:
                 self.proponer(ctx, Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: atacar al {p.clase}", clase=p.clase)
                 return
@@ -349,7 +349,7 @@ class Prudencia(Componente):
         candidatos = [c for c in acc if c.carga["verbo"] == Verbo.COMER]
         if not candidatos:
             return
-        conocidas = {p.clase for p in ctx.onda.ev("Escena").values() if mem.demostrada(p.clase, Relacion.NUTRITIVO, ahora)}
+        conocidas = {p.clase for p in ctx.onda.ev("Exterocepcion").values() if mem.demostrada(p.clase, Relacion.NUTRITIVO, ahora)}
         for c in candidatos:
             clase = c.carga.get("clase", "")
             dano = mem.proposicion(clase, Relacion.PELIGROSO)
@@ -365,7 +365,7 @@ class Prudencia(Componente):
             self._buscar_en_otra_parte(ctx, malas | {aqui})
 
     def _buscar_en_otra_parte(self, ctx: Contexto, malas) -> None:
-        carpetas = [p for p in ctx.onda.ev("Escena").values()
+        carpetas = [p for p in ctx.onda.ev("Exterocepcion").values()
                     if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5 and p.id not in malas]
         if carpetas:
             destino = max(carpetas, key=lambda p: p.rasgo("nutritivo") + 0.5 * p.rasgo("novedad"))

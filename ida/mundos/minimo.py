@@ -188,7 +188,7 @@ class Defensa(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         if ctx.soma.vitalidad < 30.0:
             return
-        for p in ctx.onda.ev("Escena").values():
+        for p in ctx.onda.ev("Exterocepcion").values():
             if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9:
                 self.proponer(ctx, Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: plantar cara al {p.clase}", clase=p.clase)
                 return

@@ -3,7 +3,7 @@
 Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
 - ``Interocepcion``: una pieza por constante vital, con su variación respecto al latido anterior.
 - ``Propiocepcion``: dónde está el individuo y qué lleva encima.
-- ``Escena``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
+- ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
 
 Actuar: el ``Tribunal`` elige un candidato de ``acc["Ejecucion"]`` y el ``Actuador`` de ese
 verbo lo materializa en el mundo. Nada se ejecuta sin pasar por el Tribunal.
@@ -39,8 +39,8 @@ class Propiocepcion(Componente):
         self.percibir(ctx, p, coste=0)
 
 
-class Escena(Componente):
-    tipo = "Escena"
+class Exterocepcion(Componente):
+    tipo = "Exterocepcion"
 
     def reactiva(self, ctx: Contexto) -> None:
         if ctx.observacion is None:

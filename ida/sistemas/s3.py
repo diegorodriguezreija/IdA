@@ -19,15 +19,15 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import al_alcance, alarma, apetito, escena, lugares, mejor, objetos
+from ida.sistemas.comun import al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 class Comunicacion(Componente):
     tipo = "Comunicacion"
-    entradas = ("Escena",)
+    entradas = ("Exterocepcion",)
 
     def reactiva(self, ctx: Contexto) -> None:
-        for p in escena(ctx):
+        for p in exterocepcion(ctx):
             mensaje = p.carga.get("datos", {}).get("mensaje")
             if mensaje:
                 self.percibir(ctx, self.pieza(ctx, p.id, arousal=0.5, carga={"clase": p.clase, "mensaje": str(mensaje)[:200]}, entradas=[p.id]))

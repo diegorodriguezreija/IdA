@@ -9,12 +9,12 @@ ALCANCE = 0.9          # proximidad a partir de la cual algo está al alcance
 MAX_OBJETOS = 7        # atención limitada: 7 ± 2 objetos por latido
 
 
-def escena(ctx: Contexto) -> List[Pieza]:
-    return list(ctx.onda.ev("Escena").values())
+def exterocepcion(ctx: Contexto) -> List[Pieza]:
+    return list(ctx.onda.ev("Exterocepcion").values())
 
 
 def lugares(ctx: Contexto) -> List[Pieza]:
-    return [p for p in escena(ctx) if p.rasgo("lugar") >= 0.5]
+    return [p for p in exterocepcion(ctx) if p.rasgo("lugar") >= 0.5]
 
 
 def objetos(ctx: Contexto) -> List[Pieza]:

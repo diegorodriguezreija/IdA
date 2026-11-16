@@ -11,20 +11,20 @@
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Verbo
-from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, escena, lugares, mejor, objetos
+from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 class Imagen(Componente):
-    """Integra Escena, Interocepción y el resultado de la acción anterior en una representación del instante.
+    """Integra Exterocepcion, Interocepción y el resultado de la acción anterior en una representación del instante.
 
     Solo los objetos más salientes (7 ± 2) pasan a la atención como piezas ``Objeto``.
     """
 
     tipo = "Imagen"
-    entradas = ("Escena", "Interocepcion")
+    entradas = ("Exterocepcion", "Interocepcion")
 
     def reactiva(self, ctx: Contexto) -> None:
-        cosas = [p for p in escena(ctx) if p.rasgo("lugar") < 0.5]
+        cosas = [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
         cosas.sort(key=lambda p: -p.arousal)
         foco = cosas[0] if cosas else None
         previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
@@ -38,7 +38,7 @@ class Imagen(Componente):
             ctx, f"imagen_{ctx.latido}", arousal=foco.arousal if foco else 0.1,
             carga={"foco": foco.id if foco else None, "clase_foco": foco.clase if foco else None,
                    "n_cosas": len(cosas), "n_lugares": len(lugares(ctx)), "agencia": agencia},
-            entradas=["Escena", "Interocepcion", "Ejecucion"],
+            entradas=["Exterocepcion", "Interocepcion", "Ejecucion"],
         ))
         for p in cosas[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
