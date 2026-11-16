@@ -6,7 +6,7 @@
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
-| Reaccionar  | ImpulsoS2        | Modula los candidatos existentes según el valor de su objetivo |
+| Reaccionar  | Impulso        | Modula los candidatos existentes según el valor de su objetivo |
 | Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
 | Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
 | Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
@@ -82,7 +82,7 @@ class Exteriorizacion(Componente):
                                        carga={"afecto": ctx.soma.afecto.value, "placer": round(ctx.soma.placer, 1)}))
 
 
-class ImpulsoS2(Componente):
+class Impulso(Componente):
     """Convergencia sobre el canal común: sube o baja los candidatos según el valor de su objetivo."""
 
     tipo = "Impulso"
@@ -214,5 +214,5 @@ def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar(), Orientacion()]),
+        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Curiosidad(), Hogar(), Orientacion()]),
     ])

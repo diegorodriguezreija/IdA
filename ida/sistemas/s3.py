@@ -12,7 +12,7 @@ proposiciones **demostradas**.
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
 | Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
-| Reaccionar  | ImpulsoS3            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
+| Reaccionar  | Impulso            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
@@ -146,7 +146,7 @@ class Comportamiento(Componente):
             self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, c.confianza, motivo, clase=objetivo.clase)
 
 
-class ImpulsoS3(Componente):
+class Impulso(Componente):
     """Freno prefrontal: baja los candidatos que van contra lo demostrado (acercarse a lo peligroso,
     comer lo que se sabe que no alimenta)."""
 
@@ -353,5 +353,5 @@ def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), PredicadoProposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Comportamiento(), ImpulsoS3(), Estudio()]),
+        Modulo("Reaccionar", [Comportamiento(), Impulso(), Estudio()]),
     ])

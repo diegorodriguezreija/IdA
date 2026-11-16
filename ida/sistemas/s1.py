@@ -5,7 +5,7 @@
 | Sentir      | Imagen         | Imagen (gestalt del instante) y Objeto (lo que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
 | Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
-| Reaccionar  | ImpulsoS1      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
+| Reaccionar  | Impulso      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
@@ -101,7 +101,7 @@ class Reflejo(Componente):
             self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.7, f"reflejo: defenderse de {amenaza.clase}", clase=amenaza.clase)
 
 
-class ImpulsoS1(Componente):
+class Impulso(Componente):
     """Impulsos básicos: comer lo que está al alcance y acercarse a la comida."""
 
     tipo = "Impulso"
@@ -128,5 +128,5 @@ def crear_s1() -> Sistema:
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Supervivencia()]),
-        Modulo("Reaccionar", [Reflejo(), ImpulsoS1()]),
+        Modulo("Reaccionar", [Reflejo(), Impulso()]),
     ])
