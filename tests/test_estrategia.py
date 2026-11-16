@@ -299,3 +299,67 @@ def test_alimentarse_elige_el_objeto_por_valor_y_si_se_valora_mal_vuelve_a_busca
     assert paso == "comer" and propuesta.verbo == Verbo.COMER and propuesta.objetivo == "s1"
     paso, propuesta = fase(-0.3)                 # se valora mal: no se come, se busca en otro sitio
     assert paso == "buscar" and propuesta.verbo == Verbo.MOVER and propuesta.objetivo == "c1"
+
+
+# --- Decisión 7 del autor sobre C1 ---------------------------------------------------------------
+def _latido_con_feedback(n, activas, comp, intensidad, feedback, ejecutada):
+    from ida.core.pieza import Pieza
+
+    ef_anterior = {}
+    if ejecutada is not None:
+        ef_anterior["Accion"] = {"Accion": Pieza("Accion", "Accion", carga={"verbo": Verbo.MOVER, "origen": {"estrategia": ejecutada}})}
+    onda = Onda(n, 100, 1e9, ef_anterior=ef_anterior, estrategias=activas)
+    ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.ESPERAR})
+    fb = _comp(lambda: _Tipo("Feedback"))
+    fb.registrar(ctx, fb.pieza(ctx, "feedback", 0.0, carga={"por_impulso": {"seguridad": feedback}}))
+    imp = _comp(lambda: _Tipo("Impulso"))
+    imp.registrar(ctx, imp.pieza(ctx, "seguridad", intensidad, carga={"intensidad": intensidad, "objetivo": 0.0, "rasgo": None}))
+    comp.reactiva(ctx)
+    return onda
+
+
+def test_el_valor_se_aprende_por_feedback_y_al_alcanzar_el_objetivo_queda_completada():
+    from ida.sistemas.s1 import Estrategia
+
+    comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10)])))
+    activas: dict = {}
+    _latido_con_feedback(1, activas, comp, 0.8, 0.0, None)                    # se activa con intensidad 0,8
+    p = activas["S1:a:seguridad"]
+    _latido_con_feedback(2, activas, comp, 0.4, 0.4, p.id)                    # se ejecutó: el déficit bajó 0,4
+    assert p.carga["merito"] == pytest.approx(0.4) and p.carga["estado"] == est.ACTIVA
+    _latido_con_feedback(3, activas, comp, 0.0, 0.4, p.id)                    # objetivo alcanzado
+    assert p.carga["estado"] == est.COMPLETADA and p.id not in activas
+    # mérito 0,8 / tramo 0,8 = 1; valor = 0,5 + 0,5 × 0,8 (fuerza = intensidad inicial) × (1 − 0,5) = 0,7
+    assert comp.valor[("seguridad", "a")] == pytest.approx(0.7)
+
+
+def test_el_plus_por_estrategia_activa_se_apaga_al_acercarse_al_objetivo():
+    from ida.core.pieza import Pieza
+    from ida.core.sentidos import Tribunal
+
+    def plus(progreso, agotamiento=0.0):
+        e = est.nueva("S1", _Huir(), "seguridad", 0.8, 0.0, 1)
+        e.carga.update({"progreso": progreso, "agotamiento": agotamiento})
+        previa = Pieza("Accion", "Accion", carga={"verbo": Verbo.MOVER, "origen": {"estrategia": e.id}})
+        onda = Onda(2, 10, 1e9, ef_anterior={"Accion": {"Accion": previa}}, estrategias={e.id: e})
+        ctx = _ctx(onda)
+        onda.proponer("Accion", Pieza("c", "Accion", 0.5, 0.6, {"verbo": Verbo.MOVER, "objetivo": "c", "clase": "", "motivo": "",
+                                                               "datos": {}, "origen": {"estrategia": e.id}}, sistema="S1"))
+        t = Tribunal()
+        t.sistema = "CORE"
+        t.reactiva(ctx)
+        return onda.notas["evaluados"][0]["plus"]
+
+    assert plus(0.0) == pytest.approx(0.1)
+    assert plus(0.5) == pytest.approx(0.05)
+    assert plus(0.9) == pytest.approx(0.01)
+    assert plus(0.5, agotamiento=0.5) == pytest.approx(0.025)
+
+
+def test_cerrar_una_estrategia_desde_un_autor_ajeno_se_rechaza():
+    activas: dict = {}
+    onda = Onda(1, 10, 1e9, estrategias=activas)
+    p = onda.activar(est.nueva("S1", _Huir(), "seguridad", 0.8, 0.0, 1), _comp(_Estrategia))
+    with pytest.raises(PiezaAjena):
+        onda.cerrar(p, est.AGOTADA, _comp(_Otro))
+    assert p.id in activas and p.carga["estado"] == est.ACTIVA

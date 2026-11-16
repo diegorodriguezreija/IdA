@@ -358,8 +358,10 @@ class Estrategia(Componente):
     - Si nada es elegible para un impulso en un mundo que no deja esperar, último recurso genérico
       (seguir en movimiento). Un último recurso cede en cuanto otra estrategia es elegible.
     - Elección: la de mayor puntuación; la apertura regula cuánto se prueba otra al azar. Valor
-      aprendido por impulso y estrategia durante la vida (mérito = progreso final, fuerza =
-      intensidad inicial). Sin experiencia no se aprende ni se explora.
+      aprendido por impulso y estrategia durante la vida, al cerrarse: el mérito es el feedback de S1
+      de su impulso acumulado mientras se ejecutó, normalizado por la intensidad inicial (en [−1, 1]);
+      la fuerza del aprendizaje es esa intensidad inicial (su arousal). Sin experiencia no se aprende
+      ni se explora.
     """
 
     tipo = "Estrategia"
@@ -379,6 +381,8 @@ class Estrategia(Componente):
         impulsos = onda.ef("Impulso")
         previa = onda.ei("Accion").get("Accion")
         ejecutada = previa.carga.get("origen", {}).get("estrategia") if previa is not None else None
+        fb = onda.ef("Feedback").get("feedback")
+        feedback = fb.carga.get("por_impulso", {}) if fb is not None else {}
         notas: Dict[str, Any] = {"activas": [], "ejecutada": None, "abandonos": [], "reflejo": False, "interrumpe": False, "sustituciones": 0}
 
         for p in [p for p in onda.estrategias.values() if p.sistema == self.sistema]:
@@ -391,8 +395,10 @@ class Estrategia(Componente):
                 continue
             imp = impulsos.get(c["impulso"])
             intensidad = float(imp.carga["intensidad"]) if imp is not None else 0.0
-            self.modificar(ctx, p, carga=est.avanzar(c, intensidad, p.id == ejecutada, ctx.latido,
-                                                     perfil.gracia_estrategia, perfil.ritmo_esperado_estrategia))
+            cambios = est.avanzar(c, intensidad, p.id == ejecutada, ctx.latido, perfil.gracia_estrategia, perfil.ritmo_esperado_estrategia)
+            if p.id == ejecutada:          # el mérito se lo lleva la estrategia que se ejecutó (decisión 23)
+                cambios["merito"] = float(c.get("merito", 0.0)) + float(feedback.get(c["impulso"], 0.0))
+            self.modificar(ctx, p, carga=cambios)
             definicion = self.catalogo.get(c["nombre"])
             if intensidad <= c["objetivo"] + 1e-9:
                 self._cerrar(ctx, p, est.COMPLETADA)
@@ -482,7 +488,9 @@ class Estrategia(Componente):
         if ctx.con_experiencia and not c["reflejo"]:
             clave = (c["impulso"], c["nombre"])
             v = self.valor.get(clave, self.VALOR_INICIAL)
-            self.valor[clave] = v + self.TASA * float(c["valor_inicial"]) * (float(c["progreso"]) - v)
+            tramo = max(float(c["valor_inicial"]) - float(c["objetivo"]), 0.05)
+            merito = max(-1.0, min(1.0, float(c.get("merito", 0.0)) / tramo))
+            self.valor[clave] = v + self.TASA * float(c["valor_inicial"]) * (merito - v)
         ctx.onda.cerrar(p, estado, self)
 
 

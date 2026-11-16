@@ -13,7 +13,8 @@ Datos de la pieza ``Estrategia`` (en ``carga``): ``nombre``, ``impulso`` (refere
 la originó), ``valor_inicial`` (intensidad cruda al empezar), ``objetivo`` (umbral por debajo del
 cual la necesidad desaparece), ``progreso`` y ``agotamiento`` en [0, 1], ``esfuerzo`` (latidos en
 que su acción se ejecutó), ``inicio`` (latido), ``estado`` (activa, completada, agotada...), ``paso``
-(estado interno de la máquina de la propia estrategia, decisión 17) y ``reflejo``.
+(estado interno de la máquina de la propia estrategia, decisión 17), ``merito`` (feedback de su impulso
+acumulado mientras se ejecutó, decisión 23) y ``reflejo``.
 
 Progreso y agotamiento (decisión 16): el progreso se mide sobre la **intensidad cruda** del impulso,
 no sobre su arousal modulado. Tras unos latidos de gracia, el agotamiento crece si el progreso por
@@ -110,7 +111,7 @@ def nueva(sistema: str, definicion: Definicion, impulso: str, intensidad: float,
         tipo="Estrategia",
         arousal=acotar(intensidad),
         carga={"nombre": definicion.nombre, "impulso": impulso, "valor_inicial": acotar(intensidad), "objetivo": objetivo,
-               "progreso": 0.0, "agotamiento": 0.0, "esfuerzo": 0, "inicio": latido, "estado": ACTIVA, "paso": paso,
+               "progreso": 0.0, "agotamiento": 0.0, "esfuerzo": 0, "inicio": latido, "estado": ACTIVA, "paso": paso, "merito": 0.0,
                "reflejo": definicion.reflejo},
         sistema=sistema,
         creada=latido,

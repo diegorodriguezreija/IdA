@@ -67,7 +67,8 @@ class Tribunal(Componente):
     - La experiencia (activa y proactiva) sesga con un peso pequeño los candidatos que ya existen;
       no añade candidatos.
     - Continuidad: la acción de la estrategia en curso (la que se ejecutó en el latido anterior y
-      sigue activa) suma un plus acotado de 0,1 × (1 − agotamiento) (decisiones 4 y 23).
+      sigue activa) suma un plus acotado de 0,1 × (1 − agotamiento) × (1 − progreso) (decisiones 4,
+      16 y 23): se apaga de forma gradual al agotarse y al acercarse al objetivo.
     - Si los dos mejores casi empatan, decide el azar.
     - Acecho: un candidato con poca confianza y poca urgencia no se ejecuta enseguida; su
       confianza se acumula latido a latido hasta superar el umbral.
@@ -75,7 +76,7 @@ class Tribunal(Componente):
 
     tipo = "Decision"
     EMPATE = 0.02
-    PLUS_ACTIVA = 0.1     # plus a la acción de la estrategia en curso, × (1 − agotamiento) (decisiones 4 y 23)
+    PLUS_ACTIVA = 0.1     # plus a la acción de la estrategia en curso, × (1 − agotamiento) × (1 − progreso)
     UMBRAL_ACECHO = 0.35
 
     def __init__(self):
@@ -96,7 +97,7 @@ class Tribunal(Componente):
             act, pro = ctx.memoria.sesgo(c.carga["verbo"], c.carga.get("clase", ""), ctx.latido) if peso else (0.0, 0.0)
             plus = 0.0
             if en_curso is not None and c.carga.get("origen", {}).get("estrategia") == en_curso.id:
-                plus = self.PLUS_ACTIVA * (1.0 - float(en_curso.carga.get("agotamiento", 0.0)))
+                plus = self.PLUS_ACTIVA * (1.0 - float(en_curso.carga.get("agotamiento", 0.0))) * (1.0 - float(en_curso.carga.get("progreso", 0.0)))
             sin_plus = base + peso * (act + pro)
             evaluados.append({"pieza": c, "base": base, "activa": act, "proactiva": pro, "plus": plus, "sin_plus": sin_plus, "total": sin_plus + plus})
         evaluados.sort(key=lambda e: -e["total"])
