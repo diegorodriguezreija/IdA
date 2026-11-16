@@ -12,7 +12,9 @@ versiones es pareada por semilla. Reloj real, como en el protocolo original.
 Además de las métricas de vida, recoge por latido, si la versión los tiene: plazo agotado, S3 sin
 amplitud o potencia y potencia gastada por sistema (``Onda.consumo``, bloque B); y de S1 (bloque C):
 latidos por estrategia activa y ejecutada, abandonos por agotamiento, sustituciones, reflejos y sus
-interrupciones, y latidos en que el plus por estrategia activa decide el ganador.
+interrupciones, y latidos en que el plus por estrategia activa decide el ganador. Guarda la causa de
+muerte de cada vida (la que registra el organismo o, si la versión no la registra, deducida del último
+latido) y el resumen compara las muertes por causa.
 """
 
 import argparse
@@ -22,6 +24,7 @@ import os
 import statistics
 import sys
 import tempfile
+from collections import Counter
 from typing import Any, Dict, List
 
 PERFILES = {
@@ -47,6 +50,19 @@ def _metricas(mundo: str, r: Dict[str, Any]) -> Dict[str, float]:
     return m
 
 
+def _causa(resumen: Dict[str, Any], final: Dict[str, Any]) -> str:
+    """Causa de muerte de una vida: la que registra el organismo (desde el bloque C); si la versión no
+    la registra, se deduce del último latido (causa del último efecto; si no, hambre con la
+    alimentación a 0; si no, desgaste). «vive» si acabó viva."""
+    if resumen.get("vivo"):
+        return "vive"
+    if resumen.get("causa_muerte"):
+        return str(resumen["causa_muerte"])
+    if final.get("causa"):
+        return str(final["causa"])
+    return "hambre" if final.get("alimentacion", 1.0) <= 0.0 else "desgaste"
+
+
 def ejecutar(raiz: str, mundo: str, salida: str) -> None:
     sys.path.insert(0, os.path.abspath(raiz))
     from ida.ejecutor import ejecutar as vivir
@@ -58,8 +74,16 @@ def ejecutar(raiz: str, mundo: str, salida: str) -> None:
             ind: Dict[str, Any] = {"latidos": 0, "plazo": 0, "s3_sin_recursos": 0, "potencia": {"S1": 0.0, "S2": 0.0, "S3": 0.0},
                                    "estrategias": {}, "reflejos": 0, "interrumpe": 0, "plus": 0, "sustituciones": 0}
 
+            finales: List[Dict[str, Any]] = []     # último latido de cada vida, para deducir la causa de muerte
+
             def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
                 ind["latidos"] += 1   # noqa: B023 (se usa en la misma iteración)
+                estado = {"causa": getattr(_o.ultimo_efecto, "causa", None) if _o.ultimo_efecto else None,
+                          "alimentacion": float(_o.soma.alimentacion)}
+                if onda.ciclo == 1 or not finales:   # noqa: B023
+                    finales.append(estado)   # noqa: B023
+                else:
+                    finales[-1] = estado   # noqa: B023
                 if onda.guillotina and "plazo" in onda.motivo_guillotina:
                     ind["plazo"] += 1   # noqa: B023
                 if onda.notas.get("plus_decide"):
@@ -90,7 +114,8 @@ def ejecutar(raiz: str, mundo: str, salida: str) -> None:
                                   consola=False, datos=datos, al_latir=al_latir, sin_experiencia=sin_exp,
                                   arquetipo_inicial=PERFILES[perfil])
             vidas = [_metricas(mundo, r) for r in resumenes]
-            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "indicadores": ind})
+            causas = [_causa(r, finales[i] if i < len(finales) else {}) for i, r in enumerate(resumenes)]
+            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas, "indicadores": ind})
             print(f"{mundo} {grupo} semilla {semilla}: {len(vidas)} vidas", flush=True)
     with open(salida, "w", encoding="utf-8") as f:
         json.dump({"mundo": mundo, "filas": filas}, f)
@@ -127,6 +152,12 @@ def comparar(base: str, nueva: str) -> None:
             n = sum(i["latidos"] for i in ind) or 1
             pot = " / ".join(f"{sum(i['potencia'][s] for i in ind) / n:.2f}" for s in ("S1", "S2", "S3"))
             print(f"| {grupo} | {nombre} | {n} | {sum(i['plazo'] for i in ind)} | {sum(i['s3_sin_recursos'] for i in ind)} | {pot} |")
+    print("\n| Grupo | Causa de muerte | Vidas base | Vidas nueva |\n|---|---|---|---|")
+    for grupo, _, _ in GRUPOS:
+        ca = Counter(c for r in a["filas"] if r["grupo"] == grupo for c in r.get("causas", []))
+        cb = Counter(c for r in b["filas"] if r["grupo"] == grupo for c in r.get("causas", []))
+        for causa in sorted(set(ca) | set(cb)):
+            print(f"| {grupo} | {causa} | {ca.get(causa, 0)} | {cb.get(causa, 0)} |")
     filas_b = [r for r in b["filas"] if r["indicadores"].get("estrategias")]
     if not filas_b:
         return
