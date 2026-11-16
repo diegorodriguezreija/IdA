@@ -8,7 +8,8 @@ proposiciones **demostradas**.
 |-------------|----------------------|---------|
 | Sentir      | Comunicacion         | Comunicación: mensajes que el mundo pone en la escena |
 | Interpretar | Agente               | Agente (mismo id que Objeto y Sujeto) |
-| Interpretar | PredicadoProposicion | Predicado (lo que se observa ahora) y Proposición (lo que se sabe de su clase) |
+| Interpretar | Predicado            | Predicado: lo que se observa ahora (pasada reactiva) |
+| Interpretar | Proposicion          | Proposición: lo que se sabe de su clase (pasada activa) |
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
 | Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
@@ -43,10 +44,10 @@ class Agente(Componente):
                                           entradas=[o.id]), coste=0)
 
 
-class PredicadoProposicion(Componente):
-    """Predicados de lo observado ahora y proposiciones de lo que se sabe de cada clase."""
+class Predicado(Componente):
+    """Predicados de lo observado ahora (pasada reactiva)."""
 
-    tipo = "Proposicion"
+    tipo = "Predicado"
     entradas = ("Agente",)
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -59,7 +60,14 @@ class PredicadoProposicion(Componente):
             if o.rasgo("novedad") >= 0.6:
                 predicados.append("es nuevo")
             if predicados:
-                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}, tipo="Predicado"), coste=0)
+                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}), coste=0)
+
+
+class Proposicion(Componente):
+    """Proposiciones de lo que se sabe de cada clase presente (pasada activa)."""
+
+    tipo = "Proposicion"
+    entradas = ("Agente",)
 
     def activa(self, ctx: Contexto) -> None:
         """Dimensión activa: trae a la atención lo que se sabe de las clases presentes."""
@@ -352,6 +360,6 @@ class Estudio(Componente):
 def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
-        Modulo("Interpretar", [Agente(), PredicadoProposicion(), Sentencia(), Logica()]),
+        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
         Modulo("Reaccionar", [Comportamiento(), Impulso(), Estudio()]),
     ])
