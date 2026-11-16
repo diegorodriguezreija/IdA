@@ -128,7 +128,8 @@ class Tribunal(Componente):
             arousal=ganador.arousal if ganador is not None else 0.0,
             confianza=ganador.confianza if ganador is not None else 1.0,
             carga={"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos,
-                   "sistema": ganador.sistema if ganador is not None else "CORE"},
+                   "sistema": ganador.sistema if ganador is not None else "CORE",
+                   "origen": dict(ganador.carga.get("origen", {})) if ganador is not None else {}},
             entradas=[ganador.id] if ganador is not None else [],
         )
         self.registrar(ctx, d)
@@ -183,6 +184,7 @@ def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto)
             "clase": decision.carga.get("clase", ""),
             "sistema": decision.carga.get("sistema", ""),
             "motivo": decision.carga.get("motivo", ""),
+            "origen": dict(decision.carga.get("origen", {})),
             "exito": efecto.exito,
             "delta": dict(efecto.delta),
             "causa": efecto.causa,

@@ -16,9 +16,10 @@
 import math
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.estrategia import Catalogo
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
-from ida.sistemas.comun import al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
 class Patron(Componente):
@@ -231,4 +232,5 @@ def crear_s2() -> Sistema:
         Modulo("Sentir", [Patron(), Emocion()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
         Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Curiosidad(), Hogar(), Orientacion()]),
+        Modulo("Actuar", [Accion(Catalogo())]),
     ])

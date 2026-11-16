@@ -21,7 +21,7 @@ latido es menor que el esperado y baja si es mejor (teorema del valor marginal).
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
@@ -70,6 +70,25 @@ class Definicion:
 
     def actuar(self, ctx: Any, estrategia: Pieza) -> Optional[Propuesta]:
         return None
+
+
+class Catalogo:
+    """Las definiciones de estrategia de un sistema, por nombre. La comparten su componente
+    ``Estrategia`` (que elige) y su componente ``Accion`` (que traduce a acción)."""
+
+    def __init__(self, definiciones: Optional[list] = None):
+        self._por_nombre: Dict[str, Definicion] = {}
+        for d in definiciones or []:
+            self.añadir(d)
+
+    def añadir(self, definicion: Definicion) -> None:
+        self._por_nombre[definicion.nombre] = definicion
+
+    def get(self, nombre: str) -> Optional[Definicion]:
+        return self._por_nombre.get(nombre)
+
+    def todas(self) -> List[Definicion]:
+        return list(self._por_nombre.values())
 
 
 def nueva(sistema: str, definicion: Definicion, impulso: str, intensidad: float, objetivo: float, latido: int) -> Pieza:

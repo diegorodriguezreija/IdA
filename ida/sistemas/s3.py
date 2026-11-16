@@ -17,10 +17,11 @@ proposiciones **demostradas**.
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.estrategia import Catalogo
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 class Comunicacion(Componente):
@@ -360,4 +361,5 @@ def crear_s3() -> Sistema:
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
         Modulo("Reaccionar", [Comportamiento(), Impulso(), Estudio()]),
+        Modulo("Actuar", [Accion(Catalogo())]),
     ])

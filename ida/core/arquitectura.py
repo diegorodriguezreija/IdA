@@ -110,17 +110,22 @@ class Componente:
         confianza: float,
         motivo: str,
         clase: str = "",
+        origen: Optional[Dict[str, str]] = None,
         **datos: Any,
     ) -> Optional[Pieza]:
-        """Entrega un candidato de Acción al canal ``acc["Accion"]``. Solo el Tribunal ejecuta."""
+        """Entrega un candidato de Acción al canal ``acc["Accion"]``. Solo el Tribunal ejecuta.
+        ``origen`` (impulso y estrategia) viaja con la acción hasta ``ef["Accion"]``."""
         if verbo not in ctx.verbos:
             return None
+        carga: Dict[str, Any] = {"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos}
+        if origen:
+            carga["origen"] = dict(origen)
         p = self.pieza(
             ctx,
             id=f"{self.sistema}:{verbo.value}:{objetivo}",
             arousal=arousal,
             confianza=confianza,
-            carga={"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos},
+            carga=carga,
             entradas=[self.nombre],
             tipo="Accion",
         )

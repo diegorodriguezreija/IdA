@@ -10,9 +10,10 @@
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.estrategia import Catalogo
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Verbo
-from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -143,4 +144,5 @@ def crear_s1() -> Sistema:
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia()]),
         Modulo("Reaccionar", [Reflejo(), Impulso()]),
+        Modulo("Actuar", [Accion(Catalogo())]),
     ])

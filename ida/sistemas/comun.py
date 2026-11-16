@@ -2,7 +2,8 @@
 
 from typing import Iterable, List, Optional
 
-from ida.core.arquitectura import Contexto
+from ida.core.arquitectura import Componente, Contexto
+from ida.core.estrategia import Catalogo
 from ida.core.pieza import Pieza
 
 ALCANCE = 0.9          # proximidad a partir de la cual algo está al alcance
@@ -37,3 +38,25 @@ def mejor(piezas: Iterable[Pieza], clave) -> Optional[Pieza]:
 
 def alarma(ctx: Contexto) -> Optional[Pieza]:
     return ctx.onda.ev("Supervivencia").get("alarma")
+
+
+class Accion(Componente):
+    """Etapa Actuar de un sistema (decisiones 3 y 17): traduce cada estrategia activa del sistema
+    en una acción, con su origen (impulso y estrategia). Es la dueña de las piezas ``Accion``."""
+
+    tipo = "Accion"
+
+    def __init__(self, catalogo: Catalogo):
+        super().__init__("Accion")
+        self.catalogo = catalogo
+
+    def reactiva(self, ctx: Contexto) -> None:
+        for p in list(ctx.onda.estrategias.values()):
+            if p.sistema != self.sistema:
+                continue
+            definicion = self.catalogo.get(p.carga["nombre"])
+            propuesta = definicion.actuar(ctx, p) if definicion is not None else None
+            if propuesta is None:
+                continue
+            self.proponer(ctx, propuesta.verbo, propuesta.objetivo, propuesta.arousal, propuesta.confianza, propuesta.motivo,
+                          clase=propuesta.clase, origen={"impulso": p.carga["impulso"], "estrategia": p.id}, **(propuesta.datos or {}))

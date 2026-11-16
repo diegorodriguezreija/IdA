@@ -69,3 +69,32 @@ def test_la_onda_conserva_las_estrategias_entre_latidos_y_comprueba_la_propiedad
     onda2.cerrar(p, est.AGOTADA, e)
     assert p.id not in activas and p.carga["estado"] == est.AGOTADA
     assert ctx1.onda is onda1
+
+
+def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final():
+    from ida.core.mundo import Efecto
+    from ida.core.sentidos import Tribunal, aplicar_efecto
+    from ida.sistemas.comun import Accion
+
+    class _HuirA(est.Definicion):
+        nombre = "huir"
+        impulsos = ("seguridad",)
+
+        def actuar(self, ctx, estrategia):
+            return est.Propuesta(Verbo.MOVER, "refugio", 0.9, 0.8, "huir al refugio")
+
+    activas: dict = {}
+    onda = Onda(3, 10, 1e9, estrategias=activas)
+    ctx = _ctx(onda)
+    onda.activar(est.nueva("S1", _HuirA(), "seguridad", 0.8, 0.0, 3), _comp(_Estrategia))
+    accion = _comp(lambda: Accion(est.Catalogo([_HuirA()])))
+    accion.reactiva(ctx)
+    c = onda.acc("Accion")[f"S1:{Verbo.MOVER.value}:refugio"]
+    assert c.carga["origen"] == {"impulso": "seguridad", "estrategia": "S1:huir:seguridad"}
+    tribunal = Tribunal()
+    tribunal.sistema = "CORE"
+    tribunal.reactiva(ctx)
+    d = ctx.extra["decision"]
+    assert d.carga["origen"]["estrategia"] == "S1:huir:seguridad"
+    aplicar_efecto(ctx, Verbo.MOVER, d, Efecto())
+    assert onda.ef("Accion")["Accion"].carga["origen"]["impulso"] == "seguridad"
