@@ -9,9 +9,10 @@ Valores por defecto (bloque B, sin algoritmo adaptativo):
 - Potencia = amplitud, así que la fuerza máxima por pieza (potencia / amplitud) es 1: ningún
   componente ve recortado un arousal de 0 a 1 ni un cambio completo. Con menos, un reflejo de
   arousal 1 quedaría recortado en cualquier latido.
-- La medición previa (paso B0, ``herramientas/consumo.py``) da un arousal otorgado por latido muy por
-  debajo de la amplitud, así que con estos valores la potencia solo se agota en latidos atípicos.
-  Cifras en ``docs/MEDICIONES_BLOQUE_B.md``.
+- Escasez de atención (calibrada antes de la mejora de los mundos, decisiones 15 y 18): la amplitud es
+  ``FACTOR_AMPLITUD`` × la amplitud base del perfil del mundo. 0,45 es el nivel más escaso del barrido
+  que no pierde de forma significativa y en el que S3 se queda sin recursos más a menudo con peligro
+  que en calma (foco estrecho con peligro). Cifras en ``docs/CALIBRACION_ATENCION.md``.
 """
 
 from typing import Tuple
@@ -21,6 +22,7 @@ from ida.core.soma import Soma
 
 class Marcapasos:
     FUERZA_POR_PIEZA = 1.0   # potencia / amplitud
+    FACTOR_AMPLITUD = 0.45   # amplitud = factor × amplitud base del perfil (escasez de atención)
 
     def ritmo(self, soma: Soma, frecuencia_base_ms: float, amplitud_base: int) -> Tuple[float, int, float]:
         """Frecuencia (plazo en ms), amplitud y potencia del próximo latido según el estado del cuerpo.
@@ -34,7 +36,7 @@ class Marcapasos:
         if soma.dormido:
             amplitud = 20
         else:
-            amplitud = int(amplitud_base * (0.5 + 0.5 * soma.energia / 100.0))
+            amplitud = int(amplitud_base * self.FACTOR_AMPLITUD * (0.5 + 0.5 * soma.energia / 100.0))
             if soma.agotado_previo:
                 amplitud = int(amplitud * 1.5)
         frecuencia = frecuencia_base_ms * (1.0 - 0.3 * soma.indicadores.get("peligro", 0.0))
