@@ -155,3 +155,19 @@ def test_emision_de_creencias_acotada():
     emitidas = ctx.onda.ef("Creencia")
     assert len(emitidas) == Creencia.MAX_CREENCIAS
     assert "c199|NUTRITIVO" in emitidas and "c0|NUTRITIVO" not in emitidas
+
+
+def test_reduccion_respeta_el_decay_del_dano():
+    from ida.core.vocabulario import Relacion, Verbo
+
+    mem = Memoria()
+    mem.aprender(Verbo.COMER, "toxico", {"vitalidad": -10.0}, None, None, True, 1)      # daño alto: arousal 1
+    mem.aprender(Verbo.COMER, "leve", {"vitalidad": -2.0}, None, None, True, 1)         # daño leve: arousal 0,2
+    alto, leve = mem.saber[("toxico", Relacion.PELIGROSO)], mem.saber[("leve", Relacion.PELIGROSO)]
+    assert alto.decay == 0.0 and leve.decay == pytest.approx(0.04)
+    nutre = mem.proposicion("x", Relacion.NUTRITIVO, crear=True)
+    assert nutre is not None and nutre.decay == pytest.approx(0.05)
+    c_alto, c_leve, c_nutre = alto.c_exp, leve.c_exp, nutre.c_exp
+    mem.reducir(100)
+    assert alto.c_exp == c_alto
+    assert leve.c_exp == pytest.approx(c_leve * 0.96) and nutre.c_exp == pytest.approx(c_nutre * 0.95)

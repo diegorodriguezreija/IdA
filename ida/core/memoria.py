@@ -28,6 +28,8 @@ class Proposicion:
     CONFIRMACIONES_MINIMAS = 3
     CONFIANZA_DEMOSTRADA = 0.7
     LATIDOS_SIN_REFUTAR = 30
+    DECAY = 0.05             # bloque E, E4: caducidad por noche de c_exp (reducción nocturna ×0,95)
+    DANO_SATURA = 10.0       # pérdida de vitalidad con la que el arousal de daño llega a 1 (el doble de un envenenamiento grave)
 
     def __init__(
         self,
@@ -53,6 +55,7 @@ class Proposicion:
         self.actualizada = actualizada
         self.c_aut = c_aut
         self.w_aut = w_aut
+        self.decay = self.DECAY   # metadato decay (decisión 7): lo usa la reducción nocturna (E4)
 
     @property
     def confianza(self) -> float:
@@ -81,6 +84,12 @@ class Proposicion:
         self.confirmaciones += 1
         self.c_exp = acotar(self.c_exp + 0.15 * (1.0 - self.c_exp))
         self.actualizada = ahora
+
+    def marcar_dano(self, perdida_vitalidad: float) -> None:
+        """Un recuerdo de daño caduca menos cuanto mayor fue el daño: decay = DECAY × (1 − arousal de daño),
+        con arousal de daño = pérdida / DANO_SATURA acotado a [0, 1]. Se queda el menor decay visto."""
+        arousal = acotar(perdida_vitalidad / self.DANO_SATURA)
+        self.decay = min(self.decay, round(self.DECAY * (1.0 - arousal), 6))
 
     def refutar(self, ahora: int) -> None:
         """...y baja más rápido."""
@@ -299,10 +308,14 @@ class Memoria:
             r.ultimo = ahora
 
         # Conocimiento formal a partir de la agencia
+        perdida = max(0.0, -delta.get("vitalidad", 0.0))
+
         def confirmar(c: str, rel: Relacion) -> None:
             p = cast(Proposicion, self.proposicion(c, rel, crear=True))
             antes = p.estado(ahora)
             p.confirmar(ahora)
+            if rel == Relacion.PELIGROSO and perdida > 0.0:
+                p.marcar_dano(perdida)
             if p.estado(ahora) != antes:
                 ap.textos.append(f"ahora sabe {p.texto(ahora)}")
 
@@ -593,7 +606,7 @@ class Memoria:
     # --- sueño: lo costoso, fuera del camino crítico --------------------------
     REDUCCION_GRAFO = 0.9          # E4: factor nocturno sobre las fuerzas del grafo semántico
     PODA_GRAFO = 0.05              # E4: fuerza por debajo de la cual se poda un nodo o relación
-    REDUCCION_HIPOTESIS = 0.95     # E4: factor nocturno sobre la confianza por experiencia de las hipótesis
+    REDUCCION_HIPOTESIS = 0.95     # E4: factor nocturno de referencia (= 1 − Proposicion.DECAY); cada hipótesis usa su decay
     PODA_HIPOTESIS = 0.15          # E4: confianza por debajo de la cual se poda una hipótesis
 
     def reducir(self, ahora: int) -> int:
@@ -614,7 +627,7 @@ class Memoria:
         for clave, p in list(self.saber.items()):
             if p.estado(ahora) == EstadoSaber.DEMOSTRADA:
                 continue
-            p.c_exp = acotar(p.c_exp * self.REDUCCION_HIPOTESIS)
+            p.c_exp = acotar(p.c_exp * (1.0 - p.decay))   # metadato decay (por defecto, ×REDUCCION_HIPOTESIS)
             if p.confianza < self.PODA_HIPOTESIS:
                 del self.saber[clave]
                 podado += 1
