@@ -175,6 +175,8 @@ class Organismo:
         with onda.fase("cierre"):
             self._indicadores(ctx)
             self._memoria_rapida(ctx)
+            if self.perfil.mecanismos.buffer:
+                self._marcar_dia(ctx)
             self._episodio(ctx)
         soma.agotado_previo = onda.amplitud_agotada
         onda.notas["ms_total"] = round(onda.ms_transcurridos(), 2)
@@ -275,6 +277,22 @@ class Organismo:
             for p in d.values()
         ]
         self.memoria.guardar_rapido(piezas)
+
+    def _marcar_dia(self, ctx: Contexto) -> None:
+        """Búfer diurno (bloque E, E1): las piezas de la experiencia reactiva, puntuadas por su arousal y el
+        feedback del latido (suma de los de S1, S2 y S3), y la onda resumida en el episodio del día."""
+        if not self.con_experiencia or not self.memoria.activa or self.soma.dormido:
+            return
+        onda = ctx.onda
+        feedback = sum(float(p.carga.get("valor", 0.0)) for p in onda.ef("Feedback").values())
+        piezas = [
+            {"latido": ctx.latido, "tipo": p.tipo, "id": p.id, "arousal": round(p.arousal, 3), "clase": p.clase, "sistema": p.sistema}
+            for canal, d in onda.reactiva.ev.items() if canal not in CANALES_SENSORES
+            for p in d.values()
+        ]
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        resumen = {"verbo": ej.carga["verbo"].value, "clase": ej.carga.get("clase", ""), "exito": ej.carga.get("exito")} if ej else {}
+        self.memoria.marcar(ctx.latido, piezas, feedback, resumen)
 
     def _episodio(self, ctx: Contexto) -> None:
         """Apertura y cierre de episodios (reglas de partida de la versión limpia, §5)."""

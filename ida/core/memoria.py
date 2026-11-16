@@ -6,6 +6,7 @@ Core guarda lo más saliente de cada latido. La escritura va en dos velocidades:
 cada latido (en RAM) y lo costoso (persistir, olvidar, consolidar) al dormir o al morir.
 """
 
+import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
@@ -211,6 +212,10 @@ class Memoria:
         self.ultimo_fin_lectura: int = -100
         self.aciertos = 0
         self.fallos = 0
+        # Bloque E (decisión 19): búfer diurno de tamaño fijo y episodio del día (secuencia de ondas).
+        self.diurno: List[Tuple[float, int, Dict[str, Any]]] = []   # montículo (puntuación, orden, pieza)
+        self._orden_diurno = 0
+        self.dia: List[Dict[str, Any]] = []
 
     @property
     def activa(self) -> bool:
@@ -350,6 +355,24 @@ class Memoria:
         if self.k:
             piezas = sorted(piezas, key=lambda p: -p["arousal"])[: self.k]
             self.buffer.extend(piezas)
+
+    CAPACIDAD_DIURNO = 256      # piezas que caben en el búfer diurno
+    CAPACIDAD_DIA = 1000        # latidos que caben en el episodio del día
+
+    def marcar(self, latido: int, piezas: List[Dict[str, Any]], feedback: float, resumen: Dict[str, Any]) -> None:
+        """De día (decisión 19): puntúa cada pieza (arousal + feedback del latido) y guarda las mejores en
+        un búfer de tamaño fijo; si está lleno, una pieza nueva solo entra si supera a la peor. Barato:
+        montículo en memoria. Añade el latido al episodio del día."""
+        for p in piezas:
+            puntuacion = float(p["arousal"]) + feedback
+            self._orden_diurno += 1
+            entrada = (puntuacion, self._orden_diurno, {**p, "puntuacion": round(puntuacion, 4)})
+            if len(self.diurno) < self.CAPACIDAD_DIURNO:
+                heapq.heappush(self.diurno, entrada)
+            elif puntuacion > self.diurno[0][0]:
+                heapq.heapreplace(self.diurno, entrada)
+        if len(self.dia) < self.CAPACIDAD_DIA:
+            self.dia.append({"latido": latido, "feedback": round(feedback, 4), **resumen})
 
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1

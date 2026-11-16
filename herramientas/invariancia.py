@@ -34,6 +34,18 @@ REFERENCIA = os.path.join(RAIZ, "datos", "invariancia", "referencia.json")
 DECIMALES = 9
 
 
+def _apagar_mecanismos(mundos) -> None:
+    """La invariancia compara con base-v2.0: todos los mecanismos de memoria del bloque E apagados."""
+    from dataclasses import replace
+
+    from ida.core.mundo import MecanismosMemoria
+    from ida.mundos import cargar
+
+    for m in mundos:
+        clase = cargar(m)
+        clase.perfil = replace(clase.perfil, mecanismos=MecanismosMemoria())
+
+
 def _congelar_reloj() -> None:
     """Sustituye el reloj por defecto de la Onda por uno fijo (solo en este proceso)."""
     defectos = list(Onda.__init__.__defaults__ or ())
@@ -78,6 +90,7 @@ def main() -> int:
     p.add_argument("--mundos", nargs="*", default=list(MUNDOS))
     args = p.parse_args()
     _congelar_reloj()
+    _apagar_mecanismos(args.mundos)
 
     actual = {f"{m}:{s}": vida(m, s) for m in args.mundos for s in SEMILLAS}
     if args.referencia:
