@@ -2,7 +2,8 @@
 
 | Etapa       | Componente     | Produce |
 |-------------|----------------|---------|
-| Sentir      | Imagen         | Imagen (gestalt del instante) y Objeto (lo que entra en la atención) |
+| Sentir      | Imagen         | Imagen (gestalt del instante) |
+| Interpretar | Objeto         | Objeto (cada cuerpo de la Imagen que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
 | Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
 | Reaccionar  | Impulso      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
@@ -14,18 +15,21 @@ from ida.core.vocabulario import Verbo
 from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
-class Imagen(Componente):
-    """Integra Exterocepcion, Interocepción y el resultado de la acción anterior en una representación del instante.
+def _cosas(ctx: Contexto) -> list:
+    """Lo percibido que no es un lugar, de más a menos saliente (orden estable)."""
+    cosas = [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
+    cosas.sort(key=lambda p: -p.arousal)
+    return cosas
 
-    Solo los objetos más salientes (7 ± 2) pasan a la atención como piezas ``Objeto``.
-    """
+
+class Imagen(Componente):
+    """Integra Exterocepcion, Interocepción y el resultado de la acción anterior en una representación del instante."""
 
     tipo = "Imagen"
     entradas = ("Exterocepcion", "Interocepcion")
 
     def reactiva(self, ctx: Contexto) -> None:
-        cosas = [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
-        cosas.sort(key=lambda p: -p.arousal)
+        cosas = _cosas(ctx)
         foco = cosas[0] if cosas else None
         previa = ctx.onda.ei("Accion").get("Accion")
         agencia = ""
@@ -40,10 +44,20 @@ class Imagen(Componente):
                    "n_cosas": len(cosas), "n_lugares": len(lugares(ctx)), "agencia": agencia},
             entradas=["Exterocepcion", "Interocepcion", "Accion"],
         ))
-        for p in cosas[:MAX_OBJETOS]:
+
+
+class Objeto(Componente):
+    """Distingue los cuerpos dentro de la Imagen: solo los más salientes (7 ± 2) pasan a la atención
+    como piezas ``Objeto``, cada una con coste 1."""
+
+    tipo = "Objeto"
+    entradas = ("Imagen",)
+
+    def reactiva(self, ctx: Contexto) -> None:
+        for p in _cosas(ctx)[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
                                           carga={"clase": p.clase, "rasgos": dict(p.carga["rasgos"])},
-                                          entradas=[p.id], tipo="Objeto"))
+                                          entradas=[p.id]))
 
 
 class Supervivencia(Componente):
@@ -127,6 +141,6 @@ class Impulso(Componente):
 def crear_s1() -> Sistema:
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
-        Modulo("Interpretar", [Supervivencia()]),
+        Modulo("Interpretar", [Objeto(), Supervivencia()]),
         Modulo("Reaccionar", [Reflejo(), Impulso()]),
     ])
