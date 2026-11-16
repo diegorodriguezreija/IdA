@@ -8,6 +8,7 @@
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
 | Reaccionar  | Impulso          | Impulso propio: Exploración (apertura × novedad) |
+| Reaccionar  | Feedback         | Feedback de S2: mejora del placer y bajada del estrés |
 | Reaccionar  | Estrategia       | Estrategias de valor: explorar, refugiarse (hogar valorado), recordar_comida |
 | Actuar      | Accion           | Acción de cada estrategia activa de S2, con su origen |
 """
@@ -271,6 +272,24 @@ class RecordarComida(Definicion):
         return Propuesta(Verbo.MOVER, puerta.id, ar, 0.65, f"orientación: recordar {clase}", clase=puerta.clase)
 
 
+class Feedback(Componente):
+    """Feedback de S2 (decisión 5): mejora del placer y bajada del estrés respecto al latido anterior,
+    (Δ placer) / 100 − Δ estrés. Positivo = mejora. Es el mérito de las estrategias de S2, sea cual
+    sea el impulso al que sirven (S2 juzga con su criterio, el valor)."""
+
+    tipo = "Feedback"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        placer, estres = float(ctx.soma.placer), float(ctx.soma.estres)
+        previo = ctx.onda.ei("Feedback").get(f"feedback:{self.sistema}")
+        antes = previo.carga["estado"] if previo is not None else {"placer": placer, "estres": estres}
+        valor = round((placer - antes["placer"]) / 100.0 - (estres - antes["estres"]), 4)
+        impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
+        self.registrar(ctx, self.pieza(ctx, f"feedback:{self.sistema}", arousal=0.0,
+                                       carga={"valor": valor, "por_impulso": dict.fromkeys(impulsos, valor),
+                                              "estado": {"placer": placer, "estres": estres}}))
+
+
 def estrategias_s2() -> List[Definicion]:
     return [Explorar(), Refugiarse(), RecordarComida()]
 
@@ -280,6 +299,6 @@ def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron(), Emocion()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Estrategia(catalogo)]),
+        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
         Modulo("Actuar", [Accion(catalogo)]),
     ])

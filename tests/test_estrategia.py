@@ -387,3 +387,17 @@ def test_con_la_seta_rechazada_al_alcance_y_una_baya_a_la_vista_va_hacia_la_baya
     propuesta = d.actuar(ctx, e)
     assert e.carga["paso"] == "acercarse"
     assert propuesta.verbo == Verbo.MOVER and propuesta.objetivo == "celda_0_1"      # hacia la baya, no hacia la seta
+
+
+def test_feedback_de_s2_placer_y_estres():
+    from ida.sistemas.s2 import Feedback
+
+    onda1 = Onda(1, 100, 1e9)
+    ctx1 = Contexto(onda1, Soma(placer=20.0, estres=0.5), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    fb = _comp(Feedback)
+    fb.sistema = "S2"
+    fb.reactiva(ctx1)
+    onda2 = Onda(2, 100, 1e9, ef_anterior=onda1.reactiva.ef)
+    ctx2 = Contexto(onda2, Soma(placer=40.0, estres=0.3), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    fb.reactiva(ctx2)
+    assert onda2.ef("Feedback")["feedback:S2"].carga["valor"] == pytest.approx(0.2 + 0.2)     # más placer, menos estrés
