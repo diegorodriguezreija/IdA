@@ -124,3 +124,29 @@ def test_necesidades_declaradas_y_feedback_de_s1():
     assert onda.ef("Feedback")["feedback"].carga["valor"] == 0.0                     # sin latido previo
     _, onda2 = latido(2, 71.25, ef_anterior=onda.reactiva.ef)
     assert onda2.ef("Feedback")["feedback"].carga["por_impulso"]["hambre"] == pytest.approx(0.25)   # bajó el hambre
+
+
+def test_tribunal_suma_el_plus_a_la_estrategia_en_curso():
+    from ida.core.pieza import Pieza
+    from ida.core.sentidos import Tribunal
+
+    def candidato(id_, conf, origen=None):
+        carga = {"verbo": Verbo.MOVER, "objetivo": id_, "clase": "", "motivo": "", "datos": {}}
+        if origen:
+            carga["origen"] = origen
+        return Pieza(id_, "Accion", 0.5, conf, carga, sistema="S1")
+
+    def decidir(activa: bool):
+        estrategia = est.nueva("S1", _Huir(), "seguridad", 0.8, 0.0, 1)
+        previa = Pieza("Accion", "Accion", carga={"verbo": Verbo.MOVER, "origen": {"estrategia": estrategia.id}})
+        onda = Onda(2, 10, 1e9, ef_anterior={"Accion": {"Accion": previa}}, estrategias={estrategia.id: estrategia} if activa else {})
+        ctx = _ctx(onda)
+        onda.proponer("Accion", candidato("otro", 0.64))
+        onda.proponer("Accion", candidato("seguir", 0.60, {"impulso": "seguridad", "estrategia": estrategia.id}))
+        t = Tribunal()
+        t.sistema = "CORE"
+        t.reactiva(ctx)
+        return ctx.extra["decision"].carga["objetivo"], onda.notas.get("plus_decide")
+
+    assert decidir(activa=True) == ("seguir", True)         # 0,60 + 0,1 de plus supera a 0,64
+    assert decidir(activa=False) == ("otro", None)          # cerrada: sin plus

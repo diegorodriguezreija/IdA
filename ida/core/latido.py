@@ -81,7 +81,7 @@ class Organismo:
         self.episodio: Optional[Episodio] = None
         self._vit_ep = self.soma.vitalidad
         self._ali_ep = self.soma.alimentacion
-        self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0}
+        self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
@@ -154,6 +154,8 @@ class Organismo:
             if d is not None:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
+        if onda.notas.get("plus_decide"):
+            self.contadores["plus_decide"] += 1
         ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None

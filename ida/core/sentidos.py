@@ -10,7 +10,7 @@ Actuar: el ``Tribunal`` elige un candidato de ``acc["Accion"]`` y el ``Actuador`
 verbo lo materializa en el mundo. Nada se ejecuta sin pasar por el Tribunal.
 """
 
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.mundo import Efecto
@@ -65,6 +65,8 @@ class Tribunal(Componente):
     - Con estrés manda la urgencia; en calma, la confianza.
     - La experiencia (activa y proactiva) sesga con un peso pequeño los candidatos que ya existen;
       no añade candidatos.
+    - Continuidad: la acción de la estrategia en curso (la que se ejecutó en el latido anterior y
+      sigue activa) suma un plus acotado de 0,1 × (1 − agotamiento) (decisiones 4 y 23).
     - Si los dos mejores casi empatan, decide el azar.
     - Acecho: un candidato con poca confianza y poca urgencia no se ejecuta enseguida; su
       confianza se acumula latido a latido hasta superar el umbral.
@@ -72,6 +74,7 @@ class Tribunal(Componente):
 
     tipo = "Decision"
     EMPATE = 0.02
+    PLUS_ACTIVA = 0.1     # plus a la acción de la estrategia en curso, × (1 − agotamiento) (decisiones 4 y 23)
     UMBRAL_ACECHO = 0.35
 
     def __init__(self):
@@ -85,17 +88,24 @@ class Tribunal(Componente):
             return
         estres = ctx.soma.estres
         peso = ctx.perfil.peso_experiencia if ctx.con_experiencia else 0.0
+        en_curso = self._estrategia_en_curso(ctx)
         evaluados: List[Dict[str, Any]] = []
         for c in candidatos:
             base = c.arousal * estres + c.confianza * (1.0 - estres)
             act, pro = ctx.memoria.sesgo(c.carga["verbo"], c.carga.get("clase", ""), ctx.latido) if peso else (0.0, 0.0)
-            evaluados.append({"pieza": c, "base": base, "activa": act, "proactiva": pro, "total": base + peso * (act + pro)})
+            plus = 0.0
+            if en_curso is not None and c.carga.get("origen", {}).get("estrategia") == en_curso.id:
+                plus = self.PLUS_ACTIVA * (1.0 - float(en_curso.carga.get("agotamiento", 0.0)))
+            sin_plus = base + peso * (act + pro)
+            evaluados.append({"pieza": c, "base": base, "activa": act, "proactiva": pro, "plus": plus, "sin_plus": sin_plus, "total": sin_plus + plus})
         evaluados.sort(key=lambda e: -e["total"])
         ganador = evaluados[0]
         if len(evaluados) > 1 and evaluados[0]["total"] - evaluados[1]["total"] <= self.EMPATE:
             ganador = ctx.azar.eleccion(evaluados[:2])
         sin_experiencia = max(evaluados, key=lambda e: e["base"])
         ctx.onda.notas["experiencia_cambio"] = sin_experiencia["pieza"].id != ganador["pieza"].id
+        if ganador["plus"] > 0.0:
+            ctx.onda.notas["plus_decide"] = max(evaluados, key=lambda e: e["sin_plus"])["pieza"].id != ganador["pieza"].id
         ctx.onda.notas["evaluados"] = [
             {
                 "id": e["pieza"].id,
@@ -106,6 +116,7 @@ class Tribunal(Componente):
                 "base": round(e["base"], 3),
                 "activa": round(e["activa"], 3),
                 "proactiva": round(e["proactiva"], 3),
+                "plus": round(e["plus"], 3),
                 "total": round(e["total"], 3),
             }
             for e in evaluados[:8]
@@ -122,6 +133,14 @@ class Tribunal(Componente):
                 return
         self.acumulado.clear()
         self._decidir(ctx, g.carga["verbo"], g.carga["objetivo"], g.carga.get("clase", ""), g.carga.get("motivo", ""), g, evaluados)
+
+    @staticmethod
+    def _estrategia_en_curso(ctx: Contexto) -> Optional[Pieza]:
+        """La estrategia cuya acción se ejecutó en el latido anterior, si sigue activa (decisión 4)."""
+        previa = ctx.onda.ei("Accion").get("Accion")
+        if previa is None:
+            return None
+        return ctx.onda.estrategias.get(previa.carga.get("origen", {}).get("estrategia", ""))
 
     def _decidir(self, ctx: Contexto, verbo: Verbo, objetivo: str, clase: str, motivo: str, ganador, evaluados) -> None:
         datos = dict(ganador.carga.get("datos", {})) if ganador is not None else {}
