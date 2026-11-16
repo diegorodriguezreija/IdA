@@ -25,7 +25,7 @@ import statistics
 import sys
 import tempfile
 from collections import Counter
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 PERFILES = {
     "Equilibrado": {"apertura": 0.50, "responsabilidad": 0.50, "neuroticismo": 0.50, "extraversion": 0.50, "umbral_miedo": 0.60},
@@ -63,16 +63,29 @@ def _causa(resumen: Dict[str, Any], final: Dict[str, Any]) -> str:
     return "hambre" if final.get("alimentacion", 1.0) <= 0.0 else "desgaste"
 
 
-def ejecutar(raiz: str, mundo: str, salida: str) -> None:
+UMBRAL_PELIGRO = 0.3   # indicador de peligro de Soma a partir del cual un latido cuenta «con peligro»
+
+
+def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None, grupos: Optional[List[str]] = None) -> None:
     sys.path.insert(0, os.path.abspath(raiz))
+    from dataclasses import replace
+
     from ida.ejecutor import ejecutar as vivir
+    from ida.mundos import cargar
+
+    if amplitud is not None:      # barrido del Marcapasos: amplitud base del perfil del mundo (potencia = amplitud)
+        clase_mundo = cargar(mundo)
+        clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
 
     generaciones, latidos = PROTOCOLO[mundo]
     filas: List[Dict[str, Any]] = []
     for grupo, perfil, sin_exp in GRUPOS:
+        if grupos and grupo not in grupos:
+            continue
         for semilla in SEMILLAS:
             ind: Dict[str, Any] = {"latidos": 0, "plazo": 0, "s3_sin_recursos": 0, "potencia": {"S1": 0.0, "S2": 0.0, "S3": 0.0},
-                                   "estrategias": {}, "reflejos": 0, "interrumpe": 0, "plus": 0, "sustituciones": 0}
+                                   "estrategias": {}, "reflejos": 0, "interrumpe": 0, "plus": 0, "sustituciones": 0,
+                                   "despierto_peligro": 0, "despierto_calma": 0, "s3_peligro": 0, "s3_calma": 0}
 
             finales: List[Dict[str, Any]] = []     # último latido de cada vida, para deducir la causa de muerte
 
@@ -104,8 +117,13 @@ def ejecutar(raiz: str, mundo: str, salida: str) -> None:
                     return
                 s3 = consumo.get("S3", {})
                 restante = onda.notas.get("restante", {}).get("S3")
-                if s3.get("rechazos_amplitud") or s3.get("recortes_potencia") or (restante and min(restante) <= 0):
+                sin_recursos = bool(s3.get("rechazos_amplitud") or s3.get("recortes_potencia") or (restante and min(restante) <= 0))
+                if sin_recursos:
                     ind["s3_sin_recursos"] += 1   # noqa: B023
+                if not _o.soma.dormido:
+                    lado = "peligro" if _o.soma.indicadores.get("peligro", 0.0) >= UMBRAL_PELIGRO else "calma"
+                    ind[f"despierto_{lado}"] += 1   # noqa: B023
+                    ind[f"s3_{lado}"] += int(sin_recursos)   # noqa: B023
                 for s in ("S1", "S2", "S3"):
                     ind["potencia"][s] += consumo.get(s, {}).get("potencia", 0.0)   # noqa: B023
 
@@ -140,6 +158,8 @@ def comparar(base: str, nueva: str) -> None:
         fa = {r["semilla"]: r for r in a["filas"] if r["grupo"] == grupo}
         fb = {r["semilla"]: r for r in b["filas"] if r["grupo"] == grupo}
         semillas = sorted(set(fa) & set(fb))
+        if not semillas:
+            continue
         for m in metricas:
             xa = [statistics.fmean(v[m] for v in fa[s]["vidas"]) for s in semillas]
             xb = [statistics.fmean(v[m] for v in fb[s]["vidas"]) for s in semillas]
@@ -152,6 +172,15 @@ def comparar(base: str, nueva: str) -> None:
             n = sum(i["latidos"] for i in ind) or 1
             pot = " / ".join(f"{sum(i['potencia'][s] for i in ind) / n:.2f}" for s in ("S1", "S2", "S3"))
             print(f"| {grupo} | {nombre} | {n} | {sum(i['plazo'] for i in ind)} | {sum(i['s3_sin_recursos'] for i in ind)} | {pot} |")
+    print("\n| Grupo | Versión | S3 sin recursos con peligro | S3 sin recursos en calma |\n|---|---|---|---|")
+    for grupo, _, _ in GRUPOS:
+        for nombre, datos in (("base", a), ("nueva", b)):
+            ind = [r["indicadores"] for r in datos["filas"] if r["grupo"] == grupo]
+            if not ind or "despierto_peligro" not in ind[0]:
+                continue
+            dp, dc = sum(i["despierto_peligro"] for i in ind), sum(i["despierto_calma"] for i in ind)
+            sp, sc = sum(i["s3_peligro"] for i in ind), sum(i["s3_calma"] for i in ind)
+            print(f"| {grupo} | {nombre} | {100 * sp / max(dp, 1):.1f} % de {dp} | {100 * sc / max(dc, 1):.1f} % de {dc} |")
     print("\n| Grupo | Causa de muerte | Vidas base | Vidas nueva |\n|---|---|---|---|")
     for grupo, _, _ in GRUPOS:
         ca = Counter(c for r in a["filas"] if r["grupo"] == grupo for c in r.get("causas", []))
@@ -184,12 +213,14 @@ def main() -> int:
     e.add_argument("--raiz", required=True)
     e.add_argument("--mundo", required=True, choices=sorted(PROTOCOLO))
     e.add_argument("--salida", required=True)
+    e.add_argument("--amplitud", type=int, default=None, help="amplitud base del perfil del mundo (barrido del Marcapasos)")
+    e.add_argument("--grupos", nargs="*", default=None, help="solo estos grupos (p. ej. Equilibrado)")
     c = sub.add_parser("comparar")
     c.add_argument("base")
     c.add_argument("nueva")
     args = p.parse_args()
     if args.orden == "ejecutar":
-        ejecutar(args.raiz, args.mundo, args.salida)
+        ejecutar(args.raiz, args.mundo, args.salida, args.amplitud, args.grupos)
     else:
         comparar(args.base, args.nueva)
     return 0

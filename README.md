@@ -10,7 +10,7 @@ English summary: [README.en.md](README.en.md).
 
 IdA es un **framework**: un núcleo genérico, inspirado en cómo resuelven los seres vivos el problema de seguir vivos, al que se conectan mundos como adaptadores. Está hecho para **ejecutarlo y ver vivir** a sus individuos. No compite con otros agentes ni busca la mejor puntuación; esa pregunta se investiga aparte, en el [Laboratorio IdA](#laboratorio-ida).
 
-Cada individuo de IdA tiene un **cuerpo** que se gasta, un **latido** con un presupuesto de atención y de tiempo (y una guillotina si se pasa), y **tres sistemas** que proponen qué hacer: S1 (supervivencia), S2 (valor) y S3 (verdad). Un **Tribunal** decide según cómo esté el cuerpo. Lo vivido se recuerda, se anticipa, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
+Cada individuo de IdA tiene un **cuerpo** que se gasta (constantes vitales, estrés, placer y valencia) y un **latido**. En cada latido, el núcleo siente el mundo (interocepción, propiocepción, **exterocepción** y ambiente) y crea una **Onda** con frecuencia (el plazo; si se pasa, una guillotina corta), amplitud (cuántas piezas caben en la atención) y potencia (cuánto arousal se puede dar o cambiar), que fija un marcapasos. Tres sistemas trabajan sobre ella en orden: S1 (supervivencia), S2 (valor) y S3 (verdad). Cada uno interpreta (imagen y **objetos**; valor de cada sujeto; proposiciones, lógica y **creencias**), siente sus **impulsos** (las necesidades del cuerpo y la seguridad, la exploración, intenciones como saber), elige **estrategias** con fases, progreso y agotamiento, y las traduce en **acciones**. Un **Tribunal** elige una según cómo esté el cuerpo, con un pequeño plus por seguir la estrategia en curso. Cada componente solo produce y cambia piezas de su tipo. Lo vivido se recuerda, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
 
 La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabulario común de rasgos (`nutritivo`, `peligro`, `lugar`…) y verbos (`MOVER`, `COMER`…), y el mismo núcleo, sin cambios, vive en cinco: uno mínimo para tests, un **mundo de archivos** en disco, **Snake** en una web real, **Crafter** y **Ajedrez**. El mundo percibe; IdA piensa: ningún sensor calcula por el individuo.
 
@@ -26,7 +26,7 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 68 tests
+python -m pytest -q                       # 138 tests
 python -m ida                             # antesala interactiva en http://127.0.0.1:8000
 ```
 
@@ -71,7 +71,7 @@ El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada 
 
 ## Calidad
 
-`ruff` y `mypy` en verde, 68 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
+`ruff` y `mypy` en verde, 138 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
 
 ## Laboratorio IdA
 
