@@ -221,8 +221,13 @@ class SeguirEnMovimiento(Definicion):
 def _rechazado(ctx: Contexto, o: Pieza) -> bool:
     """Elección del objeto (decisión 1 del autor sobre C1): primero el valor de S2 (del latido anterior,
     porque S2 corre después de S1) y después lo demostrado (S3). Se rechaza lo que se valora mal
-    (valencia negativa) y lo que se sabe peligroso o se sabe que no nutre."""
-    valor = ctx.onda.ei("Valor").get(o.id)
+    (valencia negativa) y lo que se sabe peligroso o se sabe que no nutre. Un objeto que S2 no ha
+    valorado (fuera de la atención) toma el valor de otro de su clase que sí lo esté: el sentimiento
+    sale de los recuerdos de la clase."""
+    valores = ctx.onda.ei("Valor")
+    valor = valores.get(o.id)
+    if valor is None:
+        valor = next((v for v in valores.values() if v.carga.get("clase") == o.clase), None)
     if valor is not None and float(valor.carga.get("valencia", 0.0)) < 0.0:
         return True
     if not ctx.con_experiencia:
@@ -240,6 +245,30 @@ def _al_alcance(ctx: Contexto) -> Tuple[List[Pieza], List[Pieza]]:
     return [o for o in comestibles if o not in rechazados], rechazados
 
 
+def _aceptables_a_la_vista(ctx: Contexto) -> List[Pieza]:
+    """Comestibles a la vista pero no al alcance que no se rechazan."""
+    return [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and not al_alcance(o) and not _rechazado(ctx, o)]
+
+
+def _posicion(ctx: Contexto, pid: str) -> Optional[Tuple[float, ...]]:
+    """Posición percibida de una entidad, si el mundo la da (``datos["pos"]`` de la exterocepción)."""
+    e = ctx.onda.ev("Exterocepcion").get(pid)
+    pos = e.carga.get("datos", {}).get("pos") if e is not None else None
+    return tuple(float(x) for x in pos) if isinstance(pos, (tuple, list)) else None
+
+
+def _hacia(ctx: Contexto, objetivo: Pieza) -> Optional[Pieza]:
+    """El lugar a la vista (no peligroso) que más acerca a ``objetivo``, si hay posiciones percibidas."""
+    meta = _posicion(ctx, objetivo.id)
+    if meta is None:
+        return None
+    candidatos = [(lugar, _posicion(ctx, lugar.id)) for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.8]
+    con_pos = [(lugar, pos) for lugar, pos in candidatos if pos is not None and len(pos) == len(meta)]
+    if not con_pos:
+        return None
+    return min(con_pos, key=lambda lp: sum(abs(a - b) for a, b in zip(lp[1], meta, strict=True)))[0]
+
+
 def _destino_comida(ctx: Contexto) -> Optional[Pieza]:
     destino = mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
     return destino if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8 else None
@@ -253,9 +282,12 @@ class Alimentarse(Definicion):
     tres fases, buscar → acercarse → comer.
 
     - **comer**: hay algo aceptable al alcance (y el mundo deja comer): el mejor por nutritivo − peligro.
-    - **buscar**: lo único al alcance se rechaza (se valora mal o se sabe dañino): no se come y se va
-      a otro sitio, el lugar más nuevo y menos peligroso.
-    - **acercarse**: se huele comida en un lugar a la vista: ir hacia el más nutritivo y menos peligroso.
+    - **acercarse**: hay comida aceptable a la vista o se huele comida en un lugar a la vista: ir
+      hacia el lugar más nutritivo y menos peligroso. Si lo que hay al alcance se rechaza pero hay
+      comida aceptable a la vista, ir hacia esa comida (por posición percibida, si el mundo la da):
+      el olor del lugar también lleva a lo rechazado.
+    - **buscar**: lo único al alcance se rechaza (se valora mal o se sabe dañino) y no hay nada
+      aceptable a la vista: no se come y se va a otro sitio, el lugar más nuevo y menos peligroso.
     Elegible mientras haya algo de eso; si no hay nada a la vista, se cierra y exploran otros sistemas.
     """
 
@@ -272,7 +304,7 @@ class Alimentarse(Definicion):
         if aceptables and Verbo.COMER in ctx.verbos and ctx.soma.alimentacion < 95.0:
             return COMER
         if rechazados and not aceptables:
-            return BUSCAR
+            return ACERCARSE if _aceptables_a_la_vista(ctx) else BUSCAR
         return ACERCARSE if _destino_comida(ctx) is not None else BUSCAR
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
@@ -283,6 +315,13 @@ class Alimentarse(Definicion):
             if cerca is not None:
                 return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * apetito(ctx)), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
         if paso == ACERCARSE:
+            _, rechazados = _al_alcance(ctx)
+            vista = mejor(_aceptables_a_la_vista(ctx), lambda o: o.rasgo("nutritivo") * o.rasgo("proximidad") - o.rasgo("peligro"))
+            if rechazados and vista is not None:
+                lugar = _hacia(ctx, vista)
+                if lugar is not None:
+                    ar = acotar(0.25 + 0.6 * apetito(ctx) * vista.rasgo("nutritivo"))
+                    return Propuesta(Verbo.MOVER, lugar.id, ar, 0.6, f"acercarse a {vista.clase}", clase=lugar.clase)
             destino = _destino_comida(ctx)
             if destino is not None:
                 ar = acotar(0.25 + 0.6 * apetito(ctx) * destino.rasgo("nutritivo"))

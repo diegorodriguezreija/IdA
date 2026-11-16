@@ -363,3 +363,27 @@ def test_cerrar_una_estrategia_desde_un_autor_ajeno_se_rechaza():
     with pytest.raises(PiezaAjena):
         onda.cerrar(p, est.AGOTADA, _comp(_Otro))
     assert p.id in activas and p.carga["estado"] == est.ACTIVA
+
+
+def test_con_la_seta_rechazada_al_alcance_y_una_baya_a_la_vista_va_hacia_la_baya():
+    """Caso de la semilla 7 del Valiente en el mínimo: el olor del lugar lleva a la seta (0,7, al lado),
+    más que a la baya (0,6, a tres casillas); la estrategia debe ir hacia la baya, no buscar ni volver."""
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s1 import Alimentarse
+
+    ef_anterior = {"Valor": {"seta": Pieza("seta", "Valor", carga={"valencia": -0.2})}}
+    onda = Onda(2, 100, 1e9, ef_anterior=ef_anterior)
+    ctx = Contexto(onda, Soma(alimentacion=30.0), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
+    for pid, clase, prox, pos in (("seta", "seta", 1.0, (1, 0)), ("baya", "baya", 0.4, (0, 3))):
+        rasgos = {"nutritivo": 0.75, "proximidad": prox}
+        onda.percibir("Exterocepcion", Pieza(pid, "Exterocepcion", carga={"clase": clase, "rasgos": rasgos, "datos": {"pos": pos}}))
+        onda.percibir("Objeto", Pieza(pid, "Objeto", 0.5, carga={"clase": clase, "rasgos": rasgos}))
+    for pid, nutritivo, pos in (("celda_1_0", 0.7, (1, 0)), ("celda_0_1", 0.6, (0, 1)), ("celda_-1_0", 0.0, (-1, 0))):
+        onda.percibir("Exterocepcion", Pieza(pid, "Exterocepcion", carga={"clase": "pradera", "datos": {"pos": pos},
+                                                                       "rasgos": {"lugar": 1.0, "nutritivo": nutritivo, "novedad": 0.5}}))
+    d = Alimentarse()
+    e = est.nueva("S1", d, "hambre", 0.7, 0.0, 2)
+    e = est.nueva("S1", d, "hambre", 0.7, 0.0, 2, paso=d.paso(ctx, e))
+    propuesta = d.actuar(ctx, e)
+    assert e.carga["paso"] == "acercarse"
+    assert propuesta.verbo == Verbo.MOVER and propuesta.objetivo == "celda_0_1"      # hacia la baya, no hacia la seta
