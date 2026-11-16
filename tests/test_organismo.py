@@ -4,7 +4,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.vocabulario import Relacion
+from ida.core.vocabulario import Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas import crear_sistemas
 
@@ -41,10 +41,22 @@ def test_misma_semilla_misma_vida():
     assert d1 == d2
 
 
-def test_aprende_de_la_experiencia_que_la_seta_no_nutre():
-    org, _, _ = _vida(semilla=3, latidos=250)
-    p = org.memoria.proposicion("seta", Relacion.NUTRITIVO)
-    assert p is not None and p.refutaciones > 0
+def test_tras_probar_la_seta_una_vez_no_vuelve_a_comerla():
+    """Aprende de la experiencia: tras probar la seta (no nutre), no la vuelve a comer en el resto de la
+    vida. No se exige que la hipótesis siga en memoria: protegerla de un único suceso es del bloque E."""
+    mundo = MundoMinimo()
+    mundo.reiniciar(3)
+    azar = Azar(3)
+    org = Organismo(mundo, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar, True)
+    comidas = []
+
+    def anotar(o, onda):
+        ej = onda.reactiva.ef["Accion"]["Accion"]
+        if ej.carga["verbo"] == Verbo.COMER and ej.carga.get("exito"):
+            comidas.append(ej.carga.get("clase", ""))
+
+    org.vivir(250, al_latir=anotar)
+    assert comidas.count("seta") == 1                      # la prueba una vez y no repite
     assert org.memoria.demostrada("baya", Relacion.NUTRITIVO, org.ciclo)
 
 
