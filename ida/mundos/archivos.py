@@ -22,7 +22,6 @@ from typing import Any, Dict, List, Optional, Set
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.azar import Azar
 from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
-from ida.core.pieza import acotar
 from ida.core.vocabulario import Relacion, Verbo
 
 COMESTIBLES = ["Boletus_edulis.brote", "Taraxacum_officinale.brote", "Vaccinium_myrtillus.fruto"]

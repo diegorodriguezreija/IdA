@@ -82,9 +82,9 @@ def main() -> int:
         def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
             nonlocal latidos
             latidos += 1
-            amplitudes.append(onda.amplitud_max)
+            amplitudes.append(onda.amplitud_max)  # noqa: B023 (se usa en la misma iteración)
             if onda.guillotina:
-                guillotinas["amplitud" if "amplitud" in onda.motivo_guillotina else "plazo"] += 1
+                guillotinas["amplitud" if "amplitud" in onda.motivo_guillotina else "plazo"] += 1  # noqa: B023
 
         for s in SEMILLAS:
             with tempfile.TemporaryDirectory(prefix=f"ida_consumo_{mundo}_{s}_") as datos:

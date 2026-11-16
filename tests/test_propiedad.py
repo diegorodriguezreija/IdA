@@ -102,7 +102,8 @@ def test_metadatos_origen_registro_acotado_y_audit():
 
 
 # Revisión estática: los sistemas y los mundos no mutan piezas ni escriben en la Onda directamente.
-MUTACION = re.compile(r"\.(arousal|confianza)\s*(=|\+=|-=|\*=)(?!=)|\.carga\[[^\]]+\]\s*=(?!=)|\.carga\.(update|setdefault|pop)\(|\.entradas\.(append|extend)\(")
+MUTACION = re.compile(r"\.(arousal|confianza)\s*(=|\+=|-=|\*=)(?!=)|\.carga\[[^\]]+\]\s*=(?!=)"
+                      r"|\.carga\.(update|setdefault|pop)\(|\.entradas\.(append|extend)\(")
 ESCRITURA_DIRECTA = re.compile(r"ctx\.onda\.(percibir|registrar|proponer|modificar)\(|\.reactiva\.(ev|acc|ef)\b")
 
 
