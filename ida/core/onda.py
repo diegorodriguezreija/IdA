@@ -30,7 +30,7 @@ registro pasivo: el núcleo no llama a nadie; la observabilidad externa lo lee d
 Propiedad de las piezas (decisión 14): un componente solo emite o modifica piezas de su tipo, y
 solo a través de la Onda (``percibir``, ``registrar``, ``proponer``, ``modificar``), que lo
 comprueba y deja constancia en el registro de la pieza. El Core escribe con ``AutorCore`` (o desde
-un módulo exento) y no paga atención. Excepciones transitorias hasta el bloque C, en ``EXCEPCIONES_TRANSITORIAS``.
+un módulo exento) y no paga atención. Sin excepciones desde C3.5 (``EXCEPCIONES_TRANSITORIAS`` vacío).
 """
 
 import time
@@ -42,12 +42,11 @@ from ida.core.pieza import MAX_REGISTRO, Pieza, acotar
 
 Canales = Dict[str, Dict[str, Pieza]]
 
-# Excepciones transitorias a la propiedad por tipo (hasta el bloque C). Cada uso queda en el
+# Excepciones transitorias a la propiedad por tipo. Las dos del bloque B (cualquier componente
+# proponía Accion; un Impulso modulaba Accion) se quitaron en C3.5: solo los componentes Accion
+# proponen acciones y nadie modifica piezas Accion ajenas. Si se añade alguna, cada uso queda en el
 # registro de la pieza y se cuenta en ``Onda.excepciones``.
-EXCEPCIONES_TRANSITORIAS = {
-    "proponer_accion": "cualquier componente puede proponer piezas Accion",
-    "impulso_modula_accion": "un componente Impulso puede modular arousal y confianza de piezas Accion (y anotar sus entradas)",
-}
+EXCEPCIONES_TRANSITORIAS: Dict[str, str] = {}
 
 
 class LatidoAgotado(Exception):
@@ -210,14 +209,7 @@ class Onda:
         usada, si alguna. El Core (sin autor o en un módulo exento) no se comprueba."""
         if autor is None or self.exento or autor.tipo == pieza.tipo:
             return None
-        if pieza.tipo == "Accion" and op == "proponer":
-            excepcion = "proponer_accion"
-        elif pieza.tipo == "Accion" and op == "modificar" and autor.tipo == "Impulso" and set(campos) <= {"arousal", "confianza", "entrada"}:
-            excepcion = "impulso_modula_accion"
-        else:
-            raise PiezaAjena(f"{autor.sistema}.{autor.nombre} (tipo {autor.tipo}) no puede {op} una pieza {pieza.tipo} ({pieza.id})")
-        self.excepciones[excepcion] = self.excepciones.get(excepcion, 0) + 1
-        return excepcion
+        raise PiezaAjena(f"{autor.sistema}.{autor.nombre} (tipo {autor.tipo}) no puede {op} una pieza {pieza.tipo} ({pieza.id})")
 
     def _anotar(self, pieza: Pieza, autor: Optional[Autor], op: str, excepcion: Optional[str] = None,
                 cambios: Optional[Dict[str, Any]] = None) -> None:

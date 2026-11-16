@@ -20,6 +20,10 @@ class _Impulso(Componente):
     tipo = "Impulso"
 
 
+class _Accion(Componente):
+    tipo = "Accion"
+
+
 def _ctx(onda: Onda) -> Contexto:
     return Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
 
@@ -54,11 +58,12 @@ def test_cambiar_arousal_cuesta_al_subir_y_al_bajar():
 
 def test_fuerza_maxima_por_pieza_recorta_el_cambio():
     onda = Onda(1, 10, 1e9, potencia_max=4.0)                  # fuerza máx. 0,4
-    ctx, v, imp = _ctx(onda), _comp(_Valor), _comp(_Impulso)
+    ctx, v = _ctx(onda), _comp(_Valor)
     p = v.percibir(ctx, v.pieza(ctx, "a", 0.9))
     assert p.arousal == pytest.approx(0.4) and p.registro[-1]["cambios"]["arousal_limitado"] == (0.9, pytest.approx(0.4))
-    c = v.proponer(ctx, Verbo.MOVER, "x", 0.3, 0.5, "prueba")
-    imp.modificar(ctx, c, arousal=1.0)
+    acc = _comp(_Accion)
+    c = acc.proponer(ctx, Verbo.MOVER, "x", 0.3, 0.5, "prueba")
+    acc.modificar(ctx, c, arousal=1.0)
     assert c.arousal == pytest.approx(0.7)
 
 
