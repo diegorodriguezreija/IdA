@@ -718,18 +718,28 @@ class Memoria:
             ],
         }
 
-    def heredar(self, legado: Dict[str, Any]) -> int:
-        """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo."""
+    def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
+        """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo.
+        Con ``tasa`` < 1 (bloque E, E7) solo pasa esa fracción de cada parte del legado: las
+        proposiciones de más confianza y los registros con más experiencias (redondeo hacia arriba)."""
         if not self.activa:
             return 0
+        proposiciones = list(legado.get("proposiciones", []))
+        registros = list(legado.get("registros", []))
+        if tasa < 1.0:
+            def parte(xs: List[Dict[str, Any]], clave: str) -> List[Dict[str, Any]]:
+                k = math.ceil(max(0.0, tasa) * len(xs))
+                return sorted(xs, key=lambda d: -float(d[clave]))[:k]
+            proposiciones = parte(proposiciones, "confianza")
+            registros = parte(registros, "n")
         n = 0
-        for d in legado.get("proposiciones", []):
+        for d in proposiciones:
             p = Proposicion(d["sujeto"], Relacion[d["relacion"]], confianza=float(d["confianza"]) * 0.8)
             p.confirmaciones = Proposicion.CONFIRMACIONES_MINIMAS - 1
             p.heredada = True
             self.saber[(p.sujeto, p.relacion)] = p
             n += 1
-        for d in legado.get("registros", []):
+        for d in registros:
             r = Registro(n=max(1, int(d["n"]) // 2))
             r.suma = float(d["media"]) * r.n
             self.registros[(Verbo[d["verbo"]], d["clase"])] = r

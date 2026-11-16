@@ -85,7 +85,7 @@ def ejecutar(
                 arq = Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
             memoria = Memoria(m.perfil.memoria)
             legado_a_heredar = linaje.legado() or legado_inicial or {}
-            heredados = memoria.heredar(legado_a_heredar)
+            heredados = memoria.heredar(legado_a_heredar, m.perfil.mecanismos.tasa_herencia)
             m.reiniciar(azar_g.semilla)
             org_biblioteca: Optional[Any] = None
             if isinstance(biblioteca, str):

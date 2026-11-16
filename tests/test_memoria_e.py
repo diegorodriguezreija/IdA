@@ -123,3 +123,13 @@ def test_repaso_en_calma_refuerza_lo_reciente():
     ctx2 = Contexto(Onda(101, 100, 1e9), soma, mem, Arquetipo(), Azar(1), perfil, {Verbo.MOVER})
     r.activa(ctx2)
     assert not ctx2.onda.ev("Recuerdo")
+
+
+def test_tasa_de_herencia_filtra_lo_de_mas_confianza():
+    legado = {"proposiciones": [{"sujeto": f"c{i}", "relacion": "NUTRITIVO", "confianza": 0.5 + i / 10} for i in range(4)],
+              "registros": [{"verbo": "COMER", "clase": f"c{i}", "n": i + 2, "media": 0.1} for i in range(4)]}
+    entero, mitad, nada = Memoria(), Memoria(), Memoria()
+    assert entero.heredar(legado) == 8
+    assert mitad.heredar(legado, 0.5) == 4
+    assert {s for s, _ in mitad.saber} == {"c2", "c3"} and {c for _, c in mitad.registros} == {"c2", "c3"}
+    assert nada.heredar(legado, 0.0) == 0
