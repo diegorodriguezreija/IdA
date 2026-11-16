@@ -1,5 +1,7 @@
 # Diseño del framework base de IdA
 
+> **Documento histórico.** Usa los nombres anteriores al rediseño de la base (`Escena`, `Ejecucion`, `ImpulsoS1/S2/S3`, `PredicadoProposicion`, `Soma.presupuesto`…). La referencia actual es [`docs/REDISENO_BASE.md`](REDISENO_BASE.md).
+
 Este documento describe de qué se compone el framework base de IdA, qué contrato cumple un mundo y cómo se mantienen el latido y la guillotina.
 
 ## 1. Principios
