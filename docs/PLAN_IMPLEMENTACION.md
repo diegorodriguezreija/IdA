@@ -72,6 +72,8 @@ mypy ida
 
 ## Encargo del bloque B: reglas de la Onda
 
+**Estado (16/11/2026): hecho** en `feature/bloque-b`. Benchmark idéntico a `main` (Δ = 0,00 en todo; 660 vidas por versión). Con potencia = amplitud y la amplitud por defecto, la atención casi nunca escasea: 0 latidos con el plazo agotado y 5 de 37 194 con S3 sin recursos (Archivos). Se acepta como infraestructura; **la calibración de la escasez se hace después del bloque C**, porque C cambia lo que se emite. Mediciones en `docs/MEDICIONES_BLOQUE_B.md`; nuevas herramientas `herramientas/benchmark.py` y `herramientas/consumo.py`. Corrección al encargo: el componente de S2 que emitía gratis era `Sujeto`, no `Patron`.
+
 **Objetivo:** que la Onda haga cumplir la propiedad de las piezas y gestione la atención con frecuencia, amplitud y potencia. Los pasos B1 y B2 no deben cambiar la conducta; B3 y B4 la cambian a propósito y se miden al final.
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 7, 14, 15 y 18. Base: `main` con el bloque A fusionado.
@@ -112,6 +114,58 @@ Se autoriza modificar `ida/core/` e `ida/sistemas/` **solo** para los pasos de e
 - **Indicadores nuevos:** latidos con el plazo agotado, latidos en los que S3 se quedó sin amplitud o potencia, y potencia media gastada por sistema.
 - Si B3 o B4 empeoran la conducta, detenerse tras el benchmark y explicar la causa, sin seguir ajustando.
 
+## Encargo del bloque C: el nuevo bucle
+
+**Objetivo:** que IdA decida con impulsos, estrategias y acciones en lugar de con componentes que proponen acciones directamente. Es el bloque más grande, así que se divide en cuatro partes. **Cada parte es un encargo propio, con su benchmark, y no se empieza la siguiente sin aceptar la anterior.**
+
+**Referencia:** `docs/REDISENO_BASE.md`, decisiones 3 a 6, 10, 11, 13, 16, 17 y 23. Base: `main` con los bloques A y B fusionados.
+
+| Parte | Contenido | ¿Cambia la conducta? |
+| --- | --- | --- |
+| C0 | Inventario y propuesta de correspondencia. Sin código. **Se detiene para que el autor la apruebe** | No |
+| C1 | Infraestructura del bucle y S1 completo | Sí |
+| C2 | S2: impulsos propios, estrategias de valor, modulación sobre piezas `Impulso` | Sí |
+| C3 | S3: `Intencion`, estrategias de conocimiento, control según certeza; se quitan las excepciones transitorias del bloque B | Sí |
+
+### C0: inventario y correspondencia (sin código)
+
+Entregar una tabla con **cada componente actual de Reaccionar en S1, S2 y S3, y cada componente propio de los mundos**, y en qué se convierte en el nuevo modelo:
+
+- **impulso** (qué necesidad expresa y cómo se mide su intensidad cruda);
+- **estrategia** (de qué sistema, para qué impulso, genérica o propia de un mundo);
+- **reflejo** (estrategia innata corta ante un cambio brusco);
+- **modulación** (qué impulsos sube o baja);
+- o **desaparece**, con el motivo.
+
+Incluir al menos `Reflejo`, los tres `Impulso`, `Curiosidad`, `Hogar`, `Orientacion`, `Comportamiento`, `Estudio`, `Exteriorizacion`, las defensas de los mundos, `PlanTecnologico` y `Prudencia`, y los candidatos que propone el Core (`_candidato_core`). Añadir la señal de **feedback** propuesta para cada sistema y los riesgos que se vean. **Detenerse aquí.**
+
+### C1: infraestructura del bucle y S1
+
+| Paso | Cambio | Decisión |
+| --- | --- | --- |
+| C1.1 | Tipo de pieza `Estrategia` en el Core: impulso de origen, valor inicial, objetivo, progreso, agotamiento, esfuerzo, latido de inicio y estado de la máquina. El Core conserva las estrategias activas entre latidos | 4, 16 |
+| C1.2 | Etapa Actuar en cada sistema con un componente `Accion` que traduce la estrategia activa en una acción. La acción lleva su origen (impulso y estrategia) | 3, 17 |
+| C1.3 | Feedback por sistema; en S1, si bajan los déficits del cuerpo | 5 |
+| C1.4 | Regla inicial del `Tribunal`: arousal ya modulado + plus por estrategia activa, 0,1 × (1 − agotamiento); empate, azar | 4, 23 |
+| C1.5 | S1 según la tabla aprobada en C0: `Impulso` emite piezas `Impulso` y deja de proponer acciones; `Estrategia` elige, mantiene y abandona estrategias; `Reflejo` solo ante cambios bruscos, como estrategia corta de máxima prioridad; las defensas de los mundos pasan a estrategias de S1 de su mundo | 6, 16, 17 |
+| C1.6 | El Core escribe con autor (`_candidato_core`, `Sorpresa`) y `percibir` devuelve `None` si la pieza se rechaza | 14 |
+
+**Detalles de C1:**
+
+- **Progreso** medido sobre la intensidad cruda de la necesidad, no sobre el arousal modulado. La prioridad de la estrategia se apaga de forma gradual al acercarse al objetivo.
+- **Agotamiento:** unos latidos de gracia (parámetro del `Perfil`); después crece con tiempo y esfuerzo si el ritmo de progreso es menor que el esperado. En C1, el ritmo esperado es un valor por defecto.
+- **Elección de estrategia:** valor aprendido por estrategia e impulso, solo durante la vida (la memoria duradera es del bloque E); mérito por feedback, fuerza del aprendizaje por arousal; la apertura del arquetipo regula cuánto se prueba una estrategia distinta.
+- **Vocabulario:** se mantiene el enum `Verbo` actual. Pasar el vocabulario exterior a cada mundo queda para después.
+- **S2 y S3 siguen como hoy** en C1, con las excepciones transitorias del bloque B.
+
+**Verificación de C1:** `pytest -q -x` por paso; al final, `ruff`, `mypy` y el benchmark (N = 10, pareado) frente a `main`. **Criterio de paso:** sin pérdida significativa; en Crafter, no inferioridad con margen de −1 logro. Si hay pérdida, detenerse y analizar la causa (por ejemplo, qué estrategias se abandonan antes de tiempo) antes de ajustar.
+
+**Entrega de C1:** tabla del benchmark; latidos por estrategia y abandonos por agotamiento; cuántas veces gana el plus por estrategia activa; cuántas veces interrumpe un reflejo.
+
+### C2 y C3
+
+Se detallan tras aceptar C1, con lo aprendido en C0 y C1. C3 termina el bloque quitando las dos excepciones transitorias de `EXCEPCIONES_TRANSITORIAS`.
+
 ## Bloques B a F
 
 Se detallan como encargo cuando termine el anterior. A partir del bloque B la conducta cambia a propósito, así que cada bloque se mide con el protocolo de `docs/BENCHMARK_PERFILES_MUNDOS.md` (N = 10 linajes, t de Student, comparación pareada) frente al bloque anterior y frente al control sin memoria.
@@ -132,6 +186,12 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 - **D:** `Soma` no calcula una valencia explícita, y la decisión 9 la necesita. Hoy `Emocion` emite el estrés como arousal, y el afecto y el placer en la carga.
 - `memoria.db` guarda filas antiguas con el tipo `Escena`; no afecta a la conducta (la tabla no se lee).
 
+**Notas del bloque B para los siguientes:**
+
+- **C:** quitar las dos excepciones transitorias de `EXCEPCIONES_TRANSITORIAS` (`ida/core/onda.py`): cualquier componente propone `Accion`, y `Impulso` modula arousal y confianza de `Accion` (hoy en `S2.Impulso`, `S3.Impulso` y `Prudencia`).
+- **C:** el Core escribe piezas sin autor (`_candidato_core` y la pieza `Sorpresa`); `Componente.percibir` devuelve la pieza aunque se haya rechazado.
+- **Después de C:** barrido pequeño del `Marcapasos` (dos o tres niveles de amplitud y potencia, Crafter y Mínimo) para comprobar que la atención escasa estrecha el foco con peligro sin hundir el fitness.
+
 ## Registro de cambios
 
 | Fecha | Cambio |
@@ -141,3 +201,5 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Quitado el paso A8: la percepción de la luz se rescatará cuando un bloque la necesite. |
 | 2026-11-16 | Bloque A hecho (feature/bloque-a, invariancia OK). Notas del bloque A para B y D. |
 | 2026-11-16 | Encargo del bloque B (pasos B0 a B4). |
+| 2026-11-16 | Bloque B hecho (feature/bloque-b, sin diferencias en el benchmark). Calibración de la escasez aplazada a después de C. Notas del bloque B para C. |
+| 2026-11-16 | Encargo del bloque C: partes C0 a C3; C0 y C1 detallados. |
