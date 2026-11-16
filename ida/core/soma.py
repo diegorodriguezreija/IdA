@@ -36,6 +36,12 @@ class Soma:
     def valores(self) -> Dict[str, float]:
         return {k: round(getattr(self, k), 2) for k in VITALES + ("dopamina", "placer")} | {"estres": round(self.estres, 3)}
 
+    @property
+    def valencia(self) -> float:
+        """Valencia del estado afectivo, en [−1, 1] (decisión 9): lo agradable (placer) menos la tensión
+        (estrés). 0 con placer y estrés nulos."""
+        return acotar(self.placer / 100.0 - self.estres, -1.0, 1.0)
+
     def hambre(self) -> float:
         """Urgencia de alimentarse, en [0, 1]."""
         return acotar((70.0 - self.alimentacion) / 70.0)

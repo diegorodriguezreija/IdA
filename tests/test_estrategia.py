@@ -463,6 +463,7 @@ def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
     from ida.core.pieza import Pieza
     from ida.core.sentidos import Tribunal
     from ida.core.vocabulario import Relacion
+    from ida.sistemas.s3 import Creencia
     from ida.sistemas.s3 import Impulso as ImpulsoS3
 
     mem = Memoria()
@@ -474,16 +475,19 @@ def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
     onda.percibir("Objeto", Pieza("l1", "Objeto", 0.5, carga={"clase": "lobo", "rasgos": {"proximidad": 0.8}}))
     s1 = _comp(lambda: _Tipo("Impulso"))
     seg = s1.registrar(ctx, s1.pieza(ctx, "seguridad", 0.5, carga={"intensidad": 0.5, "objetivo": 0.0, "rasgo": None}))
+    _comp(Creencia).reactiva(ctx)                                            # S3·Interpretar: lo que sostiene
     control = _comp(ImpulsoS3)
     control.sistema = "S3"
     control.reactiva(ctx)
-    assert seg.arousal == pytest.approx(0.5 + 0.2 * 0.9)                    # sube en proporción a la certeza
+    trust = onda.ef("Creencia")["lobo|PELIGROSO"].carga["trust"]
+    assert trust == pytest.approx(0.9 / 1.1, abs=1e-3)                        # sin valor de S2: fuente afectiva 0
+    assert seg.arousal == pytest.approx(0.5 + 0.2 * trust)                   # sube en proporción a la certeza
     onda.proponer("Accion", Pieza("a", "Accion", 0.5, 0.5, {"verbo": Verbo.MOVER, "objetivo": "a", "clase": "", "motivo": "",
                                                           "datos": {}, "origen": {"impulso": "seguridad"}}, sistema="S1"))
     t = Tribunal()
     t.sistema = "CORE"
     t.reactiva(ctx)
-    assert onda.notas["evaluados"][0]["base"] == pytest.approx(0.5 + 0.18)  # el Tribunal suma la modulación (estrés 1)
+    assert onda.notas["evaluados"][0]["base"] == pytest.approx(0.5 + 0.2 * trust, abs=1e-3)  # el Tribunal suma la modulación (estrés 1)
 
 
 def test_feedback_de_s3_error_de_prediccion():
@@ -498,3 +502,65 @@ def test_feedback_de_s3_error_de_prediccion():
     onda2 = Onda(2, 100, 1e9, ef_anterior=onda1.reactiva.ef)
     fb.reactiva(Contexto(onda2, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER}))
     assert onda2.ef("Feedback")["feedback:S3"].carga["valor"] == 2.0
+
+
+def test_valencia_explicita_en_soma_y_emocion():
+    from ida.sistemas.s2 import Emocion
+
+    assert Soma(placer=60.0, estres=0.2).valencia == pytest.approx(0.4)
+    assert Soma(placer=0.0, estres=0.9).valencia == pytest.approx(-0.9)
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(placer=60.0, estres=0.2), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    e = _comp(Emocion)
+    e.reactiva(ctx)
+    p = onda.ef("Emocion")["emocion"]
+    assert p.carga["valencia"] == pytest.approx(0.4) and p.arousal == pytest.approx(0.2)
+
+
+def test_habituacion_y_sensibilizacion_en_supervivencia():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.vocabulario import Relacion
+    from ida.sistemas.s1 import relacion_supervivencia
+
+    mem = Memoria()
+    ctx = Contexto(Onda(5, 100, 1e9), Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    sombra = Pieza("s", "Objeto", carga={"clase": "sombra", "rasgos": {}})
+    assert relacion_supervivencia(ctx, sombra, 0.4, 0.0) == ("neutro", 0.0, 1.0)            # desconocido
+    mem.clases_vistas["sombra"] = 20                                                        # 20 encuentros sin daño
+    categoria, trust, factor = relacion_supervivencia(ctx, sombra, 0.4, 0.0)
+    assert categoria == "neutro" and trust == 1.0 and factor == pytest.approx(0.6)          # habituado
+    mem.saber[("sombra", Relacion.PELIGROSO)] = Proposicion("sombra", Relacion.PELIGROSO, confianza=0.8)
+    categoria, trust, factor = relacion_supervivencia(ctx, sombra, 0.4, 0.0)
+    assert categoria == "peligro" and factor == pytest.approx(1.4)                          # sensibilizado tras un daño
+
+
+def test_valor_con_cuatro_dimensiones_y_valencia_combinada():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s2 import Valor
+
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(alimentacion=10.0), Memoria(), Arquetipo(neuroticismo=0.5), Azar(1), Perfil(), {Verbo.MOVER})
+    onda.percibir("Objeto", Pieza("v1", "Objeto", 0.5, carga={"clase": "v", "rasgos": {"nutritivo": 0.8, "peligro": 0.4, "agente": 1.0}}))
+    _comp(Valor).reactiva(ctx)
+    c = onda.ev("Valor")["v1"].carga
+    assert set(c) >= {"motivacional", "potencia", "sentimental", "social", "valencia"} and c["social"] == 0.0
+    assert c["potencia"] == pytest.approx(0.4)
+    assert c["valencia"] == pytest.approx(0.5 * c["motivacional"] + 0.5 * c["sentimental"] - 0.4 * 0.5, abs=1e-3)
+
+
+def test_creencia_con_trust_y_fuentes_incluida_la_afectiva():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.vocabulario import Relacion
+    from ida.sistemas.s3 import Creencia
+
+    mem = Memoria()
+    mem.saber[("x", Relacion.PELIGROSO)] = Proposicion("x", Relacion.PELIGROSO, confianza=0.5, heredada=True)
+    onda = Onda(3, 100, 1e9)
+    ctx = Contexto(onda, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    onda.percibir("Valor", Pieza("o", "Valor", carga={"clase": "x", "valencia": -0.6}))
+    _comp(Creencia).reactiva(ctx)
+    c = onda.ef("Creencia")["x|PELIGROSO"].carga
+    assert c["fuentes"]["herencia"] is True and c["fuentes"]["afectiva"] == pytest.approx(0.6)
+    assert c["trust"] == pytest.approx((0.5 + 0.1 * 0.6) / 1.1, abs=1e-3) and c["sostiene"] is False

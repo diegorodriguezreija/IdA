@@ -189,6 +189,33 @@ Se juntan para ahorrar un benchmark: C1 ya adelantó la elección del objeto por
 
 **Verificación:** `pytest -q -x` por paso; al final, `ruff`, `mypy` y un solo benchmark (N = 10, pareado) frente a `main`. **Criterio:** hasta el bloque E, una pérdida ligera es aceptable; se mide y se publica. Informe: solo la tabla resumen y si se cumple el criterio; análisis detallado solo si no se cumple.
 
+**Estado de C2 y C3 (16/11/2026): aceptado.** Benchmark frente a `main`: Archivos +94 a +107 latidos y +858 a +895 de fitness; Mínimo Equilibrado +160 latidos y menos setas en todos los perfiles; Crafter +0,83 a +1,17 logros (no inferioridad cumplida). Pérdida ligera: tóxicos en Archivos (+0,45 a +0,53; sin experiencia +1,65). Desviaciones aceptadas: varias acciones por estrategia si son de la misma fase; la prudencia de Archivos como estrategia de S1 propia del mundo (`AlimentarseConPrudencia`), porque desde S3 llegaba un latido tarde; el `Tribunal` suma la modulación del impulso de origen; nuevo sensor del Core `Ambiente` con la luz. Detalle en `docs/MEDICIONES_C2_C3.md`.
+
+**Para la fase de mejora de mundos:** la neofobia de Archivos debería ceder con el hambre en vez de ser un rechazo absoluto; las recetas de Crafter se leen de `crafter.constants` (reglas, no estado, pero conocimiento regalado: pasar a dotación innata o aprendizaje).
+
+## Encargo del bloque D: relaciones más ricas
+
+**Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
+
+**Referencia:** `docs/REDISENO_BASE.md`, decisiones 8, 9 y 12. Base: `main` con el bloque C fusionado.
+
+**Permiso:** modificar `ida/core/` e `ida/sistemas/` solo para estos pasos, un commit por paso, sin `push`.
+
+| Paso | Cambio | Decisión |
+| --- | --- | --- |
+| D1 | **Valencia explícita en `Soma`**, calculada a partir del placer y el estrés que ya existen. `Emocion` la emite como valencia y su arousal | 9 |
+| D2 | **Habituación en `Supervivencia`:** cada clase se clasifica como recurso, peligro o neutro, con su trust. Neutro con trust bajo = desconocido (cautela o curiosidad); neutro con trust alto = habituado (baja el arousal ante encuentros repetidos sin daño). Lo contrario, sensibilización: tras un daño, el arousal ante esa clase sube | 8 |
+| D3 | **`Valor` con cuatro dimensiones:** motivacional (lo que satisface una necesidad actual), potencia (la fuerza o el cansancio percibido del sujeto), sentimental (la valencia que la memoria asocia a la clase) y social (0 mientras no haya varios individuos). La valencia actual se mantiene como combinación de las dimensiones, para que las estrategias que ya la leen sigan funcionando | 9 |
+| D4 | **`Creencia`**, nuevo en S3·Interpretar después de `Logica`: lo que el individuo sostiene como cierto, con su trust y sus fuentes (experiencia, herencia, autoridad y afectiva). Se apoya en la confianza por fuentes que ya existe. La fuente afectiva nace de la valencia de S2, con poco peso y refutable. `alimentarse` y las estrategias de S3 pasan a leer `Creencia` en lugar de lo demostrado directamente | 12 |
+
+**Fuera de alcance:** memoria duradera (E), experiencia proactiva (F), la dimensión social con contenido, y cambios en la regla del `Tribunal` o en las estrategias salvo lo necesario para leer `Creencia`.
+
+**Trabajo sin supervisión:** el autor puede no estar disponible. Ante una duda no prevista, elegir la opción más simple que respete el borrador, anotarla y seguir. Solo detenerse si un paso exige romper una regla de `AGENTS.md`.
+
+**Verificación:** `pytest -q -x` por paso; al final, `ruff`, `mypy` y un solo benchmark (N = 10, pareado) frente a `main`. Criterio: hasta el bloque E, una pérdida ligera es aceptable; se mide y se publica.
+
+**Entrega:** tabla resumen del benchmark y si se cumple el criterio; lista de las decisiones tomadas sin consultar; análisis detallado solo si no se cumple.
+
 ## Bloques B a F
 
 Se detallan como encargo cuando termine el anterior. A partir del bloque B la conducta cambia a propósito, así que cada bloque se mide con el protocolo de `docs/BENCHMARK_PERFILES_MUNDOS.md` (N = 10 linajes, t de Student, comparación pareada) frente al bloque anterior y frente al control sin memoria.
@@ -229,3 +256,5 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Bloque C: criterio de pérdida ligera aceptable hasta E; estrategias con fases (buscar y consumir en la misma estrategia). |
 | 2026-11-16 | Estado de C1 tras correcciones; C2 y C3 en un solo encargo. |
 | 2026-11-16 | C1 aceptado tras el benchmark final. Lanzados C2 y C3. |
+| 2026-11-16 | Encargo del bloque D (pasos D1 a D4), pensado para una sola interacción sin supervisión. |
+| 2026-11-16 | Bloque C aceptado (C2 y C3). Notas para la fase de mejora de mundos. |
