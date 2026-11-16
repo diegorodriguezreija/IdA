@@ -61,7 +61,7 @@ def vida(mundo: str, semilla: int) -> Dict[str, Any]:
 
 def primera_diferencia(ref: Dict[str, Any], act: Dict[str, Any]) -> Optional[str]:
     campos = ("latido", "decisión", "objetivo", "vitales", "amplitud")
-    for a, b in zip(ref["latidos"], act["latidos"]):
+    for a, b in zip(ref["latidos"], act["latidos"], strict=False):   # la duración se compara después
         for i, campo in enumerate(campos):
             if a[i] != b[i]:
                 return f"latido {a[0]}: {campo} {a[i]!r} -> {b[i]!r}"
