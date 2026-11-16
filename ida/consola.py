@@ -9,7 +9,7 @@ from ida.core.onda import Onda
 def resumen_latido(org: Organismo, onda: Onda) -> Dict[str, Any]:
     """Resumen de un latido para la consola y la telemetría."""
     soma = org.soma
-    ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+    ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
     propuestas: Dict[str, List[str]] = {}
     for e in cast(List[Dict[str, Any]], onda.notas.get("evaluados", [])):
         propuestas.setdefault(e["sistema"], []).append(f"{e['verbo']} {e['objetivo']} ({e['total']:.2f})")

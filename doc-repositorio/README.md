@@ -55,7 +55,7 @@ flowchart TD
         Soma["❤️ SOMA & METABOLISMO\n(Vitalidad, Energía, Hambre, Estrés, Química)"]
         
         subgraph ONDA [" 🌊 CICLO DE LA ONDA (El Latido) "]
-            Sentir["1. Sentidos\nInterocepción + Escena"] --> S1["2. S1: Reflejos & Supervivencia"]
+            Sentir["1. Sentidos\nInterocepción + Exterocepción"] --> S1["2. S1: Reflejos & Supervivencia"]
             S1 --> S2["3. S2: Emoción, Curiosidad, Hogar"]
             S2 --> S3["4. S3: Lógica, Hipótesis & Expectativas"]
             S3 --> Tribunal["5. Tribunal Motor\nArbitraje por Estrés/Arousal"]

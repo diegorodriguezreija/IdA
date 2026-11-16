@@ -3,8 +3,8 @@
 Dimensión reactiva (el cuarteto de la experiencia):
 - ``ei``: estado inicial. Es el ``ef`` del latido anterior, de solo lectura.
 - ``ev``: lo que se percibe e interpreta ahora. Cobra amplitud.
-- ``acc``: candidatos de Ejecución propuestos por los sistemas. Cobra amplitud.
-- ``ef``: estado final. Registro de todo a coste cero; contiene la ``Ejecucion``.
+- ``acc``: candidatos de Acción propuestos por los sistemas. Cobra amplitud.
+- ``ef``: estado final. Registro de todo a coste cero; contiene la ``Accion``.
 
 La guillotina es cooperativa: cada emisión pasa por ``control_vital``, que cobra amplitud y
 mira el reloj. Si se agota cualquiera de los dos, salta ``LatidoAgotado``; el latido corta los

@@ -8,26 +8,27 @@ proposiciones **demostradas**.
 |-------------|----------------------|---------|
 | Sentir      | Comunicacion         | Comunicación: mensajes que el mundo pone en la escena |
 | Interpretar | Agente               | Agente (mismo id que Objeto y Sujeto) |
-| Interpretar | PredicadoProposicion | Predicado (lo que se observa ahora) y Proposición (lo que se sabe de su clase) |
+| Interpretar | Predicado            | Predicado: lo que se observa ahora (pasada reactiva) |
+| Interpretar | Proposicion          | Proposición: lo que se sabe de su clase (pasada activa) |
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
-| Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Ejecución |
-| Reaccionar  | ImpulsoS3            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
+| Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
+| Reaccionar  | Impulso            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import al_alcance, alarma, apetito, escena, lugares, mejor, objetos
+from ida.sistemas.comun import al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 class Comunicacion(Componente):
     tipo = "Comunicacion"
-    entradas = ("Escena",)
+    entradas = ("Exterocepcion",)
 
     def reactiva(self, ctx: Contexto) -> None:
-        for p in escena(ctx):
+        for p in exterocepcion(ctx):
             mensaje = p.carga.get("datos", {}).get("mensaje")
             if mensaje:
                 self.percibir(ctx, self.pieza(ctx, p.id, arousal=0.5, carga={"clase": p.clase, "mensaje": str(mensaje)[:200]}, entradas=[p.id]))
@@ -43,10 +44,10 @@ class Agente(Componente):
                                           entradas=[o.id]), coste=0)
 
 
-class PredicadoProposicion(Componente):
-    """Predicados de lo observado ahora y proposiciones de lo que se sabe de cada clase."""
+class Predicado(Componente):
+    """Predicados de lo observado ahora (pasada reactiva)."""
 
-    tipo = "Proposicion"
+    tipo = "Predicado"
     entradas = ("Agente",)
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -59,7 +60,14 @@ class PredicadoProposicion(Componente):
             if o.rasgo("novedad") >= 0.6:
                 predicados.append("es nuevo")
             if predicados:
-                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}, tipo="Predicado"), coste=0)
+                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}), coste=0)
+
+
+class Proposicion(Componente):
+    """Proposiciones de lo que se sabe de cada clase presente (pasada activa)."""
+
+    tipo = "Proposicion"
+    entradas = ("Agente",)
 
     def activa(self, ctx: Contexto) -> None:
         """Dimensión activa: trae a la atención lo que se sabe de las clases presentes."""
@@ -118,7 +126,7 @@ class Logica(Componente):
 
 
 class Comportamiento(Componente):
-    """Convierte la conclusión lógica en un candidato de Ejecución. Solo existe si hay conocimiento demostrado."""
+    """Convierte la conclusión lógica en un candidato de Acción. Solo existe si hay conocimiento demostrado."""
 
     tipo = "Comportamiento"
     entradas = ("Logica",)
@@ -146,7 +154,7 @@ class Comportamiento(Componente):
             self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, c.confianza, motivo, clase=objetivo.clase)
 
 
-class ImpulsoS3(Componente):
+class Impulso(Componente):
     """Freno prefrontal: baja los candidatos que van contra lo demostrado (acercarse a lo peligroso,
     comer lo que se sabe que no alimenta)."""
 
@@ -155,7 +163,7 @@ class ImpulsoS3(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         mem, ahora = ctx.memoria, ctx.latido
-        for c in ctx.onda.acc("Ejecucion").values():
+        for c in ctx.onda.acc("Accion").values():
             verbo, clase = c.carga["verbo"], c.carga.get("clase", "")
             if not clase or c.sistema == "S3":
                 continue
@@ -205,7 +213,7 @@ class Estudio(Componente):
 
             # Detectar interrupción: si tras haber empezado no se ejecutó LEER en el latido anterior
             if ctx.latido > reg.inicio:
-                ej_ant = ctx.onda.ei("Ejecucion").get("Ejecucion")
+                ej_ant = ctx.onda.ei("Accion").get("Accion")
                 if ej_ant is None or ej_ant.carga.get("verbo") != Verbo.LEER:
                     reg.estado = EstadoLectura.INTERRUMPIDO
                     mem.lectura_activa = None
@@ -352,6 +360,6 @@ class Estudio(Componente):
 def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
-        Modulo("Interpretar", [Agente(), PredicadoProposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Comportamiento(), ImpulsoS3(), Estudio()]),
+        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
+        Modulo("Reaccionar", [Comportamiento(), Impulso(), Estudio()]),
     ])

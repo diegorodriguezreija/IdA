@@ -1,4 +1,4 @@
-"""El cuerpo: constantes vitales, química, indicadores generales y presupuesto del latido."""
+"""El cuerpo: constantes vitales, química e indicadores generales (el ritmo del latido lo fija ``Marcapasos``)."""
 
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
@@ -104,21 +104,3 @@ class Soma:
             self.afecto = Afecto.CURIOSIDAD
         else:
             self.afecto = Afecto.CALMA
-
-    # --- presupuesto del latido --------------------------------------------
-    def presupuesto(self, frecuencia_base_ms: float, amplitud_base: int) -> Tuple[float, int]:
-        """Frecuencia y amplitud del próximo latido según el estado del cuerpo.
-
-        - La energía escala la amplitud (cansado se atiende a menos cosas).
-        - Dormido, la amplitud baja a 20.
-        - Si el latido anterior agotó la amplitud, este tiene un 50 % más («taquicardia»).
-        - Con peligro, el plazo se acorta hasta un 30 %: se decide antes y S1 gana peso.
-        """
-        if self.dormido:
-            amplitud = 20
-        else:
-            amplitud = int(amplitud_base * (0.5 + 0.5 * self.energia / 100.0))
-            if self.agotado_previo:
-                amplitud = int(amplitud * 1.5)
-        frecuencia = frecuencia_base_ms * (1.0 - 0.3 * self.indicadores.get("peligro", 0.0))
-        return frecuencia, max(5, amplitud)

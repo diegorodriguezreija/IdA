@@ -101,7 +101,7 @@ class Componente:
         clase: str = "",
         **datos: Any,
     ) -> Optional[Pieza]:
-        """Entrega un candidato de Ejecución al canal ``acc["Ejecucion"]``. Solo el Tribunal ejecuta."""
+        """Entrega un candidato de Acción al canal ``acc["Accion"]``. Solo el Tribunal ejecuta."""
         if verbo not in ctx.verbos:
             return None
         p = self.pieza(
@@ -111,9 +111,9 @@ class Componente:
             confianza=confianza,
             carga={"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos},
             entradas=[self.nombre],
-            tipo="Ejecucion",
+            tipo="Accion",
         )
-        return ctx.onda.proponer("Ejecucion", p)
+        return ctx.onda.proponer("Accion", p)
 
 
 class Modulo:

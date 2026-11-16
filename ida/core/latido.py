@@ -7,7 +7,7 @@ Orden de un latido:
 4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
 5. S1 → S2 → S3, con guillotina cooperativa. Si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
-6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Ejecucion"]``.
+6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Accion"]``.
 7. Indicadores, memoria rápida (K piezas de mayor arousal) y episodio.
 """
 
@@ -17,15 +17,16 @@ from typing import Any, Callable, Dict, List, Optional, cast
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
+from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Actuador, Escena, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
+from ida.core.sentidos import Actuador, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
-CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Escena"}
+CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion"}
 
 
 class Organismo:
@@ -53,8 +54,9 @@ class Organismo:
         if Verbo.ESPERAR in self.verbos:
             self.verbos.add(Verbo.LEER)
 
+        self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
         self.tribunal = Tribunal()
-        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Escena()], exento=True)
+        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
@@ -99,7 +101,7 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
+        frecuencia, amplitud = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
         ctx = Contexto(
             onda,
@@ -149,7 +151,7 @@ class Organismo:
             if d is not None:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None
             if exp is not None:
@@ -167,11 +169,11 @@ class Organismo:
 
     # -----------------------------------------------------------------------
     def _candidato_core(self, ctx: Contexto, verbo: Verbo, motivo: str) -> None:
-        p = Pieza(id=f"CORE:{verbo.value}:", tipo="Ejecucion", arousal=1.0, confianza=1.0,
+        p = Pieza(id=f"CORE:{verbo.value}:", tipo="Accion", arousal=1.0, confianza=1.0,
                   carga={"verbo": verbo, "objetivo": "", "clase": "", "motivo": motivo, "datos": {}},
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
-        ctx.onda.reactiva.acc.setdefault("Ejecucion", {})[p.id] = p
-        ctx.onda.registrar("Ejecucion", p)
+        ctx.onda.reactiva.acc.setdefault("Accion", {})[p.id] = p
+        ctx.onda.registrar("Accion", p)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -183,7 +185,7 @@ class Organismo:
                 for e in ctx.observacion.entidades:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
-        previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
+        previa = ctx.onda.ei("Accion").get("Accion")
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
@@ -204,7 +206,7 @@ class Organismo:
 
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is None or not self.con_experiencia:
             return
         c = ej.carga
@@ -215,7 +217,7 @@ class Organismo:
     def _dormir(self, ctx: Contexto) -> None:
         """Parálisis motora. Despierta por alarma (peligro cercano, hambre crítica) o al descansar."""
         soma = self.soma
-        peligro = max((p.rasgo("peligro") * p.rasgo("proximidad") for p in ctx.onda.ev("Escena").values()), default=0.0)
+        peligro = max((p.rasgo("peligro") * p.rasgo("proximidad") for p in ctx.onda.ev("Exterocepcion").values()), default=0.0)
         if peligro >= 0.6 or soma.alimentacion <= soma.HAMBRE_CRITICA or (soma.descanso >= 95.0 and soma.energia >= 85.0):
             soma.dormido = False
             ctx.onda.notas["despierta"] = "alarma" if peligro >= 0.6 or soma.alimentacion <= soma.HAMBRE_CRITICA else "descansado"
@@ -225,14 +227,14 @@ class Organismo:
 
     def _indicadores(self, ctx: Contexto) -> None:
         onda = ctx.onda
-        escena = onda.ev("Escena").values()
-        peligro = max((p.rasgo("peligro") * max(p.rasgo("proximidad"), 0.3) for p in escena), default=0.0)
+        exterocepcion = onda.ev("Exterocepcion").values()
+        peligro = max((p.rasgo("peligro") * max(p.rasgo("proximidad"), 0.3) for p in exterocepcion), default=0.0)
         sup = [p.arousal for p in onda.ev("Supervivencia").values()]
         if sup:
             peligro = max(peligro, max(sup) if ctx.soma.alimentacion > ctx.soma.HAMBRE_CRITICA else 0.0)
         cognitivas = [p.arousal for canal, piezas in onda.reactiva.ev.items() if canal not in CANALES_SENSORES for p in piezas.values()]
         tension = sum(cognitivas) / len(cognitivas) if cognitivas else 0.0
-        novedad = max((p.rasgo("novedad") for p in escena), default=0.0)
+        novedad = max((p.rasgo("novedad") for p in exterocepcion), default=0.0)
         ctx.soma.actualizar_indicadores(peligro, tension, novedad)
         if ctx.soma.afecto in (Afecto.MIEDO, Afecto.PANICO):
             self.contadores["miedo"] += 1
@@ -256,7 +258,7 @@ class Organismo:
         soma, onda = self.soma, ctx.onda
         maximo = max((p.arousal for canal, d in onda.reactiva.ev.items() if canal not in CANALES_SENSORES for p in d.values()), default=0.0)
         sorpresa = bool(onda.ev("Sorpresa"))
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if self.episodio is None:
             d_vit = abs(soma.vitalidad - self._vit_ep)
             if maximo >= self.perfil.umbral_apertura_episodio or sorpresa or d_vit >= 2.0:

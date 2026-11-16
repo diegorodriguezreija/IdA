@@ -2,32 +2,36 @@
 
 | Etapa       | Componente     | Produce |
 |-------------|----------------|---------|
-| Sentir      | Imagen         | Imagen (gestalt del instante) y Objeto (lo que entra en la atención) |
+| Sentir      | Imagen         | Imagen (gestalt del instante) |
+| Interpretar | Objeto         | Objeto (cada cuerpo de la Imagen que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
-| Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Ejecución |
-| Reaccionar  | ImpulsoS1      | Impulso (comer, acercarse a la comida) y su candidato de Ejecución |
+| Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
+| Reaccionar  | Impulso      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Verbo
-from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, escena, lugares, mejor, objetos
+from ida.sistemas.comun import MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+
+
+def _cosas(ctx: Contexto) -> list:
+    """Lo percibido que no es un lugar, de más a menos saliente (orden estable)."""
+    cosas = [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
+    cosas.sort(key=lambda p: -p.arousal)
+    return cosas
 
 
 class Imagen(Componente):
-    """Integra Escena, Interocepción y el resultado de la acción anterior en una representación del instante.
-
-    Solo los objetos más salientes (7 ± 2) pasan a la atención como piezas ``Objeto``.
-    """
+    """Integra Exterocepcion, Interocepción y el resultado de la acción anterior en una representación del instante."""
 
     tipo = "Imagen"
-    entradas = ("Escena", "Interocepcion")
+    entradas = ("Exterocepcion", "Interocepcion")
 
     def reactiva(self, ctx: Contexto) -> None:
-        cosas = [p for p in escena(ctx) if p.rasgo("lugar") < 0.5]
-        cosas.sort(key=lambda p: -p.arousal)
+        cosas = _cosas(ctx)
         foco = cosas[0] if cosas else None
-        previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
+        previa = ctx.onda.ei("Accion").get("Accion")
         agencia = ""
         if previa is not None:
             d = previa.carga.get("delta", {})
@@ -38,12 +42,22 @@ class Imagen(Componente):
             ctx, f"imagen_{ctx.latido}", arousal=foco.arousal if foco else 0.1,
             carga={"foco": foco.id if foco else None, "clase_foco": foco.clase if foco else None,
                    "n_cosas": len(cosas), "n_lugares": len(lugares(ctx)), "agencia": agencia},
-            entradas=["Escena", "Interocepcion", "Ejecucion"],
+            entradas=["Exterocepcion", "Interocepcion", "Accion"],
         ))
-        for p in cosas[:MAX_OBJETOS]:
+
+
+class Objeto(Componente):
+    """Distingue los cuerpos dentro de la Imagen: solo los más salientes (7 ± 2) pasan a la atención
+    como piezas ``Objeto``, cada una con coste 1."""
+
+    tipo = "Objeto"
+    entradas = ("Imagen",)
+
+    def reactiva(self, ctx: Contexto) -> None:
+        for p in _cosas(ctx)[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
                                           carga={"clase": p.clase, "rasgos": dict(p.carga["rasgos"])},
-                                          entradas=[p.id], tipo="Objeto"))
+                                          entradas=[p.id]))
 
 
 class Supervivencia(Componente):
@@ -101,7 +115,7 @@ class Reflejo(Componente):
             self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.7, f"reflejo: defenderse de {amenaza.clase}", clase=amenaza.clase)
 
 
-class ImpulsoS1(Componente):
+class Impulso(Componente):
     """Impulsos básicos: comer lo que está al alcance y acercarse a la comida."""
 
     tipo = "Impulso"
@@ -119,7 +133,7 @@ class ImpulsoS1(Componente):
         if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8:
             ar = acotar(0.25 + 0.6 * ganas * destino.rasgo("nutritivo"))
             self.proponer(ctx, Verbo.MOVER, destino.id, ar, 0.6, "impulso: acercarse a la comida", clase=destino.clase)
-        if not ctx.onda.acc("Ejecucion") and Verbo.ESPERAR not in ctx.verbos and destino is not None:
+        if not ctx.onda.acc("Accion") and Verbo.ESPERAR not in ctx.verbos and destino is not None:
             # El mundo no deja esperar y nadie propone nada: el mal menor.
             self.proponer(ctx, Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: el mal menor", clase=destino.clase)
 
@@ -127,6 +141,6 @@ class ImpulsoS1(Componente):
 def crear_s1() -> Sistema:
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
-        Modulo("Interpretar", [Supervivencia()]),
-        Modulo("Reaccionar", [Reflejo(), ImpulsoS1()]),
+        Modulo("Interpretar", [Objeto(), Supervivencia()]),
+        Modulo("Reaccionar", [Reflejo(), Impulso()]),
     ])

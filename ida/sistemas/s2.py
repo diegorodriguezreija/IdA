@@ -3,10 +3,11 @@
 | Etapa       | Componente       | Produce |
 |-------------|------------------|---------|
 | Sentir      | Patron           | Patrón: qué clase de cosa es y qué recuerda de ella |
+| Sentir      | Emocion          | Emoción: el estado afectivo sentido (en ``ef``, sin coste; aún no lo consume nadie) |
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
-| Reaccionar  | ImpulsoS2        | Modula los candidatos existentes según el valor de su objetivo |
+| Reaccionar  | Impulso        | Modula los candidatos existentes según el valor de su objetivo |
 | Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
 | Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
 | Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
@@ -40,6 +41,22 @@ class Patron(Componente):
                          for v in (Verbo.COMER, Verbo.MOVER, Verbo.ATACAR, Verbo.COGER) if ctx.memoria.recordar(v, p.clase)[1]}
             if recuerdos:
                 p.carga["recuerdos"] = recuerdos
+
+
+class Emocion(Componente):
+    """Estado afectivo interno sentido por el individuo, tal como lo calcula ``Soma``.
+
+    Se registra en ``ef`` a coste cero: no entra en ``ev``, así que no cambia la tensión ni la
+    apertura de episodios, que leen todos los canales de ``ev``.
+    """
+
+    tipo = "Emocion"
+    entradas = ("Interocepcion", "Patron")
+
+    def reactiva(self, ctx: Contexto) -> None:
+        self.registrar(ctx, self.pieza(ctx, "emocion", arousal=ctx.soma.estres,
+                                       carga={"afecto": ctx.soma.afecto.value, "placer": round(ctx.soma.placer, 1)},
+                                       entradas=["Interocepcion", "Patron"]))
 
 
 class Sujeto(Componente):
@@ -82,7 +99,7 @@ class Exteriorizacion(Componente):
                                        carga={"afecto": ctx.soma.afecto.value, "placer": round(ctx.soma.placer, 1)}))
 
 
-class ImpulsoS2(Componente):
+class Impulso(Componente):
     """Convergencia sobre el canal común: sube o baja los candidatos según el valor de su objetivo."""
 
     tipo = "Impulso"
@@ -90,7 +107,7 @@ class ImpulsoS2(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         valores = ctx.onda.ev("Valor")
-        for c in ctx.onda.acc("Ejecucion").values():
+        for c in ctx.onda.acc("Accion").values():
             v = valores.get(c.carga["objetivo"])
             if v is None:
                 continue
@@ -212,7 +229,7 @@ class Orientacion(Componente):
 
 def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
-        Modulo("Sentir", [Patron()]),
+        Modulo("Sentir", [Patron(), Emocion()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar(), Orientacion()]),
+        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Curiosidad(), Hogar(), Orientacion()]),
     ])

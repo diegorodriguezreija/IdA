@@ -20,7 +20,7 @@ def _vida(semilla=3, latidos=200, con_experiencia=True, frecuencia=None):
     decisiones, notas = [], []
 
     def anotar(o, onda):
-        ej = onda.reactiva.ef["Ejecucion"]["Ejecucion"]
+        ej = onda.reactiva.ef["Accion"]["Accion"]
         decisiones.append((ej.carga["verbo"].value, ej.carga["objetivo"]))
         notas.append(onda.notas)
 

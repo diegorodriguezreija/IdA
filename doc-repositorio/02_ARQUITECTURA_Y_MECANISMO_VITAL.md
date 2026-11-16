@@ -8,6 +8,7 @@ En IdA, la vida discurre a través de una sucesión de **latidos** rítmicos (`i
 sequenceDiagram
     autonumber
     participant Soma as 🫀 Soma
+    participant Marc as 💓 Marcapasos
     participant Onda as 🌊 Onda Vital
     participant Sentir as 👁️ Sentidos (Core)
     participant S1 as 🦎 S1 (Reactivo)
@@ -17,9 +18,10 @@ sequenceDiagram
     participant Mundo as 🌍 Mundo Físico
     participant Mem as 📚 Memoria
 
-    Soma->>Soma: Metabolismo basal, homeostasis, presupuesto (tiempo, amplitud)
-    Soma->>Onda: Crea nueva Onda (ei = ef anterior)
-    Onda->>Sentir: Percepción sensorial + Propiocepción + Interocepción -> ev
+    Soma->>Soma: Metabolismo basal, homeostasis
+    Soma->>Marc: Estado del cuerpo (energía, sueño, peligro)
+    Marc->>Onda: Crea nueva Onda con frecuencia y amplitud (ei = ef anterior)
+    Onda->>Sentir: Exterocepción + Propiocepción + Interocepción -> ev
     Sentir->>S1: Procesa ev -> candidatos en acc
     opt Si no salta Guillotina
         S1->>S2: Procesa ev + recuerdos -> candidatos en acc
@@ -33,7 +35,7 @@ sequenceDiagram
     Onda->>Trib: Arbitraje de candidatos de acc según Estrés y Arousal
     Trib->>Mundo: Envía acción ganadora (MOVER, COMER, etc.)
     Mundo-->>Trib: Efecto físico (delta somático, éxito, causa)
-    Trib->>Onda: Registra resultado en ef["Ejecucion"]
+    Trib->>Onda: Registra resultado en ef["Accion"]
     Trib->>Soma: Aplica cambios fisiológicos (vitalidad, alimentación, energía)
     Onda->>Mem: Guarda piezas K de alto arousal y contrasta expectativas
 ```
@@ -58,7 +60,7 @@ flowchart LR
 ### 2. `ev` (Entorno Vivido)
 * El módulo de **Sentir** deposita aquí las `Piezas` sensoriales:
   * **Interocepción:** Vitalidad, alimentación, energía y descanso, cada una con su variación respecto al latido anterior.
-  * **Escena:** Entidades detectadas en el entorno con sus rasgos normalizados.
+  * **Exterocepción** (canal `Exterocepcion`): Entidades detectadas en el entorno con sus rasgos normalizados.
   * **Propiocepción:** Orientación, ubicación y postura física del individuo.
 
 ### 3. `acc` (Acciones Candidatas)
@@ -113,7 +115,7 @@ flowchart TD
 
     Candidatos --> Formula
     Formula --> Acecho
-    Acecho -->|Ganador Indiscutible| Ejecucion["🎯 Actuador Físico del Mundo"]
+    Acecho -->|Ganador Indiscutible| Accion["🎯 Actuador Físico del Mundo"]
 ```
 
 ### La Ecuación del Arbitraje
