@@ -172,10 +172,17 @@ class Estrategia(Componente):
             cambios = est.avanzar(c, intensidad, p.id == ejecutada, ctx.latido, perfil.gracia_estrategia, perfil.ritmo_esperado_estrategia)
             if p.id == ejecutada:          # el mérito se lo lleva la estrategia que se ejecutó (decisión 23)
                 cambios["merito"] = float(c.get("merito", 0.0)) + float(feedback.get(c["impulso"], 0.0))
-            self.modificar(ctx, p, carga=cambios)
             definicion = self.catalogo.get(c["nombre"])
+            plan = est.estado_plan(p) if perfil.mecanismos.plan and isinstance(definicion, est.Plan) else None
+            if plan is not None and (pp := est.progreso_plan(plan)) is not None:
+                cambios["progreso"] = pp      # bloque F, F2: el progreso de un plan es la parte completada
+            self.modificar(ctx, p, carga=cambios)
             if intensidad <= c["objetivo"] + 1e-9:
                 self._cerrar(ctx, p, est.COMPLETADA)
+            elif plan is not None and plan["fallido"]:
+                self._cerrar(ctx, p, est.AGOTADA)       # el plan falló tras rehacerse
+                self.enfriando[(c["impulso"], c["nombre"])] = ctx.latido + perfil.enfriamiento_estrategia
+                notas["abandonos"].append(c["nombre"])
             elif c["agotamiento"] >= 1.0 and (definicion is None or definicion.agotable):
                 self._cerrar(ctx, p, est.AGOTADA)
                 self.enfriando[(c["impulso"], c["nombre"])] = ctx.latido + perfil.enfriamiento_estrategia

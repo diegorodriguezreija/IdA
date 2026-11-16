@@ -212,3 +212,75 @@ def test_expectativas_en_una_vida_con_el_interruptor():
     org.vivir(300, al_latir=lambda o, onda: sistemas.update(p.sistema for p in onda.reactiva.ef.get("Expectativa", {}).values()))
     assert sistemas == {"S1", "S2"}
     assert any(k[0] == "S1" for k in org.memoria.modelo) and any(k[0] == "S2" for k in org.memoria.modelo)
+
+
+def test_camino_completo_por_el_mapa():
+    mem = Memoria()
+    for a, b in (("a", "b"), ("b", "c"), ("c", "d"), ("b", "a")):
+        mem.registrar_transicion(a, b, 1)
+    assert mem.camino("a", "d") == ["a", "b", "c", "d"]
+    assert mem.ruta("a", "d") == "b"
+    assert mem.camino("d", "a") is None and mem.camino("a", "a") is None
+
+
+def test_plan_consume_pasos_rehace_y_falla():
+    from types import SimpleNamespace
+
+    from ida.core.estrategia import Plan, Propuesta, nueva, paso_actual, progreso_plan
+    from ida.core.vocabulario import Verbo
+
+    class Contar(Plan):
+        nombre = "contar"
+        construidos = 0
+
+        def construir(self, ctx, estrategia):
+            self.construidos += 1
+            return [{"meta": n} for n in (1, 2, 3)]
+
+        def cumplido(self, ctx, paso, estado):
+            return paso["meta"] <= ctx.hecho
+
+        def fallido(self, ctx, paso, estado):
+            return ctx.sorpresa
+
+        def actuar(self, ctx, estrategia):
+            return Propuesta(Verbo.MOVER, "x", 0.5, 1.0, "")
+
+    con = SimpleNamespace(perfil=Perfil(mecanismos=MecanismosMemoria(plan=True)), hecho=0, sorpresa=False)
+    d = Contar()
+    p = nueva("S3", d, "progresar", 0.8, 0.0, 1)
+    p.carga["paso"] = d.paso(con, p)
+    assert progreso_plan(p.carga["paso"]) == 0.0 and paso_actual(p) == {"meta": 1}
+    con.hecho = 2
+    p.carga["paso"] = d.paso(con, p)
+    assert progreso_plan(p.carga["paso"]) == pytest.approx(2 / 3) and paso_actual(p) == {"meta": 3}
+    con.sorpresa = True
+    p.carga["paso"] = d.paso(con, p)                       # primera sorpresa: se rehace
+    assert d.construidos == 2 and p.carga["paso"]["rehecho"] == 1 and not p.carga["paso"]["fallido"]
+    p.carga["paso"] = d.paso(con, p)                       # segunda: falla
+    assert p.carga["paso"]["fallido"] and paso_actual(p) is None
+    sin = SimpleNamespace(perfil=Perfil(), hecho=0, sorpresa=False)
+    q = nueva("S3", d, "progresar", 0.8, 0.0, 1)
+    assert d.paso(sin, q) == 0                             # sin interruptor, como antes
+
+
+def test_planes_en_una_vida_con_el_interruptor():
+    from dataclasses import replace
+
+    from ida.core.azar import Azar
+    from ida.core.latido import Organismo
+    from ida.core.linaje import Arquetipo
+    from ida.mundos.minimo import MundoMinimo
+    from ida.sistemas import crear_sistemas
+
+    mundo = MundoMinimo()
+    mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True, plan=True))
+    mundo.reiniciar(1)
+    azar = Azar(1)
+    org = Organismo(mundo, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar, True)
+    planes = []
+    org.vivir(400, al_latir=lambda o, onda: planes.extend(p.carga["paso"] for p in onda.estrategias.values()
+                                                           if p.carga["nombre"] == "recordar_comida"))
+    assert org.ciclo > 0
+    assert planes and all(isinstance(e, dict) and "pasos" in e for e in planes)
+    assert max(int(e["i"]) for e in planes) >= 2                          # la cadena se consume paso a paso

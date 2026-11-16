@@ -649,6 +649,38 @@ class Memoria:
                 pila.append(nodo)
         return pila
 
+    def camino(self, origen: str, destino: str, max_profundidad: int = 30) -> Optional[List[str]]:
+        """Bloque F, F2: la ruta completa de ``origen`` a ``destino`` (ambos incluidos) por el mapa, con el
+        mismo BFS y el mismo orden de vecinos que ``ruta``. Se usa al construir un plan, no en cada latido."""
+        if not self.activa or not origen or not destino or origen == destino:
+            return None
+        if origen not in self.mapa or destino not in self.mapa:
+            return None
+        padre: Dict[str, str] = {}
+        cola: deque[Tuple[str, int]] = deque([(origen, 0)])
+        visitados = {origen}
+        while cola:
+            actual, prof = cola.popleft()
+            if prof >= max_profundidad:
+                continue
+            vecinos = sorted(
+                self.mapa.get(actual, {}).items(),
+                key=lambda kv: (-kv[1].valor_replay if kv[1].valor_replay != 0.0 else 0.0, -kv[1].usos)
+                if self.con_replay else -kv[1].usos,
+            )
+            for sig, _ in vecinos:
+                if sig in visitados:
+                    continue
+                visitados.add(sig)
+                padre[sig] = actual
+                if sig == destino:
+                    camino = [destino]
+                    while camino[-1] != origen:
+                        camino.append(padre[camino[-1]])
+                    return camino[::-1]
+                cola.append((sig, prof + 1))
+        return None
+
     def ruta(self, origen: str, destino: str, max_profundidad: int = 30) -> Optional[str]:
         """Devuelve el siguiente salto desde ``origen`` hacia ``destino`` mediante BFS acotado."""
         if not self.activa or not origen or not destino or origen == destino:
