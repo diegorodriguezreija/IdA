@@ -3,6 +3,7 @@
 | Etapa       | Componente       | Produce |
 |-------------|------------------|---------|
 | Sentir      | Patron           | Patrón: qué clase de cosa es y qué recuerda de ella |
+| Sentir      | Emocion          | Emoción: el estado afectivo sentido (en ``ef``, sin coste; aún no lo consume nadie) |
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
@@ -40,6 +41,22 @@ class Patron(Componente):
                          for v in (Verbo.COMER, Verbo.MOVER, Verbo.ATACAR, Verbo.COGER) if ctx.memoria.recordar(v, p.clase)[1]}
             if recuerdos:
                 p.carga["recuerdos"] = recuerdos
+
+
+class Emocion(Componente):
+    """Estado afectivo interno sentido por el individuo, tal como lo calcula ``Soma``.
+
+    Se registra en ``ef`` a coste cero: no entra en ``ev``, así que no cambia la tensión ni la
+    apertura de episodios, que leen todos los canales de ``ev``.
+    """
+
+    tipo = "Emocion"
+    entradas = ("Interocepcion", "Patron")
+
+    def reactiva(self, ctx: Contexto) -> None:
+        self.registrar(ctx, self.pieza(ctx, "emocion", arousal=ctx.soma.estres,
+                                       carga={"afecto": ctx.soma.afecto.value, "placer": round(ctx.soma.placer, 1)},
+                                       entradas=["Interocepcion", "Patron"]))
 
 
 class Sujeto(Componente):
@@ -212,7 +229,7 @@ class Orientacion(Componente):
 
 def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
-        Modulo("Sentir", [Patron()]),
+        Modulo("Sentir", [Patron(), Emocion()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
         Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Curiosidad(), Hogar(), Orientacion()]),
     ])
