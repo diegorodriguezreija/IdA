@@ -41,7 +41,7 @@ class Agente(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         for o in objetos(ctx):
             self.percibir(ctx, self.pieza(ctx, o.id, arousal=o.arousal * 0.5, carga={"clase": o.clase, "actua": o.rasgo("agente") >= 0.5},
-                                          entradas=[o.id]), coste=0)
+                                          entradas=[o.id]))
 
 
 class Predicado(Componente):
@@ -60,7 +60,7 @@ class Predicado(Componente):
             if o.rasgo("novedad") >= 0.6:
                 predicados.append("es nuevo")
             if predicados:
-                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}), coste=0)
+                self.percibir(ctx, self.pieza(ctx, o.id, arousal=0.2, carga={"clase": o.clase, "predicados": predicados}))
 
 
 class Proposicion(Componente):
@@ -174,9 +174,7 @@ class Impulso(Componente):
             if verbo == Verbo.COMER and nutr is not None and nutr.estado(ahora) == EstadoSaber.REFUTADA:
                 frenar = f"{clase} no alimenta"
             if frenar:
-                c.arousal = acotar(c.arousal * 0.4)
-                c.confianza = acotar(c.confianza * 0.5)
-                c.entradas.append(f"S3:frenado ({frenar})")
+                self.modificar(ctx, c, arousal=c.arousal * 0.4, confianza=c.confianza * 0.5, entrada=f"S3:frenado ({frenar})")
 
 
 class Estudio(Componente):

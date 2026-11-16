@@ -27,7 +27,7 @@ class Interocepcion(Componente):
             valor = float(getattr(ctx.soma, nombre))
             antes = float(previo[nombre].carga["valor"]) if nombre in previo else valor
             p = self.pieza(ctx, nombre, arousal=(100.0 - valor) / 100.0, carga={"valor": round(valor, 2), "delta": round(valor - antes, 2)})
-            self.percibir(ctx, p, coste=0)
+            self.percibir(ctx, p)
 
 
 class Propiocepcion(Componente):
@@ -36,7 +36,7 @@ class Propiocepcion(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         obs = ctx.observacion
         p = self.pieza(ctx, "yo", arousal=0.1, carga={"ubicacion": obs.ubicacion if obs else "", "cargando": ctx.soma.cargando})
-        self.percibir(ctx, p, coste=0)
+        self.percibir(ctx, p)
 
 
 class Exterocepcion(Componente):
@@ -50,7 +50,7 @@ class Exterocepcion(Componente):
             cerca = r.get("proximidad", 0.0)
             saliencia = max(r.get("peligro", 0.0) * max(cerca, 0.3), r.get("nutritivo", 0.0) * cerca, 0.4 * r.get("novedad", 0.0))
             p = self.pieza(ctx, e.id, arousal=saliencia, carga={"clase": e.clase, "rasgos": dict(r), "datos": dict(e.datos)})
-            self.percibir(ctx, p, coste=0)
+            self.percibir(ctx, p)
             if ctx.memoria.activa:
                 ctx.memoria.ver_clase(e.clase)
 

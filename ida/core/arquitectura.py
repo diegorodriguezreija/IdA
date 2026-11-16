@@ -4,8 +4,9 @@
   ahora), ``activa`` (recuperar experiencia) y ``proactiva`` (anotar expectativas). Solo se
   ejecuta si hay piezas de alguno de sus ``entradas`` (o si no declara ninguna).
 - Un **Módulo** agrupa los componentes de una etapa (Sentir, Interpretar, Reaccionar, Actuar)
-  y los ejecuta por barridos: primero todos los reactivos; después, si queda amplitud, los
-  activos; después, los proactivos. Los módulos del Core están exentos de peaje.
+  y los ejecuta por barridos: primero todos los reactivos; después, los
+  activos; después, los proactivos. Sin amplitud o potencia, la Onda rechaza o recorta cada
+  operación y el resto sigue. Los módulos del Core están exentos de peaje.
 - Un **Sistema** (S1, S2, S3) tiene una meta y sus módulos.
 """
 
@@ -69,7 +70,8 @@ class Componente:
         pass
 
     # --- utilidades para producir piezas -------------------------------------
-    def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None) -> Pieza:
+    def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None,
+              decay: float = 0.0, fitness: Optional[float] = None, cost: Optional[float] = None) -> Pieza:
         return Pieza(
             id=id,
             tipo=tipo or self.tipo,
@@ -80,15 +82,24 @@ class Componente:
             sistema=self.sistema,
             creada=ctx.latido,
             actualizada=ctx.latido,
+            decay=decay,
+            fitness=fitness,
+            cost=cost,
         )
 
-    def percibir(self, ctx: Contexto, pieza: Pieza, coste: int = 1) -> Pieza:
-        ctx.onda.percibir(pieza.tipo, pieza, coste)
+    def percibir(self, ctx: Contexto, pieza: Pieza) -> Pieza:
+        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia."""
+        ctx.onda.percibir(pieza.tipo, pieza, autor=self)
         return pieza
 
     def registrar(self, ctx: Contexto, pieza: Pieza) -> Pieza:
-        ctx.onda.registrar(pieza.tipo, pieza)
+        ctx.onda.registrar(pieza.tipo, pieza, autor=self)
         return pieza
+
+    def modificar(self, ctx: Contexto, pieza: Pieza, *, arousal: Optional[float] = None, confianza: Optional[float] = None,
+                  carga: Optional[Dict[str, Any]] = None, entrada: Optional[str] = None) -> Pieza:
+        """Cambia una pieza ya emitida a través de la Onda, que comprueba la propiedad y lo anota."""
+        return ctx.onda.modificar(pieza, self, arousal=arousal, confianza=confianza, carga=carga, entrada=entrada)
 
     def proponer(
         self,
@@ -113,7 +124,7 @@ class Componente:
             entradas=[self.nombre],
             tipo="Accion",
         )
-        return ctx.onda.proponer("Accion", p)
+        return ctx.onda.proponer("Accion", p, autor=self)
 
 
 class Modulo:
@@ -127,8 +138,7 @@ class Modulo:
         onda.exento = self.exento
         try:
             for barrido in BARRIDOS:
-                if barrido != "reactiva" and not self.exento and onda.amplitud_restante() <= 0:
-                    break
+                # Sin amplitud o sin potencia, la Onda rechaza o recorta cada operación; el resto sigue.
                 for comp in self.componentes:
                     if not comp.activo(onda):
                         continue

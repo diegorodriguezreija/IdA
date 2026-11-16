@@ -1,11 +1,12 @@
 """El latido: ensambla Core, Sistemas y mundo y ejecuta un ciclo de vida con su guillotina.
 
 Orden de un latido:
-1. Soma: metabolismo. Observación del mundo. Presupuesto del latido (frecuencia y amplitud).
+1. Soma: metabolismo. Observación del mundo. Marcapasos: frecuencia, amplitud y potencia.
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
 3. Core · Sentir (exento de peaje).
 4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
-5. S1 → S2 → S3, con guillotina cooperativa. Si salta, se pasa directamente al paso 6.
+5. S1 → S2 → S3, con un único fondo de amplitud y potencia gastado en ese orden. La guillotina
+   solo salta por plazo; si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
 6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Accion"]``.
 7. Indicadores, memoria rápida (K piezas de mayor arousal) y episodio.
@@ -101,8 +102,8 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
-        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
+        frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
+        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia)
         ctx = Contexto(
             onda,
             soma,
@@ -132,6 +133,7 @@ class Organismo:
             try:
                 for s in self.sistemas:
                     onda.control_vital(0, donde=f"antes de {s.nombre}")
+                    cast(Dict[str, Any], onda.notas.setdefault("restante", {}))[s.nombre] = (onda.amplitud_restante(), round(onda.potencia_restante(), 3))
                     with onda.fase(s.nombre):
                         s.latir(ctx)
             except LatidoAgotado as exc:
@@ -162,7 +164,7 @@ class Organismo:
             self._indicadores(ctx)
             self._memoria_rapida(ctx)
             self._episodio(ctx)
-        soma.agotado_previo = onda.guillotina and "amplitud" in onda.motivo_guillotina
+        soma.agotado_previo = onda.amplitud_agotada
         onda.notas["ms_total"] = round(onda.ms_transcurridos(), 2)
         self.ef_anterior = onda.reactiva.ef
         return onda

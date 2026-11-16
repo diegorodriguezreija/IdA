@@ -36,12 +36,14 @@ def test_ei_es_de_solo_lectura():
         onda.reactiva.ei["Exterocepcion"]["y"] = p
 
 
-def test_guillotina_por_amplitud():
+def test_amplitud_agotada_rechaza_sin_cortar_el_latido():
     onda = Onda(1, 2, 1000.0)
-    onda.percibir("A", Pieza("a", "A"))
-    onda.percibir("A", Pieza("b", "A"))
-    with pytest.raises(LatidoAgotado):
-        onda.percibir("A", Pieza("c", "A"))
+    assert onda.percibir("A", Pieza("a", "A"))
+    assert onda.percibir("A", Pieza("b", "A"))
+    assert not onda.percibir("A", Pieza("c", "A"))          # sin amplitud: rechazada, sin guillotina
+    assert "c" not in onda.ev("A") and not onda.guillotina and onda.amplitud_agotada
+    assert onda.percibir("A", Pieza("a", "A", arousal=0.3))   # sustituir no ocupa amplitud
+    assert onda.consumo["?"]["rechazos_amplitud"] == 1
 
 
 def test_guillotina_por_tiempo():
@@ -313,11 +315,12 @@ def test_arquetipo_deferencia():
 def test_presupuesto_varia_con_el_estado():
     m = Marcapasos()
     s = Soma(energia=100.0)
-    f1, a1 = m.ritmo(s, 100.0, 100)
+    f1, a1, p1 = m.ritmo(s, 100.0, 100)
     s.energia = 20.0
     s.indicadores["peligro"] = 1.0
-    f2, a2 = m.ritmo(s, 100.0, 100)
-    assert a2 < a1 and f2 < f1
+    f2, a2, p2 = m.ritmo(s, 100.0, 100)
+    assert a2 < a1 and f2 < f1 and p2 < p1
+    assert p1 == pytest.approx(a1 * Marcapasos.FUERZA_POR_PIEZA)
     s.dormido = True
     assert m.ritmo(s, 100.0, 100)[1] == 20
 
