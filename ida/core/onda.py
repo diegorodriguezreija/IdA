@@ -12,9 +12,14 @@ cuesta |Δ arousal|, al subir y al bajar). Lo máximo que un componente cambia u
 es potencia / amplitud. Escribir solo en ``ef`` (``registrar``) no cuesta. Los módulos del Core
 están exentos.
 
-La guillotina es cooperativa: cada operación pasa por ``control_vital``, que mira el reloj, y por
-``_cobrar``. Si se agota algo, salta ``LatidoAgotado``; el latido corta los componentes que faltan y
-el Tribunal decide con lo que ya haya en ``acc``.
+Agotar amplitud o potencia no corta el latido: sin amplitud, la pieza nueva se rechaza; sin potencia
+suficiente, el cambio de arousal se recorta a lo que queda (a cero si no queda nada); lo demás sigue.
+Los recursos son un único fondo que los sistemas gastan en orden (S1, S2, S3): S1 usa lo que
+necesite y los demás, lo que sobre. Cada rechazo o recorte se cuenta por sistema en ``consumo``.
+
+La guillotina es cooperativa y solo mira el plazo: cada operación pasa por ``control_vital``, que
+mira el reloj. Si se supera, salta ``LatidoAgotado``; el latido corta los componentes que faltan y el
+Tribunal decide con lo que ya haya en ``acc``.
 
 ``fases`` apunta cuándo empieza y termina cada fase del latido (reloj de pared, en ns). Es un
 registro pasivo: el núcleo no llama a nadie; la observabilidad externa lo lee después.
@@ -90,7 +95,8 @@ class Onda:
         self.potencia_max = float(amplitud_max if potencia_max is None else potencia_max)
         self.amplitud_consumida = 0
         self.potencia_consumida = 0.0
-        self.consumo: Dict[str, Dict[str, float]] = {}   # por sistema: amplitud y potencia gastadas
+        self.consumo: Dict[str, Dict[str, float]] = {}   # por sistema: gasto, rechazos y recortes
+        self.amplitud_agotada = False                     # algún sistema se quedó sin amplitud
         self.reactiva = DimensionReactiva(ef_anterior)
         self._reloj = reloj
         self._t0 = reloj()
@@ -141,22 +147,33 @@ class Onda:
                 raise LatidoAgotado(f"amplitud {self.amplitud_max} agotada en {donde or '?'}")
             self.amplitud_consumida += coste
 
-    def _cobrar(self, autor: Optional[Autor], amplitud: int, potencia: float, donde: str) -> None:
-        """Cobra amplitud y potencia (fuera de los módulos exentos) y lo apunta al sistema del autor."""
+    def _cuenta(self, autor: Optional[Autor]) -> Dict[str, float]:
+        return self.consumo.setdefault(autor.sistema if autor else "?", {
+            "amplitud": 0.0, "potencia": 0.0, "rechazos_amplitud": 0.0, "recortes_potencia": 0.0})
+
+    def _cobrar(self, autor: Optional[Autor], amplitud: int, antes: float, despues: float, donde: str) -> Optional[float]:
+        """Cobra la amplitud y la potencia de llevar un arousal de ``antes`` a ``despues``.
+
+        Devuelve el arousal resultante, recortado a la potencia que quede, o ``None`` si no queda
+        amplitud para una pieza nueva. Solo el plazo lanza ``LatidoAgotado``. Exento: no cobra."""
         if self.exento:
-            return
+            return despues
         self.control_vital(0, donde=donde)
+        c = self._cuenta(autor)
         if self.amplitud_consumida + amplitud > self.amplitud_max:
-            self.amplitud_consumida = self.amplitud_max
-            raise LatidoAgotado(f"amplitud {self.amplitud_max} agotada en {donde or '?'}")
-        if self.potencia_consumida + potencia > self.potencia_max + 1e-9:
-            self.potencia_consumida = self.potencia_max
-            raise LatidoAgotado(f"potencia {self.potencia_max:.1f} agotada en {donde or '?'}")
+            c["rechazos_amplitud"] += 1
+            self.amplitud_agotada = True
+            return None
+        restante = self.potencia_restante()
+        if abs(despues - antes) > restante + 1e-9:
+            c["recortes_potencia"] += 1
+            despues = antes + restante if despues > antes else antes - restante
+        gasto = abs(despues - antes)
         self.amplitud_consumida += amplitud
-        self.potencia_consumida += potencia
-        c = self.consumo.setdefault(autor.sistema if autor else "?", {"amplitud": 0.0, "potencia": 0.0})
+        self.potencia_consumida += gasto
         c["amplitud"] += amplitud
-        c["potencia"] += potencia
+        c["potencia"] += gasto
+        return despues
 
     def _limitar(self, antes: float, despues: float) -> float:
         """Recorta un cambio de arousal a la fuerza máxima por pieza (en los módulos exentos, sin límite)."""
@@ -201,34 +218,41 @@ class Onda:
         self._anotar(pieza, autor, "registrar", excepcion)
         self.reactiva.ef.setdefault(canal, {})[pieza.id] = pieza
 
-    def _emitir(self, fase: Canales, canal: str, pieza: Pieza, autor: Optional[Autor], op: str, excepcion: Optional[str]) -> None:
+    def _emitir(self, fase: Canales, canal: str, pieza: Pieza, autor: Optional[Autor], op: str, excepcion: Optional[str]) -> bool:
         """Cobra una pieza nueva (1 de amplitud) o sustituida (0), y |Δ arousal| de potencia, con el
-        cambio recortado a la fuerza máxima por pieza."""
+        cambio recortado a la fuerza máxima por pieza y a la potencia que quede. ``False`` si se rechaza."""
         existente = fase.get(canal, {}).get(pieza.id)
         antes = existente.arousal if existente is not None else 0.0
-        limitado = self._limitar(antes, pieza.arousal)
-        self._cobrar(autor, 0 if existente is not None else 1, abs(limitado - antes), canal)
+        resultado = self._cobrar(autor, 0 if existente is not None else 1, antes, self._limitar(antes, pieza.arousal), canal)
+        if resultado is None:
+            return False
         cambios = None
-        if limitado != pieza.arousal:
-            cambios = {"arousal_limitado": (pieza.arousal, limitado)}
-            pieza.arousal = limitado
+        if resultado != pieza.arousal:
+            cambios = {"arousal_limitado": (pieza.arousal, resultado)}
+            pieza.arousal = resultado
         self._anotar(pieza, autor, op, excepcion, cambios)
+        return True
 
-    def percibir(self, canal: str, pieza: Pieza, autor: Optional[Autor] = None) -> None:
-        """Proyecta la pieza a ``ev`` (atención consciente) cobrando amplitud y potencia."""
+    def percibir(self, canal: str, pieza: Pieza, autor: Optional[Autor] = None) -> bool:
+        """Proyecta la pieza a ``ev`` (atención consciente) cobrando amplitud y potencia.
+        Devuelve ``False`` si no queda amplitud y la pieza no entra."""
         excepcion = self._propiedad(autor, pieza, "percibir")
-        self._emitir(self.reactiva.ev, canal, pieza, autor, "percibir", excepcion)
+        if not self._emitir(self.reactiva.ev, canal, pieza, autor, "percibir", excepcion):
+            return False
         pieza.actualizada = self.ciclo
         self.reactiva.ef.setdefault(canal, {})[pieza.id] = pieza
         self.reactiva.ev.setdefault(canal, {})[pieza.id] = pieza
+        return True
 
-    def proponer(self, canal: str, pieza: Pieza, autor: Optional[Autor] = None) -> Pieza:
-        """Deposita un candidato en ``acc``. Si ya existe uno con el mismo id, conserva el más urgente."""
+    def proponer(self, canal: str, pieza: Pieza, autor: Optional[Autor] = None) -> Optional[Pieza]:
+        """Deposita un candidato en ``acc``. Si ya existe uno con el mismo id, conserva el más urgente.
+        Devuelve ``None`` si no queda amplitud para un candidato nuevo."""
         excepcion = self._propiedad(autor, pieza, "proponer")
         existente = self.reactiva.acc.get(canal, {}).get(pieza.id)
         if existente is not None and existente.arousal >= pieza.arousal:
             return existente
-        self._emitir(self.reactiva.acc, canal, pieza, autor, "proponer", excepcion)
+        if not self._emitir(self.reactiva.acc, canal, pieza, autor, "proponer", excepcion):
+            return existente
         self.reactiva.ef.setdefault(canal, {})[pieza.id] = pieza
         self.reactiva.acc.setdefault(canal, {})[pieza.id] = pieza
         return pieza
@@ -241,10 +265,10 @@ class Onda:
         excepcion = self._propiedad(autor, pieza, "modificar", campos)
         cambios: Dict[str, Any] = {}
         if arousal is not None:
-            nuevo = self._limitar(pieza.arousal, acotar(arousal))
-            self._cobrar(autor, 0, abs(nuevo - pieza.arousal), pieza.tipo)
-            cambios["arousal"] = (pieza.arousal, nuevo)
-            pieza.arousal = nuevo
+            nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal)), pieza.tipo)
+            if nuevo is not None and nuevo != pieza.arousal:
+                cambios["arousal"] = (pieza.arousal, nuevo)
+                pieza.arousal = nuevo
         if confianza is not None:
             nueva = acotar(confianza)
             cambios["confianza"] = (pieza.confianza, nueva)

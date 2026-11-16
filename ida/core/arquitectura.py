@@ -4,8 +4,9 @@
   ahora), ``activa`` (recuperar experiencia) y ``proactiva`` (anotar expectativas). Solo se
   ejecuta si hay piezas de alguno de sus ``entradas`` (o si no declara ninguna).
 - Un **Módulo** agrupa los componentes de una etapa (Sentir, Interpretar, Reaccionar, Actuar)
-  y los ejecuta por barridos: primero todos los reactivos; después, si queda amplitud, los
-  activos; después, los proactivos. Los módulos del Core están exentos de peaje.
+  y los ejecuta por barridos: primero todos los reactivos; después, los
+  activos; después, los proactivos. Sin amplitud o potencia, la Onda rechaza o recorta cada
+  operación y el resto sigue. Los módulos del Core están exentos de peaje.
 - Un **Sistema** (S1, S2, S3) tiene una meta y sus módulos.
 """
 
@@ -137,8 +138,7 @@ class Modulo:
         onda.exento = self.exento
         try:
             for barrido in BARRIDOS:
-                if barrido != "reactiva" and not self.exento and onda.amplitud_restante() <= 0:
-                    break
+                # Sin amplitud o sin potencia, la Onda rechaza o recorta cada operación; el resto sigue.
                 for comp in self.componentes:
                     if not comp.activo(onda):
                         continue

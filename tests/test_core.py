@@ -36,12 +36,14 @@ def test_ei_es_de_solo_lectura():
         onda.reactiva.ei["Exterocepcion"]["y"] = p
 
 
-def test_guillotina_por_amplitud():
+def test_amplitud_agotada_rechaza_sin_cortar_el_latido():
     onda = Onda(1, 2, 1000.0)
-    onda.percibir("A", Pieza("a", "A"))
-    onda.percibir("A", Pieza("b", "A"))
-    with pytest.raises(LatidoAgotado):
-        onda.percibir("A", Pieza("c", "A"))
+    assert onda.percibir("A", Pieza("a", "A"))
+    assert onda.percibir("A", Pieza("b", "A"))
+    assert not onda.percibir("A", Pieza("c", "A"))          # sin amplitud: rechazada, sin guillotina
+    assert "c" not in onda.ev("A") and not onda.guillotina and onda.amplitud_agotada
+    assert onda.percibir("A", Pieza("a", "A", arousal=0.3))   # sustituir no ocupa amplitud
+    assert onda.consumo["?"]["rechazos_amplitud"] == 1
 
 
 def test_guillotina_por_tiempo():
