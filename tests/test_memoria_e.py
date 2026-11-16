@@ -31,3 +31,13 @@ def test_consolidacion_pasa_el_bufer_al_grafo_y_lo_vacia():
     assert seta["usos"] == 2 and seta["fuerza"] == round(0.4 + 0.5, 4) and seta["valencia"] == -0.2
     assert mem.relaciones[("Objeto:lobo", "Objeto:seta")] == 0.4     # coincidieron en el latido 1
     assert len(mem.dias) == 1 and mem.dias[0]["latidos"] == 2
+
+
+def test_conceptos_con_prototipo_promediado_e_ids_sin_significado():
+    mem = Memoria()
+    cid = mem.instancia("vaca_1", "vaca", {"nutritivo": 0.8, "peligro": 0.0}, 1)
+    assert mem.instancia("vaca_2", "vaca", {"nutritivo": 0.4}, 2) == cid == "c1"     # mismo concepto
+    c = mem.concepto("vaca")
+    assert c["etiqueta"] == "vaca" and c["n"] == 2 and c["prototipo"]["nutritivo"] == 0.6
+    assert mem.instancias["vaca_2"]["concepto"] == "c1"
+    assert mem.instancia("lobo", "lobo", {"peligro": 0.8}, 3) == "c2"

@@ -220,6 +220,10 @@ class Memoria:
         self.grafo: Dict[str, Dict[str, Any]] = {}
         self.relaciones: Dict[Tuple[str, str], float] = {}
         self.dias: List[Dict[str, Any]] = []
+        # E3: conceptos (prototipo por clase, id estable sin significado) e instancias.
+        self.conceptos: Dict[str, Dict[str, Any]] = {}       # id -> {"etiqueta", "prototipo", "n"}
+        self._concepto_de: Dict[str, str] = {}               # etiqueta legible -> id
+        self.instancias: Dict[str, Dict[str, Any]] = {}      # id de la instancia -> {"concepto", "visto"}
 
     @property
     def activa(self) -> bool:
@@ -415,6 +419,30 @@ class Memoria:
         self.diurno.clear()
         self.dia.clear()
         return {"piezas_consolidadas": consolidadas, "relaciones": relaciones}
+
+    MAX_INSTANCIAS = 500        # instancias recordadas (se olvidan las vistas hace más tiempo)
+
+    def instancia(self, instancia: str, clase: str, rasgos: Dict[str, float], ahora: int) -> str:
+        """Decisión 20: actualiza el concepto de la clase (prototipo = media de los rasgos de sus
+        instancias) y recuerda la instancia. Devuelve el id estable del concepto."""
+        cid = self._concepto_de.get(clase)
+        if cid is None:
+            cid = f"c{len(self.conceptos) + 1}"
+            self._concepto_de[clase] = cid
+            self.conceptos[cid] = {"etiqueta": clase, "prototipo": {}, "n": 0}
+        c = self.conceptos[cid]
+        c["n"] += 1
+        proto = c["prototipo"]
+        for k in set(proto) | set(rasgos):
+            proto[k] = round(proto.get(k, 0.0) + (float(rasgos.get(k, 0.0)) - proto.get(k, 0.0)) / c["n"], 4)
+        self.instancias[instancia] = {"concepto": cid, "visto": ahora}
+        if len(self.instancias) > self.MAX_INSTANCIAS:
+            del self.instancias[min(self.instancias, key=lambda i: self.instancias[i]["visto"])]
+        return cid
+
+    def concepto(self, clase: str) -> Optional[Dict[str, Any]]:
+        cid = self._concepto_de.get(clase)
+        return self.conceptos.get(cid) if cid else None
 
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1

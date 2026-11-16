@@ -60,10 +60,13 @@ class Objeto(Componente):
     entradas = ("Imagen",)
 
     def reactiva(self, ctx: Contexto) -> None:
+        conceptos = ctx.perfil.mecanismos.conceptos and ctx.con_experiencia and ctx.memoria.activa
         for p in _cosas(ctx)[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
                                           carga={"clase": p.clase, "rasgos": dict(p.carga["rasgos"])},
                                           entradas=[p.id]))
+            if conceptos:   # bloque E, E3: la instancia actualiza el concepto de su clase (decisión 20)
+                ctx.memoria.instancia(p.id, p.clase, p.carga["rasgos"], ctx.latido)
 
 
 RECURSO, PELIGRO, NEUTRO = "recurso", "peligro", "neutro"
