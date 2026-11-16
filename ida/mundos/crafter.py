@@ -26,7 +26,9 @@ import collections
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
+from ida.core.estrategia import Definicion, Propuesta
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
@@ -82,7 +84,7 @@ class MundoCrafter(Mundo):
     nombre = "crafter"
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
-                    necesidades=(Necesidad("hambre", ("comida",), 95.0), Necesidad("sed", ("agua",), 95.0),
+                    necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
@@ -236,7 +238,8 @@ class MundoCrafter(Mundo):
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
 
-        return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping))
+        return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
+                           inventario={k: float(v) for k, v in p.inventory.items()})
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -326,7 +329,6 @@ class MundoCrafter(Mundo):
 
     def componentes_propios(self) -> Dict[str, list]:
         return {
-            "S1.Reaccionar": [DefensaCrafter(self)],
             "S3.Reaccionar": [PlanTecnologico(self)]
         }
 
@@ -334,6 +336,9 @@ class MundoCrafter(Mundo):
     def logros(self) -> List[str]:
         a = self.jugador.achievements
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
+
+    def estrategias_propias(self) -> Dict[str, list]:
+        return {"S1": [DefensaArmada(), CerrarDistancia()]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -348,52 +353,90 @@ class MundoCrafter(Mundo):
         return "\n".join(filas) + f"\nluz {self.env._world.daylight:.2f} · {inv}\nlogros ({len(self.logros())}/{LOGROS}): {', '.join(self.logros())}"
 
 
-class DefensaCrafter(Componente):
-    """Componente propio de Crafter (S1 · Reaccionar): defensa activa armada y evasión crepuscular.
+ESPADAS = ("iron_sword", "stone_sword", "wood_sword")
 
-    Principio biológico:
-    - Sin espada o con poca vitalidad (< 35%), luchar contra zombis/esqueletos es suicidio: la prioridad
-      absoluta es la huida hacia un lugar seguro.
-    - Con espada (hace 2-3 de daño) y vitalidad suficiente (>= 40%), el organismo puede abatir al hostil
-      adyacente en 2-3 golpes, convirtiendo una amenaza mortal en defensa efectiva y logro de supervivencia.
-    """
 
-    tipo = "Reflejo"
+def _salud(ctx: Contexto) -> int:
+    """Salud de Crafter (0-9) desde la interocepción (``vitalidad`` = salud / 9 × 100)."""
+    vit = ctx.onda.ev("Interocepcion").get("vitalidad")
+    return int(round(float(vit.carga["valor"]) * 9 / 100)) if vit is not None else 0
 
-    def __init__(self, mundo: MundoCrafter):
-        super().__init__("DefensaCrafter")
-        self.mundo = mundo
 
-    def reactiva(self, ctx: Contexto) -> None:
-        inv = self.mundo.inventario()
-        tiene_espada = any(inv.get(k, 0) >= 1 for k in ("iron_sword", "stone_sword", "wood_sword"))
-        salud = self.mundo.jugador.health
+def _tiene_espada(ctx: Contexto) -> bool:
+    """Desde el inventario percibido (propiocepción), no desde el estado del juego."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    inv = yo.carga.get("inventario", {}) if yo is not None else {}
+    return any(inv.get(k, 0) >= 1 for k in ESPADAS)
 
-        # Buscar hostiles inmediatos (a distancia <= 1)
-        hostiles_cerca = [p for p in ctx.onda.ev("Exterocepcion").values()
-                          if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9]
 
-        # 1. Hostiles inmediatos (distancia <= 1): abatir con espada
-        if hostiles_cerca and tiene_espada and salud >= 4:
-            amenaza = hostiles_cerca[0]
-            # Con espada y salud suficiente, el ataque defensivo supera el reflejo de huida (0.75 + 0.25*peligro)
-            urgencia = 0.96 if salud >= 6 else 0.88
-            self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.95, f"defensa armada: abatir {amenaza.clase}", clase=amenaza.clase)
-            return
+def _posicion(ctx: Contexto) -> Optional[Pos]:
+    """Posición propia desde la ubicación percibida (``celda_x_y``)."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    partes = str(yo.carga.get("ubicacion", "")).split("_") if yo is not None else []
+    return (int(partes[1]), int(partes[2])) if len(partes) == 3 and partes[0] == "celda" else None
 
-        # 2. Hostiles a distancia (esqueletos disparando flechas a 2-3 casillas): cerrar distancia
-        # para no ser diezmado en campo abierto, aprovechando que el esqueleto solo tiene 3 de vitalidad.
-        esqueletos = [p for p in ctx.onda.ev("Exterocepcion").values()
-                      if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9]
-        if esqueletos and tiene_espada and salud >= 5:
-            esq = esqueletos[0]
-            pos_esq = esq.carga["datos"]["pos"]
-            pos = tuple(self.mundo.jugador.pos)
-            lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-            mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], pos_esq), default=None)
-            if mejor is not None and _dist(mejor.carga["datos"]["pos"], pos_esq) < _dist(pos, pos_esq):
-                self.proponer(ctx, Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
-                return
+
+class DefensaArmada(Definicion):
+    """Estrategia de S1 propia de Crafter para Seguridad: con espada y salud ≥ 4, abatir al zombi o
+    esqueleto adyacente (2-3 golpes) en vez de huir. Sin espada o con poca salud, luchar es suicidio
+    y quedan las estrategias genéricas. Lee la salud por interocepción y la espada por el inventario
+    percibido."""
+
+    nombre = "defensa_armada"
+    impulsos = ("seguridad",)
+    prioridad = 50
+
+    @staticmethod
+    def _hostil(ctx: Contexto) -> Optional[Pieza]:
+        if not _tiene_espada(ctx) or _salud(ctx) < 4:
+            return None
+        return next((p for p in ctx.onda.ev("Exterocepcion").values()
+                     if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9), None)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._hostil(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        amenaza = self._hostil(ctx)
+        if amenaza is None:
+            return None
+        urgencia = 0.96 if _salud(ctx) >= 6 else 0.88
+        return Propuesta(Verbo.ATACAR, amenaza.id, urgencia, 0.95, f"defensa armada: abatir {amenaza.clase}", clase=amenaza.clase)
+
+
+class CerrarDistancia(Definicion):
+    """Estrategia de S1 propia de Crafter para Seguridad: con espada y salud ≥ 5, acercarse a un
+    esqueleto que dispara desde 2-3 casillas (solo tiene 3 de vitalidad) en vez de ser diezmado en
+    campo abierto."""
+
+    nombre = "cerrar_distancia"
+    impulsos = ("seguridad",)
+    prioridad = 40
+
+    @staticmethod
+    def _paso(ctx: Contexto) -> Optional[Pieza]:
+        if not _tiene_espada(ctx) or _salud(ctx) < 5:
+            return None
+        pos = _posicion(ctx)
+        esq = next((p for p in ctx.onda.ev("Exterocepcion").values()
+                    if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9), None)
+        if esq is None or pos is None:
+            return None
+        pos_esq = esq.carga["datos"]["pos"]
+        lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+        mejor = min(lugares, key=lambda lugar: _dist(lugar.carga["datos"]["pos"], pos_esq), default=None)
+        if mejor is None or _dist(mejor.carga["datos"]["pos"], pos_esq) >= _dist(pos, pos_esq):
+            return None
+        return mejor
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._paso(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        mejor = self._paso(ctx)
+        if mejor is None:
+            return None
+        return Propuesta(Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)
 
 
 class PlanTecnologico(Componente):

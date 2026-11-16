@@ -5,6 +5,7 @@ from typing import Iterable, List, Optional
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.estrategia import Catalogo
 from ida.core.pieza import Pieza
+from ida.core.vocabulario import Verbo
 
 ALCANCE = 0.9          # proximidad a partir de la cual algo está al alcance
 MAX_OBJETOS = 7        # atención limitada: 7 ± 2 objetos por latido
@@ -46,9 +47,10 @@ class Accion(Componente):
 
     tipo = "Accion"
 
-    def __init__(self, catalogo: Catalogo):
+    def __init__(self, catalogo: Catalogo, mal_menor: bool = False):
         super().__init__("Accion")
         self.catalogo = catalogo
+        self.mal_menor = mal_menor   # S1: si el mundo no deja esperar y nadie propone nada, moverse
 
     def reactiva(self, ctx: Contexto) -> None:
         for p in list(ctx.onda.estrategias.values()):
@@ -60,3 +62,8 @@ class Accion(Componente):
                 continue
             self.proponer(ctx, propuesta.verbo, propuesta.objetivo, propuesta.arousal, propuesta.confianza, propuesta.motivo,
                           clase=propuesta.clase, origen={"impulso": p.carga["impulso"], "estrategia": p.id}, **(propuesta.datos or {}))
+        if self.mal_menor and not ctx.onda.acc("Accion") and Verbo.ESPERAR not in ctx.verbos:
+            destino = mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
+            if destino is not None:
+                self.proponer(ctx, Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: el mal menor", clase=destino.clase,
+                              origen={"impulso": "", "estrategia": "innato:mal_menor"})

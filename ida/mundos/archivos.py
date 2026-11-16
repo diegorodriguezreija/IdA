@@ -20,8 +20,10 @@ from collections import Counter
 from typing import Any, Dict, List, Optional, Set
 
 from ida.core.arquitectura import Componente, Contexto
+from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
 from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.pieza import Pieza
 from ida.core.vocabulario import Relacion, Verbo
 
 COMESTIBLES = ["Boletus_edulis.brote", "Taraxacum_officinale.brote", "Vaccinium_myrtillus.fruto"]
@@ -272,7 +274,10 @@ class MundoArchivos(Mundo):
             self._escribir(carpeta, f"brote_{self.t}.txt", "0101" * 64)
 
     def componentes_propios(self) -> Dict[str, list]:
-        return {"S1.Reaccionar": [Defensa()], "S3.Reaccionar": [Prudencia()]}
+        return {"S3.Reaccionar": [Prudencia()]}
+
+    def estrategias_propias(self) -> Dict[str, list]:
+        return {"S1": [Defensa()]}
 
     # --- resultados y vista --------------------------------------------------
     def puntuacion(self) -> Dict[str, Any]:
@@ -293,23 +298,35 @@ class MundoArchivos(Mundo):
         return "\n".join(lineas)
 
 
-class Defensa(Componente):
-    """Componente propio del mundo de archivos (S1 · Reaccionar).
+class Defensa(Definicion):
+    """Estrategia de S1 propia del mundo de archivos para el impulso Seguridad.
 
-    Un depredador de la carpeta muerde mientras se esté en ella, y a veces cambia de carpeta:
-    huir solo aplaza el problema. Si hay uno al alcance y queda vitalidad, atacarlo (lo elimina
-    con un 60 % de probabilidad).
+    Un depredador de la carpeta muerde mientras se esté en ella y a veces cambia de carpeta: huir
+    solo aplaza el problema. Si hay uno al alcance y queda vitalidad (≥ 30, por interocepción),
+    plantarle cara (atacarlo lo elimina con un 60 % de probabilidad). Con poca vitalidad quedan las
+    estrategias genéricas.
     """
 
-    tipo = "Reflejo"
+    nombre = "plantar_cara"
+    impulsos = ("seguridad",)
+    prioridad = 50
 
-    def reactiva(self, ctx: Contexto) -> None:
-        if ctx.soma.vitalidad < 30.0:
-            return
-        for p in ctx.onda.ev("Exterocepcion").values():
-            if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9:
-                self.proponer(ctx, Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: atacar al {p.clase}", clase=p.clase)
-                return
+    @staticmethod
+    def _depredador(ctx: Contexto) -> Optional[Pieza]:
+        vit = ctx.onda.ev("Interocepcion").get("vitalidad")
+        if vit is None or float(vit.carga["valor"]) < 30.0:
+            return None
+        return next((p for p in ctx.onda.ev("Exterocepcion").values()
+                     if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9), None)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._depredador(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        p = self._depredador(ctx)
+        if p is None:
+            return None
+        return Propuesta(Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: plantar cara al {p.clase}", clase=p.clase)
 
 
 class Prudencia(Componente):

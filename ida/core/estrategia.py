@@ -31,6 +31,7 @@ COMPLETADA = "completada"        # la necesidad bajó del objetivo
 SIN_OBJETO = "sin_objeto"        # dejó de ser elegible (no hay a qué aplicarla)
 AGOTADA = "agotada"              # se abandona por esfuerzo sin progreso
 TERMINADA = "terminada"          # un reflejo cumplió su duración fija
+SUSTITUIDA = "sustituida"        # apareció una estrategia elegible más específica o mejor valorada
 
 SUBIDA_AGOTAMIENTO = 0.05        # por latido con progreso menor que el esperado, pasada la gracia
 BAJADA_AGOTAMIENTO = 0.10        # por latido con progreso igual o mayor que el esperado
@@ -57,13 +58,18 @@ class Definicion:
     - ``prioridad``: orden innato entre estrategias elegibles con el mismo valor aprendido.
     - ``reflejo``: estrategia innata corta, de duración fija y prioridad máxima (decisión 6).
     - ``ultimo_recurso``: respuesta innata cuando todas las demás del impulso están agotadas.
+    - ``rasgo``: sirve también a cualquier impulso cuya necesidad se satisface con ese rasgo.
     """
 
     nombre: str = "estrategia"
     impulsos: Tuple[str, ...] = ()
+    rasgo: Optional[str] = None
     prioridad: int = 0
     reflejo: bool = False
     ultimo_recurso: bool = False
+
+    def sirve(self, impulso: str, rasgo: Optional[str]) -> bool:
+        return impulso in self.impulsos or (self.rasgo is not None and self.rasgo == rasgo)
 
     def elegible(self, ctx: Any, impulso: str, intensidad: float) -> bool:
         return True

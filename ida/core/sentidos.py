@@ -3,7 +3,7 @@
 Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
 - ``Interocepcion``: una pieza por constante vital, con su variación respecto al latido anterior.
   Además de las de ``Soma``, las constantes propias que el mundo entregue en ``vitales``.
-- ``Propiocepcion``: dónde está el individuo y qué lleva encima.
+- ``Propiocepcion``: dónde está el individuo, qué lleva y su inventario (si el mundo lo tiene).
 - ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
 
 Actuar: el ``Tribunal`` elige un candidato de ``acc["Accion"]`` y el ``Actuador`` de ese
@@ -38,7 +38,8 @@ class Propiocepcion(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         obs = ctx.observacion
-        p = self.pieza(ctx, "yo", arousal=0.1, carga={"ubicacion": obs.ubicacion if obs else "", "cargando": ctx.soma.cargando})
+        p = self.pieza(ctx, "yo", arousal=0.1, carga={"ubicacion": obs.ubicacion if obs else "", "cargando": ctx.soma.cargando,
+                                                     "inventario": dict(obs.inventario or {}) if obs else {}})
         self.percibir(ctx, p)
 
 

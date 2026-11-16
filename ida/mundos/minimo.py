@@ -12,9 +12,11 @@ Los lugares son las cuatro casillas vecinas. Para cada una, el mundo calcula sus
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.arquitectura import Componente, Contexto
+from ida.core.arquitectura import Contexto
+from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
 from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
 TAM = 9
@@ -151,8 +153,8 @@ class MundoMinimo(Mundo):
             ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 8.0
             ef.causa = "lobo"
 
-    def componentes_propios(self) -> Dict[str, list]:
-        return {"S1.Reaccionar": [Defensa()]}
+    def estrategias_propias(self) -> Dict[str, list]:
+        return {"S1": [Defensa()]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"bayas": self.comido["baya"], "setas": self.comido["seta"]}
@@ -175,20 +177,30 @@ class MundoMinimo(Mundo):
         return "\n".join(filas)
 
 
-class Defensa(Componente):
-    """Componente propio del mundo mínimo (S1 · Reaccionar).
+class Defensa(Definicion):
+    """Estrategia de S1 propia del mundo mínimo para el impulso Seguridad.
 
-    En esta pradera huir del lobo no sirve: persigue. Si está al alcance y queda vitalidad,
-    plantarle cara (atacar lo ahuyenta con un 50 % de probabilidad). Con poca vitalidad se deja
-    actuar al reflejo genérico de huida.
+    En esta pradera el lobo persigue: huir solo aplaza el problema. Si hay uno al alcance y queda vitalidad (≥ 30, por
+    interocepción), plantarle cara (atacar lo ahuyenta con un 50 % de probabilidad). Con poca vitalidad quedan las estrategias genéricas.
     """
 
-    tipo = "Reflejo"
+    nombre = "plantar_cara"
+    impulsos = ("seguridad",)
+    prioridad = 50
 
-    def reactiva(self, ctx: Contexto) -> None:
-        if ctx.soma.vitalidad < 30.0:
-            return
-        for p in ctx.onda.ev("Exterocepcion").values():
-            if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9:
-                self.proponer(ctx, Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: plantar cara al {p.clase}", clase=p.clase)
-                return
+    @staticmethod
+    def _depredador(ctx: Contexto) -> Optional[Pieza]:
+        vit = ctx.onda.ev("Interocepcion").get("vitalidad")
+        if vit is None or float(vit.carga["valor"]) < 30.0:
+            return None
+        return next((p for p in ctx.onda.ev("Exterocepcion").values()
+                     if p.rasgo("agente") >= 0.5 and p.rasgo("peligro") >= 0.5 and p.rasgo("proximidad") >= 0.9), None)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._depredador(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        p = self._depredador(ctx)
+        if p is None:
+            return None
+        return Propuesta(Verbo.ATACAR, p.id, 1.0, 0.97, f"defensa: plantar cara al {p.clase}", clase=p.clase)

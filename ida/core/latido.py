@@ -74,6 +74,14 @@ class Organismo:
                 else:
                     self._sistema(sistema).añadir(etapa, comp)
 
+        # Estrategias propias del mundo: al catálogo del componente Estrategia de cada sistema.
+        for sistema, definiciones in mundo.estrategias_propias().items():
+            elige: Any = next((c for c in self._sistema(sistema).componentes() if c.tipo == "Estrategia"), None)
+            if elige is None:
+                raise ValueError(f"{sistema} no tiene componente Estrategia para las estrategias de {mundo.nombre}")
+            for d in definiciones:
+                elige.catalogo.añadir(d)
+
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
         self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos

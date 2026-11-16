@@ -5,16 +5,19 @@
 | Sentir      | Imagen         | Imagen (gestalt del instante) |
 | Interpretar | Objeto         | Objeto (cada cuerpo de la Imagen que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
-| Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
-| Reaccionar  | Impulso      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
+| Reaccionar  | Reflejo        | Reflejo: sobresalto ante un salto brusco del peligro |
+| Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda) |
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
+| Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
+| Actuar      | Accion         | Acción de cada estrategia activa, con su origen; el mal menor si no se puede esperar |
 """
 
-from typing import Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
-from ida.core.estrategia import Catalogo
-from ida.core.pieza import acotar
+from ida.core import estrategia as est
+from ida.core.estrategia import Catalogo, Definicion, Propuesta
+from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
 from ida.sistemas.comun import Accion, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
@@ -98,48 +101,307 @@ class Supervivencia(Componente):
         ))
 
 
+SEGURIDAD = "seguridad"
+
+
+def _salida(ctx: Contexto, peligro: float) -> Optional[Pieza]:
+    """El lugar a la vista menos peligroso, si lo es menos que el peligro actual."""
+    salida = mejor(lugares(ctx), lambda lugar: -lugar.rasgo("peligro"))
+    return salida if salida is not None and salida.rasgo("peligro") < peligro else None
+
+
+def _amenaza(ctx: Contexto) -> Optional[Pieza]:
+    a = alarma(ctx)
+    return ctx.onda.ev("Objeto").get(a.carga["amenaza"]) if a is not None and a.carga["amenaza"] else None
+
+
+def _peligro(ctx: Contexto) -> float:
+    a = alarma(ctx)
+    return float(a.carga["peligro"]) if a is not None else 0.0
+
+
+# --- Estrategias genéricas de S1 (decisiones 3, 6 y 17) -----------------------------------------
+class Huir(Definicion):
+    """Seguridad: alejarse al lugar más seguro mientras el peligro supere el umbral de miedo."""
+
+    nombre = "huir"
+    impulsos = (SEGURIDAD,)
+    prioridad = 10
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return intensidad >= ctx.arquetipo.umbral_miedo and _salida(ctx, intensidad) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        peligro = _peligro(ctx)
+        salida = _salida(ctx, peligro)
+        if salida is None:
+            return None
+        a = alarma(ctx)
+        de = a.carga["clase_amenaza"] if a is not None else ""
+        return Propuesta(Verbo.MOVER, salida.id, acotar(0.75 + 0.25 * peligro), 0.85, f"huir de {de}", clase=salida.clase)
+
+
+class Defenderse(Definicion):
+    """Seguridad: sin salida y con la amenaza al alcance, defenderse."""
+
+    nombre = "defenderse"
+    impulsos = (SEGURIDAD,)
+    prioridad = 5
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        amenaza = _amenaza(ctx)
+        return intensidad >= ctx.arquetipo.umbral_miedo and _salida(ctx, intensidad) is None and amenaza is not None and al_alcance(amenaza)
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        amenaza = _amenaza(ctx)
+        if amenaza is None or not al_alcance(amenaza):
+            return None
+        return Propuesta(Verbo.ATACAR, amenaza.id, acotar(0.75 + 0.25 * _peligro(ctx)), 0.7, f"defenderse de {amenaza.clase}", clase=amenaza.clase)
+
+
+class Sobresalto(Definicion):
+    """Reflejo (decisión 6): ante un salto brusco del peligro, empezar a huir (o defenderse si no hay
+    salida y la amenaza está al alcance). Innato, corto, de duración fija y prioridad máxima."""
+
+    nombre = "sobresalto"
+    impulsos = (SEGURIDAD,)
+    reflejo = True
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        peligro = _peligro(ctx)
+        salida = _salida(ctx, peligro)
+        if salida is not None:
+            return Propuesta(Verbo.MOVER, salida.id, 1.0, 0.9, "reflejo: sobresalto, huir", clase=salida.clase)
+        amenaza = _amenaza(ctx)
+        if amenaza is not None and al_alcance(amenaza):
+            return Propuesta(Verbo.ATACAR, amenaza.id, 1.0, 0.9, f"reflejo: sobresalto, defenderse de {amenaza.clase}", clase=amenaza.clase)
+        return None
+
+
+class QuietoOHuir(Definicion):
+    """Último recurso de Seguridad cuando todas sus estrategias están agotadas: huir si hay un lugar
+    menos peligroso; si no, quedarse quieto."""
+
+    nombre = "quieto_o_huir"
+    impulsos = (SEGURIDAD,)
+    ultimo_recurso = True
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        peligro = _peligro(ctx)
+        salida = _salida(ctx, peligro)
+        urgencia = acotar(0.75 + 0.25 * peligro)
+        if salida is not None:
+            return Propuesta(Verbo.MOVER, salida.id, urgencia, 0.85, "último recurso: huir", clase=salida.clase)
+        return Propuesta(Verbo.ESPERAR, "", urgencia, 0.6, "último recurso: quedarse quieto")
+
+
+def _comestible_cerca(ctx: Contexto) -> Optional[Pieza]:
+    comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and al_alcance(o)]
+    return mejor(comestibles, lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
+
+
+def _destino_comida(ctx: Contexto) -> Optional[Pieza]:
+    destino = mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
+    return destino if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8 else None
+
+
+class ComerAlAlcance(Definicion):
+    """Necesidades que satisface lo nutritivo: comer lo que está al alcance (conducta consumatoria)."""
+
+    nombre = "comer_al_alcance"
+    rasgo = "nutritivo"
+    prioridad = 10
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _comestible_cerca(ctx) is not None and ctx.soma.alimentacion < 95.0
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        cerca = _comestible_cerca(ctx)
+        if cerca is None:
+            return None
+        return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * apetito(ctx)), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
+
+
+class AcercarseALaComida(Definicion):
+    """Necesidades que satisface lo nutritivo: ir hacia el lugar más nutritivo a la vista (apetitiva)."""
+
+    nombre = "acercarse_a_la_comida"
+    rasgo = "nutritivo"
+    prioridad = 5
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _destino_comida(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        destino = _destino_comida(ctx)
+        if destino is None:
+            return None
+        ar = acotar(0.25 + 0.6 * apetito(ctx) * destino.rasgo("nutritivo"))
+        return Propuesta(Verbo.MOVER, destino.id, ar, 0.6, "acercarse a la comida", clase=destino.clase)
+
+
+def estrategias_s1() -> List[Definicion]:
+    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), ComerAlAlcance(), AcercarseALaComida()]
+
+
+# --- Componentes de Reaccionar ------------------------------------------------------------------
 class Reflejo(Componente):
-    """Ante peligro por encima del umbral de miedo: huir al lugar más seguro, o defenderse si no hay salida."""
+    """Detecta un cambio brusco del Sentir (decisión 6): si el peligro sube de golpe respecto al latido
+    anterior al menos ``Perfil.umbral_reflejo``, registra un sobresalto. La respuesta es la estrategia
+    refleja de S1, de duración fija y prioridad máxima."""
 
     tipo = "Reflejo"
     entradas = ("Supervivencia",)
 
     def reactiva(self, ctx: Contexto) -> None:
         a = alarma(ctx)
-        if a is None or a.carga["peligro"] < ctx.arquetipo.umbral_miedo:
+        if a is None:
             return
-        amenaza = ctx.onda.ev("Objeto").get(a.carga["amenaza"])
-        salida = mejor(lugares(ctx), lambda l: -l.rasgo("peligro"))
-        urgencia = acotar(0.75 + 0.25 * a.carga["peligro"])
-        if salida is not None and salida.rasgo("peligro") < a.carga["peligro"]:
-            self.registrar(ctx, self.pieza(ctx, "huir", arousal=urgencia, carga={"de": a.carga["clase_amenaza"], "a": salida.id}))
-            self.proponer(ctx, Verbo.MOVER, salida.id, urgencia, 0.85, f"reflejo: huir de {a.carga['clase_amenaza']}", clase=salida.clase)
-        elif amenaza is not None and al_alcance(amenaza):
-            self.registrar(ctx, self.pieza(ctx, "defenderse", arousal=urgencia, carga={"de": amenaza.clase}))
-            self.proponer(ctx, Verbo.ATACAR, amenaza.id, urgencia, 0.7, f"reflejo: defenderse de {amenaza.clase}", clase=amenaza.clase)
+        previa = ctx.onda.ei("Supervivencia").get("alarma")
+        antes = float(previa.carga["peligro"]) if previa is not None else 0.0
+        salto = float(a.carga["peligro"]) - antes
+        if salto >= ctx.perfil.umbral_reflejo:
+            self.registrar(ctx, self.pieza(ctx, "sobresalto", arousal=1.0,
+                                           carga={"salto": round(salto, 3), "peligro": a.carga["peligro"], "de": a.carga["clase_amenaza"]}))
 
 
 class Impulso(Componente):
-    """Impulsos básicos: comer lo que está al alcance y acercarse a la comida."""
+    """Un impulso por necesidad que declara el mundo (su déficit es la intensidad cruda) y Seguridad
+    (el peligro). No proponen acciones: lo hacen las estrategias (decisiones 2 y 3)."""
 
     tipo = "Impulso"
     entradas = ("Supervivencia",)
 
     def reactiva(self, ctx: Contexto) -> None:
-        ganas = apetito(ctx)
-        comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3]
-        cerca = mejor([o for o in comestibles if al_alcance(o)], lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
-        if cerca is not None and ctx.soma.alimentacion < 95.0:
-            ar = acotar(0.35 + 0.6 * ganas)
-            self.registrar(ctx, self.pieza(ctx, "comer", arousal=ar, carga={"clase": cerca.clase}))
-            self.proponer(ctx, Verbo.COMER, cerca.id, ar, 0.7, f"impulso: comer {cerca.clase}", clase=cerca.clase)
-        destino = mejor(lugares(ctx), lambda l: l.rasgo("nutritivo") - 1.5 * l.rasgo("peligro"))
-        if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8:
-            ar = acotar(0.25 + 0.6 * ganas * destino.rasgo("nutritivo"))
-            self.proponer(ctx, Verbo.MOVER, destino.id, ar, 0.6, "impulso: acercarse a la comida", clase=destino.clase)
-        if not ctx.onda.acc("Accion") and Verbo.ESPERAR not in ctx.verbos and destino is not None:
-            # El mundo no deja esperar y nadie propone nada: el mal menor.
-            self.proponer(ctx, Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: el mal menor", clase=destino.clase)
+        rasgos = {n.nombre: n.rasgo for n in ctx.perfil.necesidades}
+        for nombre, intensidad in deficits(ctx).items():
+            self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
+                                           carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre)}))
+
+
+class Estrategia(Componente):
+    """Elige, mantiene y abandona las estrategias de S1 (decisiones 4, 16 y 17).
+
+    - Una estrategia activa como mucho por impulso, más el reflejo. Continúa mientras sea elegible,
+      salvo que aparezca otra elegible con mejor valor (o, a igualdad, más prioridad innata): la
+      sustituye (de buscar comida a comerla, de huir a plantar cara).
+    - Se cierra al bajar la necesidad al objetivo (completada), al dejar de ser elegible (sin objeto)
+      o al agotarse (agotada; no se vuelve a elegir durante ``Perfil.enfriamiento_estrategia``).
+    - Agotar una estrategia de Seguridad cambia de estrategia, no abandona el impulso; si todas
+      las elegibles están agotadas, último recurso innato (quedarse quieto o huir).
+    - Elección: valor aprendido por impulso y estrategia durante la vida (mérito = progreso final,
+      fuerza = intensidad inicial) y prioridad innata para desempatar; la apertura regula cuánto se
+      prueba otra al azar. Sin experiencia no se aprende ni se explora.
+    """
+
+    tipo = "Estrategia"
+    VALOR_INICIAL = 0.5
+    TASA = 0.5
+    EXPLORACION = 0.2
+
+    def __init__(self, catalogo: Catalogo):
+        super().__init__("Estrategia")
+        self.catalogo = catalogo
+        self.valor: Dict[Tuple[str, str], float] = {}
+        self.enfriando: Dict[Tuple[str, str], int] = {}
+
+    def reactiva(self, ctx: Contexto) -> None:
+        onda, perfil = ctx.onda, ctx.perfil
+        impulsos = onda.ef("Impulso")
+        previa = onda.ei("Accion").get("Accion")
+        ejecutada = previa.carga.get("origen", {}).get("estrategia") if previa is not None else None
+        notas: Dict[str, Any] = {"activas": [], "ejecutada": None, "abandonos": [], "reflejo": False, "interrumpe": False, "sustituciones": 0}
+
+        for p in [p for p in onda.estrategias.values() if p.sistema == self.sistema]:
+            c = p.carga
+            if p.id == ejecutada:
+                notas["ejecutada"] = c["nombre"]
+            if c["reflejo"]:
+                if ctx.latido - c["inicio"] >= perfil.duracion_reflejo:
+                    self._cerrar(ctx, p, est.TERMINADA)
+                continue
+            imp = impulsos.get(c["impulso"])
+            intensidad = float(imp.carga["intensidad"]) if imp is not None else 0.0
+            self.modificar(ctx, p, carga=est.avanzar(c, intensidad, p.id == ejecutada, ctx.latido,
+                                                     perfil.gracia_estrategia, perfil.ritmo_esperado_estrategia))
+            definicion = self.catalogo.get(c["nombre"])
+            if intensidad <= c["objetivo"] + 1e-9:
+                self._cerrar(ctx, p, est.COMPLETADA)
+            elif c["agotamiento"] >= 1.0:
+                self._cerrar(ctx, p, est.AGOTADA)
+                self.enfriando[(c["impulso"], c["nombre"])] = ctx.latido + perfil.enfriamiento_estrategia
+                notas["abandonos"].append(c["nombre"])
+            elif definicion is None or not definicion.elegible(ctx, c["impulso"], intensidad):
+                self._cerrar(ctx, p, est.SIN_OBJETO)
+
+        sobresalto = onda.ef("Reflejo").get("sobresalto")
+        reflejo_activo = any(p.sistema == self.sistema and p.carga["reflejo"] for p in onda.estrategias.values())
+        if sobresalto is not None and not reflejo_activo:
+            imp = impulsos.get(SEGURIDAD)
+            reflejo = next((d for d in self.catalogo.todas() if d.reflejo and d.sirve(SEGURIDAD, None)), None)
+            if imp is not None and reflejo is not None:
+                p = self._activar(ctx, reflejo, SEGURIDAD, float(imp.carga["intensidad"]), float(imp.carga["objetivo"]))
+                notas["reflejo"] = True
+                notas["interrumpe"] = ejecutada is not None and ejecutada != p.id and not ejecutada.startswith("innato:")
+
+        activa_por_impulso = {p.carga["impulso"]: p for p in onda.estrategias.values() if p.sistema == self.sistema and not p.carga["reflejo"]}
+        for nombre, imp in impulsos.items():
+            intensidad, objetivo = float(imp.carga["intensidad"]), float(imp.carga["objetivo"])
+            if intensidad <= objetivo:
+                continue
+            actual = activa_por_impulso.get(nombre)
+            if actual is not None:
+                # Continuidad, salvo que aparezca una elegible mejor (más específica o mejor valorada):
+                # de buscar comida a comerla, de huir a plantar cara.
+                mejor_def = self._mejor(ctx, nombre, imp.carga.get("rasgo"), intensidad)
+                if mejor_def is None or mejor_def.nombre == actual.carga["nombre"] or \
+                        self._clave(nombre, mejor_def) <= self._clave(nombre, self.catalogo.get(actual.carga["nombre"])):
+                    continue
+                self._cerrar(ctx, actual, est.SUSTITUIDA)
+                notas["sustituciones"] += 1
+                self._activar(ctx, mejor_def, nombre, intensidad, objetivo)
+                continue
+            definicion = self._elegir(ctx, nombre, imp.carga.get("rasgo"), intensidad)
+            if definicion is not None:
+                self._activar(ctx, definicion, nombre, intensidad, objetivo)
+
+        notas["activas"] = [p.carga["nombre"] for p in onda.estrategias.values() if p.sistema == self.sistema]
+        onda.notas[f"estrategias_{self.sistema}"] = notas
+
+    def _clave(self, impulso: str, d: Optional[Definicion]) -> Tuple[float, int]:
+        if d is None:
+            return (-1.0, -1)
+        return (self.valor.get((impulso, d.nombre), self.VALOR_INICIAL), d.prioridad)
+
+    def _disponibles(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Tuple[List[Definicion], List[Definicion]]:
+        elegibles = [d for d in self.catalogo.todas()
+                     if not d.reflejo and not d.ultimo_recurso and d.sirve(impulso, rasgo) and d.elegible(ctx, impulso, intensidad)]
+        return elegibles, [d for d in elegibles if self.enfriando.get((impulso, d.nombre), -1) <= ctx.latido]
+
+    def _mejor(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Optional[Definicion]:
+        _, disponibles = self._disponibles(ctx, impulso, rasgo, intensidad)
+        return max(disponibles, key=lambda d: self._clave(impulso, d)) if disponibles else None
+
+    def _elegir(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Optional[Definicion]:
+        elegibles, disponibles = self._disponibles(ctx, impulso, rasgo, intensidad)
+        if not disponibles:
+            if elegibles and impulso == SEGURIDAD:     # todas agotadas: respuesta innata de último recurso
+                return next((d for d in self.catalogo.todas() if d.ultimo_recurso and d.sirve(impulso, rasgo)), None)
+            return None
+        if ctx.con_experiencia and len(disponibles) > 1 and ctx.azar.probabilidad(self.EXPLORACION * ctx.arquetipo.apertura):
+            return ctx.azar.eleccion(disponibles)
+        return max(disponibles, key=lambda d: self._clave(impulso, d))
+
+    def _activar(self, ctx: Contexto, definicion: Definicion, impulso: str, intensidad: float, objetivo: float) -> Pieza:
+        return ctx.onda.activar(est.nueva(self.sistema, definicion, impulso, intensidad, objetivo, ctx.latido), self)
+
+    def _cerrar(self, ctx: Contexto, p: Pieza, estado: str) -> None:
+        c = p.carga
+        if ctx.con_experiencia and not c["reflejo"]:
+            clave = (c["impulso"], c["nombre"])
+            v = self.valor.get(clave, self.VALOR_INICIAL)
+            self.valor[clave] = v + self.TASA * float(c["valor_inicial"]) * (float(c["progreso"]) - v)
+        ctx.onda.cerrar(p, estado, self)
 
 
 def deficits(ctx: Contexto) -> Dict[str, float]:
@@ -171,9 +433,10 @@ class Feedback(Componente):
 
 
 def crear_s1() -> Sistema:
+    catalogo = Catalogo(estrategias_s1())
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia()]),
-        Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback()]),
-        Modulo("Actuar", [Accion(Catalogo())]),
+        Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo, mal_menor=True)]),
     ])

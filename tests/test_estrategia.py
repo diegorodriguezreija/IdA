@@ -150,3 +150,102 @@ def test_tribunal_suma_el_plus_a_la_estrategia_en_curso():
 
     assert decidir(activa=True) == ("seguir", True)         # 0,60 + 0,1 de plus supera a 0,64
     assert decidir(activa=False) == ("otro", None)          # cerrada: sin plus
+
+
+# --- C1.5: S1 con impulsos, estrategias y reflejo ------------------------------------------------
+def _s1_latido(n, activas, previo_ef, estrategia_comp, intensidad, perfil, ejecutada=None, alarmas=(None, None)):
+    from ida.core.pieza import Pieza
+
+    ef_anterior = dict(previo_ef or {})
+    if ejecutada is not None:
+        ef_anterior["Accion"] = {"Accion": Pieza("Accion", "Accion", carga={"verbo": Verbo.MOVER, "origen": {"estrategia": ejecutada}})}
+    onda = Onda(n, 100, 1e9, ef_anterior=ef_anterior, estrategias=activas)
+    ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), perfil, {Verbo.MOVER, Verbo.ESPERAR}, con_experiencia=False)
+    imp = _comp(lambda: _Tipo("Impulso"))
+    imp.registrar(ctx, imp.pieza(ctx, "seguridad", intensidad, carga={"intensidad": intensidad, "objetivo": 0.0, "rasgo": None}))
+    estrategia_comp.reactiva(ctx)
+    return onda
+
+
+class _Tipo(Componente):
+    def __init__(self, tipo):
+        super().__init__(tipo)
+        self.tipo = tipo
+
+
+def _def(nombre, prioridad, elegible=lambda n: True, ultimo=False):
+    class D(est.Definicion):
+        impulsos = ("seguridad",)
+
+        def elegible(self, ctx, impulso, intensidad):
+            return elegible(ctx.latido)
+
+        def actuar(self, ctx, estrategia):
+            return est.Propuesta(Verbo.ESPERAR, "", 0.5, 0.5, nombre)
+
+    d = D()
+    d.nombre, d.prioridad, d.ultimo_recurso = nombre, prioridad, ultimo
+    return d
+
+
+def test_agotar_seguridad_cambia_de_estrategia_y_al_final_ultimo_recurso():
+    from ida.sistemas.s1 import Estrategia
+
+    perfil = Perfil(gracia_estrategia=0, enfriamiento_estrategia=1000)
+    comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10), _def("b", 5), _def("ultimo", 0, ultimo=True)])))
+    activas: dict = {}
+    vistas = []
+    for n in range(1, 50):
+        en_curso = next(iter(activas), None)
+        _s1_latido(n, activas, None, comp, 0.9, perfil, ejecutada=en_curso)
+        vistas.append(next(iter(activas.values())).carga["nombre"])
+    assert vistas[0] == "a" and "b" in vistas and vistas[-1] == "ultimo"      # a → b → último recurso, sin soltar el impulso
+    assert vistas.index("b") < vistas.index("ultimo")
+
+
+def test_una_estrategia_mas_especifica_sustituye_a_la_activa():
+    from ida.sistemas.s1 import Estrategia
+
+    comp = _comp(lambda: Estrategia(est.Catalogo([_def("buscar", 5), _def("comer", 10, elegible=lambda n: n >= 3)])))
+    activas: dict = {}
+    nombres = []
+    for n in range(1, 5):
+        onda = _s1_latido(n, activas, None, comp, 0.6, Perfil())
+        nombres.append(next(iter(activas.values())).carga["nombre"])
+    assert nombres == ["buscar", "buscar", "comer", "comer"]
+    assert onda.notas["estrategias_S1"]["activas"] == ["comer"]
+
+
+def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s1 import Reflejo
+
+    def sobresalto(antes, ahora):
+        ef_anterior = {"Supervivencia": {"alarma": Pieza("alarma", "Supervivencia", carga={"peligro": antes})}}
+        onda = Onda(2, 100, 1e9, ef_anterior=ef_anterior)
+        ctx = _ctx(onda)
+        onda.percibir("Supervivencia", Pieza("alarma", "Supervivencia", carga={"peligro": ahora, "clase_amenaza": "x"}))
+        _comp(Reflejo).reactiva(ctx)
+        return "sobresalto" in onda.ef("Reflejo")
+
+    assert sobresalto(0.1, 0.6)                 # salto de 0,5 ≥ 0,4
+    assert not sobresalto(0.7, 0.9)             # peligro alto pero sostenido: no es reflejo
+
+
+def test_defensa_armada_de_crafter_lee_la_percepcion():
+    from ida.core.pieza import Pieza
+    from ida.mundos.crafter import DefensaArmada
+
+    def eleccion(vitalidad, inventario):
+        onda = Onda(1, 100, 1e9)
+        ctx = _ctx(onda)
+        onda.percibir("Interocepcion", Pieza("vitalidad", "Interocepcion", carga={"valor": vitalidad}))
+        onda.percibir("Propiocepcion", Pieza("yo", "Propiocepcion", carga={"ubicacion": "celda_5_5", "inventario": inventario}))
+        onda.percibir("Exterocepcion", Pieza("z1", "Exterocepcion", carga={"clase": "zombi", "rasgos": {"proximidad": 0.95, "peligro": 0.8}}))
+        d = DefensaArmada()
+        return d.elegible(ctx, "seguridad", 0.8), d.actuar(ctx, None)
+
+    ok, propuesta = eleccion(6 / 9 * 100, {"wood_sword": 1})
+    assert ok and propuesta.verbo == Verbo.ATACAR and propuesta.arousal == 0.96
+    assert eleccion(6 / 9 * 100, {})[0] is False                  # sin espada en el inventario percibido
+    assert eleccion(3 / 9 * 100, {"wood_sword": 1})[0] is False   # salud 3 < 4
