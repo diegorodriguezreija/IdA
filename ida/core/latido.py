@@ -21,7 +21,7 @@ from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
-from ida.core.onda import Canales, LatidoAgotado, Onda
+from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
 from ida.core.sentidos import Actuador, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
@@ -185,8 +185,7 @@ class Organismo:
         p = Pieza(id=f"CORE:{verbo.value}:", tipo="Accion", arousal=1.0, confianza=1.0,
                   carga={"verbo": verbo, "objetivo": "", "clase": "", "motivo": motivo, "datos": {}},
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
-        ctx.onda.reactiva.acc.setdefault("Accion", {})[p.id] = p
-        ctx.onda.registrar("Accion", p)
+        ctx.onda.proponer("Accion", p, autor=AutorCore("Accion"))
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -212,8 +211,7 @@ class Organismo:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
         if ap.sorpresa:
             s = Pieza(id=f"sorpresa_{ctx.latido}", tipo="Sorpresa", arousal=0.85, carga={"rpe": round(ap.rpe, 2)}, sistema="CORE", creada=ctx.latido)
-            ctx.onda.registrar("Sorpresa", s)
-            ctx.onda.reactiva.ev.setdefault("Sorpresa", {})[s.id] = s   # el Core la pone en el foco sin peaje
+            ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
 

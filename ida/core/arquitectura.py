@@ -87,10 +87,10 @@ class Componente:
             cost=cost,
         )
 
-    def percibir(self, ctx: Contexto, pieza: Pieza) -> Pieza:
-        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia."""
-        ctx.onda.percibir(pieza.tipo, pieza, autor=self)
-        return pieza
+    def percibir(self, ctx: Contexto, pieza: Pieza) -> Optional[Pieza]:
+        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia.
+        Devuelve ``None`` si no queda amplitud y la pieza no entra."""
+        return pieza if ctx.onda.percibir(pieza.tipo, pieza, autor=self) else None
 
     def registrar(self, ctx: Contexto, pieza: Pieza) -> Pieza:
         ctx.onda.registrar(pieza.tipo, pieza, autor=self)

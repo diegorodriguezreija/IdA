@@ -26,8 +26,8 @@ registro pasivo: el núcleo no llama a nadie; la observabilidad externa lo lee d
 
 Propiedad de las piezas (decisión 14): un componente solo emite o modifica piezas de su tipo, y
 solo a través de la Onda (``percibir``, ``registrar``, ``proponer``, ``modificar``), que lo
-comprueba y deja constancia en el registro de la pieza. El Core queda exento (``autor=None`` o
-módulo exento). Excepciones transitorias hasta el bloque C, en ``EXCEPCIONES_TRANSITORIAS``.
+comprueba y deja constancia en el registro de la pieza. El Core escribe con ``AutorCore`` (o desde
+un módulo exento) y no paga atención. Excepciones transitorias hasta el bloque C, en ``EXCEPCIONES_TRANSITORIAS``.
 """
 
 import time
@@ -61,6 +61,21 @@ class Autor(Protocol):
     nombre: str
     sistema: str
     tipo: str
+
+
+class AutorCore:
+    """El propio Core como autor de una pieza que escribe fuera de sus módulos (sueño forzado,
+    sorpresa). Queda en el registro; no paga atención ni se recorta."""
+
+    nombre = "Organismo"
+    sistema = "CORE"
+
+    def __init__(self, tipo: str):
+        self.tipo = tipo
+
+
+def _exento(onda_exenta: bool, autor: Optional[Autor]) -> bool:
+    return onda_exenta or (autor is not None and autor.sistema == "CORE")
 
 
 class DimensionReactiva:
@@ -159,8 +174,8 @@ class Onda:
         """Cobra la amplitud y la potencia de llevar un arousal de ``antes`` a ``despues``.
 
         Devuelve el arousal resultante, recortado a la potencia que quede, o ``None`` si no queda
-        amplitud para una pieza nueva. Solo el plazo lanza ``LatidoAgotado``. Exento: no cobra."""
-        if self.exento:
+        amplitud para una pieza nueva. Solo el plazo lanza ``LatidoAgotado``. El Core no paga."""
+        if _exento(self.exento, autor):
             return despues
         self.control_vital(0, donde=donde)
         c = self._cuenta(autor)
@@ -179,9 +194,9 @@ class Onda:
         c["potencia"] += gasto
         return despues
 
-    def _limitar(self, antes: float, despues: float) -> float:
-        """Recorta un cambio de arousal a la fuerza máxima por pieza (en los módulos exentos, sin límite)."""
-        if self.exento:
+    def _limitar(self, antes: float, despues: float, autor: Optional[Autor] = None) -> float:
+        """Recorta un cambio de arousal a la fuerza máxima por pieza (el Core, sin límite)."""
+        if _exento(self.exento, autor):
             return despues
         f = self.fuerza_max
         return max(antes - f, min(antes + f, despues))
@@ -227,7 +242,7 @@ class Onda:
         cambio recortado a la fuerza máxima por pieza y a la potencia que quede. ``False`` si se rechaza."""
         existente = fase.get(canal, {}).get(pieza.id)
         antes = existente.arousal if existente is not None else 0.0
-        resultado = self._cobrar(autor, 0 if existente is not None else 1, antes, self._limitar(antes, pieza.arousal), canal)
+        resultado = self._cobrar(autor, 0 if existente is not None else 1, antes, self._limitar(antes, pieza.arousal, autor), canal)
         if resultado is None:
             return False
         cambios = None
@@ -269,7 +284,7 @@ class Onda:
         excepcion = self._propiedad(autor, pieza, "modificar", campos)
         cambios: Dict[str, Any] = {}
         if arousal is not None:
-            nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal)), pieza.tipo)
+            nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal), autor), pieza.tipo)
             if nuevo is not None and nuevo != pieza.arousal:
                 cambios["arousal"] = (pieza.arousal, nuevo)
                 pieza.arousal = nuevo

@@ -94,3 +94,17 @@ def test_solo_el_plazo_corta_el_latido():
     tiempo[0] = 0.051
     with pytest.raises(LatidoAgotado, match="plazo"):
         v.percibir(ctx, v.pieza(ctx, "b", 0.1))
+
+
+def test_el_core_escribe_con_autor_sin_pagar_y_percibir_devuelve_none_si_se_rechaza():
+    from ida.core.onda import AutorCore
+    from ida.core.pieza import Pieza
+
+    onda = Onda(1, 1, 1e9, potencia_max=0.1)
+    ctx, v = _ctx(onda), _comp(_Valor)
+    assert v.percibir(ctx, v.pieza(ctx, "a", 0.0)) is not None
+    assert v.percibir(ctx, v.pieza(ctx, "b", 0.0)) is None                 # sin amplitud: rechazada
+    s = Pieza("sorpresa_1", "Sorpresa", arousal=0.85)
+    assert onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))         # el Core no paga ni se recorta
+    assert s.arousal == 0.85 and s.registro[-1]["autor"] == "CORE.Organismo"
+    assert onda.amplitud_consumida == 1 and onda.potencia_consumida == 0.0
