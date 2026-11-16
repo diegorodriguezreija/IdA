@@ -18,7 +18,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core import estrategia as est
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Verbo
+from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import Accion, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
@@ -218,9 +218,26 @@ class SeguirEnMovimiento(Definicion):
         return Propuesta(Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: seguir en movimiento", clase=destino.clase)
 
 
-def _comestible_cerca(ctx: Contexto) -> Optional[Pieza]:
+def _rechazado(ctx: Contexto, o: Pieza) -> bool:
+    """Elección del objeto (decisión 1 del autor sobre C1): primero el valor de S2 (del latido anterior,
+    porque S2 corre después de S1) y después lo demostrado (S3). Se rechaza lo que se valora mal
+    (valencia negativa) y lo que se sabe peligroso o se sabe que no nutre."""
+    valor = ctx.onda.ei("Valor").get(o.id)
+    if valor is not None and float(valor.carga.get("valencia", 0.0)) < 0.0:
+        return True
+    if not ctx.con_experiencia:
+        return False
+    if ctx.memoria.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido):
+        return True
+    nutre = ctx.memoria.proposicion(o.clase, Relacion.NUTRITIVO)
+    return nutre is not None and nutre.estado(ctx.latido) == EstadoSaber.REFUTADA
+
+
+def _al_alcance(ctx: Contexto) -> Tuple[List[Pieza], List[Pieza]]:
+    """Comestibles al alcance, separados en aceptables y rechazados."""
     comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and al_alcance(o)]
-    return mejor(comestibles, lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
+    rechazados = [o for o in comestibles if _rechazado(ctx, o)]
+    return [o for o in comestibles if o not in rechazados], rechazados
 
 
 def _destino_comida(ctx: Contexto) -> Optional[Pieza]:
@@ -228,43 +245,58 @@ def _destino_comida(ctx: Contexto) -> Optional[Pieza]:
     return destino if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8 else None
 
 
-class ComerAlAlcance(Definicion):
-    """Necesidades que satisface lo nutritivo: comer lo que está al alcance (conducta consumatoria)."""
+BUSCAR, ACERCARSE, COMER = "buscar", "acercarse", "comer"
 
-    nombre = "comer_al_alcance"
+
+class Alimentarse(Definicion):
+    """Necesidades que satisface lo nutritivo (decisión 2 del autor sobre C1): una sola estrategia con
+    tres fases, buscar → acercarse → comer.
+
+    - **comer**: hay algo aceptable al alcance (y el mundo deja comer): el mejor por nutritivo − peligro.
+    - **buscar**: lo único al alcance se rechaza (se valora mal o se sabe dañino): no se come y se va
+      a otro sitio, el lugar más nuevo y menos peligroso.
+    - **acercarse**: se huele comida en un lugar a la vista: ir hacia el más nutritivo y menos peligroso.
+    Elegible mientras haya algo de eso; si no hay nada a la vista, se cierra y exploran otros sistemas.
+    """
+
+    nombre = "alimentarse"
     rasgo = "nutritivo"
     prioridad = 10
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return _comestible_cerca(ctx) is not None and ctx.soma.alimentacion < 95.0
+        aceptables, rechazados = _al_alcance(ctx)
+        return bool(aceptables or rechazados) or _destino_comida(ctx) is not None
+
+    def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
+        aceptables, rechazados = _al_alcance(ctx)
+        if aceptables and Verbo.COMER in ctx.verbos and ctx.soma.alimentacion < 95.0:
+            return COMER
+        if rechazados and not aceptables:
+            return BUSCAR
+        return ACERCARSE if _destino_comida(ctx) is not None else BUSCAR
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
-        cerca = _comestible_cerca(ctx)
-        if cerca is None:
-            return None
-        return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * apetito(ctx)), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
-
-
-class AcercarseALaComida(Definicion):
-    """Necesidades que satisface lo nutritivo: ir hacia el lugar más nutritivo a la vista (apetitiva)."""
-
-    nombre = "acercarse_a_la_comida"
-    rasgo = "nutritivo"
-    prioridad = 5
-
-    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return _destino_comida(ctx) is not None
-
-    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
-        destino = _destino_comida(ctx)
-        if destino is None:
-            return None
-        ar = acotar(0.25 + 0.6 * apetito(ctx) * destino.rasgo("nutritivo"))
-        return Propuesta(Verbo.MOVER, destino.id, ar, 0.6, "acercarse a la comida", clase=destino.clase)
+        paso = estrategia.carga.get("paso")
+        if paso == COMER:
+            aceptables, _ = _al_alcance(ctx)
+            cerca = mejor(aceptables, lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
+            if cerca is not None:
+                return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * apetito(ctx)), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
+        if paso == ACERCARSE:
+            destino = _destino_comida(ctx)
+            if destino is not None:
+                ar = acotar(0.25 + 0.6 * apetito(ctx) * destino.rasgo("nutritivo"))
+                return Propuesta(Verbo.MOVER, destino.id, ar, 0.6, "acercarse a la comida", clase=destino.clase)
+        if paso == BUSCAR:
+            otro = mejor([lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5],
+                         lambda lugar: lugar.rasgo("novedad") - lugar.rasgo("peligro"))
+            if otro is not None:
+                return Propuesta(Verbo.MOVER, otro.id, acotar(0.2 + 0.3 * apetito(ctx)), 0.5, "buscar comida en otro sitio", clase=otro.clase)
+        return None
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), ComerAlAlcance(), AcercarseALaComida(), SeguirEnMovimiento()]
+    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------
@@ -314,24 +346,27 @@ class Impulso(Componente):
 class Estrategia(Componente):
     """Elige, mantiene y abandona las estrategias de S1 (decisiones 4, 16 y 17).
 
-    - Una estrategia activa como mucho por impulso, más el reflejo. Continúa mientras sea elegible,
-      salvo que aparezca otra elegible con mejor valor (o, a igualdad, más prioridad innata): la
-      sustituye (de buscar comida a comerla, de huir a plantar cara).
+    - Una estrategia activa como mucho por impulso, más el reflejo. Continúa mientras sea elegible.
+      Solo cede ante otra elegible si la supera con un margen claro (histéresis,
+      ``MARGEN_SUSTITUCION``) en puntuación = valor aprendido + prioridad innata / 100 (p. ej., de
+      huir a plantar cara). Las fases de una misma estrategia (buscar, acercarse, comer) no son
+      sustituciones: las fija ``Definicion.paso`` en cada latido.
     - Se cierra al bajar la necesidad al objetivo (completada), al dejar de ser elegible (sin objeto)
       o al agotarse (agotada; no se vuelve a elegir durante ``Perfil.enfriamiento_estrategia``).
     - Agotar una estrategia de Seguridad cambia de estrategia, no abandona el impulso; si todas
       las elegibles están agotadas, último recurso innato (quedarse quieto o huir).
     - Si nada es elegible para un impulso en un mundo que no deja esperar, último recurso genérico
       (seguir en movimiento). Un último recurso cede en cuanto otra estrategia es elegible.
-    - Elección: valor aprendido por impulso y estrategia durante la vida (mérito = progreso final,
-      fuerza = intensidad inicial) y prioridad innata para desempatar; la apertura regula cuánto se
-      prueba otra al azar. Sin experiencia no se aprende ni se explora.
+    - Elección: la de mayor puntuación; la apertura regula cuánto se prueba otra al azar. Valor
+      aprendido por impulso y estrategia durante la vida (mérito = progreso final, fuerza =
+      intensidad inicial). Sin experiencia no se aprende ni se explora.
     """
 
     tipo = "Estrategia"
     VALOR_INICIAL = 0.5
     TASA = 0.5
     EXPLORACION = 0.2
+    MARGEN_SUSTITUCION = 0.2
 
     def __init__(self, catalogo: Catalogo):
         super().__init__("Estrategia")
@@ -370,6 +405,10 @@ class Estrategia(Componente):
             elif definicion.ultimo_recurso and self._mejor(ctx, c["impulso"], imp.carga.get("rasgo") if imp is not None else None, intensidad):
                 self._cerrar(ctx, p, est.SUSTITUIDA)     # un último recurso cede en cuanto hay otra opción
                 notas["sustituciones"] += 1
+            else:
+                paso = definicion.paso(ctx, p)
+                if paso != c.get("paso"):
+                    self.modificar(ctx, p, carga={"paso": paso})
 
         sobresalto = onda.ef("Reflejo").get("sobresalto")
         reflejo_activo = any(p.sistema == self.sistema and p.carga["reflejo"] for p in onda.estrategias.values())
@@ -388,27 +427,27 @@ class Estrategia(Componente):
                 continue
             actual = activa_por_impulso.get(nombre)
             if actual is not None:
-                # Continuidad, salvo que aparezca una elegible mejor (más específica o mejor valorada):
-                # de buscar comida a comerla, de huir a plantar cara.
+                # Continuidad, salvo que otra elegible la supere con margen claro (histéresis).
                 mejor_def = self._mejor(ctx, nombre, imp.carga.get("rasgo"), intensidad)
                 if mejor_def is None or mejor_def.nombre == actual.carga["nombre"] or \
-                        self._clave(nombre, mejor_def) <= self._clave(nombre, self.catalogo.get(actual.carga["nombre"])):
+                        self._puntuacion(nombre, mejor_def) < self._puntuacion(nombre, self.catalogo.get(actual.carga["nombre"])) + self.MARGEN_SUSTITUCION:
                     continue
                 self._cerrar(ctx, actual, est.SUSTITUIDA)
                 notas["sustituciones"] += 1
-                self._activar(ctx, mejor_def, nombre, intensidad, objetivo)
+                self._activar(ctx, mejor_def, nombre, intensidad, objetivo, ctx_paso=True)
                 continue
             definicion = self._elegir(ctx, nombre, imp.carga.get("rasgo"), intensidad)
             if definicion is not None:
-                self._activar(ctx, definicion, nombre, intensidad, objetivo)
+                self._activar(ctx, definicion, nombre, intensidad, objetivo, ctx_paso=True)
 
         notas["activas"] = [p.carga["nombre"] for p in onda.estrategias.values() if p.sistema == self.sistema]
         onda.notas[f"estrategias_{self.sistema}"] = notas
 
-    def _clave(self, impulso: str, d: Optional[Definicion]) -> Tuple[float, int]:
+    def _puntuacion(self, impulso: str, d: Optional[Definicion]) -> float:
+        """Valor aprendido + prioridad innata / 100."""
         if d is None:
-            return (-1.0, -1)
-        return (self.valor.get((impulso, d.nombre), self.VALOR_INICIAL), d.prioridad)
+            return -1.0
+        return self.valor.get((impulso, d.nombre), self.VALOR_INICIAL) + d.prioridad / 100.0
 
     def _disponibles(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Tuple[List[Definicion], List[Definicion]]:
         elegibles = [d for d in self.catalogo.todas()
@@ -417,7 +456,7 @@ class Estrategia(Componente):
 
     def _mejor(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Optional[Definicion]:
         _, disponibles = self._disponibles(ctx, impulso, rasgo, intensidad)
-        return max(disponibles, key=lambda d: self._clave(impulso, d)) if disponibles else None
+        return max(disponibles, key=lambda d: self._puntuacion(impulso, d)) if disponibles else None
 
     def _elegir(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Optional[Definicion]:
         elegibles, disponibles = self._disponibles(ctx, impulso, rasgo, intensidad)
@@ -429,10 +468,14 @@ class Estrategia(Componente):
             return next((d for d in ultimos if d.cualquier_impulso and d.elegible(ctx, impulso, intensidad)), None)
         if ctx.con_experiencia and len(disponibles) > 1 and ctx.azar.probabilidad(self.EXPLORACION * ctx.arquetipo.apertura):
             return ctx.azar.eleccion(disponibles)
-        return max(disponibles, key=lambda d: self._clave(impulso, d))
+        return max(disponibles, key=lambda d: self._puntuacion(impulso, d))
 
-    def _activar(self, ctx: Contexto, definicion: Definicion, impulso: str, intensidad: float, objetivo: float) -> Pieza:
-        return ctx.onda.activar(est.nueva(self.sistema, definicion, impulso, intensidad, objetivo, ctx.latido), self)
+    def _activar(self, ctx: Contexto, definicion: Definicion, impulso: str, intensidad: float, objetivo: float,
+                 ctx_paso: bool = False) -> Pieza:
+        p = est.nueva(self.sistema, definicion, impulso, intensidad, objetivo, ctx.latido)
+        if ctx_paso:      # fase inicial de su máquina de estados
+            p = est.nueva(self.sistema, definicion, impulso, intensidad, objetivo, ctx.latido, paso=definicion.paso(ctx, p))
+        return ctx.onda.activar(p, self)
 
     def _cerrar(self, ctx: Contexto, p: Pieza, estado: str) -> None:
         c = p.carga

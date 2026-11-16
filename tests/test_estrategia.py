@@ -203,17 +203,23 @@ def test_agotar_seguridad_cambia_de_estrategia_y_al_final_ultimo_recurso():
     assert vistas.index("b") < vistas.index("ultimo")
 
 
-def test_una_estrategia_mas_especifica_sustituye_a_la_activa():
+def test_sustituir_la_estrategia_activa_exige_un_margen_claro():
     from ida.sistemas.s1 import Estrategia
 
-    comp = _comp(lambda: Estrategia(est.Catalogo([_def("buscar", 5), _def("comer", 10, elegible=lambda n: n >= 3)])))
-    activas: dict = {}
-    nombres = []
-    for n in range(1, 5):
-        onda = _s1_latido(n, activas, None, comp, 0.6, Perfil())
-        nombres.append(next(iter(activas.values())).carga["nombre"])
-    assert nombres == ["buscar", "buscar", "comer", "comer"]
-    assert onda.notas["estrategias_S1"]["activas"] == ["comer"]
+    def secuencia(prioridad_nueva):
+        comp = _comp(lambda: Estrategia(est.Catalogo([_def("huir", 10), _def("plantar_cara", prioridad_nueva, elegible=lambda n: n >= 3)])))
+        activas: dict = {}
+        nombres = []
+        for n in range(1, 5):
+            onda = _s1_latido(n, activas, None, comp, 0.6, Perfil())
+            nombres.append(next(iter(activas.values())).carga["nombre"])
+        return nombres, onda
+
+    nombres, _ = secuencia(15)          # 0,65 frente a 0,60: menos que el margen (0,2), sigue la activa
+    assert nombres == ["huir"] * 4
+    nombres, onda = secuencia(50)       # 1,00 frente a 0,60: margen claro, la sustituye
+    assert nombres == ["huir", "huir", "plantar_cara", "plantar_cara"]
+    assert onda.notas["estrategias_S1"]["activas"] == ["plantar_cara"]
 
 
 def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
@@ -272,3 +278,24 @@ def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
         comp.reactiva(ctx)
         nombres.append([p.carga["nombre"] for p in activas.values()])
     assert nombres == [["seguir_en_movimiento"], ["seguir_en_movimiento"], ["comer"], ["comer"]]
+
+
+def test_alimentarse_elige_el_objeto_por_valor_y_si_se_valora_mal_vuelve_a_buscar():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s1 import Alimentarse
+
+    def fase(valencia):
+        ef_anterior = {"Valor": {"s1": Pieza("s1", "Valor", carga={"valencia": valencia})}}
+        onda = Onda(2, 100, 1e9, ef_anterior=ef_anterior)
+        ctx = Contexto(onda, Soma(alimentacion=50.0), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
+        onda.percibir("Objeto", Pieza("s1", "Objeto", 0.5, carga={"clase": "x", "rasgos": {"nutritivo": 0.8, "proximidad": 0.95}}))
+        onda.percibir("Exterocepcion", Pieza("c1", "Exterocepcion", carga={"clase": "suelo", "rasgos": {"lugar": 1.0, "novedad": 0.6}}))
+        d = Alimentarse()
+        e = est.nueva("S1", d, "hambre", 0.5, 0.0, 2)
+        e = est.nueva("S1", d, "hambre", 0.5, 0.0, 2, paso=d.paso(ctx, e))
+        return e.carga["paso"], d.actuar(ctx, e)
+
+    paso, propuesta = fase(0.3)
+    assert paso == "comer" and propuesta.verbo == Verbo.COMER and propuesta.objetivo == "s1"
+    paso, propuesta = fase(-0.3)                 # se valora mal: no se come, se busca en otro sitio
+    assert paso == "buscar" and propuesta.verbo == Verbo.MOVER and propuesta.objetivo == "c1"

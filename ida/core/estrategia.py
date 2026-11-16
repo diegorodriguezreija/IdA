@@ -76,6 +76,10 @@ class Definicion:
     def elegible(self, ctx: Any, impulso: str, intensidad: float) -> bool:
         return True
 
+    def paso(self, ctx: Any, estrategia: Pieza) -> Any:
+        """Fase siguiente de la máquina de estados (decisión 17). Por defecto, una sola fase."""
+        return estrategia.carga.get("paso", 0)
+
     def actuar(self, ctx: Any, estrategia: Pieza) -> Optional[Propuesta]:
         return None
 
@@ -99,14 +103,14 @@ class Catalogo:
         return list(self._por_nombre.values())
 
 
-def nueva(sistema: str, definicion: Definicion, impulso: str, intensidad: float, objetivo: float, latido: int) -> Pieza:
+def nueva(sistema: str, definicion: Definicion, impulso: str, intensidad: float, objetivo: float, latido: int, paso: Any = 0) -> Pieza:
     """Pieza ``Estrategia`` recién activada para ``impulso``."""
     return Pieza(
         id=f"{sistema}:{definicion.nombre}:{impulso}",
         tipo="Estrategia",
         arousal=acotar(intensidad),
         carga={"nombre": definicion.nombre, "impulso": impulso, "valor_inicial": acotar(intensidad), "objetivo": objetivo,
-               "progreso": 0.0, "agotamiento": 0.0, "esfuerzo": 0, "inicio": latido, "estado": ACTIVA, "paso": 0,
+               "progreso": 0.0, "agotamiento": 0.0, "esfuerzo": 0, "inicio": latido, "estado": ACTIVA, "paso": paso,
                "reflejo": definicion.reflejo},
         sistema=sistema,
         creada=latido,
