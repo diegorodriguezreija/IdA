@@ -340,7 +340,7 @@ class Organismo:
             onda = self.latir()
             if self.soma.dormido and not estaba_dormido:
                 if self.con_experiencia:
-                    self.memoria.consolidar(self.ciclo)
+                    self.memoria.consolidar(self.ciclo, reduccion=self.perfil.mecanismos.reduccion)
                     if self.perfil.mecanismos.consolidacion:
                         self.memoria.consolidar_dia(self.ciclo)
                 if self.al_dormir:

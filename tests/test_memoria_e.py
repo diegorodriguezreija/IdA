@@ -41,3 +41,19 @@ def test_conceptos_con_prototipo_promediado_e_ids_sin_significado():
     assert c["etiqueta"] == "vaca" and c["n"] == 2 and c["prototipo"]["nutritivo"] == 0.6
     assert mem.instancias["vaca_2"]["concepto"] == "c1"
     assert mem.instancia("lobo", "lobo", {"peligro": 0.8}, 3) == "c2"
+
+
+def test_reduccion_nocturna_proporcional_y_poda():
+    from ida.core.memoria import Proposicion
+    from ida.core.vocabulario import Relacion
+
+    mem = Memoria()
+    mem.grafo = {"Objeto:a": {"fuerza": 1.0}, "Objeto:b": {"fuerza": 0.05}}
+    mem.relaciones = {("Objeto:a", "Objeto:b"): 0.5}
+    mem.saber[("x", Relacion.NUTRITIVO)] = Proposicion("x", Relacion.NUTRITIVO, confianza=0.5)
+    mem.saber[("y", Relacion.NUTRITIVO)] = Proposicion("y", Relacion.NUTRITIVO, confianza=0.15)
+    podado = mem.reducir(10)
+    assert mem.grafo["Objeto:a"]["fuerza"] == 0.9 and "Objeto:b" not in mem.grafo     # 0,045 < 0,05: podado
+    assert not mem.relaciones                                                          # su nodo b ya no está
+    assert mem.saber[("x", Relacion.NUTRITIVO)].confianza == 0.475 and ("y", Relacion.NUTRITIVO) not in mem.saber
+    assert podado == 3

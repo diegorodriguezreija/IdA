@@ -554,10 +554,42 @@ class Memoria:
         return None
 
     # --- sueño: lo costoso, fuera del camino crítico --------------------------
-    def consolidar(self, ahora: int) -> Dict[str, int]:
-        """Olvido, consolidación y replay inverso de trayectorias. Lo demostrado y lo de arousal extremo no se olvida."""
-        olvidadas = 0
+    REDUCCION_GRAFO = 0.9          # E4: factor nocturno sobre las fuerzas del grafo semántico
+    PODA_GRAFO = 0.05              # E4: fuerza por debajo de la cual se poda un nodo o relación
+    REDUCCION_HIPOTESIS = 0.95     # E4: factor nocturno sobre la confianza por experiencia de las hipótesis
+    PODA_HIPOTESIS = 0.15          # E4: confianza por debajo de la cual se poda una hipótesis
+
+    def reducir(self, ahora: int) -> int:
+        """Reducción nocturna (decisión 21, homeostasis sináptica): todas las fuerzas del grafo y la
+        confianza de las hipótesis no demostradas se reducen en proporción (se mantienen las diferencias
+        relativas) y se poda lo que cae por debajo del umbral. Devuelve lo podado."""
+        podado = 0
+        for nodo in list(self.grafo):
+            self.grafo[nodo]["fuerza"] = round(self.grafo[nodo]["fuerza"] * self.REDUCCION_GRAFO, 4)
+            if self.grafo[nodo]["fuerza"] < self.PODA_GRAFO:
+                del self.grafo[nodo]
+                podado += 1
+        for clave in list(self.relaciones):
+            self.relaciones[clave] = round(self.relaciones[clave] * self.REDUCCION_GRAFO, 4)
+            if self.relaciones[clave] < self.PODA_GRAFO or clave[0] not in self.grafo or clave[1] not in self.grafo:
+                del self.relaciones[clave]
+                podado += 1
         for clave, p in list(self.saber.items()):
+            if p.estado(ahora) == EstadoSaber.DEMOSTRADA:
+                continue
+            p.c_exp = acotar(p.c_exp * self.REDUCCION_HIPOTESIS)
+            if p.confianza < self.PODA_HIPOTESIS:
+                del self.saber[clave]
+                podado += 1
+        return podado
+
+    def consolidar(self, ahora: int, reduccion: bool = False) -> Dict[str, int]:
+        """Olvido, consolidación y replay inverso de trayectorias. Lo demostrado y lo de arousal extremo no se olvida.
+        Con ``reduccion`` (bloque E, E4), la reducción nocturna sustituye al olvido de hipótesis por antigüedad."""
+        olvidadas = 0
+        if reduccion:
+            olvidadas = self.reducir(ahora)
+        for clave, p in list(self.saber.items()) if not reduccion else []:
             estado = p.estado(ahora)
             if estado == EstadoSaber.DEMOSTRADA:
                 continue
