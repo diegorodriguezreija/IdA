@@ -14,6 +14,14 @@ Criterio del autor: hasta el bloque E, una pérdida ligera es aceptable. **Se cu
 - Archivos: latidos (+94 a +107), fitness (+857 a +895) y nutritivos (+14 a +15) mejoran de forma significativa en los tres perfiles. **Pérdida ligera y significativa:** tóxicos +0,45 a +0,53 por vida; en el control sin experiencia, +1,65 ± 0,97.
 - Mínimo: Equilibrado mejora (latidos +160 ± 33, fitness +270 ± 71); setas −0,65 a −2,38 en los tres perfiles. Control sin experiencia: −20 latidos y −72 de fitness, no significativos.
 
+## Pendiente para la fase de mejora de los mundos
+
+Anotado por el autor al aceptar el bloque C (16/11/2026):
+
+- **Archivos, neofobia:** en `AlimentarseConPrudencia` rechazar una especie desconocida cuando a la vista hay otra que se sabe que nutre es hoy un rechazo absoluto. Debería ceder con el hambre (aliestesia): con mucha hambre, probar lo desconocido. En una prueba rápida (semillas 1 a 3, una vida), dos de tres vidas murieron de hambre.
+- **Crafter, recetas:** `PlanTecnologico` lee las recetas de `crafter.constants`. Son reglas fijas del juego, no su estado, pero es conocimiento regalado. Pendiente decidir si es dotación innata (declarada como tal) o si se aprende.
+- **Causas de muerte en el benchmark:** `herramientas/benchmark.py` no guarda la causa de muerte por vida, y `main` no la registraba (se añadió en `c212a87`). Para comparar muertes por hambre hay que añadirla al benchmark y medir de nuevo.
+
 ## Tablas completas
 
 
