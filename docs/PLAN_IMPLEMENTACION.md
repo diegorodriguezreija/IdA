@@ -12,19 +12,19 @@ No se empieza un bloque sin que el anterior cumpla su condición de paso. Si un 
 
 ## Preparación antes del bloque A
 
-Cinco pasos, en este orden, antes de dar el primer encargo al agente.
+Cinco pasos, en este orden, antes de dar el primer encargo al agente. **Hecha el 16/11/2026** en la rama `prep/rediseno-base`, sin integrar todavía en `main`.
 
-- [ ] **Corregir las métricas públicas.** El README y `05_METRICAS_E_HITOS.md` siguen diciendo 10,9 logros en Crafter. Con el protocolo aislado, `main` da 9,30. Explicar el cambio en el CHANGELOG.
-- [ ] **Fusionar `feature/ajustes-cognitivos` en `main`.** Será la rama base: saca el mapa de Crafter del mundo y lo lleva al Core, corrige el control sin experiencia y el fitness de Archivos, e incluye el protocolo de benchmark. No hay diferencias detectadas frente a `main`.
-- [ ] **Pausar la Fase 5 v2.** Sus impulsos (cobijo) y estrategias (anidar) se reharán en el bloque C con el nuevo modelo. Solo se rescata la percepción de la luz, que no cambia la conducta.
-- [ ] **Exportar el borrador del rediseño a `docs/REDISENO_BASE.md`.** Es la referencia fija del agente para todos los bloques: el contexto completo, aunque cada encargo implemente solo una parte.
-- [ ] **Actualizar `AGENTS.md`** para que remita a `docs/REDISENO_BASE.md` y a este plan. La regla de no tocar `ida/core/` ni `ida/sistemas/` se mantiene, con el permiso que conceda cada encargo para su bloque.
+- [x] **Corregir las métricas públicas.** El README y `05_METRICAS_E_HITOS.md` decían 10,9 logros en Crafter. Con el protocolo aislado, `5c8ae1e` da 9,30 ± 1,09 y `7e335ae` da 9,13 ± 1,42 (diferencia pareada −0,17 ± 1,42). Cambio explicado en el CHANGELOG (`d1af17a`). Además, `05_METRICAS_E_HITOS.md` pasa de 64 a 85 tests y deja de describir `self.hitos` (`de6b01d`).
+- [x] **Fusionar `feature/ajustes-cognitivos` en `main`.** Ya estaba fusionada por el PR #4: `main` está en `7e335ae`, con el mismo árbol que `25e1303`. En `7e335ae`, pytest da 85 passed, ruff no da errores y mypy no encuentra problemas en 38 ficheros (Python 3.15.1, 16/11/2026).
+- [x] **Pausar la Fase 5.** `feature/fase5-ciclo-y-refugio` y `feature/fase5-ritmo-y-vaiven` quedan pausadas y, en principio, descartadas. Sus impulsos (cobijo) y estrategias (anidar, refugio) se reharán en el bloque C con el nuevo modelo. No se rescata nada, tampoco la percepción de la luz (`a7adb3f`).
+- [x] **Exportar el borrador del rediseño a `docs/REDISENO_BASE.md`.** Es la referencia fija del agente para todos los bloques: el contexto completo, aunque cada encargo implemente solo una parte (`4934fb9`).
+- [x] **Actualizar `AGENTS.md`** para que remita a `docs/REDISENO_BASE.md` y a este plan. La regla de no tocar `ida/core/` ni `ida/sistemas/` se mantiene, con el permiso que conceda cada encargo para su bloque (`80850dc`).
 
 ## Encargo del bloque A: renombres y refactors sin cambio de conducta
 
 **Objetivo:** dejar el código con los nombres y la estructura del rediseño sin que IdA se comporte distinto. Cada paso debe dar la misma conducta con la misma semilla.
 
-**Referencia:** `docs/REDISENO_BASE.md` (decisiones 1, 3, 8, 9, 12, 14 y 15). Las rutas y líneas de abajo son de `main` (`5c8ae1e`); verifícalas con `grep` en la rama base.
+**Referencia:** `docs/REDISENO_BASE.md` (decisiones 1, 3, 8, 9, 12, 14 y 15). **Rama base:** `main` en `7e335ae`. Las rutas y líneas de abajo están comprobadas en ese commit el 16/11/2026; verifícalas de nuevo con `grep` antes de cada paso.
 
 ### Permiso
 
@@ -32,12 +32,12 @@ Se autoriza modificar `ida/core/` e `ida/sistemas/` **solo** para los pasos de e
 
 ### Pasos (un commit cada uno)
 
-| Paso | Cambio | Decisión | Archivos afectados (en `main`) | Cuidado |
+| Paso | Cambio | Decisión | Archivos afectados (en `7e335ae`) | Cuidado |
 | --- | --- | --- | --- | --- |
 | A1 | `Escena` pasa a `Exterocepcion`: componente y canal | 1 | `core/sentidos.py`, `core/latido.py`, `core/pieza.py`, `sistemas/comun.py`, `s1.py`, `s3.py`, `mundos/minimo.py`, `archivos.py`, `crafter.py`, `tests/test_core.py` | También en los componentes propios de los mundos |
-| A2 | Pieza y canal `Ejecucion` pasan a `Accion` | 3 | `core/arquitectura.py`, `latido.py`, `sentidos.py`, `s1.py`, `s2.py`, `s3.py`, `mundos/archivos.py`, `crafter.py`, `consola.py`, `tests/test_core.py`, `test_organismo.py` | La dimensión `acc` de la Onda no cambia de nombre |
+| A2 | Pieza y canal `Ejecucion` pasan a `Accion` | 3 | `core/arquitectura.py`, `latido.py`, `onda.py`, `pieza.py`, `sentidos.py`, `s1.py`, `s2.py`, `s3.py`, `mundos/archivos.py`, `crafter.py`, `consola.py`, `tests/test_core.py`, `test_organismo.py`, `test_biblioteca.py` | La dimensión `acc` de la Onda no cambia de nombre |
 | A3 | `ImpulsoS1/S2/S3` pasan a `Impulso` en cada módulo | 14 | `s1.py`, `s2.py`, `s3.py` | Cambian etiquetas en `entradas` y en los tiempos por componente |
-| A4 | Nuevo componente `Objeto`, primero de S1·Interpretar, que emite las piezas `Objeto` que hoy emite `Imagen` | 8 | `s1.py` (hoy en `Imagen.reactiva`, líneas 46-48) | Mismo coste por pieza (hoy 1), mismo orden de emisión y mismo límite `MAX_OBJETOS` |
+| A4 | Nuevo componente `Objeto`, primero de S1·Interpretar, que emite las piezas `Objeto` que hoy emite `Imagen` | 8 | `s1.py` (hoy en `Imagen.reactiva`, líneas 43-46) | Mismo coste por pieza (hoy 1), mismo orden de emisión y mismo límite `MAX_OBJETOS` |
 | A5 | Nuevo componente `Emocion` en S2·Sentir, después de `Patron`: emite el estado afectivo de `Soma` como pieza | 9 | `s2.py` | Coste 0 en este bloque; ningún componente la consume todavía |
 | A6 | `PredicadoProposicion` se divide en `Predicado` (pasada reactiva) y `Proposicion` (pasada activa) | 12 | `s3.py` | Mismas entradas (`Agente`) en los dos, en la misma posición del módulo, para que la secuencia de emisiones no cambie |
 | A7 | La lógica de `Soma.presupuesto` pasa a un componente `Marcapasos` del Core, que devuelve frecuencia y amplitud | 15 | `core/soma.py`, `latido.py`, `tests/test_core.py` | Misma fórmula. La potencia no se añade hasta el bloque B |
@@ -83,3 +83,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | Fecha | Cambio |
 | --- | --- |
 | 2026-11-16 | Creación del plan: preparación, encargo del bloque A, resumen de los bloques B a F. |
+| 2026-11-16 | Preparación hecha en `prep/rediseno-base`. Rama base: `main` en `7e335ae`. Las dos ramas de la Fase 5 quedan descartadas, sin rescatar la luz. Rutas del bloque A comprobadas en `7e335ae` (A2 suma `onda.py`, `pieza.py` y `test_biblioteca.py`; A4 pasa a las líneas 43-46). |
