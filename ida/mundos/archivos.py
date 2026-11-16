@@ -14,6 +14,7 @@ directorio propio dentro de ``datos/archivos``. Nada fuera de ella se lee, escri
 """
 
 import math
+from dataclasses import replace
 import os
 import shutil
 from collections import Counter
@@ -71,7 +72,9 @@ def clase_de(nombre: str) -> str:
 
 class MundoArchivos(Mundo):
     nombre = "archivos"
-    perfil = Perfil(mecanismos=MEMORIA_E, frecuencia_ms=100.0, amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
+    # Bloque E: sin la reducción nocturna (E4), que aquí empeora (docs/MEDICIONES_E.md).
+    perfil = Perfil(mecanismos=replace(MEMORIA_E, reduccion=False), frecuencia_ms=100.0,
+                    amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
 
     def __init__(self, datos: str = "datos/archivos", **_):
         self.raiz = os.path.abspath(os.path.join(datos, "bioma"))
