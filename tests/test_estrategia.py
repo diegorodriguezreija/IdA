@@ -484,3 +484,17 @@ def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
     t.sistema = "CORE"
     t.reactiva(ctx)
     assert onda.notas["evaluados"][0]["base"] == pytest.approx(0.5 + 0.18)  # el Tribunal suma la modulación (estrés 1)
+
+
+def test_feedback_de_s3_error_de_prediccion():
+    from ida.sistemas.s3 import Feedback
+
+    mem = Memoria()
+    onda1 = Onda(1, 100, 1e9)
+    fb = _comp(Feedback)
+    fb.sistema = "S3"
+    fb.reactiva(Contexto(onda1, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER}))
+    mem.aciertos, mem.fallos = mem.aciertos + 3, mem.fallos + 1
+    onda2 = Onda(2, 100, 1e9, ef_anterior=onda1.reactiva.ef)
+    fb.reactiva(Contexto(onda2, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER}))
+    assert onda2.ef("Feedback")["feedback:S3"].carga["valor"] == 2.0

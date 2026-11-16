@@ -13,6 +13,7 @@ proposiciones **demostradas**.
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
 | Reaccionar  | Intencion            | Intención: saber y las que declare el mundo (el qué deliberado) |
+| Reaccionar  | Feedback             | Feedback de S3: baja del error de predicción (aciertos menos sorpresas) |
 | Reaccionar  | Estrategia           | Estrategias de conocimiento: evitar, comer y coger lo sabido; estudiar |
 | Actuar      | Accion               | Acción de cada estrategia activa de S3, con su origen |
 | Reaccionar  | Impulso              | Control gradual según la certeza, sobre piezas Impulso (sube o baja impulsos) |
@@ -443,6 +444,24 @@ class Intencion(Componente):
                                            carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": None}))
 
 
+class Feedback(Componente):
+    """Feedback de S3 (decisión 5): baja del error de predicción respecto al latido anterior,
+    Δ aciertos − Δ sorpresas de las expectativas de la memoria. Positivo = predice mejor. Es el
+    mérito de las estrategias de S3, sea cual sea el impulso o la intención a los que sirven."""
+
+    tipo = "Feedback"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        aciertos, fallos = int(ctx.memoria.aciertos), int(ctx.memoria.fallos)
+        previo = ctx.onda.ei("Feedback").get(f"feedback:{self.sistema}")
+        antes = previo.carga["estado"] if previo is not None else {"aciertos": aciertos, "fallos": fallos}
+        valor = float((aciertos - antes["aciertos"]) - (fallos - antes["fallos"]))
+        impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
+        self.registrar(ctx, self.pieza(ctx, f"feedback:{self.sistema}", arousal=0.0,
+                                       carga={"valor": valor, "por_impulso": dict.fromkeys(impulsos, valor),
+                                              "estado": {"aciertos": aciertos, "fallos": fallos}}))
+
+
 def estrategias_s3() -> List[Definicion]:
     return [EvitarLoPeligroso(), ComerLoNutritivo(), CogerLoUtil(), Estudio()]
 
@@ -452,6 +471,6 @@ def crear_s3() -> Sistema:
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Intencion(), Impulso(), Estrategia(catalogo)]),
+        Modulo("Reaccionar", [Intencion(), Impulso(), Feedback(), Estrategia(catalogo)]),
         Modulo("Actuar", [Accion(catalogo)]),
     ])
