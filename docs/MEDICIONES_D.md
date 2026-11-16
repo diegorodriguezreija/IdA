@@ -23,6 +23,14 @@ Criterio (pérdida ligera aceptable hasta el bloque E): **se cumple; no hay pér
 4. **D4:** una creencia por cada proposición de la memoria (no solo de las clases a la vista), en `ef` y sin coste. «Sostiene» = demostrada, así que el criterio no cambia; la fuente afectiva (peso 0,1) solo ajusta el trust. `alimentarse` la lee del latido anterior (S3 corre después). `AlimentarseConPrudencia` (archivos) sigue leyendo los indicios de daño en la memoria (criterio del mundo, en el mismo latido). `Valor` y `recordar_comida` (S2) siguen leyendo la memoria: no estaban en el encargo.
 5. **Benchmark:** `main` ya registra la causa de muerte desde el bloque C; la deducción del último latido se usa solo con versiones que no la registran. «desgaste» = sin causa del mundo ni necesidad agotada.
 
+## Pendiente para más adelante
+
+Anotado por el autor al aceptar el bloque D (16/11/2026):
+
+- **Bloque E, coste de las creencias:** `Creencia` emite una pieza por cada proposición de la memoria en cada latido. Hoy es barato (solo `ef`, sin coste), pero crecerá con la memoria: vigilarlo al introducir la memoria duradera.
+- **Bloque E, lecturas directas de la memoria:** `Valor` (S2) y la estrategia `recordar_comida` (S2) aún leen la memoria directamente en lugar de las creencias. Revisarlo en E.
+- **Fase de mejora de los mundos, Crafter:** las muertes por «desgaste» (sin causa del mundo ni necesidad agotada) pasan de 4 a 8 entre `main` y esta rama. Investigar qué daño no se está atribuyendo.
+
 ## Tablas completas
 
 
