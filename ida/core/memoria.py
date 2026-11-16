@@ -216,6 +216,10 @@ class Memoria:
         self.diurno: List[Tuple[float, int, Dict[str, Any]]] = []   # montículo (puntuación, orden, pieza)
         self._orden_diurno = 0
         self.dia: List[Dict[str, Any]] = []
+        # E2: grafo semántico (nodos con fuerza y valencia; relaciones por coincidencia) y almacén de días.
+        self.grafo: Dict[str, Dict[str, Any]] = {}
+        self.relaciones: Dict[Tuple[str, str], float] = {}
+        self.dias: List[Dict[str, Any]] = []
 
     @property
     def activa(self) -> bool:
@@ -373,6 +377,44 @@ class Memoria:
                 heapq.heapreplace(self.diurno, entrada)
         if len(self.dia) < self.CAPACIDAD_DIA:
             self.dia.append({"latido": latido, "feedback": round(feedback, 4), **resumen})
+
+    DIAS_GUARDADOS = 30         # días que conserva el almacén de episodios del día
+    NODOS_POR_LATIDO = 5        # piezas de un mismo latido que se relacionan entre sí al consolidar
+
+    @staticmethod
+    def nodo(pieza: Dict[str, Any]) -> str:
+        """Nodo semántico de una pieza: su tipo y su clase (o su id, si no tiene clase)."""
+        return f"{pieza.get('tipo', '')}:{pieza.get('clase') or pieza.get('id', '')}"
+
+    def consolidar_dia(self, ahora: int) -> Dict[str, int]:
+        """De noche (decisión 19): lo mejor puntuado del búfer diurno pasa al grafo semántico (fuerza =
+        puntuación positiva; valencia = feedback acumulado) y se relaciona con lo que coincidió en el mismo
+        latido; el episodio del día pasa al almacén de días. El búfer y el día se vacían."""
+        por_latido: Dict[int, List[Dict[str, Any]]] = {}
+        for _, _, p in sorted(self.diurno, reverse=True):
+            por_latido.setdefault(int(p.get("latido", 0)), []).append(p)
+            nodo = self.nodo(p)
+            n = self.grafo.setdefault(nodo, {"fuerza": 0.0, "valencia": 0.0, "usos": 0, "ultimo": 0,
+                                              "tipo": p.get("tipo", ""), "clase": p.get("clase", "")})
+            n["fuerza"] = round(n["fuerza"] + max(0.0, float(p["puntuacion"])), 4)
+            n["valencia"] = round(n["valencia"] + float(p["puntuacion"]) - float(p["arousal"]), 4)
+            n["usos"] += 1
+            n["ultimo"] = max(n["ultimo"], int(p.get("latido", 0)))
+        relaciones = 0
+        for piezas in por_latido.values():
+            nodos = sorted({self.nodo(p): float(p["puntuacion"]) for p in piezas[: self.NODOS_POR_LATIDO]}.items())
+            for i, (a, pa) in enumerate(nodos):
+                for b, pb in nodos[i + 1:]:
+                    self.relaciones[(a, b)] = round(self.relaciones.get((a, b), 0.0) + max(0.0, min(pa, pb)), 4)
+                    relaciones += 1
+        consolidadas = len(self.diurno)
+        if self.dia:
+            self.dias.append({"fin": ahora, "latidos": len(self.dia), "feedback": round(sum(d["feedback"] for d in self.dia), 4),
+                              "ondas": list(self.dia)})
+            del self.dias[: max(0, len(self.dias) - self.DIAS_GUARDADOS)]
+        self.diurno.clear()
+        self.dia.clear()
+        return {"piezas_consolidadas": consolidadas, "relaciones": relaciones}
 
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1

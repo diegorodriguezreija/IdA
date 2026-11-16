@@ -341,6 +341,8 @@ class Organismo:
             if self.soma.dormido and not estaba_dormido:
                 if self.con_experiencia:
                     self.memoria.consolidar(self.ciclo)
+                    if self.perfil.mecanismos.consolidacion:
+                        self.memoria.consolidar_dia(self.ciclo)
                 if self.al_dormir:
                     self.al_dormir(self)
             if al_latir:
@@ -362,4 +364,6 @@ class Organismo:
                 restante = self.perfil.frecuencia_ms / 1000.0 - (time.perf_counter() - t0)
                 if restante > 0:
                     time.sleep(restante)
+        if self.con_experiencia and self.perfil.mecanismos.consolidacion and not self.perfil.duerme:
+            self.memoria.consolidar_dia(self.ciclo)   # mundos sin sueño: al final de la vida o de la partida
         return self.ciclo

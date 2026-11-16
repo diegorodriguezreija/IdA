@@ -18,3 +18,16 @@ def test_buffer_diurno_de_tamano_fijo_guarda_lo_mejor_puntuado():
     ids = sorted(p["id"] for _, _, p in mem.diurno)
     assert len(mem.diurno) == 3 and ids == ["b", "c", "d"]     # d (0,1 + 0,5) entra; a (0,2) sale
     assert [d["latido"] for d in mem.dia] == [1, 2] and mem.dia[1]["feedback"] == 0.5
+
+
+def test_consolidacion_pasa_el_bufer_al_grafo_y_lo_vacia():
+    mem = Memoria()
+    mem.marcar(1, [{"id": "s1", "tipo": "Objeto", "clase": "seta", "arousal": 0.6},
+                   {"id": "l1", "tipo": "Objeto", "clase": "lobo", "arousal": 0.9}], feedback=-0.2, resumen={})
+    mem.marcar(2, [{"id": "s2", "tipo": "Objeto", "clase": "seta", "arousal": 0.5}], feedback=0.0, resumen={})
+    r = mem.consolidar_dia(3)
+    assert r["piezas_consolidadas"] == 3 and not mem.diurno and not mem.dia
+    seta = mem.grafo["Objeto:seta"]
+    assert seta["usos"] == 2 and seta["fuerza"] == round(0.4 + 0.5, 4) and seta["valencia"] == -0.2
+    assert mem.relaciones[("Objeto:lobo", "Objeto:seta")] == 0.4     # coincidieron en el latido 1
+    assert len(mem.dias) == 1 and mem.dias[0]["latidos"] == 2
