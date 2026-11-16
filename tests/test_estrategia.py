@@ -511,3 +511,21 @@ def test_valencia_explicita_en_soma_y_emocion():
     e.reactiva(ctx)
     p = onda.ef("Emocion")["emocion"]
     assert p.carga["valencia"] == pytest.approx(0.4) and p.arousal == pytest.approx(0.2)
+
+
+def test_habituacion_y_sensibilizacion_en_supervivencia():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.vocabulario import Relacion
+    from ida.sistemas.s1 import relacion_supervivencia
+
+    mem = Memoria()
+    ctx = Contexto(Onda(5, 100, 1e9), Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    sombra = Pieza("s", "Objeto", carga={"clase": "sombra", "rasgos": {}})
+    assert relacion_supervivencia(ctx, sombra, 0.4, 0.0) == ("neutro", 0.0, 1.0)            # desconocido
+    mem.clases_vistas["sombra"] = 20                                                        # 20 encuentros sin daño
+    categoria, trust, factor = relacion_supervivencia(ctx, sombra, 0.4, 0.0)
+    assert categoria == "neutro" and trust == 1.0 and factor == pytest.approx(0.6)          # habituado
+    mem.saber[("sombra", Relacion.PELIGROSO)] = Proposicion("sombra", Relacion.PELIGROSO, confianza=0.8)
+    categoria, trust, factor = relacion_supervivencia(ctx, sombra, 0.4, 0.0)
+    assert categoria == "peligro" and factor == pytest.approx(1.4)                          # sensibilizado tras un daño
