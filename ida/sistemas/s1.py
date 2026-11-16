@@ -19,7 +19,8 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expecta
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
+                                exterocepcion, lugares, mejor, objetos)
 
 
 def _cosas(ctx: Contexto) -> list:

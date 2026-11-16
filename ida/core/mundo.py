@@ -106,6 +106,9 @@ class MecanismosMemoria:
 # Mecanismos del bloque E aceptados por el benchmark (docs/MEDICIONES_E.md); los mundos con memoria
 # completa y sueño los declaran en su perfil.
 MEMORIA_E = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True)
+# Bloque F: Expectativa (F1) y Plan (F2) sobre la memoria del bloque E (docs/MEDICIONES_F.md).
+MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True,
+                               expectativa=True, plan=True)
 
 
 @dataclass

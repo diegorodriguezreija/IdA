@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Set
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
-from ida.core.mundo import MEMORIA_E, Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.mundo import MEMORIA_EF, Efecto, Entidad, Mundo, Observacion, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas.s1 import Alimentarse
@@ -71,7 +71,7 @@ def clase_de(nombre: str) -> str:
 
 class MundoArchivos(Mundo):
     nombre = "archivos"
-    perfil = Perfil(mecanismos=MEMORIA_E, frecuencia_ms=100.0,
+    perfil = Perfil(mecanismos=MEMORIA_EF, frecuencia_ms=100.0,
                     amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
 
     def __init__(self, datos: str = "datos/archivos", **_):

@@ -381,7 +381,7 @@ class RecordarComida(Plan):
     def cumplido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
         if paso["meta"] == "encontrar":
             return any(o.clase == paso["clase"] for o in objetos(ctx))
-        return bool(ctx.observacion) and ctx.observacion.ubicacion == paso["meta"]
+        return ctx.observacion is not None and ctx.observacion.ubicacion == paso["meta"]
 
     def fallido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
