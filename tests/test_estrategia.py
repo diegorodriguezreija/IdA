@@ -254,3 +254,21 @@ def test_defensa_armada_de_crafter_lee_la_percepcion():
     assert ok and propuesta.verbo == Verbo.ATACAR and propuesta.arousal == 0.96
     assert eleccion(6 / 9 * 100, {})[0] is False                  # sin espada en el inventario percibido
     assert eleccion(3 / 9 * 100, {"wood_sword": 1})[0] is False   # salud 3 < 4
+
+
+def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s1 import Estrategia, SeguirEnMovimiento
+
+    comp = _comp(lambda: Estrategia(est.Catalogo([_def("comer", 10, elegible=lambda n: n >= 3), SeguirEnMovimiento()])))
+    activas: dict = {}
+    nombres = []
+    for n in range(1, 5):
+        onda = Onda(n, 100, 1e9, estrategias=activas)
+        ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER}, con_experiencia=False)
+        onda.percibir("Exterocepcion", Pieza("celda", "Exterocepcion", carga={"clase": "suelo", "rasgos": {"lugar": 1.0}}))
+        imp = _comp(lambda: _Tipo("Impulso"))
+        imp.registrar(ctx, imp.pieza(ctx, "seguridad", 0.5, carga={"intensidad": 0.5, "objetivo": 0.0, "rasgo": None}))
+        comp.reactiva(ctx)
+        nombres.append([p.carga["nombre"] for p in activas.values()])
+    assert nombres == [["seguir_en_movimiento"], ["seguir_en_movimiento"], ["comer"], ["comer"]]

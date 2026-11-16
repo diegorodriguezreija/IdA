@@ -59,17 +59,19 @@ class Definicion:
     - ``reflejo``: estrategia innata corta, de duración fija y prioridad máxima (decisión 6).
     - ``ultimo_recurso``: respuesta innata cuando todas las demás del impulso están agotadas.
     - ``rasgo``: sirve también a cualquier impulso cuya necesidad se satisface con ese rasgo.
+    - ``cualquier_impulso``: sirve a cualquier impulso (respuestas de último recurso genéricas).
     """
 
     nombre: str = "estrategia"
     impulsos: Tuple[str, ...] = ()
     rasgo: Optional[str] = None
+    cualquier_impulso: bool = False
     prioridad: int = 0
     reflejo: bool = False
     ultimo_recurso: bool = False
 
     def sirve(self, impulso: str, rasgo: Optional[str]) -> bool:
-        return impulso in self.impulsos or (self.rasgo is not None and self.rasgo == rasgo)
+        return self.cualquier_impulso or impulso in self.impulsos or (self.rasgo is not None and self.rasgo == rasgo)
 
     def elegible(self, ctx: Any, impulso: str, intensidad: float) -> bool:
         return True

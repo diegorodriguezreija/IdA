@@ -9,7 +9,7 @@
 | Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda) |
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
-| Actuar      | Accion         | Acción de cada estrategia activa, con su origen; el mal menor si no se puede esperar |
+| Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -195,6 +195,29 @@ class QuietoOHuir(Definicion):
         return Propuesta(Verbo.ESPERAR, "", urgencia, 0.6, "último recurso: quedarse quieto")
 
 
+class SeguirEnMovimiento(Definicion):
+    """Último recurso de cualquier impulso en un mundo que no deja esperar: si ninguna otra estrategia
+    es elegible, moverse al lugar menos malo (el más nutritivo y menos peligroso). Cede en cuanto
+    otra estrategia del impulso vuelve a ser elegible. Antes era «el mal menor» de ``Accion``."""
+
+    nombre = "seguir_en_movimiento"
+    cualquier_impulso = True
+    ultimo_recurso = True
+
+    @staticmethod
+    def _destino(ctx: Contexto) -> Optional[Pieza]:
+        return mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return Verbo.ESPERAR not in ctx.verbos and self._destino(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        destino = self._destino(ctx)
+        if destino is None:
+            return None
+        return Propuesta(Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: seguir en movimiento", clase=destino.clase)
+
+
 def _comestible_cerca(ctx: Contexto) -> Optional[Pieza]:
     comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and al_alcance(o)]
     return mejor(comestibles, lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
@@ -241,7 +264,7 @@ class AcercarseALaComida(Definicion):
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), ComerAlAlcance(), AcercarseALaComida()]
+    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), ComerAlAlcance(), AcercarseALaComida(), SeguirEnMovimiento()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------
@@ -298,6 +321,8 @@ class Estrategia(Componente):
       o al agotarse (agotada; no se vuelve a elegir durante ``Perfil.enfriamiento_estrategia``).
     - Agotar una estrategia de Seguridad cambia de estrategia, no abandona el impulso; si todas
       las elegibles están agotadas, último recurso innato (quedarse quieto o huir).
+    - Si nada es elegible para un impulso en un mundo que no deja esperar, último recurso genérico
+      (seguir en movimiento). Un último recurso cede en cuanto otra estrategia es elegible.
     - Elección: valor aprendido por impulso y estrategia durante la vida (mérito = progreso final,
       fuerza = intensidad inicial) y prioridad innata para desempatar; la apertura regula cuánto se
       prueba otra al azar. Sin experiencia no se aprende ni se explora.
@@ -342,6 +367,9 @@ class Estrategia(Componente):
                 notas["abandonos"].append(c["nombre"])
             elif definicion is None or not definicion.elegible(ctx, c["impulso"], intensidad):
                 self._cerrar(ctx, p, est.SIN_OBJETO)
+            elif definicion.ultimo_recurso and self._mejor(ctx, c["impulso"], imp.carga.get("rasgo") if imp is not None else None, intensidad):
+                self._cerrar(ctx, p, est.SUSTITUIDA)     # un último recurso cede en cuanto hay otra opción
+                notas["sustituciones"] += 1
 
         sobresalto = onda.ef("Reflejo").get("sobresalto")
         reflejo_activo = any(p.sistema == self.sistema and p.carga["reflejo"] for p in onda.estrategias.values())
@@ -394,9 +422,11 @@ class Estrategia(Componente):
     def _elegir(self, ctx: Contexto, impulso: str, rasgo: Optional[str], intensidad: float) -> Optional[Definicion]:
         elegibles, disponibles = self._disponibles(ctx, impulso, rasgo, intensidad)
         if not disponibles:
+            ultimos = [d for d in self.catalogo.todas() if d.ultimo_recurso and d.sirve(impulso, rasgo)]
             if elegibles and impulso == SEGURIDAD:     # todas agotadas: respuesta innata de último recurso
-                return next((d for d in self.catalogo.todas() if d.ultimo_recurso and d.sirve(impulso, rasgo)), None)
-            return None
+                return next((d for d in ultimos if not d.cualquier_impulso), None)
+            # Nada elegible: en un mundo que no deja esperar, seguir en movimiento.
+            return next((d for d in ultimos if d.cualquier_impulso and d.elegible(ctx, impulso, intensidad)), None)
         if ctx.con_experiencia and len(disponibles) > 1 and ctx.azar.probabilidad(self.EXPLORACION * ctx.arquetipo.apertura):
             return ctx.azar.eleccion(disponibles)
         return max(disponibles, key=lambda d: self._clave(impulso, d))
@@ -447,5 +477,5 @@ def crear_s1() -> Sistema:
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo)]),
-        Modulo("Actuar", [Accion(catalogo, mal_menor=True)]),
+        Modulo("Actuar", [Accion(catalogo)]),
     ])
