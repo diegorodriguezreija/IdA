@@ -15,7 +15,7 @@ proposiciones **demostradas**.
 | Reaccionar  | Intencion            | Intención: saber y las que declare el mundo (el qué deliberado) |
 | Reaccionar  | Estrategia           | Estrategias de conocimiento: evitar, comer y coger lo sabido; estudiar |
 | Actuar      | Accion               | Acción de cada estrategia activa de S3, con su origen |
-| Reaccionar  | Impulso            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
+| Reaccionar  | Impulso              | Control gradual según la certeza, sobre piezas Impulso (sube o baja impulsos) |
 """
 
 from typing import List, Optional, Tuple
@@ -200,26 +200,38 @@ class CogerLoUtil(Definicion):
 
 
 class Impulso(Componente):
-    """Freno prefrontal: baja los candidatos que van contra lo demostrado (acercarse a lo peligroso,
-    comer lo que se sabe que no alimenta)."""
+    """Control de S3 de arriba abajo (decisión 13): con certeza, sube los impulsos que encajan con lo
+    que sabe y baja los que no. Gradual, no un interruptor: el cambio es proporcional a la confianza
+    de lo demostrado (hasta ``FUERZA``). Sin nada demostrado, no toca nada. Solo modifica piezas
+    ``Impulso`` (de cualquier sistema, decisión 14); el Tribunal suma ese cambio al arousal de las
+    acciones de ese impulso.
+    - Peligro demostrado cerca (proximidad ≥ 0,5): sube Seguridad.
+    - Todo lo comestible a la vista se sabe que no nutre: baja las necesidades que satisface lo nutritivo.
+    """
 
     tipo = "Impulso"
-    entradas = ("Proposicion",)
+    FUERZA = 0.2
 
     def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.con_experiencia:
+            return
         mem, ahora = ctx.memoria, ctx.latido
-        for c in ctx.onda.acc("Accion").values():
-            verbo, clase = c.carga["verbo"], c.carga.get("clase", "")
-            if not clase or c.sistema == "S3":
-                continue
-            frenar = None
-            if verbo in (Verbo.MOVER, Verbo.COMER, Verbo.COGER) and mem.demostrada(clase, Relacion.PELIGROSO, ahora):
-                frenar = f"{clase} es peligroso"
-            nutr = mem.proposicion(clase, Relacion.NUTRITIVO)
-            if verbo == Verbo.COMER and nutr is not None and nutr.estado(ahora) == EstadoSaber.REFUTADA:
-                frenar = f"{clase} no alimenta"
-            if frenar:
-                self.modificar(ctx, c, arousal=c.arousal * 0.4, confianza=c.confianza * 0.5, entrada=f"S3:frenado ({frenar})")
+        impulsos = ctx.onda.ef("Impulso")
+        seguridad = impulsos.get("seguridad")
+        if seguridad is not None:
+            certeza = max((p.confianza for o in objetos(ctx) if o.rasgo("proximidad") >= 0.5
+                           for p in [mem.proposicion(o.clase, Relacion.PELIGROSO)] if p is not None and mem.demostrada(o.clase, Relacion.PELIGROSO, ahora)),
+                          default=0.0)
+            if certeza > 0.0:
+                self.modificar(ctx, seguridad, arousal=seguridad.arousal + self.FUERZA * certeza, entrada="S3: peligro demostrado cerca")
+        comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3]
+        refutadas = [mem.proposicion(o.clase, Relacion.NUTRITIVO) for o in comestibles]
+        if comestibles and all(p is not None and p.estado(ahora) == EstadoSaber.REFUTADA for p in refutadas):
+            confianza_nutre = max(p.confianza for p in refutadas if p is not None)
+            certeza = 1.0 - confianza_nutre        # certeza de que no nutre
+            for imp in impulsos.values():
+                if imp.carga.get("rasgo") == "nutritivo":
+                    self.modificar(ctx, imp, arousal=imp.arousal - self.FUERZA * certeza, entrada="S3: lo que hay no nutre")
 
 
 class Estudio(ConPropuestas):

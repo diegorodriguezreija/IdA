@@ -456,3 +456,31 @@ def test_alimentarse_con_prudencia_rechaza_indicios_de_dano_y_lo_desconocido():
     assert mem.demostrada("buena", Relacion.NUTRITIVO, 5)
     assert d.rechaza(ctx, Pieza("n", "Objeto", carga={"clase": "nueva"}))      # neofobia: hay algo que se sabe que nutre
     assert not d.rechaza(ctx, Pieza("b", "Objeto", carga={"clase": "buena"}))
+
+
+def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.sentidos import Tribunal
+    from ida.core.vocabulario import Relacion
+    from ida.sistemas.s3 import Impulso as ImpulsoS3
+
+    mem = Memoria()
+    p = Proposicion("lobo", Relacion.PELIGROSO, confianza=0.9)
+    p.confirmaciones = 10
+    mem.saber[("lobo", Relacion.PELIGROSO)] = p
+    onda = Onda(5, 100, 1e9)
+    ctx = Contexto(onda, Soma(estres=1.0), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    onda.percibir("Objeto", Pieza("l1", "Objeto", 0.5, carga={"clase": "lobo", "rasgos": {"proximidad": 0.8}}))
+    s1 = _comp(lambda: _Tipo("Impulso"))
+    seg = s1.registrar(ctx, s1.pieza(ctx, "seguridad", 0.5, carga={"intensidad": 0.5, "objetivo": 0.0, "rasgo": None}))
+    control = _comp(ImpulsoS3)
+    control.sistema = "S3"
+    control.reactiva(ctx)
+    assert seg.arousal == pytest.approx(0.5 + 0.2 * 0.9)                    # sube en proporción a la certeza
+    onda.proponer("Accion", Pieza("a", "Accion", 0.5, 0.5, {"verbo": Verbo.MOVER, "objetivo": "a", "clase": "", "motivo": "",
+                                                          "datos": {}, "origen": {"impulso": "seguridad"}}, sistema="S1"))
+    t = Tribunal()
+    t.sistema = "CORE"
+    t.reactiva(ctx)
+    assert onda.notas["evaluados"][0]["base"] == pytest.approx(0.5 + 0.18)  # el Tribunal suma la modulación (estrés 1)

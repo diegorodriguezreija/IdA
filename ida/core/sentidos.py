@@ -74,7 +74,8 @@ class Ambiente(Componente):
 class Tribunal(Componente):
     """Arbitra los candidatos de Acción de S1, S2 y S3.
 
-    Puntuación = arousal·estrés + confianza·(1 − estrés) + experiencia.
+    Puntuación = arousal·estrés + confianza·(1 − estrés) + experiencia, con el arousal ya modulado:
+    el de la acción más lo que S2 o S3 hayan subido o bajado su impulso de origen.
     - Con estrés manda la urgencia; en calma, la confianza.
     - La experiencia (activa y proactiva) sesga con un peso pequeño los candidatos que ya existen;
       no añade candidatos.
@@ -103,9 +104,14 @@ class Tribunal(Componente):
         estres = ctx.soma.estres
         peso = ctx.perfil.peso_experiencia if ctx.con_experiencia else 0.0
         en_curso = self._estrategia_en_curso(ctx)
+        impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
         evaluados: List[Dict[str, Any]] = []
         for c in candidatos:
-            base = c.arousal * estres + c.confianza * (1.0 - estres)
+            # Arousal ya modulado (decisión 23): lo que S2 o S3 hayan subido o bajado el impulso de origen.
+            imp = impulsos.get(c.carga.get("origen", {}).get("impulso", ""))
+            modulacion = float(imp.arousal) - float(imp.carga.get("intensidad", imp.arousal)) if imp is not None else 0.0
+            arousal = max(0.0, min(1.0, c.arousal + modulacion))
+            base = arousal * estres + c.confianza * (1.0 - estres)
             act, pro = ctx.memoria.sesgo(c.carga["verbo"], c.carga.get("clase", ""), ctx.latido) if peso else (0.0, 0.0)
             plus = 0.0
             if en_curso is not None and c.carga.get("origen", {}).get("estrategia") == en_curso.id:
