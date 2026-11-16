@@ -87,10 +87,10 @@ class Componente:
             cost=cost,
         )
 
-    def percibir(self, ctx: Contexto, pieza: Pieza) -> Pieza:
-        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia."""
-        ctx.onda.percibir(pieza.tipo, pieza, autor=self)
-        return pieza
+    def percibir(self, ctx: Contexto, pieza: Pieza) -> Optional[Pieza]:
+        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia.
+        Devuelve ``None`` si no queda amplitud y la pieza no entra."""
+        return pieza if ctx.onda.percibir(pieza.tipo, pieza, autor=self) else None
 
     def registrar(self, ctx: Contexto, pieza: Pieza) -> Pieza:
         ctx.onda.registrar(pieza.tipo, pieza, autor=self)
@@ -110,17 +110,22 @@ class Componente:
         confianza: float,
         motivo: str,
         clase: str = "",
+        origen: Optional[Dict[str, str]] = None,
         **datos: Any,
     ) -> Optional[Pieza]:
-        """Entrega un candidato de Acción al canal ``acc["Accion"]``. Solo el Tribunal ejecuta."""
+        """Entrega un candidato de Acción al canal ``acc["Accion"]``. Solo el Tribunal ejecuta.
+        ``origen`` (impulso y estrategia) viaja con la acción hasta ``ef["Accion"]``."""
         if verbo not in ctx.verbos:
             return None
+        carga: Dict[str, Any] = {"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos}
+        if origen:
+            carga["origen"] = dict(origen)
         p = self.pieza(
             ctx,
             id=f"{self.sistema}:{verbo.value}:{objetivo}",
             arousal=arousal,
             confianza=confianza,
-            carga={"verbo": verbo, "objetivo": objetivo, "clase": clase, "motivo": motivo, "datos": datos},
+            carga=carga,
             entradas=[self.nombre],
             tipo="Accion",
         )

@@ -7,18 +7,24 @@
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
-| Reaccionar  | Impulso        | Modula los candidatos existentes según el valor de su objetivo |
-| Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
-| Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
-| Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
+| Reaccionar  | Impulso          | Impulso propio: Exploración (apertura × novedad) |
+| Reaccionar  | Feedback         | Feedback de S2: mejora del placer y bajada del estrés |
+| Reaccionar  | Estrategia       | Estrategias de valor: explorar, refugiarse (hogar valorado), recordar_comida |
+| Actuar      | Accion           | Acción de cada estrategia activa de S2, con su origen |
 """
 
 import math
+from typing import List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
-from ida.sistemas.comun import al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
+
+
+EXPLORACION = "exploracion"
+SEGURIDAD = "seguridad"      # impulso de S1 al que también sirve refugiarse
 
 
 class Patron(Componente):
@@ -100,114 +106,148 @@ class Exteriorizacion(Componente):
 
 
 class Impulso(Componente):
-    """Convergencia sobre el canal común: sube o baja los candidatos según el valor de su objetivo."""
+    """Impulsos propios de S2 (decisión 10): Exploración, con intensidad cruda = apertura × la novedad
+    máxima a la vista (lugares y objetos). Ya no modula acciones: el «no comas esto» lo resuelve la
+    elección del objeto de las estrategias (C1)."""
 
     tipo = "Impulso"
-    entradas = ("Valor",)
 
     def reactiva(self, ctx: Contexto) -> None:
-        valores = ctx.onda.ev("Valor")
-        for c in ctx.onda.acc("Accion").values():
-            v = valores.get(c.carga["objetivo"])
-            if v is None:
-                continue
-            self.modificar(ctx, c, arousal=c.arousal + 0.15 * v.carga["valencia"], entrada=f"S2:valor {v.carga['valencia']:+.2f}")
+        novedad = max([lugar.rasgo("novedad") for lugar in lugares(ctx)] + [o.rasgo("novedad") for o in objetos(ctx)] + [0.0])
+        intensidad = acotar(ctx.arquetipo.apertura * novedad)
+        self.registrar(ctx, self.pieza(ctx, EXPLORACION, arousal=intensidad,
+                                       carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": None}))
 
 
-class Curiosidad(Componente):
-    """Sube cuando no hay peligro ni necesidad; lo nuevo atrae. Puntuación baja: solo gana si nada urge."""
+CANSANCIO = "cansancio"
 
-    tipo = "Curiosidad"
 
-    def reactiva(self, ctx: Contexto) -> None:
-        a = alarma(ctx)
-        peligro = a.carga["peligro"] if a else 0.0
-        if peligro >= 0.3 or ctx.soma.hambre() >= 0.6:
-            return
-        apertura = ctx.arquetipo.apertura
+def _peligro(ctx: Contexto) -> float:
+    a = alarma(ctx)
+    return float(a.carga["peligro"]) if a else 0.0
 
-        def _score_lugar(l: Pieza) -> float:
-            s = l.rasgo("novedad") - l.rasgo("peligro")
+
+# --- Estrategias de valor de S2 (decisión 10; tabla del C0) ---------------------------------------
+class Explorar(Definicion):
+    """Exploración (antes ``Curiosidad``): sin peligro (< 0,3) ni mucha hambre (< 0,6), recorrer el
+    lugar más nuevo (ponderado por lo que se recuerda de él) y coger lo útil al alcance. Son dos
+    acciones de la misma fase: las propone las dos y decide el Tribunal, como antes."""
+
+    nombre = "explorar"
+    impulsos = (EXPLORACION,)
+    prioridad = 10
+
+    @staticmethod
+    def _calma(ctx: Contexto) -> bool:
+        return _peligro(ctx) < 0.3 and ctx.soma.hambre() < 0.6
+
+    @staticmethod
+    def _nuevo(ctx: Contexto) -> Optional[Pieza]:
+        def puntuar(lugar: Pieza) -> float:
+            s = lugar.rasgo("novedad") - lugar.rasgo("peligro")
             if ctx.con_experiencia and ctx.memoria.activa:
-                val = ctx.memoria.valor_lugar(l.id)
-                s += max(-0.4, min(0.3, val * 0.15))
+                s += max(-0.4, min(0.3, ctx.memoria.valor_lugar(lugar.id) * 0.15))
             return s
 
-        nuevo = mejor(lugares(ctx), _score_lugar)
-        if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5:
-            ar = acotar(0.15 + 0.25 * apertura * nuevo.rasgo("novedad"))
-            self.registrar(ctx, self.pieza(ctx, "curiosidad", arousal=ar, carga={"hacia": nuevo.id}))
-            self.proponer(ctx, Verbo.MOVER, nuevo.id, ar, 0.5, "curiosidad: explorar", clase=nuevo.clase)
-        util = mejor([o for o in objetos(ctx) if al_alcance(o) and o.rasgo("recurso") >= 0.4 and o.rasgo("peligro") < 0.3],
+        evitar = cautela(ctx)[1]
+        nuevo = mejor([lugar for lugar in lugares(ctx) if lugar.id not in evitar], puntuar)
+        return nuevo if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5 else None
+
+    @staticmethod
+    def _util(ctx: Contexto) -> Optional[Pieza]:
+        if ctx.soma.cargando is not None:
+            return None
+        return mejor([o for o in objetos(ctx) if al_alcance(o) and o.rasgo("recurso") >= 0.4 and o.rasgo("peligro") < 0.3],
                      lambda o: o.rasgo("recurso") + o.rasgo("novedad"))
-        if util is not None and ctx.soma.cargando is None:
-            ar = acotar(0.2 + 0.3 * apertura * util.rasgo("recurso"))
-            self.proponer(ctx, Verbo.COGER, util.id, ar, 0.5, f"curiosidad: coger {util.clase}", clase=util.clase)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._calma(ctx) and (self._util(ctx) is not None or self._nuevo(ctx) is not None)
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> List[Propuesta]:
+        apertura = ctx.arquetipo.apertura
+        propuestas = []
+        nuevo = self._nuevo(ctx)
+        if nuevo is not None:
+            propuestas.append(Propuesta(Verbo.MOVER, nuevo.id, acotar(0.15 + 0.25 * apertura * nuevo.rasgo("novedad")), 0.5,
+                                        "curiosidad: explorar", clase=nuevo.clase))
+        util = self._util(ctx)
+        if util is not None:
+            propuestas.append(Propuesta(Verbo.COGER, util.id, acotar(0.2 + 0.3 * apertura * util.rasgo("recurso")), 0.5,
+                                        f"curiosidad: coger {util.clase}", clase=util.clase))
+        return propuestas
 
 
-class Hogar(Componente):
-    """Hogar seguro en tres fases: recordar dónde se estuvo bien (lo hace el Core al cerrar episodios),
-    volver cuando hay cansancio o peligro, y descansar allí. Descansar se propone también sin hogar
-    si el cansancio es alto y hay calma."""
+class Refugiarse(Definicion):
+    """Cansancio y Seguridad (antes ``Hogar``): el refugio que se valora, el hogar recordado. Volver a
+    él con cansancio o peligro (≥ 0,4), por la vista o por la ruta del hipocampo, y descansar allí;
+    con mucho cansancio y en calma también se descansa sin hogar (decisión 10)."""
 
-    tipo = "Hogar"
+    nombre = "refugiarse"
+    impulsos = (CANSANCIO, SEGURIDAD)
+    prioridad = 10
 
-    def reactiva(self, ctx: Contexto) -> None:
-        soma, perfil = ctx.soma, ctx.perfil
-        if not perfil.duerme:
-            return
-        a = alarma(ctx)
-        peligro = a.carga["peligro"] if a else 0.0
-        cansancio = soma.cansancio()
-        hogar = ctx.memoria.hogar() if perfil.hogar else None
+    @staticmethod
+    def _estado(ctx: Contexto) -> Tuple[float, float, Optional[str], str]:
+        hogar = ctx.memoria.hogar() if ctx.perfil.hogar else None
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
-        if hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4):
-            puerta = next((l for l in lugares(ctx) if l.id == hogar), None)
-            if puerta is None and ctx.con_experiencia:
-                salto = ctx.memoria.ruta(aqui, hogar)
-                if salto:
-                    # El retorno al hogar por memoria espacial no debe pisar la huida si la casilla implica peligro
-                    umbral_p = 0.2 if peligro >= 0.4 else 0.8
-                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < umbral_p), None)
-            if puerta is not None:
-                # Urgencia mayor cuando es refugio directo sin peligro inmediato o cansancio manda
-                ar = acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7))
-                self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.7, "volver al hogar", clase=puerta.clase)
-        if cansancio >= 0.6 and peligro < 0.3 and (hogar is None or hogar == aqui or cansancio >= 0.85):
-            ar = acotar(0.4 + 0.5 * cansancio)
-            self.registrar(ctx, self.pieza(ctx, "descansar", arousal=ar, carga={"en_hogar": hogar == aqui}))
-            self.proponer(ctx, Verbo.DORMIR, aqui, ar, 0.8, "cansancio: dormir" + (" en el hogar" if hogar == aqui else ""))
+        return _peligro(ctx), ctx.soma.cansancio(), hogar, aqui
+
+    def _puerta(self, ctx: Contexto) -> Optional[Pieza]:
+        peligro, cansancio, hogar, aqui = self._estado(ctx)
+        if not (hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4)):
+            return None
+        puerta = next((lugar for lugar in lugares(ctx) if lugar.id == hogar), None)
+        if puerta is None and ctx.con_experiencia:
+            salto = ctx.memoria.ruta(aqui, hogar)
+            if salto:
+                # El retorno por memoria espacial no debe pisar la huida si la casilla implica peligro
+                umbral_p = 0.2 if peligro >= 0.4 else 0.8
+                puerta = next((lugar for lugar in lugares(ctx) if lugar.id == salto and lugar.rasgo("peligro") < umbral_p), None)
+        return puerta
+
+    def _descansar(self, ctx: Contexto, impulso: str) -> bool:
+        peligro, cansancio, hogar, aqui = self._estado(ctx)
+        return impulso == CANSANCIO and cansancio >= 0.6 and peligro < 0.3 and (hogar is None or hogar == aqui or cansancio >= 0.85)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return ctx.perfil.duerme and (self._descansar(ctx, impulso) or self._puerta(ctx) is not None)
+
+    def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
+        return "descansar" if self._descansar(ctx, estrategia.carga["impulso"]) else "volver"
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        peligro, cansancio, hogar, aqui = self._estado(ctx)
+        if estrategia.carga.get("paso") == "descansar":
+            return Propuesta(Verbo.DORMIR, aqui, acotar(0.4 + 0.5 * cansancio), 0.8,
+                             "cansancio: dormir" + (" en el hogar" if hogar == aqui else ""))
+        puerta = self._puerta(ctx)
+        if puerta is None:
+            return None
+        return Propuesta(Verbo.MOVER, puerta.id, acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7)), 0.7, "volver al hogar", clase=puerta.clase)
 
 
-class Orientacion(Componente):
-    """Orientación espacial (hipocampo): ante necesidad nutritiva sin fuente visible,
-    navega hacia ubicaciones recordadas de clases demostradas o prometedoras como nutritivas.
-    """
+class RecordarComida(Definicion):
+    """Necesidades que satisface lo nutritivo (antes ``Orientacion``): con hambre (≥ 0,35), sin peligro
+    (< 0,4) y sin comida a la vista, ir por la ruta del hipocampo hacia donde se vio una clase que se
+    cree nutritiva (confianza ≥ 0,55) y no se sabe peligrosa. Si llega y no está, la olvida."""
 
-    tipo = "Orientacion"
+    nombre = "recordar_comida"
+    rasgo = "nutritivo"
+    prioridad = 10
 
-    def reactiva(self, ctx: Contexto) -> None:
+    @staticmethod
+    def _plan(ctx: Contexto) -> Optional[Tuple[Pieza, float, str]]:
         if not ctx.con_experiencia or not ctx.memoria.activa:
-            return
-        a = alarma(ctx)
-        peligro = a.carga["peligro"] if a else 0.0
+            return None
         hambre = ctx.soma.hambre()
-        if peligro >= 0.4 or hambre < 0.35:
-            return
-        # Solo actua si no hay un recurso comestible visible ya cercano en la escena
-        if any(o.rasgo("nutritivo") >= 0.3 for o in objetos(ctx)):
-            return
+        if _peligro(ctx) >= 0.4 or hambre < 0.35 or any(o.rasgo("nutritivo") >= 0.3 for o in objetos(ctx)):
+            return None
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         if not aqui:
-            return
+            return None
         candidatos = sorted(
-            (
-                (clase, prop)
-                for (clase, rel), prop in ctx.memoria.saber.items()
-                if rel == Relacion.NUTRITIVO
-                and prop.confianza >= 0.55
-                and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)
-            ),
+            ((clase, prop) for (clase, rel), prop in ctx.memoria.saber.items()
+             if rel == Relacion.NUTRITIVO and prop.confianza >= 0.55 and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)),
             key=lambda item: -item[1].confianza,
         )
         for clase, prop in candidatos:
@@ -217,18 +257,49 @@ class Orientacion(Componente):
                 continue
             if destino and destino != aqui:
                 salto = ctx.memoria.ruta(aqui, destino)
-                if salto:
-                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < 0.6), None)
-                    if puerta is not None:
-                        ar = acotar(0.25 + 0.45 * hambre * prop.confianza)
-                        self.registrar(ctx, self.pieza(ctx, "orientacion", arousal=ar, carga={"hacia": destino, "clase": clase}))
-                        self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.65, f"orientación: recordar {clase}", clase=puerta.clase)
-                        return
+                puerta = next((lugar for lugar in lugares(ctx) if lugar.id == salto and lugar.rasgo("peligro") < 0.6), None) if salto else None
+                if puerta is not None:
+                    return puerta, acotar(0.25 + 0.45 * hambre * prop.confianza), clase
+        return None
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._plan(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        plan = self._plan(ctx)
+        if plan is None:
+            return None
+        puerta, ar, clase = plan
+        return Propuesta(Verbo.MOVER, puerta.id, ar, 0.65, f"orientación: recordar {clase}", clase=puerta.clase)
+
+
+class Feedback(Componente):
+    """Feedback de S2 (decisión 5): mejora del placer y bajada del estrés respecto al latido anterior,
+    (Δ placer) / 100 − Δ estrés. Positivo = mejora. Es el mérito de las estrategias de S2, sea cual
+    sea el impulso al que sirven (S2 juzga con su criterio, el valor)."""
+
+    tipo = "Feedback"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        placer, estres = float(ctx.soma.placer), float(ctx.soma.estres)
+        previo = ctx.onda.ei("Feedback").get(f"feedback:{self.sistema}")
+        antes = previo.carga["estado"] if previo is not None else {"placer": placer, "estres": estres}
+        valor = round((placer - antes["placer"]) / 100.0 - (estres - antes["estres"]), 4)
+        impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
+        self.registrar(ctx, self.pieza(ctx, f"feedback:{self.sistema}", arousal=0.0,
+                                       carga={"valor": valor, "por_impulso": dict.fromkeys(impulsos, valor),
+                                              "estado": {"placer": placer, "estres": estres}}))
+
+
+def estrategias_s2() -> List[Definicion]:
+    return [Explorar(), Refugiarse(), RecordarComida()]
 
 
 def crear_s2() -> Sistema:
+    catalogo = Catalogo(estrategias_s2())
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron(), Emocion()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Curiosidad(), Hogar(), Orientacion()]),
+        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo)]),
     ])

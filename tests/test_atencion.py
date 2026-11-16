@@ -20,6 +20,10 @@ class _Impulso(Componente):
     tipo = "Impulso"
 
 
+class _Accion(Componente):
+    tipo = "Accion"
+
+
 def _ctx(onda: Onda) -> Contexto:
     return Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
 
@@ -54,11 +58,12 @@ def test_cambiar_arousal_cuesta_al_subir_y_al_bajar():
 
 def test_fuerza_maxima_por_pieza_recorta_el_cambio():
     onda = Onda(1, 10, 1e9, potencia_max=4.0)                  # fuerza máx. 0,4
-    ctx, v, imp = _ctx(onda), _comp(_Valor), _comp(_Impulso)
+    ctx, v = _ctx(onda), _comp(_Valor)
     p = v.percibir(ctx, v.pieza(ctx, "a", 0.9))
     assert p.arousal == pytest.approx(0.4) and p.registro[-1]["cambios"]["arousal_limitado"] == (0.9, pytest.approx(0.4))
-    c = v.proponer(ctx, Verbo.MOVER, "x", 0.3, 0.5, "prueba")
-    imp.modificar(ctx, c, arousal=1.0)
+    acc = _comp(_Accion)
+    c = acc.proponer(ctx, Verbo.MOVER, "x", 0.3, 0.5, "prueba")
+    acc.modificar(ctx, c, arousal=1.0)
     assert c.arousal == pytest.approx(0.7)
 
 
@@ -94,3 +99,17 @@ def test_solo_el_plazo_corta_el_latido():
     tiempo[0] = 0.051
     with pytest.raises(LatidoAgotado, match="plazo"):
         v.percibir(ctx, v.pieza(ctx, "b", 0.1))
+
+
+def test_el_core_escribe_con_autor_sin_pagar_y_percibir_devuelve_none_si_se_rechaza():
+    from ida.core.onda import AutorCore
+    from ida.core.pieza import Pieza
+
+    onda = Onda(1, 1, 1e9, potencia_max=0.1)
+    ctx, v = _ctx(onda), _comp(_Valor)
+    assert v.percibir(ctx, v.pieza(ctx, "a", 0.0)) is not None
+    assert v.percibir(ctx, v.pieza(ctx, "b", 0.0)) is None                 # sin amplitud: rechazada
+    s = Pieza("sorpresa_1", "Sorpresa", arousal=0.85)
+    assert onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))         # el Core no paga ni se recorta
+    assert s.arousal == 0.85 and s.registro[-1]["autor"] == "CORE.Organismo"
+    assert onda.amplitud_consumida == 1 and onda.potencia_consumida == 0.0

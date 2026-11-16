@@ -153,6 +153,7 @@ def ejecutar(
             resumen = {
                 "latidos": vividos,
                 "vivo": org.soma.esta_vivo,
+                "causa_muerte": org.causa_muerte,
                 "vitalidad": round(org.soma.vitalidad, 1),
                 "puntuacion": m.puntuacion(),
                 "guillotinas": org.contadores["guillotinas"],

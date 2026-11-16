@@ -9,8 +9,11 @@ Dimensión reactiva (el cuarteto de la experiencia):
 Atención (decisiones 15 y 18): la Onda tiene frecuencia (plazo), amplitud (cuántas piezas nuevas
 caben en ``ev`` y ``acc``: cada una cuesta 1) y potencia (cuánto arousal se puede otorgar o cambiar:
 cuesta |Δ arousal|, al subir y al bajar). Lo máximo que un componente cambia una pieza en un latido
-es potencia / amplitud. Escribir solo en ``ef`` (``registrar``) no cuesta. Los módulos del Core
-están exentos.
+es potencia / amplitud. Escribir solo en ``ef`` (``registrar``) no cuesta. El Core (sus módulos
+exentos o lo que firma con ``AutorCore``) no paga amplitud ni potencia y tampoco está sujeto a la
+fuerza máxima por pieza: sus piezas (sensores, sorpresa, sueño forzado) llevan el arousal que dicta
+el cuerpo, no lo que la atención permite cambiar en un latido. Aceptado por el autor en la revisión
+de C1 (decisión 5).
 
 Agotar amplitud o potencia no corta el latido: sin amplitud, la pieza nueva se rechaza; sin potencia
 suficiente, el cambio de arousal se recorta a lo que queda (a cero si no queda nada); lo demás sigue.
@@ -26,8 +29,8 @@ registro pasivo: el núcleo no llama a nadie; la observabilidad externa lo lee d
 
 Propiedad de las piezas (decisión 14): un componente solo emite o modifica piezas de su tipo, y
 solo a través de la Onda (``percibir``, ``registrar``, ``proponer``, ``modificar``), que lo
-comprueba y deja constancia en el registro de la pieza. El Core queda exento (``autor=None`` o
-módulo exento). Excepciones transitorias hasta el bloque C, en ``EXCEPCIONES_TRANSITORIAS``.
+comprueba y deja constancia en el registro de la pieza. El Core escribe con ``AutorCore`` (o desde
+un módulo exento) y no paga atención. Sin excepciones desde C3.5 (``EXCEPCIONES_TRANSITORIAS`` vacío).
 """
 
 import time
@@ -39,12 +42,11 @@ from ida.core.pieza import MAX_REGISTRO, Pieza, acotar
 
 Canales = Dict[str, Dict[str, Pieza]]
 
-# Excepciones transitorias a la propiedad por tipo (hasta el bloque C). Cada uso queda en el
+# Excepciones transitorias a la propiedad por tipo. Las dos del bloque B (cualquier componente
+# proponía Accion; un Impulso modulaba Accion) se quitaron en C3.5: solo los componentes Accion
+# proponen acciones y nadie modifica piezas Accion ajenas. Si se añade alguna, cada uso queda en el
 # registro de la pieza y se cuenta en ``Onda.excepciones``.
-EXCEPCIONES_TRANSITORIAS = {
-    "proponer_accion": "cualquier componente puede proponer piezas Accion",
-    "impulso_modula_accion": "un componente Impulso puede modular arousal y confianza de piezas Accion (y anotar sus entradas)",
-}
+EXCEPCIONES_TRANSITORIAS: Dict[str, str] = {}
 
 
 class LatidoAgotado(Exception):
@@ -61,6 +63,21 @@ class Autor(Protocol):
     nombre: str
     sistema: str
     tipo: str
+
+
+class AutorCore:
+    """El propio Core como autor de una pieza que escribe fuera de sus módulos (sueño forzado,
+    sorpresa). Queda en el registro; no paga atención ni se recorta."""
+
+    nombre = "Organismo"
+    sistema = "CORE"
+
+    def __init__(self, tipo: str):
+        self.tipo = tipo
+
+
+def _exento(onda_exenta: bool, autor: Optional[Autor]) -> bool:
+    return onda_exenta or (autor is not None and autor.sistema == "CORE")
 
 
 class DimensionReactiva:
@@ -87,6 +104,7 @@ class Onda:
         frecuencia_ms: float,
         ef_anterior: Optional[Canales] = None,
         potencia_max: Optional[float] = None,
+        estrategias: Optional[Dict[str, Pieza]] = None,
         reloj: Callable[[], float] = time.perf_counter,
     ):
         self.ciclo = ciclo
@@ -97,6 +115,9 @@ class Onda:
         self.potencia_consumida = 0.0
         self.consumo: Dict[str, Dict[str, float]] = {}   # por sistema: gasto, rechazos y recortes
         self.amplitud_agotada = False                     # algún sistema se quedó sin amplitud
+        # Estrategias activas de todos los sistemas. El Core pasa el mismo diccionario en cada latido,
+        # así que se conservan entre latidos (decisión 4); solo ``activar`` y ``cerrar`` las cambian.
+        self.estrategias: Dict[str, Pieza] = estrategias if estrategias is not None else {}
         self.reactiva = DimensionReactiva(ef_anterior)
         self._reloj = reloj
         self._t0 = reloj()
@@ -155,8 +176,8 @@ class Onda:
         """Cobra la amplitud y la potencia de llevar un arousal de ``antes`` a ``despues``.
 
         Devuelve el arousal resultante, recortado a la potencia que quede, o ``None`` si no queda
-        amplitud para una pieza nueva. Solo el plazo lanza ``LatidoAgotado``. Exento: no cobra."""
-        if self.exento:
+        amplitud para una pieza nueva. Solo el plazo lanza ``LatidoAgotado``. El Core no paga."""
+        if _exento(self.exento, autor):
             return despues
         self.control_vital(0, donde=donde)
         c = self._cuenta(autor)
@@ -175,9 +196,9 @@ class Onda:
         c["potencia"] += gasto
         return despues
 
-    def _limitar(self, antes: float, despues: float) -> float:
-        """Recorta un cambio de arousal a la fuerza máxima por pieza (en los módulos exentos, sin límite)."""
-        if self.exento:
+    def _limitar(self, antes: float, despues: float, autor: Optional[Autor] = None) -> float:
+        """Recorta un cambio de arousal a la fuerza máxima por pieza (el Core, sin límite)."""
+        if _exento(self.exento, autor):
             return despues
         f = self.fuerza_max
         return max(antes - f, min(antes + f, despues))
@@ -188,14 +209,7 @@ class Onda:
         usada, si alguna. El Core (sin autor o en un módulo exento) no se comprueba."""
         if autor is None or self.exento or autor.tipo == pieza.tipo:
             return None
-        if pieza.tipo == "Accion" and op == "proponer":
-            excepcion = "proponer_accion"
-        elif pieza.tipo == "Accion" and op == "modificar" and autor.tipo == "Impulso" and set(campos) <= {"arousal", "confianza", "entrada"}:
-            excepcion = "impulso_modula_accion"
-        else:
-            raise PiezaAjena(f"{autor.sistema}.{autor.nombre} (tipo {autor.tipo}) no puede {op} una pieza {pieza.tipo} ({pieza.id})")
-        self.excepciones[excepcion] = self.excepciones.get(excepcion, 0) + 1
-        return excepcion
+        raise PiezaAjena(f"{autor.sistema}.{autor.nombre} (tipo {autor.tipo}) no puede {op} una pieza {pieza.tipo} ({pieza.id})")
 
     def _anotar(self, pieza: Pieza, autor: Optional[Autor], op: str, excepcion: Optional[str] = None,
                 cambios: Optional[Dict[str, Any]] = None) -> None:
@@ -223,7 +237,7 @@ class Onda:
         cambio recortado a la fuerza máxima por pieza y a la potencia que quede. ``False`` si se rechaza."""
         existente = fase.get(canal, {}).get(pieza.id)
         antes = existente.arousal if existente is not None else 0.0
-        resultado = self._cobrar(autor, 0 if existente is not None else 1, antes, self._limitar(antes, pieza.arousal), canal)
+        resultado = self._cobrar(autor, 0 if existente is not None else 1, antes, self._limitar(antes, pieza.arousal, autor), canal)
         if resultado is None:
             return False
         cambios = None
@@ -265,7 +279,7 @@ class Onda:
         excepcion = self._propiedad(autor, pieza, "modificar", campos)
         cambios: Dict[str, Any] = {}
         if arousal is not None:
-            nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal)), pieza.tipo)
+            nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal), autor), pieza.tipo)
             if nuevo is not None and nuevo != pieza.arousal:
                 cambios["arousal"] = (pieza.arousal, nuevo)
                 pieza.arousal = nuevo
@@ -283,7 +297,27 @@ class Onda:
         self._anotar(pieza, autor, "modificar", excepcion, cambios)
         return pieza
 
+    # --- estrategias ------------------------------------------------------
+    def activar(self, pieza: Pieza, autor: Optional[Autor] = None) -> Pieza:
+        """Pone una estrategia entre las activas (se conserva entre latidos) y la registra en ``ef``."""
+        excepcion = self._propiedad(autor, pieza, "activar")
+        self._anotar(pieza, autor, "activar", excepcion)
+        self.estrategias[pieza.id] = pieza
+        self.reactiva.ef.setdefault(pieza.tipo, {})[pieza.id] = pieza
+        return pieza
+
+    def cerrar(self, pieza: Pieza, estado: str, autor: Optional[Autor] = None) -> Pieza:
+        """Saca una estrategia de las activas con su estado final."""
+        self.modificar(pieza, autor, carga={"estado": estado})
+        self.estrategias.pop(pieza.id, None)
+        self.reactiva.ef.setdefault(pieza.tipo, {})[pieza.id] = pieza
+        return pieza
+
     # --- lectura -----------------------------------------------------------
+    def ef(self, canal: str) -> Dict[str, Pieza]:
+        """Estado final de un canal en este latido (lo registrado, con o sin atención)."""
+        return self.reactiva.ef.get(canal, {})
+
     def ev(self, canal: str) -> Dict[str, Pieza]:
         return self.reactiva.ev.get(canal, {})
 

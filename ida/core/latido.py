@@ -21,13 +21,13 @@ from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
-from ida.core.onda import Canales, LatidoAgotado, Onda
+from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Actuador, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
+from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
-CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion"}
+CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente"}
 
 
 class Organismo:
@@ -57,7 +57,7 @@ class Organismo:
 
         self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
         self.tribunal = Tribunal()
-        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion()], exento=True)
+        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
@@ -74,13 +74,23 @@ class Organismo:
                 else:
                     self._sistema(sistema).añadir(etapa, comp)
 
+        # Estrategias propias del mundo: al catálogo del componente Estrategia de cada sistema.
+        for sistema, definiciones in mundo.estrategias_propias().items():
+            elige: Any = next((c for c in self._sistema(sistema).componentes() if c.tipo == "Estrategia"), None)
+            if elige is None:
+                raise ValueError(f"{sistema} no tiene componente Estrategia para las estrategias de {mundo.nombre}")
+            for d in definiciones:
+                elige.catalogo.añadir(d)
+
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
+        self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos
         self.ultimo_efecto: Optional[Efecto] = None
+        self.causa_muerte: Optional[str] = None
         self.episodio: Optional[Episodio] = None
         self._vit_ep = self.soma.vitalidad
         self._ali_ep = self.soma.alimentacion
-        self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0}
+        self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
@@ -103,7 +113,7 @@ class Organismo:
         if obs.dormido is not None:
             soma.dormido = obs.dormido
         frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
-        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia)
+        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias)
         ctx = Contexto(
             onda,
             soma,
@@ -153,6 +163,8 @@ class Organismo:
             if d is not None:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
+        if onda.notas.get("plus_decide"):
+            self.contadores["plus_decide"] += 1
         ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None
@@ -174,8 +186,7 @@ class Organismo:
         p = Pieza(id=f"CORE:{verbo.value}:", tipo="Accion", arousal=1.0, confianza=1.0,
                   carga={"verbo": verbo, "objetivo": "", "clase": "", "motivo": motivo, "datos": {}},
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
-        ctx.onda.reactiva.acc.setdefault("Accion", {})[p.id] = p
-        ctx.onda.registrar("Accion", p)
+        ctx.onda.proponer("Accion", p, autor=AutorCore("Accion"))
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -201,10 +212,20 @@ class Organismo:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
         if ap.sorpresa:
             s = Pieza(id=f"sorpresa_{ctx.latido}", tipo="Sorpresa", arousal=0.85, carga={"rpe": round(ap.rpe, 2)}, sistema="CORE", creada=ctx.latido)
-            ctx.onda.registrar("Sorpresa", s)
-            ctx.onda.reactiva.ev.setdefault("Sorpresa", {})[s.id] = s   # el Core la pone en el foco sin peaje
+            ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
+
+    def _causa_de_muerte(self, onda: Onda) -> str:
+        """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada
+        más agotada (déficit 1), sin contar la propia salud (p. ej. «hambre»); si no, «desgaste»."""
+        if self.ultimo_efecto is not None and self.ultimo_efecto.causa:
+            return str(self.ultimo_efecto.causa)
+        valores = {n: float(p.carga["valor"]) for n, p in onda.ev("Interocepcion").items()}
+        valores.update({n: float(getattr(self.soma, n)) for n in VITALES})
+        agotadas = [(d, n.nombre) for n in self.perfil.necesidades if "vitalidad" not in n.constantes
+                    for d in [n.deficit(valores)] if d is not None and d >= 0.99]
+        return max(agotadas)[1] if agotadas else "desgaste"
 
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
@@ -307,6 +328,7 @@ class Organismo:
             if al_latir:
                 al_latir(self, onda)
             if not self.soma.esta_vivo:
+                self.causa_muerte = self._causa_de_muerte(onda)
                 self._aprender_de_la_muerte(onda)
                 break
             if self.mundo.terminado():

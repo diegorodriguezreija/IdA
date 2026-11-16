@@ -111,19 +111,19 @@ def test_estudio_ciclo_completo_lectura():
 
     # Latido 1: Iniciar lectura (duracion = L0 + L1*1 = 4 + 2 = 6 latidos)
     ctx1 = _crear_ctx(1, mem, bib=bib)
-    estudio.reactiva(ctx1)
+    propuestas = estudio.actuar(ctx1, None)
     assert mem.lectura_activa is not None
     reg = mem.lectura_activa
     assert reg.duracion_requerida == 6
     assert reg.latidos_dedicados == 0
     assert reg.estado == EstadoLectura.PENDIENTE
-    assert any(c.carga["verbo"] == Verbo.LEER for c in ctx1.onda.acc("Accion").values())
+    assert any(p.verbo == Verbo.LEER for p in propuestas)
 
     # Simular ejecución sostenida de LEER durante 6 latidos
     ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     for lat in range(2, 8):
         ctx_lat = _crear_ctx(lat, mem, bib=bib, ef_anterior=ef_leer)
-        estudio.reactiva(ctx_lat)
+        estudio.actuar(ctx_lat, None)
 
     # Al completar la duración de atención sostenida, la evidencia debe haberse aplicado
     assert mem.lectura_activa is None
@@ -143,14 +143,14 @@ def test_estudio_interrupcion_por_alarma_no_aplica_evidencia():
 
     # Latido 1: Inicia lectura
     ctx1 = _crear_ctx(1, mem, bib=bib)
-    estudio.reactiva(ctx1)
+    estudio.actuar(ctx1, None)
     assert mem.lectura_activa is not None
     reg = mem.lectura_activa
 
     # Latido 2: Salta alarma con peligro alto
     ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     ctx2 = _crear_ctx(2, mem, bib=bib, ef_anterior=ef_leer, peligro=0.8)
-    estudio.reactiva(ctx2)
+    estudio.actuar(ctx2, None)
 
     # La lectura debe quedar interrumpida y la proposición no haber recibido evidencia
     assert mem.lectura_activa is None
@@ -168,19 +168,19 @@ def test_estudio_relectura_registro_interrumpido():
 
     # Latido 1: Inicia lectura
     ctx1 = _crear_ctx(1, mem, bib=bib)
-    estudio.reactiva(ctx1)
+    estudio.actuar(ctx1, None)
     reg = mem.lectura_activa
 
     # Latido 2: Se interrumpe por acción distinta a LEER
     ef_mover = {"Accion": {"Accion": Pieza("e2", "Accion", 0.5, 0.5, carga={"verbo": Verbo.MOVER})}}
     ctx2 = _crear_ctx(2, mem, bib=bib, ef_anterior=ef_mover)
-    estudio.reactiva(ctx2)
+    estudio.actuar(ctx2, None)
     assert reg.estado == EstadoLectura.INTERRUMPIDO
 
     # Esperar que pase el cooldown (15 latidos)
     lat_reinicio = 2 + Estudio.COOLDOWN_LECTURA + 1
     ctx_reinicio = _crear_ctx(lat_reinicio, mem, bib=bib)
-    estudio.reactiva(ctx_reinicio)
+    estudio.actuar(ctx_reinicio, None)
     assert mem.lectura_activa == reg
     assert reg.estado == EstadoLectura.PENDIENTE
 
@@ -188,7 +188,7 @@ def test_estudio_relectura_registro_interrumpido():
     ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     for lat in range(lat_reinicio + 1, lat_reinicio + reg.duracion_requerida + 2):
         ctx_lat = _crear_ctx(lat, mem, bib=bib, ef_anterior=ef_leer)
-        estudio.reactiva(ctx_lat)
+        estudio.actuar(ctx_lat, None)
         if mem.lectura_activa is None:
             break
 
@@ -204,7 +204,7 @@ def test_persistencia_tabla_lecturas():
     estudio = Estudio()
 
     ctx = _crear_ctx(1, mem, bib=bib)
-    estudio.reactiva(ctx)
+    estudio.actuar(ctx, None)
     assert len(mem.lecturas) == 1
 
     with tempfile.TemporaryDirectory() as td:

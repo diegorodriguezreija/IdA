@@ -59,20 +59,24 @@ def test_modificar_solo_el_dueno_y_queda_en_el_registro():
     assert p.arousal == pytest.approx(0.7)
 
 
-def test_excepciones_transitorias_acotadas():
+class _Accion(Componente):
+    tipo = "Accion"
+
+
+def test_sin_excepciones_solo_accion_propone_y_nadie_modula_acciones_ajenas():
+    """C3.5: se quitaron las dos excepciones transitorias del bloque B."""
+    assert EXCEPCIONES_TRANSITORIAS == {}
     ctx = _ctx(Onda(1, 100, 1e9))
-    v, imp = _montar(_Valor()), _montar(_Impulso())
-    c = v.proponer(ctx, Verbo.MOVER, "celda", 0.5, 0.6, "prueba")    # cualquiera propone Accion
-    assert c is not None and c.registro[-1]["excepcion"] == "proponer_accion"
-    imp.modificar(ctx, c, arousal=0.2, confianza=0.3, entrada="S2:prueba")
-    assert c.arousal == pytest.approx(0.2) and c.entradas[-1] == "S2:prueba"
-    assert c.registro[-1]["excepcion"] == "impulso_modula_accion"
-    assert ctx.onda.excepciones == {"proponer_accion": 1, "impulso_modula_accion": 1}
-    assert set(ctx.onda.excepciones) <= set(EXCEPCIONES_TRANSITORIAS)
-    with pytest.raises(PiezaAjena):                    # Impulso no puede tocar la carga de una Accion
-        imp.modificar(ctx, c, carga={"objetivo": "otra"})
-    with pytest.raises(PiezaAjena):                    # ni otro tipo modularla
+    v, imp, acc = _montar(_Valor()), _montar(_Impulso()), _montar(_Accion())
+    with pytest.raises(PiezaAjena):                    # otro tipo ya no propone acciones
+        v.proponer(ctx, Verbo.MOVER, "celda", 0.5, 0.6, "prueba")
+    c = acc.proponer(ctx, Verbo.MOVER, "celda", 0.5, 0.6, "prueba")
+    assert c is not None and "excepcion" not in c.registro[-1]
+    with pytest.raises(PiezaAjena):                    # un Impulso ya no modula acciones
+        imp.modificar(ctx, c, arousal=0.2)
+    with pytest.raises(PiezaAjena):
         v.modificar(ctx, c, arousal=0.9)
+    assert c.arousal == pytest.approx(0.5) and ctx.onda.excepciones == {}
 
 
 def test_el_core_queda_exento():
