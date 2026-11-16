@@ -25,6 +25,7 @@ from ida.core.azar import Azar
 from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Relacion, Verbo
+from ida.sistemas.s1 import Alimentarse
 
 COMESTIBLES = ["Boletus_edulis.brote", "Taraxacum_officinale.brote", "Vaccinium_myrtillus.fruto"]
 TOXICOS = ["Amanita_phalloides.brote", "Atropa_belladonna.brote", "Conium_maculatum.brote"]
@@ -274,10 +275,11 @@ class MundoArchivos(Mundo):
             self._escribir(carpeta, f"brote_{self.t}.txt", "0101" * 64)
 
     def componentes_propios(self) -> Dict[str, list]:
-        return {"S3.Reaccionar": [Prudencia()]}
+        self._prudencia = Prudencia()          # la comparten su componente y su estrategia
+        return {"S3.Reaccionar": [self._prudencia]}
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [Defensa()]}
+        return {"S1": [Defensa(), AlimentarseConPrudencia()], "S3": [BuscarEnOtraCarpeta(self._prudencia)]}
 
     # --- resultados y vista --------------------------------------------------
     def puntuacion(self) -> Dict[str, Any]:
@@ -330,56 +332,85 @@ class Defensa(Definicion):
 
 
 class Prudencia(Componente):
-    """Componente propio del mundo de archivos (S3 · Reaccionar): prudencia alimentaria.
-
-    Aquí comestibles y tóxicos tienen la misma apariencia y cada mordisco tóxico cuesta 10 de
-    vitalidad, así que esperar a que el daño esté demostrado sale caro. Además, el «olor» de una
-    carpeta no distingue lo comestible de lo tóxico, lo que puede atrapar al individuo yendo y
-    viniendo a una carpeta donde solo hay veneno. Por eso:
-    - comer algo con indicios de daño (aunque sea una hipótesis) se frena con fuerza;
-    - una especie desconocida se frena si a la vista hay otra que ya se sabe que nutre (neofobia);
-    - si aquí solo hay comida dañina, se recuerda la carpeta como «mala» durante un tiempo, se
-      frena volver a ella y se propone buscar comida en otra parte.
+    """Componente propio del mundo de archivos (S3): recuerda las carpetas donde solo había comida
+    dañina y las desaconseja (piezas ``Cautela`` de lugar) durante ``RECUERDO`` latidos; el «olor» de
+    una carpeta no distingue lo comestible de lo tóxico y podría atraparlo yendo y viniendo. La
+    estrategia ``BuscarEnOtraCarpeta`` usa esa memoria. La prudencia al elegir qué comer está en la
+    estrategia ``AlimentarseConPrudencia`` (antes, este componente frenaba las acciones).
     """
 
-    tipo = "Impulso"
+    tipo = "Cautela"
     RECUERDO = 80   # latidos que se evita una carpeta con solo comida dañina
 
     def __init__(self):
         super().__init__("Prudencia")
         self.malas: Dict[str, int] = {}
 
-    def reactiva(self, ctx: Contexto) -> None:
-        mem, ahora = ctx.memoria, ctx.latido
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
-        malas = {c for c, t in self.malas.items() if ahora - t < self.RECUERDO}
-        acc = list(ctx.onda.acc("Accion").values())
-        frenados = 0
-        for c in acc:
-            if c.carga["verbo"] == Verbo.MOVER and c.carga["objetivo"] in malas:
-                self.modificar(ctx, c, arousal=c.arousal * 0.3, confianza=c.confianza * 0.5, entrada="MUNDO:prudencia (carpeta con solo comida dañina)")
-                frenados += 1
-        if frenados and frenados == sum(1 for c in acc if c.carga["verbo"] == Verbo.MOVER):
-            self._buscar_en_otra_parte(ctx, malas)   # sin alternativa, el freno no basta: proponer otra carpeta
-        candidatos = [c for c in acc if c.carga["verbo"] == Verbo.COMER]
-        if not candidatos:
-            return
-        conocidas = {p.clase for p in ctx.onda.ev("Exterocepcion").values() if mem.demostrada(p.clase, Relacion.NUTRITIVO, ahora)}
-        for c in candidatos:
-            clase = c.carga.get("clase", "")
-            dano = mem.proposicion(clase, Relacion.PELIGROSO)
-            nutre = mem.proposicion(clase, Relacion.NUTRITIVO)
-            if dano is not None and dano.confianza >= 0.35:
-                self.modificar(ctx, c, arousal=c.arousal * 0.2, confianza=c.confianza * 0.3, entrada="MUNDO:prudencia (indicios de daño)")
-            elif nutre is None and conocidas - {clase}:
-                self.modificar(ctx, c, arousal=c.arousal * 0.5, confianza=c.confianza * 0.6, entrada="MUNDO:prudencia (desconocida)")
-        if all(any("indicios de daño" in e for e in c.entradas) for c in candidatos):
-            self.malas[aqui] = ahora
-            self._buscar_en_otra_parte(ctx, malas | {aqui})
+    def recientes(self, ahora: int) -> set:
+        return {c for c, t in self.malas.items() if ahora - t < self.RECUERDO}
 
-    def _buscar_en_otra_parte(self, ctx: Contexto, malas) -> None:
+    def reactiva(self, ctx: Contexto) -> None:
+        ahora = ctx.latido
+        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        al_alcance = [o for o in ctx.onda.ev("Objeto").values() if o.rasgo("nutritivo") >= 0.3 and o.rasgo("proximidad") >= 0.9]
+        if aqui and al_alcance and all(_indicios_de_dano(ctx, o.clase) for o in al_alcance):
+            self.malas[aqui] = ahora
+        for carpeta in self.recientes(ahora):
+            self.registrar(ctx, self.pieza(ctx, f"cautela:{carpeta}", arousal=0.5,
+                                           carga={"clase": None, "lugar": carpeta, "motivo": "carpeta con solo comida dañina"}))
+
+
+def _indicios_de_dano(ctx: Contexto, clase: str) -> bool:
+    dano = ctx.memoria.proposicion(clase, Relacion.PELIGROSO)
+    return dano is not None and dano.confianza >= 0.35
+
+
+class AlimentarseConPrudencia(Alimentarse):
+    """Estrategia de S1 propia del mundo de archivos: alimentarse con prudencia alimentaria. Aquí
+    comestibles y tóxicos tienen la misma apariencia y cada mordisco tóxico cuesta 10 de vitalidad,
+    así que esperar a que el daño esté demostrado sale caro. Además del criterio genérico (valor y
+    lo demostrado), rechaza:
+    - las especies con indicios de daño, aunque sean una hipótesis (confianza ≥ 0,35);
+    - las especies desconocidas si a la vista hay otra que se sabe que nutre (neofobia).
+    Lleva el mismo nombre que la genérica, así que la sustituye en el catálogo de S1 de este mundo.
+    """
+
+    nombre = "alimentarse"
+
+    def rechaza(self, ctx: Contexto, o: Pieza) -> bool:
+        if super().rechaza(ctx, o) or _indicios_de_dano(ctx, o.clase):
+            return True
+        conocidas = {p.clase for p in ctx.onda.ev("Exterocepcion").values()
+                     if ctx.memoria.demostrada(p.clase, Relacion.NUTRITIVO, ctx.latido)}
+        return ctx.memoria.proposicion(o.clase, Relacion.NUTRITIVO) is None and bool(conocidas - {o.clase})
+
+
+class BuscarEnOtraCarpeta(Definicion):
+    """Estrategia de S3 propia del mundo de archivos para las necesidades que satisface lo nutritivo:
+    si aquí solo había comida dañina, ir a otra carpeta (la más prometedora y nueva, no peligrosa y no
+    recordada como mala)."""
+
+    nombre = "buscar_en_otra_carpeta"
+    rasgo = "nutritivo"
+    prioridad = 20
+
+    def __init__(self, prudencia: Prudencia):
+        self.prudencia = prudencia
+
+    def _destino(self, ctx: Contexto) -> Optional[Pieza]:
+        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        malas = self.prudencia.recientes(ctx.latido)
+        if aqui not in malas:
+            return None
         carpetas = [p for p in ctx.onda.ev("Exterocepcion").values()
                     if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5 and p.id not in malas]
-        if carpetas:
-            destino = max(carpetas, key=lambda p: p.rasgo("nutritivo") + 0.5 * p.rasgo("novedad"))
-            self.proponer(ctx, Verbo.MOVER, destino.id, 0.6, 0.7, "prudencia: buscar comida en otra parte", clase=destino.clase)
+        return max(carpetas, key=lambda p: p.rasgo("nutritivo") + 0.5 * p.rasgo("novedad")) if carpetas else None
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return self._destino(ctx) is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        destino = self._destino(ctx)
+        if destino is None:
+            return None
+        return Propuesta(Verbo.MOVER, destino.id, 0.6, 0.7, "prudencia: buscar comida en otra parte", clase=destino.clase)

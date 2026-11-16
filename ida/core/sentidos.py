@@ -5,6 +5,7 @@ Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
   Además de las de ``Soma``, las constantes propias que el mundo entregue en ``vitales``.
 - ``Propiocepcion``: dónde está el individuo, qué lleva y su inventario (si el mundo lo tiene).
 - ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
+- ``Ambiente``: las condiciones del entorno que el mundo entregue (p. ej. la luz), si las hay.
 
 Actuar: el ``Tribunal`` elige un candidato de ``acc["Accion"]`` y el ``Actuador`` de ese
 verbo lo materializa en el mundo. Nada se ejecuta sin pasar por el Tribunal.
@@ -39,7 +40,8 @@ class Propiocepcion(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         obs = ctx.observacion
         p = self.pieza(ctx, "yo", arousal=0.1, carga={"ubicacion": obs.ubicacion if obs else "", "cargando": ctx.soma.cargando,
-                                                     "inventario": dict(obs.inventario or {}) if obs else {}})
+                                                     "inventario": dict(obs.inventario or {}) if obs else {},
+                                                     "cuerpo": dict(obs.cuerpo or {}) if obs else {}})
         self.percibir(ctx, p)
 
 
@@ -57,6 +59,16 @@ class Exterocepcion(Componente):
             self.percibir(ctx, p)
             if ctx.memoria.activa:
                 ctx.memoria.ver_clase(e.clase)
+
+
+class Ambiente(Componente):
+    """Condiciones del entorno (``Observacion.ambiente``): una sola pieza ``ambiente``, si el mundo las da."""
+
+    tipo = "Ambiente"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if ctx.observacion is not None and ctx.observacion.ambiente:
+            self.percibir(ctx, self.pieza(ctx, "ambiente", arousal=0.0, carga=dict(ctx.observacion.ambiente)))
 
 
 class Tribunal(Componente):

@@ -12,13 +12,13 @@
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import Accion, Estrategia, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -229,6 +229,8 @@ def _rechazado(ctx: Contexto, o: Pieza) -> bool:
         valor = next((v for v in valores.values() if v.carga.get("clase") == o.clase), None)
     if valor is not None and float(valor.carga.get("valencia", 0.0)) < 0.0:
         return True
+    if o.clase in cautela(ctx)[0]:            # S3 lo desaconseja (con su criterio, p. ej. indicios de daño)
+        return True
     if not ctx.con_experiencia:
         return False
     if ctx.memoria.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido):
@@ -237,16 +239,19 @@ def _rechazado(ctx: Contexto, o: Pieza) -> bool:
     return nutre is not None and nutre.estado(ctx.latido) == EstadoSaber.REFUTADA
 
 
-def _al_alcance(ctx: Contexto) -> Tuple[List[Pieza], List[Pieza]]:
+Rechazo = Callable[[Contexto, Pieza], bool]
+
+
+def _al_alcance(ctx: Contexto, rechaza: Rechazo = _rechazado) -> Tuple[List[Pieza], List[Pieza]]:
     """Comestibles al alcance, separados en aceptables y rechazados."""
     comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and al_alcance(o)]
-    rechazados = [o for o in comestibles if _rechazado(ctx, o)]
+    rechazados = [o for o in comestibles if rechaza(ctx, o)]
     return [o for o in comestibles if o not in rechazados], rechazados
 
 
-def _aceptables_a_la_vista(ctx: Contexto) -> List[Pieza]:
+def _aceptables_a_la_vista(ctx: Contexto, rechaza: Rechazo = _rechazado) -> List[Pieza]:
     """Comestibles a la vista pero no al alcance que no se rechazan."""
-    return [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and not al_alcance(o) and not _rechazado(ctx, o)]
+    return [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and not al_alcance(o) and not rechaza(ctx, o)]
 
 
 def _posicion(ctx: Contexto, pid: str) -> Optional[Tuple[float, ...]]:
@@ -261,15 +266,21 @@ def _hacia(ctx: Contexto, objetivo: Pieza) -> Optional[Pieza]:
     meta = _posicion(ctx, objetivo.id)
     if meta is None:
         return None
-    candidatos = [(lugar, _posicion(ctx, lugar.id)) for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.8]
+    candidatos = [(lugar, _posicion(ctx, lugar.id)) for lugar in _lugares_permitidos(ctx) if lugar.rasgo("peligro") < 0.8]
     con_pos = [(lugar, pos) for lugar, pos in candidatos if pos is not None and len(pos) == len(meta)]
     if not con_pos:
         return None
     return min(con_pos, key=lambda lp: sum(abs(a - b) for a, b in zip(lp[1], meta, strict=True)))[0]
 
 
+def _lugares_permitidos(ctx: Contexto) -> List[Pieza]:
+    """Lugares a la vista menos los que S3 desaconseja."""
+    evitar = cautela(ctx)[1]
+    return [lugar for lugar in lugares(ctx) if lugar.id not in evitar]
+
+
 def _destino_comida(ctx: Contexto) -> Optional[Pieza]:
-    destino = mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
+    destino = mejor(_lugares_permitidos(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
     return destino if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8 else None
 
 
@@ -294,28 +305,32 @@ class Alimentarse(Definicion):
     rasgo = "nutritivo"
     prioridad = 10
 
+    def rechaza(self, ctx: Contexto, o: Pieza) -> bool:
+        """Criterio de elección del objeto. Un mundo puede ampliarlo con una estrategia propia."""
+        return _rechazado(ctx, o)
+
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        aceptables, rechazados = _al_alcance(ctx)
+        aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         return bool(aceptables or rechazados) or _destino_comida(ctx) is not None
 
     def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
-        aceptables, rechazados = _al_alcance(ctx)
+        aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         if aceptables and Verbo.COMER in ctx.verbos and ctx.soma.alimentacion < 95.0:
             return COMER
         if rechazados and not aceptables:
-            return ACERCARSE if _aceptables_a_la_vista(ctx) else BUSCAR
+            return ACERCARSE if _aceptables_a_la_vista(ctx, self.rechaza) else BUSCAR
         return ACERCARSE if _destino_comida(ctx) is not None else BUSCAR
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
         paso = estrategia.carga.get("paso")
         if paso == COMER:
-            aceptables, _ = _al_alcance(ctx)
+            aceptables, _ = _al_alcance(ctx, self.rechaza)
             cerca = mejor(aceptables, lambda o: o.rasgo("nutritivo") - o.rasgo("peligro"))
             if cerca is not None:
                 return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * apetito(ctx)), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
         if paso == ACERCARSE:
-            _, rechazados = _al_alcance(ctx)
-            vista = mejor(_aceptables_a_la_vista(ctx), lambda o: o.rasgo("nutritivo") * o.rasgo("proximidad") - o.rasgo("peligro"))
+            _, rechazados = _al_alcance(ctx, self.rechaza)
+            vista = mejor(_aceptables_a_la_vista(ctx, self.rechaza), lambda o: o.rasgo("nutritivo") * o.rasgo("proximidad") - o.rasgo("peligro"))
             if rechazados and vista is not None:
                 lugar = _hacia(ctx, vista)
                 if lugar is not None:
@@ -326,7 +341,7 @@ class Alimentarse(Definicion):
                 ar = acotar(0.25 + 0.6 * apetito(ctx) * destino.rasgo("nutritivo"))
                 return Propuesta(Verbo.MOVER, destino.id, ar, 0.6, "acercarse a la comida", clase=destino.clase)
         if paso == BUSCAR:
-            otro = mejor([lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5],
+            otro = mejor([lugar for lugar in _lugares_permitidos(ctx) if lugar.rasgo("peligro") < 0.5],
                          lambda lugar: lugar.rasgo("novedad") - lugar.rasgo("peligro"))
             if otro is not None:
                 return Propuesta(Verbo.MOVER, otro.id, acotar(0.2 + 0.3 * apetito(ctx)), 0.5, "buscar comida en otro sitio", clase=otro.clase)

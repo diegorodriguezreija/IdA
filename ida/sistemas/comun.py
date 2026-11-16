@@ -32,6 +32,18 @@ def apetito(ctx: Contexto) -> float:
     return 0.25 + 0.75 * ctx.soma.hambre()
 
 
+def cautela(ctx: Contexto) -> Tuple[set, set]:
+    """Clases y lugares que S3 desaconseja (piezas ``Cautela`` del latido anterior: S3 corre después).
+    Las emite el criterio de S3 de cada mundo (p. ej. una prudencia alimentaria)."""
+    clases, sitios = set(), set()
+    for c in ctx.onda.ei("Cautela").values():
+        if c.carga.get("clase"):
+            clases.add(c.carga["clase"])
+        if c.carga.get("lugar"):
+            sitios.add(c.carga["lugar"])
+    return clases, sitios
+
+
 def mejor(piezas: Iterable[Pieza], clave) -> Optional[Pieza]:
     piezas = list(piezas)
     return max(piezas, key=clave) if piezas else None

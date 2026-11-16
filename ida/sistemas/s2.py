@@ -20,7 +20,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
-from ida.sistemas.comun import Accion, Estrategia, al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
 EXPLORACION = "exploracion"
@@ -149,7 +149,8 @@ class Explorar(Definicion):
                 s += max(-0.4, min(0.3, ctx.memoria.valor_lugar(lugar.id) * 0.15))
             return s
 
-        nuevo = mejor(lugares(ctx), puntuar)
+        evitar = cautela(ctx)[1]
+        nuevo = mejor([lugar for lugar in lugares(ctx) if lugar.id not in evitar], puntuar)
         return nuevo if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5 else None
 
     @staticmethod

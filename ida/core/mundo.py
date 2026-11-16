@@ -39,6 +39,8 @@ class Observacion:
     entidades: List[Entidad]                         # incluye los lugares (rasgo ``lugar``)
     vitales: Optional[Dict[str, float]] = None       # constantes propias del mundo (0-100), si las tiene
     inventario: Optional[Dict[str, float]] = None    # lo que lleva encima, si el mundo lo tiene (propiocepción)
+    cuerpo: Optional[Dict[str, Any]] = None           # postura u orientación, si el mundo la tiene (propiocepción)
+    ambiente: Optional[Dict[str, float]] = None       # condiciones del entorno, p. ej. la luz (sensor Ambiente)
     dormido: Optional[bool] = None                   # si el mundo decide cuándo se duerme y se despierta
     mensaje: str = ""                                # texto libre para la consola
 

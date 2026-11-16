@@ -13,16 +13,19 @@ proposiciones **demostradas**.
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
 | Reaccionar  | Intencion            | Intención: saber y las que declare el mundo (el qué deliberado) |
-| Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
+| Reaccionar  | Estrategia           | Estrategias de conocimiento: evitar, comer y coger lo sabido; estudiar |
+| Actuar      | Accion               | Acción de cada estrategia activa de S3, con su origen |
 | Reaccionar  | Impulso            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
 """
 
+from typing import List, Optional, Tuple
+
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
-from ida.core.estrategia import Catalogo
+from ida.core.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
-from ida.core.pieza import acotar
+from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import Accion, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import Accion, Estrategia, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 
 
 class Comunicacion(Componente):
@@ -127,33 +130,73 @@ class Logica(Componente):
             self.percibir(ctx, self.pieza(ctx, "conclusion", arousal=0.6, confianza=s.confianza, carga=dict(s.carga), entradas=[s.id]))
 
 
-class Comportamiento(Componente):
-    """Convierte la conclusión lógica en un candidato de Acción. Solo existe si hay conocimiento demostrado."""
+def _conclusion(ctx: Contexto, tipo: str) -> Optional[Tuple[Pieza, Pieza]]:
+    """La conclusión de ``Logica`` de ese tipo (EVITAR, COMER, COGER) y su objeto, si están a la vista."""
+    c = ctx.onda.ev("Logica").get("conclusion")
+    if c is None or c.carga["conclusion"] != tipo:
+        return None
+    objetivo = ctx.onda.ev("Objeto").get(c.carga["objetivo"])
+    return (c, objetivo) if objetivo is not None else None
 
-    tipo = "Comportamiento"
-    entradas = ("Logica",)
 
-    def reactiva(self, ctx: Contexto) -> None:
-        c = ctx.onda.ev("Logica").get("conclusion")
-        if c is None:
-            return
-        objetivo = ctx.onda.ev("Objeto").get(c.carga["objetivo"])
-        if objetivo is None:
-            return
-        conclusion, motivo = c.carga["conclusion"], f"S3: {c.carga['texto']}"
-        if conclusion == "EVITAR":
-            salida = mejor(lugares(ctx), lambda l: -l.rasgo("peligro"))
-            if salida is not None:
-                self.proponer(ctx, Verbo.MOVER, salida.id, 0.7, c.confianza, motivo, clase=salida.clase)
-        elif conclusion == "COMER":
-            if al_alcance(objetivo):
-                self.proponer(ctx, Verbo.COMER, objetivo.id, 0.65, c.confianza, motivo, clase=objetivo.clase)
-            else:
-                destino = mejor(lugares(ctx), lambda l: l.rasgo("nutritivo") - 1.5 * l.rasgo("peligro"))
-                if destino is not None and destino.rasgo("nutritivo") > 0:
-                    self.proponer(ctx, Verbo.MOVER, destino.id, 0.55, c.confianza, motivo + " (acercarse)", clase=destino.clase)
-        elif conclusion == "COGER":
-            self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, c.confianza, motivo, clase=objetivo.clase)
+class EvitarLoPeligroso(Definicion):
+    """Seguridad, por conocimiento (antes ``Comportamiento``, EVITAR): alejarse de lo que se sabe peligroso."""
+
+    nombre = "evitar_lo_peligroso"
+    impulsos = ("seguridad",)
+    prioridad = 10
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _conclusion(ctx, "EVITAR") is not None and bool(lugares(ctx))
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        cc = _conclusion(ctx, "EVITAR")
+        salida = mejor(lugares(ctx), lambda lugar: -lugar.rasgo("peligro"))
+        if cc is None or salida is None:
+            return None
+        return Propuesta(Verbo.MOVER, salida.id, 0.7, cc[0].confianza, f"S3: {cc[0].carga['texto']}", clase=salida.clase)
+
+
+class ComerLoNutritivo(Definicion):
+    """Necesidades que satisface lo nutritivo, por conocimiento (antes ``Comportamiento``, COMER)."""
+
+    nombre = "comer_lo_nutritivo"
+    rasgo = "nutritivo"
+    prioridad = 10
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _conclusion(ctx, "COMER") is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        cc = _conclusion(ctx, "COMER")
+        if cc is None:
+            return None
+        c, objetivo = cc
+        motivo = f"S3: {c.carga['texto']}"
+        if al_alcance(objetivo):
+            return Propuesta(Verbo.COMER, objetivo.id, 0.65, c.confianza, motivo, clase=objetivo.clase)
+        destino = mejor(lugares(ctx), lambda lugar: lugar.rasgo("nutritivo") - 1.5 * lugar.rasgo("peligro"))
+        if destino is not None and destino.rasgo("nutritivo") > 0:
+            return Propuesta(Verbo.MOVER, destino.id, 0.55, c.confianza, motivo + " (acercarse)", clase=destino.clase)
+        return None
+
+
+class CogerLoUtil(Definicion):
+    """Exploración, por conocimiento (antes ``Comportamiento``, COGER): coger lo que se sabe útil."""
+
+    nombre = "coger_lo_util"
+    impulsos = ("exploracion",)
+    prioridad = 10
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _conclusion(ctx, "COGER") is not None
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        cc = _conclusion(ctx, "COGER")
+        if cc is None:
+            return None
+        c, objetivo = cc
+        return Propuesta(Verbo.COGER, objetivo.id, 0.5, c.confianza, f"S3: {c.carga['texto']}", clase=objetivo.clase)
 
 
 class Impulso(Componente):
@@ -179,11 +222,15 @@ class Impulso(Componente):
                 self.modificar(ctx, c, arousal=c.arousal * 0.4, confianza=c.confianza * 0.5, entrada=f"S3:frenado ({frenar})")
 
 
-class Estudio(Componente):
-    """Lectura con atención sostenida en consulta a biblioteca externa sobre hipótesis pendientes."""
+class Estudio(ConPropuestas):
+    """Estrategia de S3 para la intención saber (antes componente): lectura con atención sostenida en
+    consulta a una biblioteca externa sobre hipótesis pendientes. Lleva su propio control (cooldown,
+    interrupción por alarma o por no leer), así que no se agota por falta de progreso."""
 
-    tipo = "Estudio"
-    entradas = ("Proposicion",)
+    nombre = "estudiar"
+    impulsos = ("saber",)
+    prioridad = 10
+    agotable = False
 
     COOLDOWN_LECTURA = 15
     MAX_HIPOTESIS_POR_LECTURA = 2
@@ -191,7 +238,10 @@ class Estudio(Componente):
     L1 = 2
     MAX_LATIDOS_ESPERA_TR = 10
 
-    def reactiva(self, ctx: Contexto) -> None:
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return ctx.con_experiencia and Verbo.ESPERAR in ctx.verbos and ctx.memoria.activa
+
+    def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
         if not ctx.con_experiencia or Verbo.ESPERAR not in ctx.verbos:
             return
         mem = ctx.memoria
@@ -381,10 +431,15 @@ class Intencion(Componente):
                                            carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": None}))
 
 
+def estrategias_s3() -> List[Definicion]:
+    return [EvitarLoPeligroso(), ComerLoNutritivo(), CogerLoUtil(), Estudio()]
+
+
 def crear_s3() -> Sistema:
+    catalogo = Catalogo(estrategias_s3())
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
         Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
-        Modulo("Reaccionar", [Intencion(), Comportamiento(), Impulso(), Estudio()]),
-        Modulo("Actuar", [Accion(Catalogo())]),
+        Modulo("Reaccionar", [Intencion(), Impulso(), Estrategia(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo)]),
     ])

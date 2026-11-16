@@ -108,6 +108,28 @@ class Catalogo:
         return list(self._por_nombre.values())
 
 
+class ConPropuestas(Definicion):
+    """Definición que decide con ``decidir`` y declara sus acciones con ``proponer``, con la misma
+    firma que tenían los componentes que proponían directamente (para trasladarlos sin reescribirlos).
+    ``actuar`` devuelve lo propuesto en el latido."""
+
+    def __init__(self) -> None:
+        self._propuestas: List[Propuesta] = []
+
+    def actuar(self, ctx: Any, estrategia: Optional[Pieza]) -> List[Propuesta]:
+        self._propuestas = []
+        self.decidir(ctx, estrategia)
+        return list(self._propuestas)
+
+    def decidir(self, ctx: Any, estrategia: Optional[Pieza]) -> None:
+        pass
+
+    def proponer(self, ctx: Any, verbo: Verbo, objetivo: str, arousal: float, confianza: float, motivo: str,
+                 clase: str = "", **datos: Any) -> None:
+        if verbo in ctx.verbos:
+            self._propuestas.append(Propuesta(verbo, objetivo, arousal, confianza, motivo, clase, dict(datos) or None))
+
+
 def nueva(sistema: str, definicion: Definicion, impulso: str, intensidad: float, objetivo: float, latido: int, paso: Any = 0) -> Pieza:
     """Pieza ``Estrategia`` recién activada para ``impulso``."""
     return Pieza(

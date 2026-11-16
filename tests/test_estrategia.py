@@ -419,3 +419,40 @@ def test_intencion_saber_y_las_del_mundo():
     i.reactiva(ctx)
     assert onda.ef("Intencion")["saber"].carga["intensidad"] == 1.0          # todo lo que sabe de x es hipótesis
     assert onda.ef("Intencion")["progresar"].carga["intensidad"] == 0.5
+
+
+def test_estrategias_de_conocimiento_de_s3_actuan_sobre_la_conclusion_de_logica():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s3 import ComerLoNutritivo
+
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
+    onda.percibir("Objeto", Pieza("b1", "Objeto", 0.5, carga={"clase": "b", "rasgos": {"proximidad": 0.95}}))
+    onda.percibir("Logica", Pieza("conclusion", "Logica", 0.6, 0.9, carga={"conclusion": "COMER", "objetivo": "b1", "texto": "b nutre"}))
+    d = ComerLoNutritivo()
+    propuesta = d.actuar(ctx, None)
+    assert d.elegible(ctx, "hambre", 0.5) and propuesta.verbo == Verbo.COMER and propuesta.objetivo == "b1"
+    assert propuesta.confianza == 0.9
+
+
+def test_alimentarse_con_prudencia_rechaza_indicios_de_dano_y_lo_desconocido():
+    from ida.core.memoria import Proposicion
+    from ida.core.pieza import Pieza
+    from ida.core.vocabulario import Relacion
+    from ida.mundos.archivos import AlimentarseConPrudencia
+
+    mem = Memoria()
+    mem.saber[("mala", Relacion.PELIGROSO)] = Proposicion("mala", Relacion.PELIGROSO, confianza=0.4)
+    buena = Proposicion("buena", Relacion.NUTRITIVO, confianza=0.95)
+    buena.confirmaciones = 10
+    mem.saber[("buena", Relacion.NUTRITIVO)] = buena
+    onda = Onda(5, 100, 1e9)
+    ctx = Contexto(onda, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
+    for clase in ("mala", "nueva", "buena"):
+        onda.percibir("Exterocepcion", Pieza(clase, "Exterocepcion", carga={"clase": clase, "rasgos": {}}))
+    d = AlimentarseConPrudencia()
+    assert d.nombre == "alimentarse"                                   # sustituye a la genérica en su mundo
+    assert d.rechaza(ctx, Pieza("m", "Objeto", carga={"clase": "mala"}))      # indicios de daño (0,4 ≥ 0,35)
+    assert mem.demostrada("buena", Relacion.NUTRITIVO, 5)
+    assert d.rechaza(ctx, Pieza("n", "Objeto", carga={"clase": "nueva"}))      # neofobia: hay algo que se sabe que nutre
+    assert not d.rechaza(ctx, Pieza("b", "Objeto", carga={"clase": "buena"}))

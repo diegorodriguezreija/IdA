@@ -23,11 +23,11 @@ from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Actuador, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
+from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
-CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion"}
+CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente"}
 
 
 class Organismo:
@@ -57,7 +57,7 @@ class Organismo:
 
         self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
         self.tribunal = Tribunal()
-        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion()], exento=True)
+        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
