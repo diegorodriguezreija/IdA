@@ -254,6 +254,30 @@ Cada mecanismo va detrás de un interruptor del `Perfil` (por ejemplo `memoria.b
 
 `docs/MEDICIONES_E.md` con: tabla por mecanismo (activado o no, y por qué), benchmark final frente a la referencia, milisegundos por latido, y decisiones tomadas sin consultar.
 
+**Estado de E (16/11/2026): infraestructura completa, sin fusionar.** En `feature/bloque-e` (subida, sin PR). Con E1 a E6 activados, ninguna diferencia significativa frente a `base-v2.0` en ningún mundo. La memoria aún no aporta porque nada usa el grafo ni los conceptos, y recordar ahora cuesta atención. E4 en Archivos corregido: la reducción nocturna respeta *decay*, y los recuerdos de daño se reducen menos. E7 en 1,0. Cada latido es 0,11 a 0,22 ms más lento. **Decisión del autor:** E no se fusiona hasta comprobar, junto con F, si la memoria aporta.
+
+## Encargo del bloque F: experiencia proactiva (Expectativa y Plan)
+
+**Objetivo:** que IdA use la memoria del bloque E para anticipar (Expectativa) y para encadenar pasos hacia una intención (Plan). Es lo que debe hacer que la memoria aporte. Pensado para **trabajar sin supervisión**.
+
+**Referencia:** `docs/REDISENO_BASE.md`, decisión 24. Base: rama `feature/bloque-e`; rama nueva `feature/bloque-f` desde ella. Comparación: `docs/REFERENCIA_BASE.md` y la configuración de E.
+
+**Permiso:** como en E, se levanta para estos pasos la prohibición de tocar `ida/core/` e `ida/sistemas/`. Un commit por paso, sin PR.
+
+**Interruptores:** cada mecanismo de F detrás de un interruptor del `Perfil`. Con todos (E y F) apagados, la conducta debe ser igual a `base-v2.0` (`herramientas/invariancia.py`).
+
+| Paso | Qué hace |
+| --- | --- |
+| F0 | Inventario breve en `docs/F0_PROACTIVA.md`: qué hay ya de proactivo (pasada proactiva, `Memoria.proyectar`, pieza `Sorpresa`, feedback de S3 por error de predicción) y en qué se convierte. Además, **benchmark de E tal como está** en Mínimo y Crafter (Equilibrado y sin experiencia, N = 10), porque el ajuste de E4 no se midió allí. Sin detenerse |
+| F1 | **Expectativa.** En la pasada proactiva, con la potencia que sobre, cada sistema deja expectativas sobre el siguiente latido, a partir del grafo, los conceptos y los episodios de E: S1, cómo cambiarán sus necesidades con la acción elegida; S2, qué valencia espera. Al empezar el latido siguiente, el Core las compara con lo que llega: la sorpresa sube el arousal de lo inesperado (atrae atención) y alimenta el feedback de cada sistema. Unificar con la `Sorpresa` y el error de predicción que ya existen |
+| F2 | **Plan.** Tipo de estrategia de S3: una cadena de pasos hacia una intención, construida a partir del grafo semántico y el mapa. Se consume paso a paso; el progreso es la parte de la cadena completada; si una expectativa del plan falla (sorpresa alta), se rehace el plan o la estrategia se agota. Aplicarlo al menos a `recordar_comida` (ir donde hubo comida por la ruta del mapa) y a `PlanTecnologico` (la cadena de recetas de Crafter) |
+
+**Medición y decisión:** tras F1 y tras F2, benchmark en Mínimo y Crafter (Equilibrado y sin experiencia, N = 10) frente a la configuración anterior. Si un mecanismo no empeora de forma significativa, queda activado; si empeora, queda apagado con la causa anotada, y se sigue. Un solo intento de ajuste por mecanismo.
+
+**Veredicto final:** benchmark completo (Crafter, Mínimo y Archivos; Equilibrado, Valiente, Reactivo y sin experiencia; N = 10, muertes por causa) de E + F frente a `docs/REFERENCIA_BASE.md`. Entregar `docs/VEREDICTO_E_F.md` con la respuesta a una sola pregunta: **¿aporta la memoria, con su uso proactivo?** Con la recomendación de fusionar E y F, fusionar solo parte (y cuál) o no fusionar, y por qué.
+
+**Rendimiento y supervisión:** como en E. Nada caro dentro del latido; medir milisegundos por latido. Ante una duda, la opción más simple, anotada. Si se acerca el límite de cuota o de tiempo, commit y `docs/F_ESTADO.md`. Todo en español.
+
 **Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 8, 9 y 12. Base: `main` con el bloque C fusionado.
@@ -319,3 +343,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Bloque C aceptado (C2 y C3). Notas para la fase de mejora de mundos. |
 | 2026-11-16 | Bloque D aceptado. Pasos antes de la mejora de mundos: calibración, referencia congelada y reglas para el otro modelo. |
 | 2026-11-16 | Base congelada en base-v2.0. Encargo del bloque E (E0 a E7) para trabajo sin supervisión, en paralelo a la mejora de mundos. |
+| 2026-11-16 | Estado de E (infraestructura, sin fusionar). Encargo del bloque F (Expectativa y Plan) sobre la rama de E, con veredicto conjunto. |
