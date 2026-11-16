@@ -3,6 +3,7 @@
 | Etapa       | Componente       | Produce |
 |-------------|------------------|---------|
 | Sentir      | Patron           | Patrón: qué clase de cosa es y qué recuerda de ella |
+| Sentir      | Recuerdo         | Recuerdo: lo que la memoria asocia a objetos e impulsos (con el interruptor de evocación) |
 | Sentir      | Emocion          | Emoción: el estado afectivo sentido (en ``ef``, sin coste; aún no lo consume nadie) |
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivacional, potencia, sentimental y social de cada sujeto; valencia |
@@ -19,7 +20,7 @@ from typing import List, Optional, Tuple
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Relacion, Verbo
+from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import Accion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
@@ -66,6 +67,48 @@ class Emocion(Componente):
                                        entradas=["Interocepcion", "Patron"]))
 
 
+class Recuerdo(Componente):
+    """Recuperación evocada (bloque E, E5; decisión 22): con la potencia que sobra tras la pasada reactiva,
+    las piezas evocadoras traen a la atención lo que la memoria les asocia, como piezas ``Recuerdo``:
+    - cada objeto a la vista: si se sabe que su clase hace daño (demostrado);
+    - cada impulso que satisface lo nutritivo, con hambre (≥ 0,35): las clases que se creen nutritivas
+      (confianza ≥ 0,55) y no se saben peligrosas, con dónde se vieron por última vez.
+    Lo recuperado se reconsolida: se refresca y, con búfer diurno, se persiste de noche. ``Valor`` y la
+    estrategia ``recordar_comida`` leen estas piezas en lugar de la memoria."""
+
+    tipo = "Recuerdo"
+    POTENCIA_MINIMA = 0.25     # fracción de potencia que debe sobrar para recordar
+
+    def activa(self, ctx: Contexto) -> None:
+        if not (ctx.perfil.mecanismos.evocacion and ctx.con_experiencia and ctx.memoria.activa):
+            return
+        onda, mem, ahora = ctx.onda, ctx.memoria, ctx.latido
+        if onda.potencia_max <= 0 or onda.potencia_restante() < self.POTENCIA_MINIMA * onda.potencia_max:
+            return
+        for clase in sorted({o.clase for o in objetos(ctx)}):
+            if mem.demostrada(clase, Relacion.PELIGROSO, ahora):
+                self._traer(ctx, clase, Relacion.PELIGROSO, None)
+        hambre = any(i.carga.get("rasgo") == "nutritivo" and float(i.carga.get("intensidad", 0.0)) > 0.0 for i in onda.ef("Impulso").values())
+        if hambre and ctx.soma.hambre() >= 0.35:
+            for (clase, rel), prop in list(mem.saber.items()):
+                if rel == Relacion.NUTRITIVO and prop.confianza >= 0.55 and not mem.demostrada(clase, Relacion.PELIGROSO, ahora):
+                    self._traer(ctx, clase, rel, mem.donde_esta(clase))
+
+    def _traer(self, ctx: Contexto, clase: str, rel: Relacion, donde: Optional[str]) -> None:
+        prop = ctx.memoria.proposicion(clase, rel)
+        if prop is None:
+            return
+        arousal = acotar(0.5 * prop.confianza)
+        if self.percibir(ctx, self.pieza(ctx, f"{clase}|{rel.name}", arousal=arousal, confianza=prop.confianza,
+                                         carga={"clase": clase, "relacion": rel, "demostrada": prop.estado(ctx.latido) == EstadoSaber.DEMOSTRADA,
+                                                "donde": donde})) is not None:
+            ctx.memoria.reconsolidar((clase, rel), ctx.latido, arousal)
+
+
+def _recordado(ctx: Contexto, clase: str, rel: Relacion) -> Optional[Pieza]:
+    return ctx.onda.ev("Recuerdo").get(f"{clase}|{rel.name}")
+
+
 class Sujeto(Componente):
     tipo = "Sujeto"
     entradas = ("Patron",)
@@ -98,7 +141,11 @@ class Valor(Componente):
             patron = ctx.onda.ev("Patron").get(o.id)
             recuerdos = patron.carga.get("recuerdos", {}) if patron else {}
             sentimental = math.tanh(sum(recuerdos.values()) / 5.0) if recuerdos else 0.0
-            if mem.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido):
+            if ctx.perfil.mecanismos.evocacion:   # bloque E, E5: lo recuperado, no la memoria
+                peligrosa = (r := _recordado(ctx, o.clase, Relacion.PELIGROSO)) is not None and bool(r.carga["demostrada"])
+            else:
+                peligrosa = mem.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido)
+            if peligrosa:
                 sentimental -= 0.5
             social = 0.0
             valencia = acotar(0.5 * motivacional + 0.5 * sentimental + social - potencia * arq.neuroticismo, -1.0, 1.0)
@@ -256,13 +303,16 @@ class RecordarComida(Definicion):
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         if not aqui:
             return None
-        candidatos = sorted(
-            ((clase, prop) for (clase, rel), prop in ctx.memoria.saber.items()
-             if rel == Relacion.NUTRITIVO and prop.confianza >= 0.55 and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)),
-            key=lambda item: -item[1].confianza,
-        )
-        for clase, prop in candidatos:
-            destino = ctx.memoria.donde_esta(clase)
+        if ctx.perfil.mecanismos.evocacion:   # bloque E, E5: lo recuperado (piezas Recuerdo), no la memoria
+            candidatos = sorted(((r.carga["clase"], r.confianza, r.carga["donde"]) for r in ctx.onda.ev("Recuerdo").values()
+                                 if r.carga["relacion"] == Relacion.NUTRITIVO), key=lambda item: -item[1])
+        else:
+            candidatos = sorted(
+                ((clase, prop.confianza, ctx.memoria.donde_esta(clase)) for (clase, rel), prop in ctx.memoria.saber.items()
+                 if rel == Relacion.NUTRITIVO and prop.confianza >= 0.55 and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)),
+                key=lambda item: -item[1],
+            )
+        for clase, confianza, destino in candidatos:
             if destino == aqui and not any(o.clase == clase for o in objetos(ctx)):
                 ctx.memoria.olvidar_donde(clase)
                 continue
@@ -270,7 +320,7 @@ class RecordarComida(Definicion):
                 salto = ctx.memoria.ruta(aqui, destino)
                 puerta = next((lugar for lugar in lugares(ctx) if lugar.id == salto and lugar.rasgo("peligro") < 0.6), None) if salto else None
                 if puerta is not None:
-                    return puerta, acotar(0.25 + 0.45 * hambre * prop.confianza), clase
+                    return puerta, acotar(0.25 + 0.45 * hambre * confianza), clase
         return None
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
@@ -309,7 +359,7 @@ def estrategias_s2() -> List[Definicion]:
 def crear_s2() -> Sistema:
     catalogo = Catalogo(estrategias_s2())
     return Sistema("S2", "Valor", [
-        Modulo("Sentir", [Patron(), Emocion()]),
+        Modulo("Sentir", [Patron(), Emocion(), Recuerdo()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
         Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
         Modulo("Actuar", [Accion(catalogo)]),

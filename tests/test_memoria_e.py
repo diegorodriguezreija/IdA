@@ -57,3 +57,36 @@ def test_reduccion_nocturna_proporcional_y_poda():
     assert not mem.relaciones                                                          # su nodo b ya no está
     assert mem.saber[("x", Relacion.NUTRITIVO)].confianza == 0.475 and ("y", Relacion.NUTRITIVO) not in mem.saber
     assert podado == 3
+
+
+def test_recuperacion_evocada_trae_y_reconsolida():
+    from dataclasses import replace
+
+    from ida.core.arquitectura import Contexto
+    from ida.core.azar import Azar
+    from ida.core.linaje import Arquetipo
+    from ida.core.memoria import Proposicion
+    from ida.core.onda import Onda
+    from ida.core.pieza import Pieza
+    from ida.core.soma import Soma
+    from ida.core.vocabulario import Relacion, Verbo
+    from ida.sistemas.s2 import Recuerdo
+
+    mem = Memoria()
+    p = Proposicion("baya", Relacion.NUTRITIVO, confianza=0.8, actualizada=1)
+    mem.saber[("baya", Relacion.NUTRITIVO)] = p
+    mem.registrar_donde("baya", "celda_1_1", 1)
+    perfil = replace(Perfil(), mecanismos=MecanismosMemoria(evocacion=True))
+    onda = Onda(50, 100, 1e9)
+    ctx = Contexto(onda, Soma(alimentacion=20.0), mem, Arquetipo(), Azar(1), perfil, {Verbo.MOVER})
+    imp = Pieza("hambre", "Impulso", 0.7, carga={"intensidad": 0.7, "objetivo": 0.0, "rasgo": "nutritivo"}, sistema="S1")
+    onda.registrar("Impulso", imp)
+    r = Recuerdo()
+    r.sistema = "S2"
+    r.activa(ctx)
+    rec = onda.ev("Recuerdo")["baya|NUTRITIVO"]
+    assert rec.carga["donde"] == "celda_1_1" and rec.confianza == 0.8
+    assert p.actualizada == 50 and any(e[2]["tipo"] == "Recuerdo" for e in mem.diurno)   # reconsolidado
+    apagado = Contexto(Onda(51, 100, 1e9), Soma(alimentacion=20.0), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    r.activa(apagado)
+    assert not apagado.onda.ev("Recuerdo")                                                   # sin el interruptor, nada

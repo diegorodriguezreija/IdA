@@ -444,6 +444,21 @@ class Memoria:
         cid = self._concepto_de.get(clase)
         return self.conceptos.get(cid) if cid else None
 
+    def reconsolidar(self, clave: Tuple[str, Relacion], ahora: int, arousal: float) -> None:
+        """Decisión 22: un recuerdo recuperado vuelve a ser modificable; se refresca (no envejece) y, si
+        hay búfer diurno, entra en él para persistirse de noche."""
+        p = self.saber.get(clave)
+        if p is not None:
+            p.actualizada = max(p.actualizada, ahora)
+        if self.diurno is not None:
+            self._orden_diurno += 1
+            pieza = {"latido": ahora, "tipo": "Recuerdo", "id": f"{clave[0]}|{clave[1].name}", "arousal": arousal, "clase": clave[0],
+                     "sistema": "S2", "puntuacion": arousal}
+            if len(self.diurno) < self.CAPACIDAD_DIURNO:
+                heapq.heappush(self.diurno, (arousal, self._orden_diurno, pieza))
+            elif arousal > self.diurno[0][0]:
+                heapq.heapreplace(self.diurno, (arousal, self._orden_diurno, pieza))
+
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1
         return self.clases_vistas[clase]
