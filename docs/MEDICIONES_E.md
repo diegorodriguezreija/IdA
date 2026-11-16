@@ -16,7 +16,7 @@ Todos en `Perfil.mecanismos` (`MecanismosMemoria`, [`ida/core/mundo.py`](../ida/
 | E1 | `buffer` | búfer diurno de 256 piezas por puntuación (arousal + feedback) y episodio del día | e56a9c7 |
 | E2 | `consolidacion` | al dormir (o al final de la vida, sin sueño): búfer → grafo semántico (nodos tipo:clase, relaciones por coincidencia); almacén de 30 días | 8a10bed |
 | E3 | `conceptos` | prototipo por clase (media de rasgos de sus instancias), id estable `cN`; 500 instancias | f12f698 |
-| E4 | `reduccion` | de noche: grafo ×0,9 y poda < 0,05; c_exp de hipótesis no demostradas ×0,95 y poda < 0,15 (sustituye al olvido de hipótesis por antigüedad) | c3668c4 |
+| E4 | `reduccion` | de noche: grafo ×0,9 y poda < 0,05; c_exp de hipótesis no demostradas × (1 − decay) y poda < 0,15 (sustituye al olvido de hipótesis por antigüedad). Decay por defecto 0,05; en «hace daño», 0,05 × (1 − arousal de daño) | c3668c4, f0b3884 |
 | E5 | `evocacion` | componente `Recuerdo` (S2·Sentir): con ≥ 25 % de potencia libre trae como piezas lo peligroso demostrado de lo visible y, con hambre, lo que se cree nutritivo; `Valor` y `recordar_comida` leen esas piezas; lo traído se reconsolida | 6ee5506 |
 | E6 | `repaso` | en calma, con ≥ 50 % de potencia libre y sin recuerdos evocados: trae lo reciente de más fuerza y lo refuerza (nodo ×1,1; hipótesis de su clase +0,02) | 06c3c26 |
 | E7 | `tasa_herencia` | fracción del legado que se hereda (proposiciones de más confianza, registros con más experiencias); 1,0 = como antes | 5f1d3fe |
@@ -30,7 +30,7 @@ Crafter y mínimo; Equilibrado y control sin experiencia; N = 10. Cada fila comp
 |---|---|---|---|
 | E1+E2 (apagado → E1+E2) | 0,00 ± 0,00; 0,00 ± 0,00 | +0,80 ± 1,81; +3,30 ± 7,46 | activados: sin cambio de conducta |
 | E3 (→ +conceptos) | 0,00 ± 0,00; 0,00 ± 0,00 | +0,68 ± 1,53; +10,18 ± 23,02 | activado: sin cambio significativo |
-| E4 (→ +reducción) | 0,00 ± 0,00; +0,53 ± 4,57 | −1,82 ± 4,13; −5,33 ± 12,05 | activado en Crafter y mínimo; apagado en archivos (ver abajo) |
+| E4 (→ +reducción) | 0,00 ± 0,00; +0,53 ± 4,57 | −1,82 ± 4,13; −5,33 ± 12,05 | activado; en archivos, tras el ajuste de decay (ver abajo) |
 | E5 (→ +evocación) | 0,00 ± 0,00; −8,47 ± 19,15 | 0,00 ± 0,00; 0,00 ± 0,00 | activado: sin cambio significativo |
 | E6 (→ +repaso) | −0,23 ± 0,48; +11,03 ± 27,11 | −2,50 ± 9,47; −3,50 ± 24,37 | activado: sin cambio significativo |
 | E7 (tasa 1,0 → 0,5, información) | +0,30 ± 0,53; −5,17 ± 36,38 | −15,10 ± 26,54; −43,98 ± 92,68; setas +0,12 ± 0,09 | se queda en 1,0 (por defecto) |
@@ -47,11 +47,26 @@ Archivos no entraba en el benchmark por mecanismo. En el benchmark final con E1 
 | sin E5 | +0,20 ± 0,14 / +0,07 ± 0,17 / +0,15 ± 0,13 | −2,50 ± 6,67 / −10,82 ± 10,10 / −6,60 ± 5,61 |
 | sin E4 (configuración final) | −0,03 ± 0,13 / −0,07 ± 0,12 / −0,05 ± 0,11 | +0,82 ± 5,03 / −9,50 ± 9,99 / −3,30 ± 4,45 |
 
-Decisión: E4 apagado en archivos (d9c9f0e). Causa probable, no verificada más allá de esta medición: la reducción de c_exp (×0,95 por noche) debilita las hipótesis «es tóxico» aún no demostradas y el individuo vuelve a comer esos ficheros. No se ajustó el parámetro (quedaba un ajuste permitido; ver pendientes).
+Primera decisión: E4 apagado en archivos (d9c9f0e). Causa probable: la reducción de c_exp (×0,95 por noche) debilita las hipótesis «es tóxico» aún no demostradas y el individuo vuelve a comer esos ficheros.
+
+### Ajuste de E4: la reducción respeta el metadato decay
+
+Único ajuste de E4, pedido por el autor (f0b3884). Cada `Proposicion` lleva el metadato *decay* (decisión 7), 0,05 por defecto (el ×0,95 de antes). Al confirmar «hace daño» con pérdida de vitalidad, decay = 0,05 × (1 − arousal de daño), con arousal de daño = pérdida / 10 acotado a [0, 1] (10 = el doble del umbral de envenenamiento grave de `aprender`); se queda el menor decay visto. La reducción nocturna aplica c_exp × (1 − decay): un tóxico de −10 de vitalidad no se reduce; un daño de −2, ×0,96.
+
+Medición: archivos, Equilibrado y Reactivo, N = 10, E1 a E6 con E4 ajustado (`--mecanismos buffer consolidacion conceptos reduccion evocacion repaso`, código f0b3884), 16/11/2026.
+
+| Frente a | Δ tóxicos Equilibrado / Reactivo | Δ latidos Equilibrado / Reactivo | Δ fitness Equilibrado / Reactivo |
+|---|---|---|---|
+| `base-v2.0` | −0,05 ± 0,14 / −0,05 ± 0,11 | +0,38 ± 5,19 / −4,00 ± 4,61 | +19,50 ± 36,50 / −13,00 ± 41,56 |
+| sin E4 | −0,03 ± 0,06 / 0,00 ± 0,00 | −0,45 ± 1,08 / −0,70 ± 2,13 | −2,15 ± 23,19 / −18,90 ± 31,38 |
+
+Los tóxicos vuelven al nivel de la base: E4 se activa también en archivos (9351540). Muertes (base → ajustado): Equilibrado hambre 12 → 13, depredador 5 → 5, viven 23 → 22; Reactivo hambre 12 → 13, depredador 3 → 4, viven 25 → 23.
+
+**No medido:** el ajuste también cambia la reducción en mínimo y Crafter (allí E4 ya estaba activo). Por indicación del autor solo se midió archivos; las cifras de mínimo y Crafter de este documento son anteriores al ajuste (86138bb).
 
 ## Benchmark final frente a la referencia
 
-Configuración final: mínimo y Crafter con `MEMORIA_E`; archivos con `MEMORIA_E` sin reducción; ajedrez y snake sin mecanismos (memoria ligera, sin sueño). Base = `base-v2.0` (56f45b7) medida de nuevo en la misma máquina y sesión; nueva = 86138bb (mínimo, Crafter) y la fila «sin E4» de arriba (archivos, d9c9f0e; el control sin experiencia es idéntico por construcción). Los valores base coinciden con [`REFERENCIA_BASE.md`](REFERENCIA_BASE.md).
+Configuración final: mínimo, Crafter y archivos con `MEMORIA_E` (E1 a E6); ajedrez y snake sin mecanismos (memoria ligera, sin sueño). La tabla siguiente se midió antes del ajuste de decay: base = `base-v2.0` (56f45b7) medida de nuevo en la misma máquina y sesión; nueva = 86138bb (mínimo, Crafter) y la fila «sin E4» de arriba (archivos, d9c9f0e; el control sin experiencia es idéntico por construcción). Para archivos con la configuración final (E4 con decay), ver la sección anterior. Los valores base coinciden con [`REFERENCIA_BASE.md`](REFERENCIA_BASE.md).
 
 | Mundo | Métrica | Grupo | Base | Final | Δ |
 |---|---|---|---|---|---|
@@ -116,12 +131,13 @@ El trabajo pesado (consolidación del día, reducción, poda) ocurre al dormirse
 4. **`recordar_comida`** sigue usando `memoria.ruta` y `olvidar_donde` para navegar; con evocación solo cambia de dónde salen los candidatos (piezas `Recuerdo`).
 5. **Repaso solo en calma** (afecto CALMA) para no repasar en estados negativos (rumiación); umbral de potencia libre 50 %, más alto que el de evocación (25 %), para que el repaso no compita con ella.
 6. **Mundos con mecanismos:** solo los de memoria completa y sueño (mínimo, Crafter, archivos). Ajedrez y snake no los declaran: sin sueño la consolidación ocurriría solo al final de la partida y su memoria es ligera.
-7. **E4 apagado en archivos** sin probar un ajuste del parámetro (ver diagnóstico).
+7. **E4 en archivos:** primero apagado; después, con el ajuste de decay que pidió el autor, activado (ver diagnóstico). La escala del arousal de daño (pérdida / 10) es elección propia: no había una en el código.
 8. **Tope de Creencias = 64**: por debajo no cambia nada (invariancia OK); con más proposiciones, prioridad a lo presente.
 9. **ms por latido con reloj real**, en la misma máquina, en serie y sin otra carga; `base-v2.0` no registra ms, así que el «antes» se mide en el código final con `--mecanismos ninguno`.
 
 ## Pendiente
 
-- Ajuste de E4 para archivos (por ejemplo, no reducir hipótesis de daño o reducir menos); queda un ajuste permitido.
+- Medir mínimo y Crafter con E4 ajustado (decay); no se ha hecho.
+- El bloque E no se fusiona hasta comprobar, junto con el bloque F, si la memoria aporta.
 - Persistir grafo y conceptos en `memoria.db` si un bloque posterior los usa entre vidas.
 - Ningún mecanismo mejora el fitness: la evocación sustituye lecturas directas de memoria por piezas con coste de atención; aprovechar el grafo (relaciones, valencia) en estrategias o impulsos es trabajo de bloques posteriores.
