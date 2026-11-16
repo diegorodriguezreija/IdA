@@ -13,7 +13,7 @@ class Pieza:
     """Unidad producida por un Componente.
 
     - ``id``: identidad estable (un mismo objeto del mundo conserva su id).
-    - ``tipo``: clase de Pieza (Exterocepcion, Imagen, Objeto, Supervivencia, Valor, Ejecucion...).
+    - ``tipo``: clase de Pieza (Exterocepcion, Imagen, Objeto, Supervivencia, Valor, Accion...).
     - ``arousal``: saliencia o urgencia, en [0, 1].
     - ``confianza``: certeza, en [0, 1].
     - ``carga``: datos propios (para entidades: ``clase`` y ``rasgos``).

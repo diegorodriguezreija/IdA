@@ -337,7 +337,7 @@ class Prudencia(Componente):
         mem, ahora = ctx.memoria, ctx.latido
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         malas = {c for c, t in self.malas.items() if ahora - t < self.RECUERDO}
-        acc = list(ctx.onda.acc("Ejecucion").values())
+        acc = list(ctx.onda.acc("Accion").values())
         frenados = 0
         for c in acc:
             if c.carga["verbo"] == Verbo.MOVER and c.carga["objetivo"] in malas:

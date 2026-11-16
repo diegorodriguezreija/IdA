@@ -11,7 +11,7 @@ proposiciones **demostradas**.
 | Interpretar | PredicadoProposicion | Predicado (lo que se observa ahora) y Proposición (lo que se sabe de su clase) |
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
-| Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Ejecución |
+| Reaccionar  | Comportamiento       | Comportamiento basado en conocimiento demostrado + candidato de Acción |
 | Reaccionar  | ImpulsoS3            | Freno prefrontal sobre los candidatos que contradicen lo que se sabe |
 """
 
@@ -118,7 +118,7 @@ class Logica(Componente):
 
 
 class Comportamiento(Componente):
-    """Convierte la conclusión lógica en un candidato de Ejecución. Solo existe si hay conocimiento demostrado."""
+    """Convierte la conclusión lógica en un candidato de Acción. Solo existe si hay conocimiento demostrado."""
 
     tipo = "Comportamiento"
     entradas = ("Logica",)
@@ -155,7 +155,7 @@ class ImpulsoS3(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         mem, ahora = ctx.memoria, ctx.latido
-        for c in ctx.onda.acc("Ejecucion").values():
+        for c in ctx.onda.acc("Accion").values():
             verbo, clase = c.carga["verbo"], c.carga.get("clase", "")
             if not clase or c.sistema == "S3":
                 continue
@@ -205,7 +205,7 @@ class Estudio(Componente):
 
             # Detectar interrupción: si tras haber empezado no se ejecutó LEER en el latido anterior
             if ctx.latido > reg.inicio:
-                ej_ant = ctx.onda.ei("Ejecucion").get("Ejecucion")
+                ej_ant = ctx.onda.ei("Accion").get("Accion")
                 if ej_ant is None or ej_ant.carga.get("verbo") != Verbo.LEER:
                     reg.estado = EstadoLectura.INTERRUMPIDO
                     mem.lectura_activa = None

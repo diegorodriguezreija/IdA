@@ -90,7 +90,7 @@ class ImpulsoS2(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         valores = ctx.onda.ev("Valor")
-        for c in ctx.onda.acc("Ejecucion").values():
+        for c in ctx.onda.acc("Accion").values():
             v = valores.get(c.carga["objetivo"])
             if v is None:
                 continue

@@ -117,10 +117,10 @@ def test_estudio_ciclo_completo_lectura():
     assert reg.duracion_requerida == 6
     assert reg.latidos_dedicados == 0
     assert reg.estado == EstadoLectura.PENDIENTE
-    assert any(c.carga["verbo"] == Verbo.LEER for c in ctx1.onda.acc("Ejecucion").values())
+    assert any(c.carga["verbo"] == Verbo.LEER for c in ctx1.onda.acc("Accion").values())
 
     # Simular ejecución sostenida de LEER durante 6 latidos
-    ef_leer = {"Ejecucion": {"Ejecucion": Pieza("e1", "Ejecucion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
+    ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     for lat in range(2, 8):
         ctx_lat = _crear_ctx(lat, mem, bib=bib, ef_anterior=ef_leer)
         estudio.reactiva(ctx_lat)
@@ -148,7 +148,7 @@ def test_estudio_interrupcion_por_alarma_no_aplica_evidencia():
     reg = mem.lectura_activa
 
     # Latido 2: Salta alarma con peligro alto
-    ef_leer = {"Ejecucion": {"Ejecucion": Pieza("e1", "Ejecucion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
+    ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     ctx2 = _crear_ctx(2, mem, bib=bib, ef_anterior=ef_leer, peligro=0.8)
     estudio.reactiva(ctx2)
 
@@ -172,7 +172,7 @@ def test_estudio_relectura_registro_interrumpido():
     reg = mem.lectura_activa
 
     # Latido 2: Se interrumpe por acción distinta a LEER
-    ef_mover = {"Ejecucion": {"Ejecucion": Pieza("e2", "Ejecucion", 0.5, 0.5, carga={"verbo": Verbo.MOVER})}}
+    ef_mover = {"Accion": {"Accion": Pieza("e2", "Accion", 0.5, 0.5, carga={"verbo": Verbo.MOVER})}}
     ctx2 = _crear_ctx(2, mem, bib=bib, ef_anterior=ef_mover)
     estudio.reactiva(ctx2)
     assert reg.estado == EstadoLectura.INTERRUMPIDO
@@ -185,7 +185,7 @@ def test_estudio_relectura_registro_interrumpido():
     assert reg.estado == EstadoLectura.PENDIENTE
 
     # Sostener lectura hasta el final
-    ef_leer = {"Ejecucion": {"Ejecucion": Pieza("e1", "Ejecucion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
+    ef_leer = {"Accion": {"Accion": Pieza("e1", "Accion", 0.5, 0.5, carga={"verbo": Verbo.LEER})}}
     for lat in range(lat_reinicio + 1, lat_reinicio + reg.duracion_requerida + 2):
         ctx_lat = _crear_ctx(lat, mem, bib=bib, ef_anterior=ef_leer)
         estudio.reactiva(ctx_lat)

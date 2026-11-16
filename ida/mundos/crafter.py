@@ -412,7 +412,7 @@ class PlanTecnologico(Componente):
         self.fallos: Dict[str, int] = {}
 
     def _anotar_fallo(self, ctx: Contexto) -> None:
-        previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
+        previa = ctx.onda.ei("Accion").get("Accion")
         if previa is not None and str(previa.carga.get("motivo", "")).startswith("plan:") and previa.carga.get("exito") is False:
             obj = previa.carga["objetivo"]
             self.fallos[obj] = self.fallos.get(obj, 0) + 1

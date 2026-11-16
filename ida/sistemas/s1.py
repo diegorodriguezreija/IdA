@@ -4,8 +4,8 @@
 |-------------|----------------|---------|
 | Sentir      | Imagen         | Imagen (gestalt del instante) y Objeto (lo que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
-| Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Ejecución |
-| Reaccionar  | ImpulsoS1      | Impulso (comer, acercarse a la comida) y su candidato de Ejecución |
+| Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
+| Reaccionar  | ImpulsoS1      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
 """
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
@@ -27,7 +27,7 @@ class Imagen(Componente):
         cosas = [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
         cosas.sort(key=lambda p: -p.arousal)
         foco = cosas[0] if cosas else None
-        previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
+        previa = ctx.onda.ei("Accion").get("Accion")
         agencia = ""
         if previa is not None:
             d = previa.carga.get("delta", {})
@@ -38,7 +38,7 @@ class Imagen(Componente):
             ctx, f"imagen_{ctx.latido}", arousal=foco.arousal if foco else 0.1,
             carga={"foco": foco.id if foco else None, "clase_foco": foco.clase if foco else None,
                    "n_cosas": len(cosas), "n_lugares": len(lugares(ctx)), "agencia": agencia},
-            entradas=["Exterocepcion", "Interocepcion", "Ejecucion"],
+            entradas=["Exterocepcion", "Interocepcion", "Accion"],
         ))
         for p in cosas[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
@@ -119,7 +119,7 @@ class ImpulsoS1(Componente):
         if destino is not None and destino.rasgo("nutritivo") > 0.0 and destino.rasgo("peligro") < 0.8:
             ar = acotar(0.25 + 0.6 * ganas * destino.rasgo("nutritivo"))
             self.proponer(ctx, Verbo.MOVER, destino.id, ar, 0.6, "impulso: acercarse a la comida", clase=destino.clase)
-        if not ctx.onda.acc("Ejecucion") and Verbo.ESPERAR not in ctx.verbos and destino is not None:
+        if not ctx.onda.acc("Accion") and Verbo.ESPERAR not in ctx.verbos and destino is not None:
             # El mundo no deja esperar y nadie propone nada: el mal menor.
             self.proponer(ctx, Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: el mal menor", clase=destino.clase)
 

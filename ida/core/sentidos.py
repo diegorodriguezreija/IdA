@@ -5,7 +5,7 @@ Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
 - ``Propiocepcion``: dónde está el individuo y qué lleva encima.
 - ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
 
-Actuar: el ``Tribunal`` elige un candidato de ``acc["Ejecucion"]`` y el ``Actuador`` de ese
+Actuar: el ``Tribunal`` elige un candidato de ``acc["Accion"]`` y el ``Actuador`` de ese
 verbo lo materializa en el mundo. Nada se ejecuta sin pasar por el Tribunal.
 """
 
@@ -56,7 +56,7 @@ class Exterocepcion(Componente):
 
 
 class Tribunal(Componente):
-    """Arbitra los candidatos de Ejecución de S1, S2 y S3.
+    """Arbitra los candidatos de Acción de S1, S2 y S3.
 
     Puntuación = arousal·estrés + confianza·(1 − estrés) + experiencia.
     - Con estrés manda la urgencia; en calma, la confianza.
@@ -76,7 +76,7 @@ class Tribunal(Componente):
         self.acumulado: Dict[Tuple[str, str], float] = {}
 
     def reactiva(self, ctx: Contexto) -> None:
-        candidatos: List[Pieza] = list(ctx.onda.acc("Ejecucion").values())
+        candidatos: List[Pieza] = list(ctx.onda.acc("Accion").values())
         if not candidatos:
             self._decidir(ctx, Verbo.ESPERAR, "", "", "sin candidatos", None, [])
             return
@@ -138,7 +138,7 @@ class Tribunal(Componente):
 class Actuador(Componente):
     """Materializa en el mundo la decisión del Tribunal para un verbo concreto."""
 
-    tipo = "Ejecucion"
+    tipo = "Accion"
 
     def __init__(self, verbo: Verbo, ejecutar: Callable[[Verbo, str, Dict[str, Any]], Efecto]):
         super().__init__(f"Actuador_{verbo.value}")
@@ -173,8 +173,8 @@ def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto)
         soma.vitalidad = 0.0
     ctx.extra["efecto"] = efecto
     ej = Pieza(
-        id="Ejecucion",
-        tipo="Ejecucion",
+        id="Accion",
+        tipo="Accion",
         arousal=decision.arousal,
         confianza=decision.confianza,
         carga={
@@ -194,4 +194,4 @@ def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto)
         creada=ctx.latido,
         actualizada=ctx.latido,
     )
-    ctx.onda.registrar("Ejecucion", ej)
+    ctx.onda.registrar("Accion", ej)

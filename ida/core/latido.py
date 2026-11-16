@@ -7,7 +7,7 @@ Orden de un latido:
 4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
 5. S1 → S2 → S3, con guillotina cooperativa. Si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
-6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Ejecucion"]``.
+6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Accion"]``.
 7. Indicadores, memoria rápida (K piezas de mayor arousal) y episodio.
 """
 
@@ -149,7 +149,7 @@ class Organismo:
             if d is not None:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None
             if exp is not None:
@@ -167,11 +167,11 @@ class Organismo:
 
     # -----------------------------------------------------------------------
     def _candidato_core(self, ctx: Contexto, verbo: Verbo, motivo: str) -> None:
-        p = Pieza(id=f"CORE:{verbo.value}:", tipo="Ejecucion", arousal=1.0, confianza=1.0,
+        p = Pieza(id=f"CORE:{verbo.value}:", tipo="Accion", arousal=1.0, confianza=1.0,
                   carga={"verbo": verbo, "objetivo": "", "clase": "", "motivo": motivo, "datos": {}},
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
-        ctx.onda.reactiva.acc.setdefault("Ejecucion", {})[p.id] = p
-        ctx.onda.registrar("Ejecucion", p)
+        ctx.onda.reactiva.acc.setdefault("Accion", {})[p.id] = p
+        ctx.onda.registrar("Accion", p)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -183,7 +183,7 @@ class Organismo:
                 for e in ctx.observacion.entidades:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
-        previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
+        previa = ctx.onda.ei("Accion").get("Accion")
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
@@ -204,7 +204,7 @@ class Organismo:
 
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if ej is None or not self.con_experiencia:
             return
         c = ej.carga
@@ -256,7 +256,7 @@ class Organismo:
         soma, onda = self.soma, ctx.onda
         maximo = max((p.arousal for canal, d in onda.reactiva.ev.items() if canal not in CANALES_SENSORES for p in d.values()), default=0.0)
         sorpresa = bool(onda.ev("Sorpresa"))
-        ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
         if self.episodio is None:
             d_vit = abs(soma.vitalidad - self._vit_ep)
             if maximo >= self.perfil.umbral_apertura_episodio or sorpresa or d_vit >= 2.0:

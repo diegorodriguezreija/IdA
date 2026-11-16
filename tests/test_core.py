@@ -70,21 +70,21 @@ def test_modulo_exento_no_paga_ni_se_corta():
 def test_proponer_mismo_id_conserva_el_mas_urgente():
     """Un impulso de explorar no puede pisar uno de huir."""
     onda = Onda(1, 10, 100.0)
-    onda.proponer("Ejecucion", Pieza("S1:MOVER:a", "Ejecucion", arousal=0.9))
-    onda.proponer("Ejecucion", Pieza("S1:MOVER:a", "Ejecucion", arousal=0.3))
-    assert onda.acc("Ejecucion")["S1:MOVER:a"].arousal == pytest.approx(0.9)
+    onda.proponer("Accion", Pieza("S1:MOVER:a", "Accion", arousal=0.9))
+    onda.proponer("Accion", Pieza("S1:MOVER:a", "Accion", arousal=0.3))
+    assert onda.acc("Accion")["S1:MOVER:a"].arousal == pytest.approx(0.9)
 
 
 # --- Tribunal ----------------------------------------------------------------
 def _candidato(id_, verbo, arousal, confianza, clase=""):
-    return Pieza(id_, "Ejecucion", arousal, confianza, {"verbo": verbo, "objetivo": id_, "clase": clase, "motivo": "", "datos": {}}, sistema="S1")
+    return Pieza(id_, "Accion", arousal, confianza, {"verbo": verbo, "objetivo": id_, "clase": clase, "motivo": "", "datos": {}}, sistema="S1")
 
 
 def test_tribunal_con_estres_manda_la_urgencia_y_en_calma_la_confianza():
     for estres, esperado in ((0.95, "urgente"), (0.0, "seguro")):
         onda = Onda(1, 10, 100.0)
-        onda.proponer("Ejecucion", _candidato("urgente", Verbo.MOVER, 0.95, 0.4))
-        onda.proponer("Ejecucion", _candidato("seguro", Verbo.MOVER, 0.3, 0.9))
+        onda.proponer("Accion", _candidato("urgente", Verbo.MOVER, 0.95, 0.4))
+        onda.proponer("Accion", _candidato("seguro", Verbo.MOVER, 0.3, 0.9))
         ctx = _ctx(onda, soma=Soma(estres=estres))
         Tribunal().reactiva(ctx)
         assert ctx.extra["decision"].carga["objetivo"] == esperado
@@ -95,8 +95,8 @@ def test_la_experiencia_sesga_y_puede_cambiar_la_decision():
     for t in range(5):
         mem.aprender(Verbo.COMER, "seta", {"vitalidad": -12.0}, None, None, True, t)
     onda = Onda(10, 10, 100.0)
-    onda.proponer("Ejecucion", _candidato("seta_1", Verbo.COMER, 0.6, 0.7, "seta"))
-    onda.proponer("Ejecucion", _candidato("celda", Verbo.MOVER, 0.5, 0.65, "pradera"))
+    onda.proponer("Accion", _candidato("seta_1", Verbo.COMER, 0.6, 0.7, "seta"))
+    onda.proponer("Accion", _candidato("celda", Verbo.MOVER, 0.5, 0.65, "pradera"))
     ctx = _ctx(onda, memoria=mem)
     ctx.perfil = Perfil(peso_experiencia=0.3)
     Tribunal().reactiva(ctx)
@@ -106,7 +106,7 @@ def test_la_experiencia_sesga_y_puede_cambiar_la_decision():
 
 def test_acecho_con_poca_confianza():
     onda = Onda(1, 10, 100.0)
-    onda.proponer("Ejecucion", _candidato("x", Verbo.MOVER, 0.2, 0.2))
+    onda.proponer("Accion", _candidato("x", Verbo.MOVER, 0.2, 0.2))
     ctx = _ctx(onda)
     Tribunal().reactiva(ctx)
     assert ctx.extra["decision"].carga["verbo"] == Verbo.ACECHAR
