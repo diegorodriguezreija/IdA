@@ -195,6 +195,16 @@ Se juntan para ahorrar un benchmark: C1 ya adelantó la elección del objeto por
 
 ## Encargo del bloque D: relaciones más ricas
 
+**Estado (16/11/2026): aceptado**, sin pérdidas significativas. Mínimo con experiencia: muertes por el lobo 36 → 18, por hambre 13 → 7, supervivientes 71 → 95; Equilibrado +53,6 latidos. Crafter cumple la no inferioridad (límite inferior −0,92). El benchmark guarda ya la causa de muerte de cada vida. Detalle y decisiones tomadas sin consultar en `docs/MEDICIONES_D.md`. Para después: una creencia por proposición crecerá con la memoria (vigilar en E); `Valor` y `recordar_comida` aún leen la memoria directamente (revisar en E); muertes por desgaste en Crafter 4 → 8 (fase de mundos).
+
+## Antes de la mejora de mundos
+
+- [ ] Fusionar el bloque D.
+- [ ] **Calibrar la escasez de atención:** barrido del `Marcapasos` con dos o tres niveles de amplitud y potencia, en Crafter y Mínimo, para comprobar que una atención escasa estrecha el foco con peligro sin hundir el fitness. Es base: lo hace el agente principal.
+- [ ] **Congelar la referencia:** etiqueta en git y benchmark de la base tal como quede, para atribuir después cada mejora de mundo.
+- [ ] **Mejora de mundos** (otro modelo): solo estrategias e impulsos del mundo, solo percepción (regla 3), sin secuencias cableadas (regla 4), sin tocar `ida/core/` ni `ida/sistemas/`, con revisión antes de fusionar. Crafter primero: noches (refugio y anticipación con la luz) y `PlanTecnologico`; además, neofobia de Archivos que ceda con el hambre y recetas como dotación innata o aprendizaje.
+- [ ] Después, el bloque E.
+
 **Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 8, 9 y 12. Base: `main` con el bloque C fusionado.
@@ -258,3 +268,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | C1 aceptado tras el benchmark final. Lanzados C2 y C3. |
 | 2026-11-16 | Encargo del bloque D (pasos D1 a D4), pensado para una sola interacción sin supervisión. |
 | 2026-11-16 | Bloque C aceptado (C2 y C3). Notas para la fase de mejora de mundos. |
+| 2026-11-16 | Bloque D aceptado. Pasos antes de la mejora de mundos: calibración, referencia congelada y reglas para el otro modelo. |
