@@ -172,3 +172,153 @@ Encargo en [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), parte C1; corresp
 - El reflejo por cambio brusco hace huir a Valiente por debajo de su umbral de miedo (0,85): 132 reflejos en el mínimo.
 
 **Lo que mejora:** Crafter (+0,77 a +1,63 logros; Reactivo, significativo), archivos (fitness +170 a +193 y nutritivos +3,7 a +4,2, significativos) y el mínimo con Equilibrado (+87 latidos).
+
+---
+
+## Segunda medición, tras las decisiones del autor sobre C1
+
+- **Versiones:** base = `main` (`b3a6ed6`); nueva = `feature/bloque-c` (`8ced7d6`): alimentación como una estrategia con fases y elección de objeto por `Valor` y lo demostrado, histéresis 0,2, reflejo escalado con `umbral_miedo`, `seguir_en_movimiento`, mérito por feedback y plus que se apaga con el progreso.
+- **Protocolo:** el mismo (N = 10, IC 95 %, pareado, reloj real). 16/11/2026. Las cifras de la base varían un poco respecto a la primera medición (p. ej., Crafter Equilibrado 9,17 frente a 9,13) porque la guillotina por plazo mira el reloj real.
+
+### Resultado frente al criterio
+
+- **Crafter:** no inferioridad cumplida en los cuatro grupos (límite inferior del Δ de logros: Equilibrado −0,16, Valiente −0,67, Reactivo −0,45, Sin experiencia +0,01). Δ positivo en todos; ninguno significativo.
+- **Mínimo:** mejoras significativas en latidos para Equilibrado (+172,5 ± 43,4) y Reactivo (+31,1 ± 28,6), y menos setas en los tres perfiles (−0,65 a −2,42). Valiente +17,2 ± 42,7 (no significativo). Sin experiencia −16,4 ± 31,3 latidos (no significativo).
+- **Archivos:** mejoras significativas en latidos (+32 a +47), fitness (+322 a +405) y nutritivos (+6,0 a +7,0) en los tres perfiles. **Pérdida ligera y significativa:** tóxicos +0,33 a +0,40 por vida en los tres perfiles.
+
+### Tablas completas
+
+
+### minimo (N = 10 linajes, IC 95 %; Δ = nueva − base, pareado por semilla)
+
+| Grupo | Métrica | Base | Nueva | Δ pareado |
+|---|---|---|---|---|
+| Equilibrado | latidos | 173.30 ± 39.70 | 345.77 ± 27.90 | 172.47 ± 43.43 |
+| Equilibrado | fitness | 420.55 ± 83.89 | 722.90 ± 89.21 | 302.35 ± 109.75 |
+| Equilibrado | setas | 2.25 ± 0.40 | 1.02 ± 0.06 | -1.23 ± 0.42 |
+| Valiente | latidos | 312.77 ± 40.31 | 330.00 ± 21.86 | 17.23 ± 42.71 |
+| Valiente | fitness | 608.02 ± 95.86 | 691.62 ± 61.76 | 83.60 ± 125.47 |
+| Valiente | setas | 3.45 ± 0.53 | 1.02 ± 0.06 | -2.42 ± 0.55 |
+| Reactivo | latidos | 355.52 ± 27.43 | 386.57 ± 9.69 | 31.05 ± 28.57 |
+| Reactivo | fitness | 740.02 ± 63.56 | 806.83 ± 31.95 | 66.80 ± 76.01 |
+| Reactivo | setas | 1.70 ± 0.18 | 1.05 ± 0.08 | -0.65 ± 0.19 |
+| Sin experiencia | latidos | 177.40 ± 33.40 | 160.97 ± 36.72 | -16.43 ± 31.25 |
+| Sin experiencia | fitness | 493.40 ± 92.93 | 447.98 ± 96.70 | -45.42 ± 93.12 |
+| Sin experiencia | setas | 7.60 ± 0.86 | 7.60 ± 0.95 | 0.00 ± 0.73 |
+
+| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido |
+|---|---|---|---|---|---|
+| Equilibrado | base | 6932 | 1 | 0 | 3.46 / 3.54 / 2.39 |
+| Equilibrado | nueva | 13831 | 0 | 0 | 2.28 / 2.55 / 1.80 |
+| Valiente | base | 12511 | 0 | 0 | 3.20 / 3.37 / 2.30 |
+| Valiente | nueva | 13200 | 0 | 0 | 2.18 / 2.39 / 1.75 |
+| Reactivo | base | 14221 | 4 | 0 | 3.16 / 3.05 / 1.99 |
+| Reactivo | nueva | 15463 | 0 | 0 | 2.72 / 2.78 / 1.84 |
+| Sin experiencia | base | 7096 | 1 | 0 | 3.02 / 2.20 / 0.94 |
+| Sin experiencia | nueva | 6439 | 0 | 0 | 2.18 / 1.64 / 0.62 |
+
+| Grupo | Latidos | Plus decide | Reflejos | Reflejo interrumpe | Sustituciones |
+|---|---|---|---|---|---|
+| Equilibrado | 13831 | 291 | 260 | 133 | 5 |
+| Valiente | 13200 | 753 | 20 | 10 | 0 |
+| Reactivo | 15463 | 75 | 1687 | 803 | 111 |
+| Sin experiencia | 6439 | 3 | 112 | 45 | 0 |
+
+| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |
+|---|---|---|---|
+| alimentarse | 24908 | 16703 | 266 |
+| huir | 7736 | 3998 | 0 |
+| sobresalto | 6215 | 5014 | 0 |
+| plantar_cara | 1648 | 1290 | 0 |
+| defenderse | 2 | 1 | 0 |
+
+### archivos (N = 10 linajes, IC 95 %; Δ = nueva − base, pareado por semilla)
+
+| Grupo | Métrica | Base | Nueva | Δ pareado |
+|---|---|---|---|---|
+| Equilibrado | latidos | 260.88 ± 28.05 | 307.60 ± 22.94 | 46.73 ± 23.91 |
+| Equilibrado | fitness | 924.25 ± 174.38 | 1328.95 ± 165.90 | 404.70 ± 154.50 |
+| Equilibrado | nutritivos | 11.65 ± 2.76 | 18.62 ± 2.43 | 6.97 ± 2.87 |
+| Equilibrado | toxicos | 1.80 ± 0.36 | 2.17 ± 0.27 | 0.38 ± 0.32 |
+| Valiente | latidos | 272.07 ± 22.58 | 304.07 ± 26.34 | 32.00 ± 27.64 |
+| Valiente | fitness | 960.40 ± 168.50 | 1281.90 ± 181.09 | 321.50 ± 178.24 |
+| Valiente | nutritivos | 11.93 ± 2.82 | 17.88 ± 2.62 | 5.95 ± 3.04 |
+| Valiente | toxicos | 1.80 ± 0.31 | 2.20 ± 0.40 | 0.40 ± 0.31 |
+| Reactivo | latidos | 257.65 ± 22.84 | 297.88 ± 25.90 | 40.23 ± 23.32 |
+| Reactivo | fitness | 904.05 ± 115.09 | 1287.00 ± 204.74 | 382.95 ± 205.61 |
+| Reactivo | nutritivos | 11.32 ± 1.95 | 18.02 ± 3.01 | 6.70 ± 3.58 |
+| Reactivo | toxicos | 1.77 ± 0.33 | 2.10 ± 0.38 | 0.33 ± 0.22 |
+| Sin experiencia | latidos | 139.25 ± 56.48 | 142.70 ± 49.85 | 3.45 ± 38.33 |
+| Sin experiencia | fitness | 280.60 ± 239.13 | 379.85 ± 285.77 | 99.25 ± 160.16 |
+| Sin experiencia | nutritivos | 9.53 ± 1.83 | 12.93 ± 4.04 | 3.40 ± 3.13 |
+| Sin experiencia | toxicos | 9.28 ± 2.00 | 10.03 ± 1.46 | 0.75 ± 0.94 |
+
+| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido |
+|---|---|---|---|---|---|
+| Equilibrado | base | 10435 | 1 | 1 | 1.95 / 1.68 / 1.72 |
+| Equilibrado | nueva | 12304 | 0 | 1 | 1.44 / 1.35 / 1.57 |
+| Valiente | base | 10883 | 0 | 1 | 1.92 / 1.70 / 1.72 |
+| Valiente | nueva | 12163 | 0 | 2 | 1.50 / 1.40 / 1.59 |
+| Reactivo | base | 10306 | 0 | 3 | 2.01 / 1.71 / 1.73 |
+| Reactivo | nueva | 11915 | 0 | 1 | 1.56 / 1.41 / 1.57 |
+| Sin experiencia | base | 5570 | 0 | 0 | 1.47 / 1.11 / 0.79 |
+| Sin experiencia | nueva | 5708 | 0 | 0 | 1.25 / 0.95 / 0.70 |
+
+| Grupo | Latidos | Plus decide | Reflejos | Reflejo interrumpe | Sustituciones |
+|---|---|---|---|---|---|
+| Equilibrado | 12304 | 104 | 140 | 68 | 0 |
+| Valiente | 12163 | 95 | 159 | 100 | 0 |
+| Reactivo | 11915 | 74 | 257 | 134 | 0 |
+| Sin experiencia | 5708 | 8 | 41 | 36 | 0 |
+
+| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |
+|---|---|---|---|
+| alimentarse | 22917 | 10819 | 341 |
+| sobresalto | 1709 | 794 | 0 |
+| plantar_cara | 768 | 164 | 0 |
+| huir | 207 | 3 | 0 |
+
+### crafter (N = 10 linajes, IC 95 %; Δ = nueva − base, pareado por semilla)
+
+| Grupo | Métrica | Base | Nueva | Δ pareado |
+|---|---|---|---|---|
+| Equilibrado | latidos | 248.83 ± 33.62 | 249.17 ± 25.60 | 0.33 ± 40.94 |
+| Equilibrado | fitness | 9427.93 ± 1425.49 | 10561.40 ± 1196.30 | 1133.47 ± 1299.73 |
+| Equilibrado | logros | 9.17 ± 1.40 | 10.30 ± 1.19 | 1.13 ± 1.29 |
+| Valiente | latidos | 262.17 ± 34.19 | 260.93 ± 50.49 | -1.23 ± 44.17 |
+| Valiente | fitness | 10676.20 ± 1019.71 | 11540.73 ± 971.55 | 864.53 ± 1536.16 |
+| Valiente | logros | 10.40 ± 1.04 | 11.27 ± 0.95 | 0.87 ± 1.54 |
+| Reactivo | latidos | 234.73 ± 26.76 | 237.07 ± 25.67 | 2.33 ± 36.71 |
+| Reactivo | fitness | 8812.20 ± 1424.76 | 9514.37 ± 1234.28 | 702.17 ± 1153.90 |
+| Reactivo | logros | 8.57 ± 1.40 | 9.27 ± 1.24 | 0.70 ± 1.15 |
+| Sin experiencia | latidos | 262.87 ± 39.63 | 261.10 ± 31.94 | -1.77 ± 34.55 |
+| Sin experiencia | fitness | 9675.40 ± 1432.80 | 11006.97 ± 1143.37 | 1331.57 ± 1326.01 |
+| Sin experiencia | logros | 9.40 ± 1.41 | 10.73 ± 1.12 | 1.33 ± 1.32 |
+
+| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido |
+|---|---|---|---|---|---|
+| Equilibrado | base | 7465 | 2 | 0 | 2.44 / 2.72 / 1.90 |
+| Equilibrado | nueva | 7475 | 0 | 0 | 2.40 / 2.62 / 1.96 |
+| Valiente | base | 7865 | 0 | 0 | 2.33 / 2.79 / 1.97 |
+| Valiente | nueva | 7828 | 0 | 0 | 2.13 / 2.52 / 1.96 |
+| Reactivo | base | 7042 | 0 | 0 | 2.50 / 2.83 / 1.90 |
+| Reactivo | nueva | 7112 | 0 | 0 | 2.41 / 2.61 / 1.88 |
+| Sin experiencia | base | 7886 | 0 | 0 | 2.49 / 1.75 / 1.49 |
+| Sin experiencia | nueva | 7833 | 0 | 0 | 2.47 / 1.78 / 1.50 |
+
+| Grupo | Latidos | Plus decide | Reflejos | Reflejo interrumpe | Sustituciones |
+|---|---|---|---|---|---|
+| Equilibrado | 7475 | 83 | 165 | 40 | 53 |
+| Valiente | 7828 | 85 | 58 | 10 | 12 |
+| Reactivo | 7112 | 69 | 290 | 97 | 66 |
+| Sin experiencia | 7833 | 70 | 181 | 68 | 92 |
+
+| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |
+|---|---|---|---|
+| alimentarse | 24933 | 7057 | 517 |
+| huir | 5194 | 4015 | 30 |
+| sobresalto | 2059 | 1631 | 0 |
+| cerrar_distancia | 647 | 527 | 0 |
+| defensa_armada | 546 | 451 | 0 |
+| quieto_o_huir | 246 | 237 | 0 |
+| defenderse | 131 | 112 | 0 |
