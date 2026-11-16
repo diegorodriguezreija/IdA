@@ -21,7 +21,7 @@ Lo conseguido en cada mundo, con los comandos para repetirlo. Las cifras se publ
 | Indicio de que la experiencia ayuda: en el mundo mínimo, sin experiencia se vive menos y se comen más setas tóxicas | Ver abajo |
 | Telemetría en vivo sin dependencias: presupuesto del latido, reparto por sistema, memoria, carácter y conocimiento | `python -m ida --mundo X --ver` |
 | Observabilidad estándar: cada latido es una traza de OpenTelemetry con sus fases (Jaeger) y hay métricas en Prometheus y Grafana, sin que el núcleo dependa de ello | `docker compose up --build` |
-| Calidad automatizada: ruff, mypy y 64 tests en GitHub Actions (Python 3.12 y 3.15, con y sin dependencias de mundo) | `.github/workflows/ci.yml` |
+| Calidad automatizada: ruff, mypy y 85 tests (`python -m pytest -q` en `7e335ae`, 16/11/2026) en GitHub Actions (Python 3.12 y 3.15, con y sin dependencias de mundo) | `.github/workflows/ci.yml` |
 
 ---
 
@@ -91,7 +91,7 @@ La versión optimizada con el latido antiguo de 100 ms dio una media de 90 en 5 
 ## Crafter
 
 **Cambios del mundo (adaptación biológica y supervivencia):**
-- **Mapa cognitivo (hipocampo espacial `self.hitos`)**: recuerda la ubicación de infraestructuras clave (`mesa`, `horno`, `planta`, `agua`). Si el individuo explora lejos para minar y reúne los materiales de una receta, navega de vuelta al taller en vez de quedar inmóvil en la oscuridad.
+- **Mapa cognitivo (hipocampo)**: si el individuo explora lejos para minar y reúne los materiales de una receta, navega de vuelta al taller (mesa, horno) en vez de quedar inmóvil en la oscuridad. En la versión medida aquí (11/11/2026) el mapa era propio del mundo (`self.hitos` en el adaptador de Crafter). Desde el PR #4 está en el Core: `PlanTecnologico` consulta la memoria del individuo con `ctx.memoria.donde_esta(clase)` y `ctx.memoria.ruta(origen, destino)` (`ida/core/memoria.py:404` y `:436`; uso en `ida/mundos/crafter.py:508-510`), y con `--sin-experiencia` no la consulta.
 - **Defensa armada activa (`DefensaCrafter` en S1)**: asimetría lucha/huida biológica. Con espada y salud $\ge 40\%$, el combate activo defensivo supera al reflejo pasivo de huida en esquinas (urgencia 0.96/0.88), abatiendo hostiles inmediatos y cerrando distancia contra esqueletos que disparan a 2-3 casillas.
 - **Aliestesia de reparación**: si la salud cae por debajo de 7, el valor homeostático de hidratarse y alimentarse se multiplica por 1.3 para acelerar la regeneración celular nativa de Crafter.
 - `PlanTecnologico` (S3) aprovecha logros al alcance y propone dormir en refugio seguro.
