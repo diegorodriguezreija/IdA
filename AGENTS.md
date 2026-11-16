@@ -11,6 +11,17 @@ La base (Core y sistemas S1, S2, S3) se está rediseñando. Antes de cualquier c
 
 Implementa solo el bloque que te encarguen. Lo que el borrador describe para otros bloques queda fuera de alcance aunque parezca relacionado. No empieces un bloque si el anterior no cumple su condición de paso.
 
+## Fase de mejora de los mundos
+
+Tras el bloque D la base (Core y sistemas) queda congelada como referencia ([`docs/REFERENCIA_BASE.md`](docs/REFERENCIA_BASE.md)). Mientras dure esta fase:
+
+- **Solo se tocan `ida/mundos/` y sus tests.** Ni `ida/core/` ni `ida/sistemas/`, sin excepción.
+- **Las mejoras son estrategias, impulsos o percepción del mundo:** estrategias propias (`Mundo.estrategias_propias`, que pueden sustituir a una genérica con su mismo nombre), necesidades e intenciones declaradas en el `Perfil`, o rasgos y datos que el sensor entrega. Nunca un componente que proponga acciones directamente.
+- **Regla 3:** las estrategias leen solo la percepción (piezas de la Onda), no el estado interno del mundo.
+- **Regla 4:** nada de secuencias de acciones cableadas para un fin concreto; una estrategia es una máquina de estados con fases que responde a lo percibido.
+- **Si una mejora necesita cambiar la base, se anota y no se hace.** Va a la lista de pendientes para el bloque E o posteriores.
+- **Cada mejora se mide** con `herramientas/benchmark.py` (N = 10, pareado) frente a la referencia congelada, y se publica también si empeora.
+
 ## No negociables
 
 1. **No debilites los tests.** No quites palabras de `PALABRAS_DE_MUNDO` ni imports de `IMPORTS_PROHIBIDOS` en `tests/test_pureza.py`, no añadas excepciones y no relajes aserciones ni umbrales para que algo pase. Si un test falla, di qué falla y por qué.
