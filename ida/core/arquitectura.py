@@ -86,8 +86,9 @@ class Componente:
             cost=cost,
         )
 
-    def percibir(self, ctx: Contexto, pieza: Pieza, coste: int = 1) -> Pieza:
-        ctx.onda.percibir(pieza.tipo, pieza, coste, autor=self)
+    def percibir(self, ctx: Contexto, pieza: Pieza) -> Pieza:
+        """Proyecta la pieza a ``ev``. Fuera del Core cuesta 1 de amplitud y su arousal en potencia."""
+        ctx.onda.percibir(pieza.tipo, pieza, autor=self)
         return pieza
 
     def registrar(self, ctx: Contexto, pieza: Pieza) -> Pieza:

@@ -1,7 +1,7 @@
 """El latido: ensambla Core, Sistemas y mundo y ejecuta un ciclo de vida con su guillotina.
 
 Orden de un latido:
-1. Soma: metabolismo. Observación del mundo. Presupuesto del latido (frecuencia y amplitud).
+1. Soma: metabolismo. Observación del mundo. Marcapasos: frecuencia, amplitud y potencia.
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
 3. Core · Sentir (exento de peaje).
 4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
@@ -101,8 +101,8 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
-        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
+        frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
+        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia)
         ctx = Contexto(
             onda,
             soma,

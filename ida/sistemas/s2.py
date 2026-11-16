@@ -65,7 +65,7 @@ class Sujeto(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         for o in objetos(ctx):
-            self.percibir(ctx, self.pieza(ctx, o.id, arousal=o.arousal * 0.5, carga={"clase": o.clase}, entradas=[o.id]), coste=0)
+            self.percibir(ctx, self.pieza(ctx, o.id, arousal=o.arousal * 0.5, carga={"clase": o.clase}, entradas=[o.id]))
 
 
 class Valor(Componente):

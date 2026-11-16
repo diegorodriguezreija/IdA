@@ -313,11 +313,12 @@ def test_arquetipo_deferencia():
 def test_presupuesto_varia_con_el_estado():
     m = Marcapasos()
     s = Soma(energia=100.0)
-    f1, a1 = m.ritmo(s, 100.0, 100)
+    f1, a1, p1 = m.ritmo(s, 100.0, 100)
     s.energia = 20.0
     s.indicadores["peligro"] = 1.0
-    f2, a2 = m.ritmo(s, 100.0, 100)
-    assert a2 < a1 and f2 < f1
+    f2, a2, p2 = m.ritmo(s, 100.0, 100)
+    assert a2 < a1 and f2 < f1 and p2 < p1
+    assert p1 == pytest.approx(a1 * Marcapasos.FUERZA_POR_PIEZA)
     s.dormido = True
     assert m.ritmo(s, 100.0, 100)[1] == 20
 
