@@ -7,7 +7,7 @@
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
 | Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
-| Reaccionar  | Impulso        | Modula los candidatos existentes según el valor de su objetivo |
+| Reaccionar  | Impulso          | Impulso propio: Exploración (apertura × novedad) |
 | Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
 | Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
 | Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
@@ -20,6 +20,9 @@ from ida.core.estrategia import Catalogo
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas.comun import Accion, al_alcance, alarma, apetito, lugares, mejor, objetos
+
+
+EXPLORACION = "exploracion"
 
 
 class Patron(Componente):
@@ -101,18 +104,17 @@ class Exteriorizacion(Componente):
 
 
 class Impulso(Componente):
-    """Convergencia sobre el canal común: sube o baja los candidatos según el valor de su objetivo."""
+    """Impulsos propios de S2 (decisión 10): Exploración, con intensidad cruda = apertura × la novedad
+    máxima a la vista (lugares y objetos). Ya no modula acciones: el «no comas esto» lo resuelve la
+    elección del objeto de las estrategias (C1)."""
 
     tipo = "Impulso"
-    entradas = ("Valor",)
 
     def reactiva(self, ctx: Contexto) -> None:
-        valores = ctx.onda.ev("Valor")
-        for c in ctx.onda.acc("Accion").values():
-            v = valores.get(c.carga["objetivo"])
-            if v is None:
-                continue
-            self.modificar(ctx, c, arousal=c.arousal + 0.15 * v.carga["valencia"], entrada=f"S2:valor {v.carga['valencia']:+.2f}")
+        novedad = max([lugar.rasgo("novedad") for lugar in lugares(ctx)] + [o.rasgo("novedad") for o in objetos(ctx)] + [0.0])
+        intensidad = acotar(ctx.arquetipo.apertura * novedad)
+        self.registrar(ctx, self.pieza(ctx, EXPLORACION, arousal=intensidad,
+                                       carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": None}))
 
 
 class Curiosidad(Componente):
