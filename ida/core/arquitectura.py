@@ -69,7 +69,8 @@ class Componente:
         pass
 
     # --- utilidades para producir piezas -------------------------------------
-    def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None) -> Pieza:
+    def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None,
+              decay: float = 0.0, fitness: Optional[float] = None, cost: Optional[float] = None) -> Pieza:
         return Pieza(
             id=id,
             tipo=tipo or self.tipo,
@@ -80,6 +81,9 @@ class Componente:
             sistema=self.sistema,
             creada=ctx.latido,
             actualizada=ctx.latido,
+            decay=decay,
+            fitness=fitness,
+            cost=cost,
         )
 
     def percibir(self, ctx: Contexto, pieza: Pieza, coste: int = 1) -> Pieza:

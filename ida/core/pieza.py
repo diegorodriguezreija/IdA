@@ -1,7 +1,9 @@
 """La Pieza: unidad individual de información que circula por la Onda."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+MAX_REGISTRO = 16   # entradas del registro de cambios que se conservan por pieza (las más recientes)
 
 
 def acotar(x: float, lo: float = 0.0, hi: float = 1.0) -> float:
@@ -20,8 +22,15 @@ class Pieza:
     - ``entradas``: ids o tipos de las piezas que la causaron (trazabilidad).
     - ``sistema``: quién la produjo (CORE, S1, S2, S3 o MUNDO).
     - ``creada`` y ``actualizada``: latido de creación y de última actualización.
+
+    Metadatos (decisión 7). Ninguno interviene en la igualdad y, por ahora, nada los consume:
+    - ``decay``: tasa de caducidad por latido, en [0, 1]; 0 = no caduca.
+    - ``origen``: componente que la emitió por primera vez («S1.Imagen»); «CORE» si no hubo autor.
     - ``registro``: operaciones de la Onda sobre la pieza (quién la emitió o modificó, cuándo y qué
-      cambió). Lo escribe solo la Onda; no interviene en la igualdad.
+      cambió), acotado a las ``MAX_REGISTRO`` más recientes. Lo escribe solo la Onda.
+    - ``fitness``: éxito (+) o fracaso (−), solo en tipos que pueden tenerlo; ``None`` si no aplica.
+    - ``cost``: gasto o riesgo estimado de ejecutarla o percibirla; ``None`` si no aplica.
+    - ``audit``: vista de creación, actualización, origen, sistema, entradas y registro.
     """
 
     id: str
@@ -34,10 +43,21 @@ class Pieza:
     creada: int = 0
     actualizada: int = 0
     registro: List[Dict[str, Any]] = field(default_factory=list, compare=False, repr=False)
+    decay: float = field(default=0.0, compare=False)
+    origen: str = field(default="", compare=False)
+    fitness: Optional[float] = field(default=None, compare=False)
+    cost: Optional[float] = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         self.arousal = acotar(self.arousal)
         self.confianza = acotar(self.confianza)
+        self.decay = acotar(self.decay)
+
+    @property
+    def audit(self) -> Dict[str, Any]:
+        """Trazabilidad: creación, actualización, origen y registro de cambios."""
+        return {"creada": self.creada, "actualizada": self.actualizada, "origen": self.origen,
+                "sistema": self.sistema, "entradas": list(self.entradas), "registro": list(self.registro)}
 
     # Atajos para piezas que representan entidades del mundo
     @property

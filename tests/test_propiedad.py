@@ -85,6 +85,22 @@ def test_el_core_queda_exento():
     assert "x" in onda.ev("Exterocepcion")
 
 
+def test_metadatos_origen_registro_acotado_y_audit():
+    from ida.core.pieza import MAX_REGISTRO, Pieza
+
+    ctx = _ctx(Onda(5, 100, 1e9))
+    v = _montar(_Valor())
+    p = v.percibir(ctx, v.pieza(ctx, "seta", 0.4, decay=0.1, cost=1.0))
+    for i in range(MAX_REGISTRO + 5):
+        v.modificar(ctx, p, arousal=i / 100)
+    assert p.origen == "S2._Valor" and len(p.registro) == MAX_REGISTRO
+    assert p.registro[-1]["cambios"]["arousal"][1] == pytest.approx((MAX_REGISTRO + 4) / 100)
+    a = p.audit
+    assert a["creada"] == 5 and a["actualizada"] == 5 and a["origen"] == "S2._Valor" and len(a["registro"]) == MAX_REGISTRO
+    assert p.decay == pytest.approx(0.1) and p.cost == 1.0 and p.fitness is None
+    assert Pieza("x", "T", 0.5, decay=0.9, origen="otro") == Pieza("x", "T", 0.5)   # los metadatos no cuentan en la igualdad
+
+
 # Revisión estática: los sistemas y los mundos no mutan piezas ni escriben en la Onda directamente.
 MUTACION = re.compile(r"\.(arousal|confianza)\s*(=|\+=|-=|\*=)(?!=)|\.carga\[[^\]]+\]\s*=(?!=)|\.carga\.(update|setdefault|pop)\(|\.entradas\.(append|extend)\(")
 ESCRITURA_DIRECTA = re.compile(r"ctx\.onda\.(percibir|registrar|proponer|modificar)\(|\.reactiva\.(ev|acc|ef)\b")

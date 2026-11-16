@@ -24,7 +24,7 @@ from contextlib import contextmanager
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Optional, Protocol, Tuple
 
-from ida.core.pieza import Pieza, acotar
+from ida.core.pieza import MAX_REGISTRO, Pieza, acotar
 
 Canales = Dict[str, Dict[str, Pieza]]
 
@@ -141,12 +141,17 @@ class Onda:
 
     def _anotar(self, pieza: Pieza, autor: Optional[Autor], op: str, excepcion: Optional[str] = None,
                 cambios: Optional[Dict[str, Any]] = None) -> None:
-        entrada: Dict[str, Any] = {"latido": self.ciclo, "op": op, "autor": f"{autor.sistema}.{autor.nombre}" if autor else "CORE"}
+        quien = f"{autor.sistema}.{autor.nombre}" if autor else "CORE"
+        if not pieza.origen:
+            pieza.origen = quien
+        entrada: Dict[str, Any] = {"latido": self.ciclo, "op": op, "autor": quien}
         if excepcion:
             entrada["excepcion"] = excepcion
         if cambios:
             entrada["cambios"] = cambios
         pieza.registro.append(entrada)
+        if len(pieza.registro) > MAX_REGISTRO:
+            del pieza.registro[: len(pieza.registro) - MAX_REGISTRO]
 
     # --- emisiones ---------------------------------------------------------
     def registrar(self, canal: str, pieza: Pieza, autor: Optional[Autor] = None) -> None:
