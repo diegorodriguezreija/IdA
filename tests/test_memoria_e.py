@@ -133,3 +133,25 @@ def test_tasa_de_herencia_filtra_lo_de_mas_confianza():
     assert mitad.heredar(legado, 0.5) == 4
     assert {s for s, _ in mitad.saber} == {"c2", "c3"} and {c for _, c in mitad.registros} == {"c2", "c3"}
     assert nada.heredar(legado, 0.0) == 0
+
+
+def test_emision_de_creencias_acotada():
+    from ida.core.arquitectura import Contexto
+    from ida.core.azar import Azar
+    from ida.core.linaje import Arquetipo
+    from ida.core.memoria import Proposicion
+    from ida.core.onda import Onda
+    from ida.core.soma import Soma
+    from ida.core.vocabulario import Relacion, Verbo
+    from ida.sistemas.s3 import Creencia
+
+    mem = Memoria()
+    for i in range(200):
+        mem.saber[(f"c{i}", Relacion.NUTRITIVO)] = Proposicion(f"c{i}", Relacion.NUTRITIVO, confianza=i / 400)
+    ctx = Contexto(Onda(1, 100, 1e9), Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    c = Creencia()
+    c.sistema = "S3"
+    c.reactiva(ctx)
+    emitidas = ctx.onda.ef("Creencia")
+    assert len(emitidas) == Creencia.MAX_CREENCIAS
+    assert "c199|NUTRITIVO" in emitidas and "c0|NUTRITIVO" not in emitidas
