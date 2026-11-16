@@ -26,7 +26,7 @@ import collections
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
@@ -81,7 +81,9 @@ def _dist(a: Pos, b: Pos) -> int:
 class MundoCrafter(Mundo):
     nombre = "crafter"
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
-                    peso_experiencia=0.15, vitales_propios=True)
+                    peso_experiencia=0.15, vitales_propios=True,
+                    necesidades=(Necesidad("hambre", ("comida",), 95.0), Necesidad("sed", ("agua",), 95.0),
+                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
         import crafter                     # dependencia solo de este mundo
@@ -163,7 +165,8 @@ class MundoCrafter(Mundo):
     def _vitales(self) -> Dict[str, float]:
         inv = self.jugador.inventory
         return {"vitalidad": self.jugador.health / 9 * 100, "alimentacion": min(inv["food"], inv["drink"]) / 9 * 100,
-                "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100}
+                "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100,
+                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100}
 
     # --- percepción ----------------------------------------------------------
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:

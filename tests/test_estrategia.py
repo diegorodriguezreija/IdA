@@ -98,3 +98,29 @@ def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final()
     assert d.carga["origen"]["estrategia"] == "S1:huir:seguridad"
     aplicar_efecto(ctx, Verbo.MOVER, d, Efecto())
     assert onda.ef("Accion")["Accion"].carga["origen"]["impulso"] == "seguridad"
+
+
+def test_necesidades_declaradas_y_feedback_de_s1():
+    from ida.core.mundo import NECESIDADES_BASE, Necesidad
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s1 import Feedback, deficits
+
+    sed = Necesidad("sed", ("agua",), 95.0)
+    assert sed.deficit({"agua": 47.5}) == pytest.approx(0.5) and sed.deficit({"agua": 100.0}) == 0.0
+    assert sed.deficit({"otra": 1.0}) is None
+    cansancio = next(n for n in NECESIDADES_BASE if n.nombre == "cansancio")
+    assert cansancio.deficit({"energia": 90.0, "descanso": 30.0}) == pytest.approx(0.5)   # cuenta la más baja
+
+    def latido(n, alimentacion, ef_anterior=None):
+        onda = Onda(n, 50, 1e9, ef_anterior=ef_anterior)
+        ctx = _ctx(onda)
+        onda.percibir("Interocepcion", Pieza("alimentacion", "Interocepcion", carga={"valor": alimentacion}))
+        fb = _comp(Feedback)
+        fb.reactiva(ctx)
+        return ctx, onda
+
+    ctx, onda = latido(1, 47.5)
+    assert deficits(ctx)["hambre"] == pytest.approx(0.5) and deficits(ctx)["seguridad"] == 0.0
+    assert onda.ef("Feedback")["feedback"].carga["valor"] == 0.0                     # sin latido previo
+    _, onda2 = latido(2, 71.25, ef_anterior=onda.reactiva.ef)
+    assert onda2.ef("Feedback")["feedback"].carga["por_impulso"]["hambre"] == pytest.approx(0.25)   # bajó el hambre

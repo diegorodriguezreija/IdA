@@ -7,7 +7,10 @@
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
 | Reaccionar  | Reflejo        | Reflejo (huir o defenderse) y su candidato de Acción |
 | Reaccionar  | Impulso      | Impulso (comer, acercarse a la comida) y su candidato de Acción |
+| Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 """
+
+from typing import Dict
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo
@@ -139,10 +142,38 @@ class Impulso(Componente):
             self.proponer(ctx, Verbo.MOVER, destino.id, 0.3, 0.5, "sin opción mejor: el mal menor", clase=destino.clase)
 
 
+def deficits(ctx: Contexto) -> Dict[str, float]:
+    """Déficit de cada necesidad que declara el mundo (desde la interocepción) y peligro (Seguridad)."""
+    valores = {n: float(p.carga["valor"]) for n, p in ctx.onda.ev("Interocepcion").items()}
+    d: Dict[str, float] = {}
+    for necesidad in ctx.perfil.necesidades:
+        v = necesidad.deficit(valores)
+        if v is not None:
+            d[necesidad.nombre] = v
+    a = alarma(ctx)
+    d["seguridad"] = float(a.carga["peligro"]) if a is not None else 0.0
+    return d
+
+
+class Feedback(Componente):
+    """Feedback de S1 (decisión 5): cuánto bajan los déficits del cuerpo y el peligro respecto al latido
+    anterior. Positivo = mejora. Es la señal de mérito de las estrategias de S1."""
+
+    tipo = "Feedback"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        ahora = deficits(ctx)
+        previo = ctx.onda.ei("Feedback").get("feedback")
+        antes = previo.carga["deficits"] if previo is not None else ahora
+        cambios = {k: round(antes.get(k, v) - v, 4) for k, v in ahora.items()}
+        self.registrar(ctx, self.pieza(ctx, "feedback", arousal=0.0,
+                                       carga={"valor": round(sum(cambios.values()), 4), "por_impulso": cambios, "deficits": ahora}))
+
+
 def crear_s1() -> Sistema:
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia()]),
-        Modulo("Reaccionar", [Reflejo(), Impulso()]),
+        Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback()]),
         Modulo("Actuar", [Accion(Catalogo())]),
     ])

@@ -2,6 +2,7 @@
 
 Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
 - ``Interocepcion``: una pieza por constante vital, con su variación respecto al latido anterior.
+  Además de las de ``Soma``, las constantes propias que el mundo entregue en ``vitales``.
 - ``Propiocepcion``: dónde está el individuo y qué lleva encima.
 - ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
 
@@ -23,8 +24,10 @@ class Interocepcion(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         previo = ctx.onda.ei("Interocepcion")
-        for nombre in VITALES:
-            valor = float(getattr(ctx.soma, nombre))
+        valores = {nombre: float(getattr(ctx.soma, nombre)) for nombre in VITALES}
+        if ctx.observacion is not None and ctx.observacion.vitales:
+            valores.update({k: float(v) for k, v in ctx.observacion.vitales.items() if k not in valores})
+        for nombre, valor in valores.items():
             antes = float(previo[nombre].carga["valor"]) if nombre in previo else valor
             p = self.pieza(ctx, nombre, arousal=(100.0 - valor) / 100.0, carga={"valor": round(valor, 2), "delta": round(valor - antes, 2)})
             self.percibir(ctx, p)
