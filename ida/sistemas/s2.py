@@ -40,7 +40,7 @@ class Patron(Componente):
             recuerdos = {v.value: round(ctx.memoria.recordar(v, p.clase)[0], 2)
                          for v in (Verbo.COMER, Verbo.MOVER, Verbo.ATACAR, Verbo.COGER) if ctx.memoria.recordar(v, p.clase)[1]}
             if recuerdos:
-                p.carga["recuerdos"] = recuerdos
+                self.modificar(ctx, p, carga={"recuerdos": recuerdos})
 
 
 class Emocion(Componente):
@@ -111,8 +111,7 @@ class Impulso(Componente):
             v = valores.get(c.carga["objetivo"])
             if v is None:
                 continue
-            c.arousal = acotar(c.arousal + 0.15 * v.carga["valencia"])
-            c.entradas.append(f"S2:valor {v.carga['valencia']:+.2f}")
+            self.modificar(ctx, c, arousal=c.arousal + 0.15 * v.carga["valencia"], entrada=f"S2:valor {v.carga['valencia']:+.2f}")
 
 
 class Curiosidad(Componente):

@@ -83,12 +83,17 @@ class Componente:
         )
 
     def percibir(self, ctx: Contexto, pieza: Pieza, coste: int = 1) -> Pieza:
-        ctx.onda.percibir(pieza.tipo, pieza, coste)
+        ctx.onda.percibir(pieza.tipo, pieza, coste, autor=self)
         return pieza
 
     def registrar(self, ctx: Contexto, pieza: Pieza) -> Pieza:
-        ctx.onda.registrar(pieza.tipo, pieza)
+        ctx.onda.registrar(pieza.tipo, pieza, autor=self)
         return pieza
+
+    def modificar(self, ctx: Contexto, pieza: Pieza, *, arousal: Optional[float] = None, confianza: Optional[float] = None,
+                  carga: Optional[Dict[str, Any]] = None, entrada: Optional[str] = None) -> Pieza:
+        """Cambia una pieza ya emitida a través de la Onda, que comprueba la propiedad y lo anota."""
+        return ctx.onda.modificar(pieza, self, arousal=arousal, confianza=confianza, carga=carga, entrada=entrada)
 
     def proponer(
         self,
@@ -113,7 +118,7 @@ class Componente:
             entradas=[self.nombre],
             tipo="Accion",
         )
-        return ctx.onda.proponer("Accion", p)
+        return ctx.onda.proponer("Accion", p, autor=self)
 
 
 class Modulo:

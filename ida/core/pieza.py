@@ -20,6 +20,8 @@ class Pieza:
     - ``entradas``: ids o tipos de las piezas que la causaron (trazabilidad).
     - ``sistema``: quién la produjo (CORE, S1, S2, S3 o MUNDO).
     - ``creada`` y ``actualizada``: latido de creación y de última actualización.
+    - ``registro``: operaciones de la Onda sobre la pieza (quién la emitió o modificó, cuándo y qué
+      cambió). Lo escribe solo la Onda; no interviene en la igualdad.
     """
 
     id: str
@@ -31,6 +33,7 @@ class Pieza:
     sistema: str = "CORE"
     creada: int = 0
     actualizada: int = 0
+    registro: List[Dict[str, Any]] = field(default_factory=list, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         self.arousal = acotar(self.arousal)

@@ -341,8 +341,7 @@ class Prudencia(Componente):
         frenados = 0
         for c in acc:
             if c.carga["verbo"] == Verbo.MOVER and c.carga["objetivo"] in malas:
-                c.arousal, c.confianza = acotar(c.arousal * 0.3), acotar(c.confianza * 0.5)
-                c.entradas.append("MUNDO:prudencia (carpeta con solo comida dañina)")
+                self.modificar(ctx, c, arousal=c.arousal * 0.3, confianza=c.confianza * 0.5, entrada="MUNDO:prudencia (carpeta con solo comida dañina)")
                 frenados += 1
         if frenados and frenados == sum(1 for c in acc if c.carga["verbo"] == Verbo.MOVER):
             self._buscar_en_otra_parte(ctx, malas)   # sin alternativa, el freno no basta: proponer otra carpeta
@@ -355,11 +354,9 @@ class Prudencia(Componente):
             dano = mem.proposicion(clase, Relacion.PELIGROSO)
             nutre = mem.proposicion(clase, Relacion.NUTRITIVO)
             if dano is not None and dano.confianza >= 0.35:
-                c.arousal, c.confianza = acotar(c.arousal * 0.2), acotar(c.confianza * 0.3)
-                c.entradas.append("MUNDO:prudencia (indicios de daño)")
+                self.modificar(ctx, c, arousal=c.arousal * 0.2, confianza=c.confianza * 0.3, entrada="MUNDO:prudencia (indicios de daño)")
             elif nutre is None and conocidas - {clase}:
-                c.arousal, c.confianza = acotar(c.arousal * 0.5), acotar(c.confianza * 0.6)
-                c.entradas.append("MUNDO:prudencia (desconocida)")
+                self.modificar(ctx, c, arousal=c.arousal * 0.5, confianza=c.confianza * 0.6, entrada="MUNDO:prudencia (desconocida)")
         if all(any("indicios de daño" in e for e in c.entradas) for c in candidatos):
             self.malas[aqui] = ahora
             self._buscar_en_otra_parte(ctx, malas | {aqui})
