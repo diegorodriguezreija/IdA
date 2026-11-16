@@ -37,6 +37,7 @@ class Organismo:
         memoria: Memoria,
         azar: Azar,
         con_experiencia: bool = True,
+        biblioteca: Optional[Any] = None,
     ):
         self.mundo = mundo
         self.perfil = mundo.perfil
@@ -45,12 +46,16 @@ class Organismo:
         self.memoria = memoria
         self.azar = azar
         self.con_experiencia = con_experiencia
+        self.biblioteca = biblioteca
         self.soma = Soma(vitales_propios=tuple(VITALES) if self.perfil.vitales_propios else ())
-        self.verbos = set(mundo.verbos())
+        verbos_mundo = sorted(set(mundo.verbos()), key=lambda v: v.value)
+        self.verbos = set(verbos_mundo)
+        if Verbo.ESPERAR in self.verbos:
+            self.verbos.add(Verbo.LEER)
 
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Escena()], exento=True)
-        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in sorted(self.verbos, key=lambda v: v.value)]
+        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
@@ -73,6 +78,7 @@ class Organismo:
         self._vit_ep = self.soma.vitalidad
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0}
+        self._ubicacion_previa: Optional[str] = None
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -95,7 +101,18 @@ class Organismo:
             soma.dormido = obs.dormido
         frecuencia, amplitud = soma.presupuesto(self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior)
-        ctx = Contexto(onda, soma, self.memoria, self.arquetipo, self.azar, self.perfil, self.verbos, obs, self.con_experiencia)
+        ctx = Contexto(
+            onda,
+            soma,
+            self.memoria,
+            self.arquetipo,
+            self.azar,
+            self.perfil,
+            self.verbos,
+            obs,
+            self.con_experiencia,
+            biblioteca=self.biblioteca,
+        )
         onda.fases.append(("percibir", t_percibir, t_percibido))
 
         # 3. Sentir
@@ -133,7 +150,7 @@ class Organismo:
                 aplicar_efecto(ctx, d.carga["verbo"], d, Efecto(exito=True, mensaje="sin acción en el mundo"))
         self.ultimo_efecto = ctx.extra.get("efecto")
         ej = onda.reactiva.ef.get("Ejecucion", {}).get("Ejecucion")
-        if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR):
+        if ej is not None and not soma.dormido and ej.carga["verbo"] not in (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER):
             exp = self.memoria.proyectar(ej.carga["verbo"], ej.carga.get("clase", ""), self.ciclo) if self.con_experiencia else None
             if exp is not None:
                 onda.notas["expectativa"] = f"espera {exp.esperado:+.1f} al {exp.verbo.value} {exp.clase}"
@@ -157,11 +174,24 @@ class Organismo:
         ctx.onda.registrar("Ejecucion", p)
 
     def _aprender(self, ctx: Contexto) -> None:
+        ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
+        if self.con_experiencia and ubicacion:
+            if self._ubicacion_previa and self._ubicacion_previa != ubicacion:
+                self.memoria.registrar_transicion(self._ubicacion_previa, ubicacion, ctx.latido)
+            self._ubicacion_previa = ubicacion
+            if ctx.observacion:
+                for e in ctx.observacion.entidades:
+                    if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
+                        self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Ejecucion").get("Ejecucion")
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
-        verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR,) else None
+        if bool(c.get("exito")) and ubicacion and c["verbo"] in (Verbo.COGER, Verbo.COMER, Verbo.USAR):
+            clase_obj = c.get("obtenido") or c.get("clase") or ""
+            if clase_obj:
+                self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
+        verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -231,12 +261,17 @@ class Organismo:
             d_vit = abs(soma.vitalidad - self._vit_ep)
             if maximo >= self.perfil.umbral_apertura_episodio or sorpresa or d_vit >= 2.0:
                 self.episodio = Episodio(id=f"ep_{self.arquetipo.id}_{ctx.latido}", inicio=ctx.latido)
+                if ctx.observacion is not None and ctx.observacion.ubicacion:
+                    self.episodio.trayectoria.append(ctx.observacion.ubicacion)
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
             else:
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
                 return
         ep = self.episodio
         ep.arousal_max = max(ep.arousal_max, maximo)
+        if ctx.observacion is not None and ctx.observacion.ubicacion:
+            if not ep.trayectoria or ep.trayectoria[-1] != ctx.observacion.ubicacion:
+                ep.trayectoria.append(ctx.observacion.ubicacion)
         if ej is not None:
             ep.acciones.append({"latido": ctx.latido, "verbo": ej.carga["verbo"].value, "objetivo": ej.carga["objetivo"]})
         calma = maximo < 0.55 and not sorpresa and abs(soma.vitalidad - self._vit_ep) < 0.5
@@ -247,7 +282,7 @@ class Organismo:
             ep.balance = round(d_vit + 0.5 * (soma.alimentacion - self._ali_ep), 3)
             ep.resuelto = soma.esta_vivo and d_vit >= -1.0 and ep.balance >= -2.5
             self.memoria.episodios.append(ep)
-            if self.perfil.hogar and ctx.observacion is not None:
+            if self.con_experiencia and self.perfil.hogar and ctx.observacion is not None:
                 self.memoria.recordar_lugar(ctx.observacion.ubicacion, 1.0 if ep.resuelto and calma else -0.5)
             onda.notas["episodio"] = f"{ep.id} cerrado: balance {ep.balance:+.1f} ({'resuelto' if ep.resuelto else 'sin resolver'})"
             self.episodio = None
@@ -261,7 +296,8 @@ class Organismo:
             estaba_dormido = self.soma.dormido
             onda = self.latir()
             if self.soma.dormido and not estaba_dormido:
-                self.memoria.consolidar(self.ciclo)
+                if self.con_experiencia:
+                    self.memoria.consolidar(self.ciclo)
                 if self.al_dormir:
                     self.al_dormir(self)
             if al_latir:
@@ -271,6 +307,13 @@ class Organismo:
                 break
             if self.mundo.terminado():
                 break
+            # Cautela 1: si hay una lectura completando y espera respuesta en modo no-tiempo-real,
+            # la espera bloqueante ocurre aquí, entre un latido y otro, fuera de la guillotina.
+            if self.memoria.lectura_activa and not self.perfil.tiempo_real:
+                reg = self.memoria.lectura_activa
+                if reg.ticket and reg.latidos_dedicados >= reg.duracion_requerida:
+                    while not reg.ticket.lista():
+                        time.sleep(0.001)
             if self.perfil.tiempo_real:          # marcapasos: el mundo no espera
                 restante = self.perfil.frecuencia_ms / 1000.0 - (time.perf_counter() - t0)
                 if restante > 0:

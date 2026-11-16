@@ -8,7 +8,10 @@ import pytest
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "ida"
 BASE = sorted((RAIZ / "core").rglob("*.py")) + sorted((RAIZ / "sistemas").rglob("*.py"))
 
-IMPORTS_PROHIBIDOS = {"ida.mundos", "ida.telemetria", "playwright", "chess", "crafter", "opentelemetry", "requests", "socket", "http", "shutil", "subprocess"}
+IMPORTS_PROHIBIDOS = {
+    "ida.mundos", "ida.telemetria", "ida.bibliotecas", "playwright", "chess",
+    "crafter", "opentelemetry", "requests", "socket", "http", "shutil", "subprocess",
+}
 IMPORTS_SOLO_PERSISTENCIA = {"os", "sqlite3", "json"}
 PALABRAS_DE_MUNDO = {
     "archivo", "fichero", "carpeta", "directorio", "brote", "byte", ".txt", ".exe",

@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS episodios (individuo TEXT, id TEXT PRIMARY KEY, inici
                                       resuelto INTEGER, arousal_max REAL, acciones TEXT);
 CREATE TABLE IF NOT EXISTS saber (individuo TEXT, sujeto TEXT, relacion TEXT, confianza REAL, confirmaciones INTEGER,
                                   refutaciones INTEGER, estado TEXT, heredada INTEGER, PRIMARY KEY (individuo, sujeto, relacion));
+CREATE TABLE IF NOT EXISTS lecturas (individuo TEXT, id TEXT PRIMARY KEY, inicio INTEGER, estado TEXT,
+                                     latidos_dedicados INTEGER, elementos TEXT, respuesta TEXT);
 """
 
 
@@ -47,6 +49,11 @@ class Persistencia:
             cur.execute("INSERT OR REPLACE INTO saber VALUES (?,?,?,?,?,?,?,?)",
                         (individuo, prop.sujeto, prop.relacion.name, prop.confianza, prop.confirmaciones, prop.refutaciones,
                          prop.estado(ahora).value, int(prop.heredada)))
+            filas += 1
+        for lec in getattr(memoria, "lecturas", []):
+            cur.execute("INSERT OR REPLACE INTO lecturas VALUES (?,?,?,?,?,?,?)",
+                        (individuo, lec.id, lec.inicio, lec.estado.value, lec.latidos_dedicados,
+                         json.dumps(lec.elementos), json.dumps(lec.respuesta) if lec.respuesta is not None else None))
             filas += 1
         self.conn.commit()
         return filas

@@ -98,8 +98,6 @@ class MundoCrafter(Mundo):
         self._tk: Any = None
         self._label: Any = None
         self._photo: Any = None
-        # Mapa cognitivo (hipocampo espacial): hitos clave del entorno (mesa, horno, agua, etc.)
-        self.hitos: Dict[str, Pos] = {}
 
     # --- ciclo de vida -------------------------------------------------------
     def reiniciar(self, semilla: Optional[int]) -> None:
@@ -114,7 +112,6 @@ class MundoCrafter(Mundo):
         mundo.reset = reset_ordenado
         self.env.reset()
         self.visitas, self.t, self.fin = {}, 0, False
-        self.hitos = {}
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
@@ -235,17 +232,6 @@ class MundoCrafter(Mundo):
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
-        # Registrar hitos de infraestructura permanente en el mapa cognitivo (hipocampo)
-        for _, clase, cpos, _ in cosas:
-            if clase in ("mesa", "horno", "planta"):
-                self.hitos[clase] = cpos
-                if clase == "mesa":
-                    self.hitos["table"] = cpos
-                elif clase == "horno":
-                    self.hitos["furnace"] = cpos
-            elif clase == "agua" and "agua" not in self.hitos:
-                self.hitos["agua"] = cpos
-                self.hitos["water"] = cpos
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping))
 
@@ -504,24 +490,30 @@ class PlanTecnologico(Componente):
             return
 
     def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
-        """Orienta el movimiento hacia una estructura del taller (mesa, horno) recordada en el mapa."""
+        """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Escena o el hipocampo del Core."""
+        clase_percibida = MATERIALES.get(estructura, estructura)
         # 1. ¿Está visible en la escena actual?
-        candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == estructura and p.rasgo("proximidad") >= 0.1]
-        destino_pos = None
+        candidatos = [p for p in ctx.onda.ev("Escena").values() if p.clase == clase_percibida and p.rasgo("proximidad") >= 0.1]
         if candidatos:
             objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
             destino_pos = objetivo.carga["datos"]["pos"]
-        elif estructura in self.mundo.hitos:
-            destino_pos = self.mundo.hitos[estructura]
-        if destino_pos is None:
-            return False
-
-        pos = tuple(self.mundo.jugador.pos)
-        lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-        mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
-        if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
-            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=mejor.clase)
-            return True
+            pos = tuple(self.mundo.jugador.pos)
+            lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+            mejor = min(lugares, key=lambda l: _dist(l.carga["datos"]["pos"], destino_pos), default=None)
+            if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
+                self.proponer(ctx, Verbo.MOVER, mejor.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=mejor.clase)
+                return True
+        # 2. Si no está visible, consultar la ruta topológica en la Memoria del individuo
+        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        destino_nodo = ctx.memoria.donde_esta(clase_percibida) if ctx.con_experiencia else None
+        if aqui and destino_nodo and destino_nodo != aqui:
+            salto = ctx.memoria.ruta(aqui, destino_nodo)
+            if salto:
+                lugares = [p for p in ctx.onda.ev("Escena").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
+                puerta = next((l for l in lugares if l.id == salto), None)
+                if puerta is not None:
+                    self.proponer(ctx, Verbo.MOVER, puerta.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=puerta.clase)
+                    return True
         return False
 
     def _buscar(self, ctx: Contexto, recurso: str) -> None:

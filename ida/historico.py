@@ -40,6 +40,10 @@ def calcular_fitness(mundo: str, gen: Dict[str, Any]) -> float:
 
     elif mundo == "archivos":
         comido = pt.get("comido") or {}
+        if "nutritivos" in pt or "toxicos" in pt:
+            sanos = float(pt.get("nutritivos", 0))
+            toxicos = float(pt.get("toxicos", 0))
+            return max(0.0, sanos * 50.0 - toxicos * 100.0 + latidos * 2.0)
         total_comido = float(sum(comido.values())) if isinstance(comido, dict) else 0.0
         return total_comido * 50.0 + latidos
 

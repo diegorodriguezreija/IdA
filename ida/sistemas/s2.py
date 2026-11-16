@@ -9,12 +9,13 @@
 | Reaccionar  | ImpulsoS2        | Modula los candidatos existentes según el valor de su objetivo |
 | Reaccionar  | Curiosidad       | Candidato de explorar lo nuevo, que solo gana si nada urge |
 | Reaccionar  | Hogar            | Recordar dónde se estuvo bien, volver y descansar allí |
+| Reaccionar  | Orientacion      | Usar el mapa espacial para navegar hacia recursos nutritivos recordados |
 """
 
 import math
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
-from ida.core.pieza import acotar
+from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas.comun import al_alcance, alarma, apetito, lugares, mejor, objetos
 
@@ -108,7 +109,15 @@ class Curiosidad(Componente):
         if peligro >= 0.3 or ctx.soma.hambre() >= 0.6:
             return
         apertura = ctx.arquetipo.apertura
-        nuevo = mejor(lugares(ctx), lambda l: l.rasgo("novedad") - l.rasgo("peligro"))
+
+        def _score_lugar(l: Pieza) -> float:
+            s = l.rasgo("novedad") - l.rasgo("peligro")
+            if ctx.con_experiencia and ctx.memoria.activa:
+                val = ctx.memoria.valor_lugar(l.id)
+                s += max(-0.4, min(0.3, val * 0.15))
+            return s
+
+        nuevo = mejor(lugares(ctx), _score_lugar)
         if nuevo is not None and nuevo.rasgo("novedad") > 0.0 and nuevo.rasgo("peligro") < 0.5:
             ar = acotar(0.15 + 0.25 * apertura * nuevo.rasgo("novedad"))
             self.registrar(ctx, self.pieza(ctx, "curiosidad", arousal=ar, carga={"hacia": nuevo.id}))
@@ -138,17 +147,72 @@ class Hogar(Componente):
         aqui = ctx.observacion.ubicacion if ctx.observacion else ""
         if hogar and hogar != aqui and (cansancio >= 0.4 or peligro >= 0.4):
             puerta = next((l for l in lugares(ctx) if l.id == hogar), None)
+            if puerta is None and ctx.con_experiencia:
+                salto = ctx.memoria.ruta(aqui, hogar)
+                if salto:
+                    # El retorno al hogar por memoria espacial no debe pisar la huida si la casilla implica peligro
+                    umbral_p = 0.2 if peligro >= 0.4 else 0.8
+                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < umbral_p), None)
             if puerta is not None:
-                self.proponer(ctx, Verbo.MOVER, puerta.id, acotar(0.3 + 0.5 * max(cansancio, peligro)), 0.7, "volver al hogar", clase=puerta.clase)
+                # Urgencia mayor cuando es refugio directo sin peligro inmediato o cansancio manda
+                ar = acotar(0.3 + 0.5 * max(cansancio, peligro * 0.7))
+                self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.7, "volver al hogar", clase=puerta.clase)
         if cansancio >= 0.6 and peligro < 0.3 and (hogar is None or hogar == aqui or cansancio >= 0.85):
             ar = acotar(0.4 + 0.5 * cansancio)
             self.registrar(ctx, self.pieza(ctx, "descansar", arousal=ar, carga={"en_hogar": hogar == aqui}))
             self.proponer(ctx, Verbo.DORMIR, aqui, ar, 0.8, "cansancio: dormir" + (" en el hogar" if hogar == aqui else ""))
 
 
+class Orientacion(Componente):
+    """Orientación espacial (hipocampo): ante necesidad nutritiva sin fuente visible,
+    navega hacia ubicaciones recordadas de clases demostradas o prometedoras como nutritivas.
+    """
+
+    tipo = "Orientacion"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.con_experiencia or not ctx.memoria.activa:
+            return
+        a = alarma(ctx)
+        peligro = a.carga["peligro"] if a else 0.0
+        hambre = ctx.soma.hambre()
+        if peligro >= 0.4 or hambre < 0.35:
+            return
+        # Solo actua si no hay un recurso comestible visible ya cercano en la escena
+        if any(o.rasgo("nutritivo") >= 0.3 for o in objetos(ctx)):
+            return
+        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        if not aqui:
+            return
+        candidatos = sorted(
+            (
+                (clase, prop)
+                for (clase, rel), prop in ctx.memoria.saber.items()
+                if rel == Relacion.NUTRITIVO
+                and prop.confianza >= 0.55
+                and not ctx.memoria.demostrada(clase, Relacion.PELIGROSO, ctx.latido)
+            ),
+            key=lambda item: -item[1].confianza,
+        )
+        for clase, prop in candidatos:
+            destino = ctx.memoria.donde_esta(clase)
+            if destino == aqui and not any(o.clase == clase for o in objetos(ctx)):
+                ctx.memoria.olvidar_donde(clase)
+                continue
+            if destino and destino != aqui:
+                salto = ctx.memoria.ruta(aqui, destino)
+                if salto:
+                    puerta = next((l for l in lugares(ctx) if l.id == salto and l.rasgo("peligro") < 0.6), None)
+                    if puerta is not None:
+                        ar = acotar(0.25 + 0.45 * hambre * prop.confianza)
+                        self.registrar(ctx, self.pieza(ctx, "orientacion", arousal=ar, carga={"hacia": destino, "clase": clase}))
+                        self.proponer(ctx, Verbo.MOVER, puerta.id, ar, 0.65, f"orientación: recordar {clase}", clase=puerta.clase)
+                        return
+
+
 def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar()]),
+        Modulo("Reaccionar", [Exteriorizacion(), ImpulsoS2(), Curiosidad(), Hogar(), Orientacion()]),
     ])

@@ -31,6 +31,11 @@ class Arquetipo:
     def id(self) -> str:
         return f"{self.linaje}_G{self.generacion}"
 
+    @property
+    def deferencia(self) -> float:
+        """Grado de docilidad / respeto epistémico a testimonios de autoridad externos."""
+        return float(max(0.0, min(1.0, 0.6 * self.responsabilidad + 0.4 * (1.0 - self.apertura))))
+
     @classmethod
     def nuevo(cls, azar: Azar, linaje: str = "Alfa", nombre: str = "IdA") -> "Arquetipo":
         valores: Dict[str, Any] = {r: round(azar.uniforme(0.3, 0.7), 3) for r in RASGOS_CARACTER}

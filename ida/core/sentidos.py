@@ -150,8 +150,8 @@ class Actuador(Componente):
         if d is None:
             return
         verbo = d.carga["verbo"]
-        # ACECHAR no se ejecuta en el mundo: si el mundo admite ESPERAR, lo hace su actuador.
-        if verbo == Verbo.ACECHAR and self.verbo == Verbo.ESPERAR:
+        # ACECHAR y LEER no se ejecutan en el mundo: si el mundo admite ESPERAR, lo hace su actuador.
+        if verbo in (Verbo.ACECHAR, Verbo.LEER) and self.verbo == Verbo.ESPERAR:
             verbo = Verbo.ESPERAR
         if verbo != self.verbo:
             return
