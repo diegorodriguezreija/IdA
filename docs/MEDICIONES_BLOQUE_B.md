@@ -37,7 +37,7 @@ Mediana / percentil 95:
 
 - **Frecuencia y amplitud:** la fórmula anterior (`Soma.presupuesto`, ahora `Marcapasos.ritmo`).
 - **Potencia = amplitud** (`Marcapasos.FUERZA_POR_PIEZA = 1`). Fuerza máxima por pieza = potencia / amplitud = 1: ninguna pieza ve recortado un arousal de 0 a 1. Con un factor menor, cualquier reflejo de arousal 1 quedaría recortado en todos los latidos.
-- Con estos valores, en B0 el p95 del arousal otorgado por latido (8 a 18) queda muy por debajo de la potencia (50 a 120), y el p95 de piezas nuevas (17 a 55) por debajo de la amplitud: los recursos solo se agotan en latidos atípicos. Lo que cambia la conducta en B3 es que `Sujeto`, `Agente` y `Predicado` pasan a pagar, que sustituir un candidato ya no cuesta amplitud y que modificar arousal cuesta potencia.
+- Con estos valores, en B0 el p95 del arousal otorgado por latido (8 a 18) queda muy por debajo de la potencia (50 a 120), y el p95 de piezas nuevas (17 a 55) por debajo de la amplitud: los recursos solo se agotan en latidos atípicos. Lo que cambia en las reglas con B3 es que `Sujeto`, `Agente` y `Predicado` pasan a pagar, que sustituir un candidato ya no cuesta amplitud y que modificar arousal cuesta potencia.
 
 ## Benchmark al final del bloque (B1 a B4)
 
@@ -70,5 +70,5 @@ La potencia media incluye los latidos dormido (sin gasto). El control sin experi
 ### Lectura
 
 - Criterio de paso cumplido: sin pérdida; en Crafter, Δ = 0 frente al margen de −1 logro.
-- Con los valores por defecto (potencia = amplitud), las reglas nuevas **no llegan a actuar** en la práctica: la amplitud no se agota, la potencia solo se queda corta en 5 de 37 194 latidos de archivos (sin efecto en ninguna decisión que cambie el resultado) y la fuerza máxima por pieza es 1, así que nada se recorta. El cambio de B3 (que `Sujeto`, `Agente` y `Predicado` paguen) solo cuenta si se agota la amplitud.
+- Con los valores por defecto (potencia = amplitud), las reglas nuevas **no llegan a actuar** en la práctica: la amplitud no se agota, la potencia solo se queda corta en 5 de 37 194 latidos de archivos (sin efecto en las métricas por vida; las decisiones latido a latido no se han comparado) y la fuerza máxima por pieza es 1, así que nada se recorta. El cambio de B3 (que `Sujeto`, `Agente` y `Predicado` paguen) solo cuenta si se agota la amplitud.
 - Por tanto, este benchmark no mide el efecto de una atención escasa: solo que las reglas nuevas, con holgura, no rompen nada. Que la atención limite de verdad depende de los valores del `Marcapasos`, cuyo ajuste adaptativo queda fuera de este bloque.
