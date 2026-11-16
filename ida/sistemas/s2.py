@@ -5,7 +5,7 @@
 | Sentir      | Patron           | Patrón: qué clase de cosa es y qué recuerda de ella |
 | Sentir      | Emocion          | Emoción: el estado afectivo sentido (en ``ef``, sin coste; aún no lo consume nadie) |
 | Interpretar | Sujeto           | Sujeto (mismo id que el Objeto) |
-| Interpretar | Valor            | Valor: motivación, sentimiento y social de cada sujeto |
+| Interpretar | Valor            | Valor: motivacional, potencia, sentimental y social de cada sujeto; valencia |
 | Reaccionar  | Exteriorizacion  | Exteriorización del estado afectivo (en ``ef``, sin coste) |
 | Reaccionar  | Impulso          | Impulso propio: Exploración (apertura × novedad) |
 | Reaccionar  | Feedback         | Feedback de S2: mejora del placer y bajada del estrés |
@@ -76,7 +76,16 @@ class Sujeto(Componente):
 
 
 class Valor(Componente):
-    """Valencia de cada sujeto: lo que motiva, lo que se siente por él (memoria) y lo social."""
+    """Lo que vale cada sujeto para mí (decisión 9), en cuatro dimensiones:
+    - **motivacional**: lo que satisface una necesidad actual (nutritivo × apetito, y lo útil según la
+      apertura);
+    - **potencia**: la fuerza percibida del sujeto (su rasgo de peligro; el cansancio del sujeto no se
+      percibe todavía);
+    - **sentimental**: la valencia que la memoria asocia a la clase (recuerdos de sus efectos; −0,5 si
+      se sabe peligrosa);
+    - **social**: 0 mientras no haya varios individuos.
+    La valencia se mantiene como combinación de las dimensiones (0,5 · motivacional + 0,5 · sentimental
+    + social − potencia · neuroticismo), para las estrategias que ya la leen."""
 
     tipo = "Valor"
     entradas = ("Sujeto",)
@@ -84,17 +93,18 @@ class Valor(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         arq, mem = ctx.arquetipo, ctx.memoria
         for o in objetos(ctx):
-            motivacion = o.rasgo("nutritivo") * apetito(ctx) + 0.5 * o.rasgo("recurso") * arq.apertura
+            motivacional = o.rasgo("nutritivo") * apetito(ctx) + 0.5 * o.rasgo("recurso") * arq.apertura
+            potencia = o.rasgo("peligro")
             patron = ctx.onda.ev("Patron").get(o.id)
             recuerdos = patron.carga.get("recuerdos", {}) if patron else {}
-            sentimiento = math.tanh(sum(recuerdos.values()) / 5.0) if recuerdos else 0.0
+            sentimental = math.tanh(sum(recuerdos.values()) / 5.0) if recuerdos else 0.0
             if mem.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido):
-                sentimiento -= 0.5
-            social = o.rasgo("agente") * (arq.extraversion - 0.5)
-            valencia = acotar(0.5 * motivacion + 0.5 * sentimiento + social - o.rasgo("peligro") * arq.neuroticismo, -1.0, 1.0)
+                sentimental -= 0.5
+            social = 0.0
+            valencia = acotar(0.5 * motivacional + 0.5 * sentimental + social - potencia * arq.neuroticismo, -1.0, 1.0)
             self.percibir(ctx, self.pieza(ctx, o.id, arousal=abs(valencia),
-                                          carga={"clase": o.clase, "valencia": round(valencia, 3), "motivacion": round(motivacion, 3),
-                                                 "sentimiento": round(sentimiento, 3), "social": round(social, 3)},
+                                          carga={"clase": o.clase, "valencia": round(valencia, 3), "motivacional": round(motivacional, 3),
+                                                 "potencia": round(potencia, 3), "sentimental": round(sentimental, 3), "social": social},
                                           entradas=[o.id, "Patron"]))
 
 

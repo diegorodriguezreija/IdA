@@ -529,3 +529,17 @@ def test_habituacion_y_sensibilizacion_en_supervivencia():
     mem.saber[("sombra", Relacion.PELIGROSO)] = Proposicion("sombra", Relacion.PELIGROSO, confianza=0.8)
     categoria, trust, factor = relacion_supervivencia(ctx, sombra, 0.4, 0.0)
     assert categoria == "peligro" and factor == pytest.approx(1.4)                          # sensibilizado tras un daño
+
+
+def test_valor_con_cuatro_dimensiones_y_valencia_combinada():
+    from ida.core.pieza import Pieza
+    from ida.sistemas.s2 import Valor
+
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(alimentacion=10.0), Memoria(), Arquetipo(neuroticismo=0.5), Azar(1), Perfil(), {Verbo.MOVER})
+    onda.percibir("Objeto", Pieza("v1", "Objeto", 0.5, carga={"clase": "v", "rasgos": {"nutritivo": 0.8, "peligro": 0.4, "agente": 1.0}}))
+    _comp(Valor).reactiva(ctx)
+    c = onda.ev("Valor")["v1"].carga
+    assert set(c) >= {"motivacional", "potencia", "sentimental", "social", "valencia"} and c["social"] == 0.0
+    assert c["potencia"] == pytest.approx(0.4)
+    assert c["valencia"] == pytest.approx(0.5 * c["motivacional"] + 0.5 * c["sentimental"] - 0.4 * 0.5, abs=1e-3)
