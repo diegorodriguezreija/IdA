@@ -11,6 +11,7 @@ proposiciones **demostradas**.
 | Interpretar | Predicado            | Predicado: lo que se observa ahora (pasada reactiva) |
 | Interpretar | Proposicion          | Proposición: lo que se sabe de su clase (pasada activa) |
 | Interpretar | Sentencia            | Sentencia: proposiciones encadenadas con una condición |
+| Interpretar | Creencia             | Creencia: lo que se sostiene como cierto, con trust y fuentes |
 | Interpretar | Logica               | Lógica: la conclusión que se sigue de las sentencias |
 | Reaccionar  | Intencion            | Intención: saber y las que declare el mundo (el qué deliberado) |
 | Reaccionar  | Feedback             | Feedback de S3: baja del error de predicción (aciertos menos sorpresas) |
@@ -19,7 +20,7 @@ proposiciones **demostradas**.
 | Reaccionar  | Impulso              | Control gradual según la certeza, sobre piezas Impulso (sube o baja impulsos) |
 """
 
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
@@ -131,6 +132,42 @@ class Logica(Componente):
             self.percibir(ctx, self.pieza(ctx, "conclusion", arousal=0.6, confianza=s.confianza, carga=dict(s.carga), entradas=[s.id]))
 
 
+PESO_AFECTIVO = 0.1    # peso de la fuente afectiva frente a la confianza por experiencia y autoridad
+
+
+class Creencia(Componente):
+    """Lo que el individuo sostiene como cierto (decisión 12), con su trust y sus fuentes. Cierra el
+    círculo de S3·Interpretar: representar, generar, consolidar. Una creencia por cada proposición de
+    la memoria (en ``ef``, sin coste: es estado, no atención).
+    - **sostiene**: la proposición está demostrada; **estado**: hipótesis, demostrada o refutada.
+    - **fuentes**: experiencia (``c_exp``), autoridad (``c_aut``, si la hay), herencia (si viene del
+      linaje) y afectiva: la valencia que S2 da ahora a la clase (negativa para «hace daño», positiva
+      para «nutre»), con poco peso (``PESO_AFECTIVO``) y refutable: solo ajusta el trust.
+    - **trust**: (confianza por fuentes + PESO_AFECTIVO × afectiva) / (1 + PESO_AFECTIVO).
+    """
+
+    tipo = "Creencia"
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.con_experiencia:
+            return
+        valencias: Dict[str, float] = {}
+        for pv in ctx.onda.ev("Valor").values():
+            valencias.setdefault(str(pv.carga.get("clase", "")), float(pv.carga.get("valencia", 0.0)))
+        for (clase, rel), p in list(ctx.memoria.saber.items()):
+            v = valencias.get(clase, 0.0)
+            afectiva = max(0.0, -v) if rel == Relacion.PELIGROSO else max(0.0, v) if rel == Relacion.NUTRITIVO else 0.0
+            estado = p.estado(ctx.latido)
+            trust = (p.confianza + PESO_AFECTIVO * afectiva) / (1.0 + PESO_AFECTIVO)
+            self.registrar(ctx, self.pieza(ctx, f"{clase}|{rel.name}", arousal=trust, confianza=trust, carga={
+                "clase": clase, "relacion": rel, "estado": estado, "sostiene": estado == EstadoSaber.DEMOSTRADA, "trust": round(trust, 3),
+                "fuentes": {"experiencia": round(p.c_exp, 3), "autoridad": p.c_aut, "herencia": p.heredada, "afectiva": round(afectiva, 3)}}))
+
+
+def creencia(fuente: Dict[str, Pieza], clase: str, rel: Relacion) -> Optional[Pieza]:
+    return fuente.get(f"{clase}|{rel.name}")
+
+
 def _conclusion(ctx: Contexto, tipo: str) -> Optional[Tuple[Pieza, Pieza]]:
     """La conclusión de ``Logica`` de ese tipo (EVITAR, COMER, COGER) y su objeto, si están a la vista."""
     c = ctx.onda.ev("Logica").get("conclusion")
@@ -216,19 +253,19 @@ class Impulso(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         if not ctx.con_experiencia:
             return
-        mem, ahora = ctx.memoria, ctx.latido
+        creencias = ctx.onda.ef("Creencia")
         impulsos = ctx.onda.ef("Impulso")
         seguridad = impulsos.get("seguridad")
         if seguridad is not None:
-            certeza = max((p.confianza for o in objetos(ctx) if o.rasgo("proximidad") >= 0.5
-                           for p in [mem.proposicion(o.clase, Relacion.PELIGROSO)] if p is not None and mem.demostrada(o.clase, Relacion.PELIGROSO, ahora)),
+            certeza = max((c.carga["trust"] for o in objetos(ctx) if o.rasgo("proximidad") >= 0.5
+                           for c in [creencia(creencias, o.clase, Relacion.PELIGROSO)] if c is not None and c.carga["sostiene"]),
                           default=0.0)
             if certeza > 0.0:
                 self.modificar(ctx, seguridad, arousal=seguridad.arousal + self.FUERZA * certeza, entrada="S3: peligro demostrado cerca")
         comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3]
-        refutadas = [mem.proposicion(o.clase, Relacion.NUTRITIVO) for o in comestibles]
-        if comestibles and all(p is not None and p.estado(ahora) == EstadoSaber.REFUTADA for p in refutadas):
-            confianza_nutre = max(p.confianza for p in refutadas if p is not None)
+        refutadas = [creencia(creencias, o.clase, Relacion.NUTRITIVO) for o in comestibles]
+        if comestibles and all(c is not None and c.carga["estado"] == EstadoSaber.REFUTADA for c in refutadas):
+            confianza_nutre = max(c.carga["trust"] for c in refutadas if c is not None)
             certeza = 1.0 - confianza_nutre        # certeza de que no nutre
             for imp in impulsos.values():
                 if imp.carga.get("rasgo") == "nutritivo":
@@ -470,7 +507,7 @@ def crear_s3() -> Sistema:
     catalogo = Catalogo(estrategias_s3())
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
-        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica()]),
+        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica(), Creencia()]),
         Modulo("Reaccionar", [Intencion(), Impulso(), Feedback(), Estrategia(catalogo)]),
         Modulo("Actuar", [Accion(catalogo)]),
     ])

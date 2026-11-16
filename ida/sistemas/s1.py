@@ -252,7 +252,7 @@ class SeguirEnMovimiento(Definicion):
 
 def _rechazado(ctx: Contexto, o: Pieza) -> bool:
     """Elección del objeto (decisión 1 del autor sobre C1): primero el valor de S2 (del latido anterior,
-    porque S2 corre después de S1) y después lo demostrado (S3). Se rechaza lo que se valora mal
+    porque S2 corre después de S1) y después las creencias de S3 (lo que sostiene, bloque D). Se rechaza lo que se valora mal
     (valencia negativa) y lo que se sabe peligroso o se sabe que no nutre. Un objeto que S2 no ha
     valorado (fuera de la atención) toma el valor de otro de su clase que sí lo esté: el sentimiento
     sale de los recuerdos de la clase."""
@@ -266,10 +266,13 @@ def _rechazado(ctx: Contexto, o: Pieza) -> bool:
         return True
     if not ctx.con_experiencia:
         return False
-    if ctx.memoria.demostrada(o.clase, Relacion.PELIGROSO, ctx.latido):
+    # Lo que S3 sostiene (piezas Creencia del latido anterior: S3 corre después de S1).
+    creencias = ctx.onda.ei("Creencia")
+    dano = creencias.get(f"{o.clase}|{Relacion.PELIGROSO.name}")
+    if dano is not None and dano.carga.get("sostiene"):
         return True
-    nutre = ctx.memoria.proposicion(o.clase, Relacion.NUTRITIVO)
-    return nutre is not None and nutre.estado(ctx.latido) == EstadoSaber.REFUTADA
+    nutre = creencias.get(f"{o.clase}|{Relacion.NUTRITIVO.name}")
+    return nutre is not None and nutre.carga.get("estado") == EstadoSaber.REFUTADA
 
 
 Rechazo = Callable[[Contexto, Pieza], bool]
