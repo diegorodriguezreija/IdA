@@ -101,6 +101,11 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
 
 
+# Mecanismos del bloque E aceptados por el benchmark (docs/MEDICIONES_E.md); los mundos con memoria
+# completa y sueño los declaran en su perfil.
+MEMORIA_E = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True)
+
+
 @dataclass
 class Perfil:
     """Las pocas perillas de un mundo. Cada una tiene un efecto visible al ejecutar."""
