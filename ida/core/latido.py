@@ -86,6 +86,7 @@ class Organismo:
         self.ef_anterior: Optional[Canales] = None
         self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos
         self.ultimo_efecto: Optional[Efecto] = None
+        self.causa_muerte: Optional[str] = None
         self.episodio: Optional[Episodio] = None
         self._vit_ep = self.soma.vitalidad
         self._ali_ep = self.soma.alimentacion
@@ -215,6 +216,17 @@ class Organismo:
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
 
+    def _causa_de_muerte(self, onda: Onda) -> str:
+        """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada
+        más agotada (déficit 1), sin contar la propia salud (p. ej. «hambre»); si no, «desgaste»."""
+        if self.ultimo_efecto is not None and self.ultimo_efecto.causa:
+            return str(self.ultimo_efecto.causa)
+        valores = {n: float(p.carga["valor"]) for n, p in onda.ev("Interocepcion").items()}
+        valores.update({n: float(getattr(self.soma, n)) for n in VITALES})
+        agotadas = [(d, n.nombre) for n in self.perfil.necesidades if "vitalidad" not in n.constantes
+                    for d in [n.deficit(valores)] if d is not None and d >= 0.99]
+        return max(agotadas)[1] if agotadas else "desgaste"
+
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
         ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
@@ -316,6 +328,7 @@ class Organismo:
             if al_latir:
                 al_latir(self, onda)
             if not self.soma.esta_vivo:
+                self.causa_muerte = self._causa_de_muerte(onda)
                 self._aprender_de_la_muerte(onda)
                 break
             if self.mundo.terminado():

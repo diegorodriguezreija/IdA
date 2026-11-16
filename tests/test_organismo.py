@@ -106,3 +106,13 @@ def test_la_fase_cortada_por_la_guillotina_queda_apuntada():
     nombres = [f[0] for f in onda.fases]
     assert onda.guillotina
     assert nombres[-2:] == ["actuar", "cierre"]
+
+
+def test_la_causa_de_muerte_queda_siempre_registrada():
+    mundo = MundoMinimo()
+    mundo.reiniciar(3)
+    azar = Azar(3)
+    org = Organismo(mundo, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar, True)
+    org.soma.alimentacion, org.soma.vitalidad = 0.0, 1.0      # sin comida: el metabolismo quita 2 de vitalidad
+    org.vivir(10)
+    assert not org.soma.esta_vivo and org.causa_muerte == "hambre"
