@@ -9,8 +9,11 @@ Dimensión reactiva (el cuarteto de la experiencia):
 Atención (decisiones 15 y 18): la Onda tiene frecuencia (plazo), amplitud (cuántas piezas nuevas
 caben en ``ev`` y ``acc``: cada una cuesta 1) y potencia (cuánto arousal se puede otorgar o cambiar:
 cuesta |Δ arousal|, al subir y al bajar). Lo máximo que un componente cambia una pieza en un latido
-es potencia / amplitud. Escribir solo en ``ef`` (``registrar``) no cuesta. Los módulos del Core
-están exentos.
+es potencia / amplitud. Escribir solo en ``ef`` (``registrar``) no cuesta. El Core (sus módulos
+exentos o lo que firma con ``AutorCore``) no paga amplitud ni potencia y tampoco está sujeto a la
+fuerza máxima por pieza: sus piezas (sensores, sorpresa, sueño forzado) llevan el arousal que dicta
+el cuerpo, no lo que la atención permite cambiar en un latido. Aceptado por el autor en la revisión
+de C1 (decisión 5).
 
 Agotar amplitud o potencia no corta el latido: sin amplitud, la pieza nueva se rechaza; sin potencia
 suficiente, el cambio de arousal se recorta a lo que queda (a cero si no queda nada); lo demás sigue.
