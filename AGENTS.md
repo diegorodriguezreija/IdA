@@ -35,7 +35,7 @@ Tras el bloque D la base (Core y sistemas) queda congelada como referencia ([`do
 6. **Verifica antes de afirmar.** Cada afirmación sobre el código cita fichero y línea o la salida de un comando. Lo que no hayas comprobado, márcalo como no verificado.
 7. **No inventes cifras, referencias ni mecanismos.** Toda cifra publicada lleva su comando, sus semillas, su número de vidas y su fecha, y se compara con la versión anterior en las mismas semillas. Publica también los resultados negativos.
 8. **Un commit por cambio**, con mensaje descriptivo. Nada de `push` sin que el autor lo pida.
-9. **Sin lenguaje enfático.** Describe con cifras y límites.
+9. **Sin lenguaje enfático.** Describe con cifras y límites. **Informes y documentación, en español** (también las respuestas al autor, los mensajes de PR y los resúmenes).
 10. **No importes `chess` fuera de `ida/mundos/ajedrez/`** (licencia, ver [`NOTICE`](NOTICE)).
 11. **Seguridad:** el mundo de archivos solo puede tocar su bioma; no amplíes esa frontera. El panel y la pila de observabilidad escuchan solo en local.
 
