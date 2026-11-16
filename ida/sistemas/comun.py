@@ -56,11 +56,11 @@ class Accion(Componente):
             if p.sistema != self.sistema:
                 continue
             definicion = self.catalogo.get(p.carga["nombre"])
-            propuesta = definicion.actuar(ctx, p) if definicion is not None else None
-            if propuesta is None:
-                continue
-            self.proponer(ctx, propuesta.verbo, propuesta.objetivo, propuesta.arousal, propuesta.confianza, propuesta.motivo,
-                          clase=propuesta.clase, origen={"impulso": p.carga["impulso"], "estrategia": p.id}, **(propuesta.datos or {}))
+            resultado = definicion.actuar(ctx, p) if definicion is not None else None
+            propuestas = resultado if isinstance(resultado, list) else ([resultado] if resultado is not None else [])
+            for propuesta in propuestas:
+                self.proponer(ctx, propuesta.verbo, propuesta.objetivo, propuesta.arousal, propuesta.confianza, propuesta.motivo,
+                              clase=propuesta.clase, origen={"impulso": p.carga["impulso"], "estrategia": p.id}, **(propuesta.datos or {}))
 
 
 class Estrategia(Componente):

@@ -22,7 +22,7 @@ latido es menor que el esperado y baja si es mejor (teorema del valor marginal).
 """
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
@@ -84,7 +84,8 @@ class Definicion:
         """Fase siguiente de la máquina de estados (decisión 17). Por defecto, una sola fase."""
         return estrategia.carga.get("paso", 0)
 
-    def actuar(self, ctx: Any, estrategia: Pieza) -> Optional[Propuesta]:
+    def actuar(self, ctx: Any, estrategia: Pieza) -> Union[None, Propuesta, List[Propuesta]]:
+        """La acción del latido, o varias acciones de la misma fase entre las que decide el Tribunal."""
         return None
 
 
