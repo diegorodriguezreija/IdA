@@ -33,8 +33,8 @@ Lo conseguido en cada mundo, con los comandos para repetirlo. Las cifras se publ
 | Archivos | Latidos de vida (media, 12 vidas) | 223 | **270** |
 | Archivos | Mordiscos tóxicos por vida | 7,2 | **2,2** |
 | Snake (pitón) | Puntos por vida (media) | ~232 (10 vidas) | **916** (6 vidas) · máximo **1605** |
-| Crafter | Logros por vida (media, 10 vidas) | 9,1 | **10,9** (máx. **16**) |
-| Crafter | Latidos de vida (media, 10 vidas) | 208,6 | **263,8** (máx. **443**) |
+| Crafter | Logros por vida (protocolo aislado, 10 linajes × 3 generaciones, IC 95 %) | no medido | **9,30 ± 1,09** |
+| Crafter | Latidos de vida (protocolo aislado, 10 linajes × 3 generaciones) | no medido | **233,7** |
 | Ajedrez | Resultado contra la dificultad 1 (8 partidas) | 5 V · 3 T | **7 V · 1 T** |
 | Ajedrez | Resultado contra la dificultad 2 (8 partidas) | 1 V · 5 T · 2 D | **3 V · 3 T · 2 D** |
 | Ajedrez | Resultado contra la dificultad 3 (8 partidas) | 0 V · 1 T · 6 D | 0 V · 2 T · 5 D |
@@ -109,7 +109,17 @@ python -m ida --mundo crafter --latidos 600 --semilla S   # S = 1..10
 | Logro `make_stone_pickaxe` | 0 % (0 / 10 vidas) | **40 %** (4 / 10 vidas) |
 | Máximo vital alcanzado | 286 latidos / 12 logros | **443 latidos / 16 logros** (alcanza horno, espada y pico de piedra) |
 
-Medido el 11 de noviembre de 2026. La vida se alarga un **+26,5 %** de media y los logros suben un **+19,8 %**, transformando a IdA de presa pasiva a un organismo con memoria espacial y defensa armada efectiva.
+Medido el 11 de noviembre de 2026. **Medición retirada como cifra principal:** el comando no lleva `--tabula-rasa` ni fija el carácter, y el directorio `datos/crafter` se reutilizó entre ejecuciones (según [`docs/BENCHMARK_PERFILES_MUNDOS.md`](../docs/BENCHMARK_PERFILES_MUNDOS.md), §1.4). En ese caso cada semilla continúa el linaje de la anterior: muta el arquetipo del último individuo y hereda su legado (`ida/ejecutor.py` en `5c8ae1e`, líneas 52, 71 y 86); solo la primera parte de un arquetipo aleatorio (`Arquetipo.nuevo`). Las 10 vidas no eran independientes. Se conserva la tabla como registro; los porcentajes de mejora que se publicaron con ella (+26,5 % de vida, +19,8 % de logros) no se sostienen con este método.
+
+**Protocolo aislado** (12 de noviembre de 2026, Windows, Python 3.15; detalle en [`docs/BENCHMARK_PERFILES_MUNDOS.md`](../docs/BENCHMARK_PERFILES_MUNDOS.md)): semillas 1 a 10, un directorio de datos limpio por semilla, 3 generaciones por linaje (30 vidas), 600 latidos máximos, carácter inicial fijo. Se promedia cada linaje y sobre los 10 linajes se calcula la media con IC 95 % ($t_{0,975,9} = 2,262$). Se ejecutó con `ida.ejecutor.ejecutar(..., tabula_rasa=True, arquetipo_inicial=...)`; el script de la batería no está en el repositorio.
+
+| Perfil inicial | Logros `5c8ae1e` | Logros `25e1303` (= árbol de `main` actual) | Δ pareado | Latidos `5c8ae1e` / `25e1303` |
+|---|---|---|---|---|
+| Equilibrado (rasgos 0,50, `umbral_miedo` 0,60) | **9,30 ± 1,09** | 9,13 ± 1,42 | −0,17 ± 1,42 | 233,7 / 246,6 |
+| Valiente | 10,30 ± 1,05 | 10,40 ± 1,04 | +0,10 ± 0,99 | 260,1 / 262,2 |
+| Reactivo | 8,90 ± 1,23 | 8,57 ± 1,40 | −0,33 ± 0,49 | 228,1 / 234,7 |
+
+La versión base (antes de la adaptación biológica) no se ha medido con este protocolo, así que no hay cifra de mejora aislada frente a ella. En las 30 vidas del perfil Equilibrado, el 100 % de las muertes son por hostiles de noche.
 
 ## Ajedrez (rival local corregido)
 

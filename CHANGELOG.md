@@ -4,6 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Corregido: métricas públicas de Crafter
+- **Logros por vida en Crafter: 9,30 ± 1,09, no 10,9.** `README.md`, `README.en.md` y `doc-repositorio/05_METRICAS_E_HITOS.md` publicaban 10,9 logros y 263,8 latidos (medido el 11/11/2026 con `python -m ida --mundo crafter --latidos 600 --semilla S`, S = 1..10). Ese comando no lleva `--tabula-rasa` y el directorio de datos se reutilizó entre semillas, así que cada vida heredaba arquetipo y legado de la anterior: no eran 10 vidas independientes.
+- **Nueva cifra:** protocolo aislado de [`docs/BENCHMARK_PERFILES_MUNDOS.md`](docs/BENCHMARK_PERFILES_MUNDOS.md) (12/11/2026, Python 3.15): semillas 1..10, directorio limpio por semilla, 3 generaciones por linaje (30 vidas), 600 latidos máximos, perfil inicial Equilibrado, IC 95 % con t de Student sobre los 10 linajes. En `5c8ae1e` da 9,30 ± 1,09 logros y 233,7 latidos de media. En `25e1303` (mismo árbol que `main` tras el PR #4) da 9,13 ± 1,42; la diferencia pareada, −0,17 ± 1,42, incluye el 0.
+- Se retiran los porcentajes de mejora publicados con la cifra antigua (+26,5 % de vida, +19,8 % de logros): la versión base no se ha medido con el protocolo aislado. La tabla del 11/11 se conserva en `05_METRICAS_E_HITOS.md` como registro.
+- Límite: el script de la batería no está en el repositorio; la ejecución usa `ida.ejecutor.ejecutar(..., tabula_rasa=True, arquetipo_inicial=...)`.
+
 ### Núcleo y Sistemas (Fases 1, 2, 3 y 4a del Plan de Evolución)
 - **Hipocampo en el Core (`ida/core/memoria.py`, `ida/core/latido.py`):** grafo topológico de transiciones (`mapa: Dict[str, Dict[str, Arista]]`), células de lugar (`donde_esta(clase)`), búsqueda BFS acotada (`ruta`), poda LRU (`MAX_NODOS_MAPA = 200`) y olvido en `consolidar()` sin herencia. Validado con 100% de invariancia con semilla en infraestructura pasiva.
 - **Navegación y Orientación (`ida/sistemas/s2.py`):** `Hogar` utiliza rutas topológicas cuando el refugio queda fuera de la vista inmediata; nuevo componente `Orientacion` en `S2.Reaccionar` para regresar hacia fuentes nutritivas recordadas cuando hay necesidad.
