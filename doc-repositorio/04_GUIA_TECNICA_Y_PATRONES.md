@@ -10,7 +10,7 @@ Una de las premisas rectoras del framework base de IdA es la **sobriedad arquite
 
 * **Python 3.12 o posterior:** `dataclasses`, `typing` y la biblioteca estándar. La integración continua prueba 3.12 y 3.15; se desarrolló con 3.15.1.
 * **Sin dependencias en el Core:** el núcleo (`ida/core/`) y los sistemas (`ida/sistemas/`) solo usan la biblioteca estándar de Python. Las dependencias son de cada mundo, como extras: `[crafter]`, `[snake]` (`playwright`), `[ajedrez]` (`python-chess`). La CI ejecuta los tests también sin ningún extra.
-* **Calidad:** `ruff` (linter) y `mypy` (tipos) en verde sobre todo `ida/`, 64 tests con `pytest` y un workflow de **GitHub Actions** que los ejecuta en cada push.
+* **Calidad:** `ruff` (linter) y `mypy` (tipos) en verde sobre todo `ida/`, 85 tests con `pytest` (en `7e335ae`, 16/11/2026) y un workflow de **GitHub Actions** que los ejecuta en cada push.
 * **Contenedores:** `Dockerfile` multietapa (imagen de IdA y etapa `dev` con las herramientas), **devcontainer** para VS Code y `docker-compose.yml` con la pila de observabilidad.
 * **Observabilidad estándar (opcional):** **OpenTelemetry** (trazas y métricas por OTLP), un **OpenTelemetry Collector**, **Jaeger**, **Prometheus** y **Grafana** con el panel provisionado como código (`infra/`). Ver el patrón 6.
 * **Persistencia Integrada con SQLite en modo WAL:** Se utiliza el motor nativo `sqlite3` con Journal Mode en `WAL` (Write-Ahead Logging). Esto permite lecturas ultra-rápidas concurrentes y escrituras transaccionales sin bloquear el latido.
