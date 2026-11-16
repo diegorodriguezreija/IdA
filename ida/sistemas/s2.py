@@ -61,7 +61,8 @@ class Emocion(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         self.registrar(ctx, self.pieza(ctx, "emocion", arousal=ctx.soma.estres,
-                                       carga={"afecto": ctx.soma.afecto.value, "placer": round(ctx.soma.placer, 1)},
+                                       carga={"valencia": round(ctx.soma.valencia, 3), "afecto": ctx.soma.afecto.value,
+                                              "placer": round(ctx.soma.placer, 1)},
                                        entradas=["Interocepcion", "Patron"]))
 
 

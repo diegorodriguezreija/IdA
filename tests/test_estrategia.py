@@ -498,3 +498,16 @@ def test_feedback_de_s3_error_de_prediccion():
     onda2 = Onda(2, 100, 1e9, ef_anterior=onda1.reactiva.ef)
     fb.reactiva(Contexto(onda2, Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER}))
     assert onda2.ef("Feedback")["feedback:S3"].carga["valor"] == 2.0
+
+
+def test_valencia_explicita_en_soma_y_emocion():
+    from ida.sistemas.s2 import Emocion
+
+    assert Soma(placer=60.0, estres=0.2).valencia == pytest.approx(0.4)
+    assert Soma(placer=0.0, estres=0.9).valencia == pytest.approx(-0.9)
+    onda = Onda(1, 100, 1e9)
+    ctx = Contexto(onda, Soma(placer=60.0, estres=0.2), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
+    e = _comp(Emocion)
+    e.reactiva(ctx)
+    p = onda.ef("Emocion")["emocion"]
+    assert p.carga["valencia"] == pytest.approx(0.4) and p.arousal == pytest.approx(0.2)
