@@ -85,7 +85,7 @@ class MundoCrafter(Mundo):
     nombre = "crafter"
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
-                    necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
+                    necesidades=(Necesidad("hambre", ("comida",), 85.0, "nutritivo"), Necesidad("sed", ("agua",), 85.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),
                     intenciones=("progresar",))
 
