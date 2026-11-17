@@ -16,7 +16,7 @@ from dataclasses import replace
 import os
 import sys
 import tempfile
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
@@ -38,7 +38,7 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
         self.dominante = True
 
     # Activar el impulso cobijo en el arnés y marcar la estrategia como dominante solo durante la prueba
-    necesidades_arnes = tuple(perfil_original.necesidades) + (Necesidad("cobijo", ("cobijo",), 100.0),)
+    necesidades_arnes = tuple(n for n in perfil_original.necesidades if n.nombre != "cobijo") + (Necesidad("cobijo", ("cobijo",), 100.0),)
     clase_mundo.perfil = replace(perfil_original, necesidades=necesidades_arnes)
     RefugioNocturno.__init__ = _init_dominante  # type: ignore[method-assign]
 
@@ -67,43 +67,44 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                 "logros": [],
             }
 
-            def al_latir(org: Any, onda: Any, _r: Dict[str, Any]) -> None:
+            def al_latir(org: Any, onda: Any, _r: Dict[str, Any], iv: Dict[str, Any] = info_vida) -> None:
                 p = org.mundo.jugador
                 inv = p.inventory
                 luz = float(org.mundo.env._world.daylight)
-                info_vida["max_madera"] = max(info_vida["max_madera"], int(inv.get("wood", 0)))
+                iv["max_madera"] = max(iv["max_madera"], int(inv.get("wood", 0)))
                 if inv.get("wood_pickaxe", 0) >= 1:
-                    info_vida["tuvo_pico"] = True
+                    iv["tuvo_pico"] = True
                 if inv.get("wood_sword", 0) >= 1:
-                    info_vida["tuvo_espada"] = True
+                    iv["tuvo_espada"] = True
 
                 est = onda.estrategias.get("S2:refugio_nocturno:cobijo")
                 paso = est.carga.get("paso") if est is not None else None
                 if isinstance(paso, dict):
                     fase = paso.get("fase", "?")
-                    info_vida["ultima_fase"] = fase
-                    if not info_vida["fases_vistas"] or info_vida["fases_vistas"][-1] != fase:
-                        info_vida["fases_vistas"].append(fase)
+                    iv["ultima_fase"] = fase
+                    if not iv["fases_vistas"] or iv["fases_vistas"][-1] != fase:
+                        iv["fases_vistas"].append(fase)
                     if paso.get("mina") is not None:
-                        info_vida["tuvo_mina"] = True
+                        iv["tuvo_mina"] = True
                     if fase == "dormir":
-                        if not info_vida["sellada"]:
-                            info_vida["sellada"] = True
-                            info_vida["latido_sello"] = onda.ciclo
-                            info_vida["paso_sello"] = org.mundo.t
-                            info_vida["luz_sello"] = round(luz, 3)
-                            info_vida["sellada_antes_05"] = luz >= 0.5
-                            info_vida["salud_al_sellar"] = int(p.health)
-                            info_vida["primera_noche_terminada"] = False
-                        elif not info_vida.get("primera_noche_terminada", False):
+                        if not iv["sellada"]:
+                            iv["sellada"] = True
+                            iv["latido_sello"] = onda.ciclo
+                            iv["paso_sello"] = org.mundo.t
+                            iv["luz_sello"] = round(luz, 3)
+                            iv["sellada_antes_05"] = luz >= 0.5
+                            iv["salud_al_sellar"] = int(p.health)
+                            iv["primera_noche_terminada"] = False
+                        elif not iv.get("primera_noche_terminada", False):
                             # Daño causado por un monstruo mientras el jugador está dentro del refugio sellado en este latido
                             ef_ant = org.ultimo_efecto
-                            if info_vida.get("fase_previa") == "dormir" and luz < 0.5 and ef_ant is not None and ef_ant.causa in ("zombi", "esqueleto", "flecha"):
-                                info_vida["dano_dentro"] = True
+                            if iv.get("fase_previa") == "dormir" and luz < 0.5 and ef_ant is not None:
+                                if ef_ant.causa in ("zombi", "esqueleto", "flecha"):
+                                    iv["dano_dentro"] = True
                     else:
-                        if info_vida["sellada"] and fase == "amanecer":
-                            info_vida["primera_noche_terminada"] = True
-                    info_vida["fase_previa"] = fase
+                        if iv["sellada"] and fase == "amanecer":
+                            iv["primera_noche_terminada"] = True
+                    iv["fase_previa"] = fase
 
             with tempfile.TemporaryDirectory(prefix=f"ida_fase_a_{sem}_") as td:
                 res = vivir("crafter", latidos=latidos, semilla=sem, generaciones=1, tabula_rasa=True,

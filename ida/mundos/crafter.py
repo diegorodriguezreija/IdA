@@ -24,6 +24,7 @@ Componente propio:
 
 from collections import deque
 import collections
+import math
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
@@ -86,7 +87,8 @@ class MundoCrafter(Mundo):
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
-                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),
+                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
+                                 Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
@@ -172,7 +174,7 @@ class MundoCrafter(Mundo):
         return {"vitalidad": self.jugador.health / 9 * 100, "alimentacion": min(inv["food"], inv["drink"]) / 9 * 100,
                 "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100,
                 "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100,
-                "cobijo": float(w.daylight) * 100}
+                "cobijo": max(2.0, float(w.daylight) * 100)}
 
     # --- percepción ----------------------------------------------------------
     def _vista_local(self) -> Dict[Pos, str]:
@@ -528,7 +530,8 @@ class RefugioNocturno(Definicion):
         self.visitadas: Set[Pos] = set()
         self.rocas_inspeccionadas: Set[Pos] = set()
         self.mina_recordada: Optional[Tuple[Pos, Pos]] = None
-        self.luz_previa: float = 1.0
+        self._estado_mem: Dict[str, Any] = {}
+        self.luz_previa: float = 0.0
         self.bajando: bool = False
         self.paso_oscuro: bool = False
         self.ultimo_latido: int = 0
@@ -541,7 +544,8 @@ class RefugioNocturno(Definicion):
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
         self.mina_recordada = None
-        self.luz_previa = 1.0
+        self._estado_mem.clear()
+        self.luz_previa = 0.0
         self.bajando = False
         self.paso_oscuro = False
         self.ultimo_latido = 0
@@ -567,7 +571,7 @@ class RefugioNocturno(Definicion):
         if pos is not None:
             self.visitadas.add(pos)
             for p, m in self.mapa.items():
-                if m == "stone" and _dist(pos, p) <= 2:
+                if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
                     self.rocas_inspeccionadas.add(p)
 
     def _hay_hostil_cerca(self, ctx: Contexto, pos: Pos) -> bool:
@@ -695,7 +699,7 @@ class RefugioNocturno(Definicion):
         madera_falta = self._madera_faltante(inv)
         pasos_herramientas = madera_falta * 4 + (4 if self._falta_herramienta(inv) else 0)
         if mina is None:
-            return pasos_herramientas + 22   # margen de búsqueda + excavación (3×2 + 3 movs) + cierre (3)
+            return pasos_herramientas + 28   # margen de búsqueda + excavación (3×2 + 3 movs) + cierre (3)
         e0, (dx, dy) = mina
         e1 = (e0[0] + dx, e0[1] + dy)
         e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
@@ -708,12 +712,18 @@ class RefugioNocturno(Definicion):
         return pasos_herramientas + dist_acceso + rocas * 3 + 4
 
     def _pasos_luz_restantes(self, luz: float) -> float:
-        """Pasos de Crafter estimados que quedan antes de que caiga el ocaso según la pendiente solar."""
-        if not self.bajando and luz >= 0.45:
-            # Mañana: desde luz actual subiendo hasta el mediodía y luego bajando hasta el ocaso
-            return 75.0 + 30.0 * (1.0 - luz)
-        # Tarde: margen de pasos útiles antes de que la luz caiga de 0,5
-        return max(0.0, (luz - 0.56) * 140.0)
+        """Pasos de Crafter estimados que quedan antes de que la luz caiga de 0,5 según la pendiente solar."""
+        if luz < 0.5:
+            return 0.0
+        p_ocaso = 1.0 - math.acos(0.5 ** (1.0 / 3.0)) / math.pi
+        c = max(0.0, min(1.0, 1.0 - luz)) ** (1.0 / 3.0)
+        dist_mediodia = 0.5 - math.acos(c) / math.pi
+        p_est = (0.5 + dist_mediodia) if self.bajando else (0.5 - dist_mediodia)
+        return max(0.0, (p_ocaso - p_est) * 300.0)
+
+    def _guardar_estado(self, estado: Dict[str, Any]) -> Dict[str, Any]:
+        self._estado_mem = dict(estado)
+        return estado
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
         return _posicion(ctx) is not None
@@ -726,6 +736,8 @@ class RefugioNocturno(Definicion):
         subiendo = not self.bajando
 
         prev = estrategia.carga.get("paso")
+        if not isinstance(prev, dict) and self._estado_mem:
+            prev = self._estado_mem
         estado: Dict[str, Any] = dict(prev) if isinstance(prev, dict) else {
             "fase": "madera",
             "mina": None,
@@ -734,7 +746,7 @@ class RefugioNocturno(Definicion):
             "saliendo": False,
         }
         if pos is None:
-            return estado
+            return self._guardar_estado(estado)
 
         # Recuperar o validar la mina guardada en el estado (coherencia contra el vaivén)
         mina_actual: Optional[Tuple[Pos, Pos]] = estado.get("mina")
@@ -745,22 +757,39 @@ class RefugioNocturno(Definicion):
             if len(partes) == 3:
                 hogar_pos = (int(partes[1]), int(partes[2]))
 
+        previa_acc = ctx.onda.ei("Accion").get("Accion")
+        ejecuto_refugio = previa_acc is not None and str(previa_acc.carga.get("motivo", "")).startswith("refugio:")
+
         if mina_actual is not None:
             e0, d = mina_actual
-            dentro_sellado = pos == (e0[0] + 2 * d[0], e0[1] + 2 * d[1]) and self._sellado(mina_actual)
+            e2_m = (e0[0] + 2 * d[0], e0[1] + 2 * d[1])
+            e3_m = (e0[0] + 3 * d[0], e0[1] + 3 * d[1])
+            dentro_sellado = pos in (e2_m, e3_m) and self._sellado(mina_actual)
             if not dentro_sellado and not estado.get("saliendo"):
                 val = self._evaluar_candidato(e0, d, pos, hogar_pos)
                 dist_ahora = 0 if self._en_galeria(pos, mina_actual) else _dist(pos, e0)
                 if val is None:
                     mina_actual = None
-                elif estado.get("fase") in ("elegir_mina", "cavar") and dist_ahora > 0:
-                    if dist_ahora < int(estado.get("mejor_dist", 999)):
-                        estado["mejor_dist"] = dist_ahora
+                elif dist_ahora == 0:
+                    estado["mejor_dist"] = 0
+                    estado["sin_avance"] = 0
+                else:
+                    # Si mientras el individuo se desplazaba descubrió una mina claramente mejor/más cercana, adoptarla
+                    mejor_alt = self._buscar_mejor_mina(ctx, pos, inv)
+                    if mejor_alt is not None and mejor_alt[2] > val + 10.0:
+                        mina_actual = (mejor_alt[0], mejor_alt[1])
+                        estado["mejor_dist"] = _dist(pos, mejor_alt[0])
                         estado["sin_avance"] = 0
-                    else:
-                        estado["sin_avance"] = int(estado.get("sin_avance", 0)) + 1
-                        if int(estado["sin_avance"]) >= self.PACIENCIA_AVANCE:
-                            mina_actual = None
+                    elif not ejecuto_refugio:
+                        estado["mejor_dist"] = dist_ahora
+                    elif estado.get("fase") in ("elegir_mina", "cavar"):
+                        if dist_ahora < int(estado.get("mejor_dist", 999)):
+                            estado["mejor_dist"] = dist_ahora
+                            estado["sin_avance"] = 0
+                        else:
+                            estado["sin_avance"] = int(estado.get("sin_avance", 0)) + 1
+                            if int(estado["sin_avance"]) >= self.PACIENCIA_AVANCE:
+                                mina_actual = None
 
         if mina_actual is None:
             candidata = self._buscar_mejor_mina(ctx, pos, inv)
@@ -770,7 +799,10 @@ class RefugioNocturno(Definicion):
                 estado["sin_avance"] = 0
 
         estado["mina"] = mina_actual
-        pasos_luz_temprano = self._pasos_luz_restantes(luz)
+        pasos_luz = self._pasos_luz_restantes(luz)
+        coste = self._coste_restante_pasos(pos, inv, mina_actual)
+        es_noche = luz < 0.5
+        ocaso_proximo = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
 
         # 1. ¿Está ya dentro de la galería (e1, e2 o e3)?
         if mina_actual is not None:
@@ -782,32 +814,30 @@ class RefugioNocturno(Definicion):
                 estado["saliendo"] = False
             if estado.get("saliendo") and pos in (e1, e2, e3):
                 estado["fase"] = "amanecer"
-                return estado
-            if pos == e2 and self._sellado(mina_actual):
+                return self._guardar_estado(estado)
+            if pos in (e2, e3) and self._sellado(mina_actual):
                 self.mina_recordada = mina_actual
                 if ctx.con_experiencia and ctx.perfil.hogar:
                     ctx.memoria.recordar_lugar(f"celda_{e2[0]}_{e2[1]}", 1.0)
-                if self.paso_oscuro and subiendo and luz >= self._luz_salida(inv):
+                debe_salir = (self.paso_oscuro and subiendo and luz >= self._luz_salida(inv)) or (not ocaso_proximo and subiendo and luz >= 0.65)
+                if debe_salir:
                     self.paso_oscuro = False
                     estado["saliendo"] = True
                     estado["fase"] = "amanecer"
                 else:
                     estado["fase"] = "dormir"
-                return estado
-            # Si ya había sellado la mina y sigue en e2 pero la piedra de e1 desapareció (p. ej. destruida o abierta en noche), volver a cerrar
-            if pos == e2 and self.mina_recordada == mina_actual and not self._sellado(mina_actual) and not estado.get("saliendo"):
-                if inv.get("stone", 0) >= 1 and (not self.paso_oscuro or not subiendo or luz < self._luz_salida(inv)):
+                return self._guardar_estado(estado)
+            # Solo cerrarse cuando la anticipación del ocaso o la noche lo pidan, nunca con mucho día por delante
+            if ocaso_proximo and inv.get("stone", 0) >= 1 and not estado.get("saliendo"):
+                if pos == e2 and self.mina_recordada == mina_actual and not self._sellado(mina_actual):
                     estado["fase"] = "cerrarse"
-                    return estado
-            # Si ya excavó hasta e3, retroceder y sellar si ya está abastecido o si el ocaso está próximo
-            ocaso_proximo = self.bajando and pasos_luz_temprano <= max(26.0, self._coste_restante_pasos(pos, inv, mina_actual) * 2.2)
-            abastecido = inv.get("drink", 0) >= 7 and inv.get("food", 0) >= 7
-            if pos == e3 and inv.get("stone", 0) >= 1 and not estado.get("saliendo") and (ocaso_proximo or abastecido):
-                estado["fase"] = "cerrarse"
-                return estado
-            if pos == e2 and self.mapa.get(e3) == "path" and inv.get("stone", 0) >= 1 and not self._sellado(mina_actual) and not estado.get("saliendo") and (ocaso_proximo or abastecido):
-                estado["fase"] = "cerrarse"
-                return estado
+                    return self._guardar_estado(estado)
+                if pos == e3:
+                    estado["fase"] = "cerrarse"
+                    return self._guardar_estado(estado)
+                if pos == e2 and self.mapa.get(e3) == "path" and not self._sellado(mina_actual):
+                    estado["fase"] = "cerrarse"
+                    return self._guardar_estado(estado)
 
         # 2. Preparación de madera y herramientas
         if self._falta_herramienta(inv):
@@ -815,11 +845,9 @@ class RefugioNocturno(Definicion):
                 estado["fase"] = "madera"
             else:
                 estado["fase"] = "herramientas"
-            return estado
+            return self._guardar_estado(estado)
 
         # 3. Transición continua entre provisiones y mina según el margen entre la luz que queda y el coste de cavar
-        coste = self._coste_restante_pasos(pos, inv, mina_actual)
-        pasos_luz = self._pasos_luz_restantes(luz)
         en_progreso = estado.get("fase") == "provisiones"
         umbral_prov = 8 if en_progreso else 7
         falta_agua = inv.get("drink", 0) < umbral_prov
@@ -831,30 +859,29 @@ class RefugioNocturno(Definicion):
         ]
         hay_provision = (falta_agua and bool(aguas)) or (falta_comida and bool(comidas))
         urgencia_prov = mina_actual is not None or min(inv.get("drink", 9), inv.get("food", 9)) < 5
-        if urgencia_prov and hay_provision and pasos_luz > max(28.0, coste * 2.2) and not self._en_galeria(pos, mina_actual):
+        if urgencia_prov and hay_provision and pasos_luz > max(24.0, coste * 1.8) and not self._en_galeria(pos, mina_actual):
             estado["fase"] = "provisiones"
-            return estado
+            return self._guardar_estado(estado)
 
         # 4. Elegir mina o cavar
         if mina_actual is None:
             estado["fase"] = "elegir_mina"
-            return estado
+            return self._guardar_estado(estado)
 
         e0, (dx, dy) = mina_actual
         e1 = (e0[0] + dx, e0[1] + dy)
         e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
         e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
         rocas_pendientes = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-        hora_de_entrar = self.bajando and pasos_luz <= max(32.0, coste * 2.6)
-        abastecido = inv.get("drink", 0) >= 7 and inv.get("food", 0) >= 7
-        if rocas_pendientes == 0 and not hora_de_entrar and not abastecido and hay_provision:
+        hora_de_entrar = ocaso_proximo
+        if rocas_pendientes == 0 and not hora_de_entrar and hay_provision:
             estado["fase"] = "provisiones"
-            return estado
-        if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar or abastecido):
+            return self._guardar_estado(estado)
+        if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar):
             estado["fase"] = "cavar"
         else:
             estado["fase"] = "elegir_mina"
-        return estado
+        return self._guardar_estado(estado)
 
     @staticmethod
     def _luz_salida(inv: Dict[str, float]) -> float:
@@ -866,18 +893,35 @@ class RefugioNocturno(Definicion):
             return 0.75
         return 0.55
 
+    def _anticipa_refugio(self, luz: float, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        """Indica si la luz restante frente al coste de llegar, cavar y sellar exige activar el repliegue al refugio."""
+        if luz < 0.5:
+            return True
+        if not self.bajando:
+            return False
+        coste = self._coste_restante_pasos(pos, inv, mina)
+        pasos_luz = self._pasos_luz_restantes(luz)
+        return pasos_luz <= max(32.0, coste * 2.0)
+
     def _motivacion(self, ctx: Contexto, estado: Dict[str, Any], pos: Pos, inv: Dict[str, float]) -> Tuple[float, float]:
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
         if self.dominante:
             return 0.98, 0.98
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        if not self._anticipa_refugio(luz, pos, inv, mina):
+            # Con mucho día por delante: si ya tiene herramientas y no sufre hambre/sed pero aún no ha visto mina,
+            # explorar con rumbo (0,72 supera el 0,60+0,10 de continuidad de alimentarse ocioso, y cede en cuanto halla mina)
+            if mina is None and not self._falta_herramienta(inv) and inv.get("food", 0) >= 6 and inv.get("drink", 0) >= 6:
+                return 0.50, 0.72
+            return 0.28, 0.52
         coste = self._coste_restante_pasos(pos, inv, mina)
         pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
         ratio = acotar(coste / pasos_luz)
         oscuridad = acotar(1.0 - luz)
-        urgencia = acotar(0.25 + 0.45 * oscuridad + 0.35 * ratio)
-        confianza = acotar(0.55 + 0.35 * max(oscuridad, ratio))
+        empuje = max(oscuridad, ratio)
+        urgencia = acotar(0.72 + 0.24 * empuje)
+        confianza = acotar(0.86 + 0.12 * empuje)
         return urgencia, confianza
 
     def _paso_hacia(self, ctx: Contexto, origen: Pos, destino: Pos) -> Optional[Pieza]:
@@ -983,16 +1027,25 @@ class RefugioNocturno(Definicion):
         if pos is None:
             return None
         inv = _inventario(ctx)
+        luz = _luz(ctx)
         cara = _orientacion(ctx) or (0, 1)
         estado = estrategia.carga.get("paso")
         if not isinstance(estado, dict):
             estado = self.paso(ctx, estrategia)
         fase = estado.get("fase", "madera")
+        mina_est: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        anticipa = self._anticipa_refugio(luz, pos, inv, mina_est)
+
+        # Con mucho día por delante, si ya tiene herramientas y mina localizada, dejar vía libre a alimentarse y plan_tecnologico
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse") and not anticipa:
+            if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
+                return None
+
         ar, conf = self._motivacion(ctx, estado, pos, inv)
 
         # Defensa inmediata si un hostil bloquea al jugador en plena maniobra y tiene espada;
         # si un esqueleto dispara a distancia 2-3 y tiene espada, cerrar distancia para abatirlo
-        if fase != "dormir" and _tiene_espada(ctx) and _salud(ctx) >= 4:
+        if fase != "dormir" and (self.dominante or anticipa or fase == "amanecer") and _tiene_espada(ctx) and _salud(ctx) >= 4:
             hostil = next((p for p in ctx.onda.ev("Exterocepcion").values()
                            if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9), None)
             if hostil is not None:
@@ -1081,10 +1134,14 @@ class RefugioNocturno(Definicion):
                     paso_p = self._paso_hacia(ctx, pos, e0)
                     if paso_p is not None:
                         return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la mina elegida", clase=paso_p.clase)
-                # Ya está en e0: si aún queda roca por excavar, excavar ya; si ya está excavada y aún es por la mañana,
-                # entrar 1 casilla a e1 para resguardarse de esqueletos/zombis sin sellar todavía
-                if self.mapa.get(e1) == "path" and not self.bajando:
-                    return Propuesta(Verbo.MOVER, f"celda_{e1[0]}_{e1[1]}", ar, conf, "refugio: aguardar en el umbral de la galería", clase="suelo")
+                # Ya está en e0: si ya está excavada y aún queda mucho día por delante, no encerrarse todavía
+                e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+                e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+                rocas_pend = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+                if rocas_pend == 0 and not anticipa:
+                    if self.dominante:
+                        return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: aguardar ocaso en el acceso")
+                    return None
                 fase = "cavar"
             else:
                 # Si se ve alguna piedra aún no inspeccionada de cerca, ir hacia ella para revelar el resto del macizo
@@ -1129,10 +1186,10 @@ class RefugioNocturno(Definicion):
                     clase_r = MATERIALES.get(self.mapa[e4], "piedra")
                     return Propuesta(Verbo.COGER, f"{clase_r}_{e4[0]}_{e4[1]}", ar, conf,
                                      "refugio: extraer piedra para sellar", clase=clase_r)
-            # Si ya excavó hasta e3 pero aún es por la mañana (luz subiendo) y le faltan provisiones (< 7), salir hacia e0 a abastecerse
-            if not self.bajando and (inv.get("drink", 0) < 7 or inv.get("food", 0) < 7):
+            # Si ya excavó hasta e3 pero aún queda mucho día por delante, no encerrarse todavía
+            if not anticipa:
                 return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", ar, conf,
-                                 "refugio: galería lista, salir a por provisiones", clase="suelo")
+                                 "refugio: galería lista, salir hasta el ocaso", clase="suelo")
             fase = "cerrarse"
 
         if fase == "cerrarse":
@@ -1180,12 +1237,13 @@ class RefugioNocturno(Definicion):
                 e0, (dx, dy) = mina
                 e1 = (e0[0] + dx, e0[1] + dy)
                 if self.mapa.get(e1) == "stone" and _dist(pos, e1) == 1:
-                    return Propuesta(Verbo.COGER, f"piedra_{e1[0]}_{e1[1]}", ar, conf,
+                    return Propuesta(Verbo.COGER, f"piedra_{e1[0]}_{e1[1]}", max(ar, 0.95), max(conf, 0.95),
                                      "refugio: abrir salida al amanecer", clase="piedra")
                 if pos != e0:
                     paso_p = self._paso_hacia(ctx, pos, e0)
                     if paso_p is not None:
-                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: salir al exterior", clase=paso_p.clase)
+                        return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: salir al exterior", clase=paso_p.clase)
         return None
 
 
@@ -1271,7 +1329,8 @@ class PlanTecnologico(Plan, ConPropuestas):
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
         hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Exterocepcion").values())
-        if inv.get("energy", 9) <= 6 and _luz(ctx) >= 0.5 and not hostiles:
+        umbral_energia = 4 if any(n.nombre == "cobijo" for n in ctx.perfil.necesidades) else 6
+        if inv.get("energy", 9) <= umbral_energia and _luz(ctx) >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
             self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
             return True
