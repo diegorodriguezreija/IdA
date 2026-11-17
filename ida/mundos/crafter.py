@@ -951,6 +951,9 @@ class RefugioNocturno(Definicion):
         if rocas_pendientes == 0 and not ocaso_proximo and falta_llenar_antes_de_cerrar:
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
+        if rocas_pendientes == 0 and not ocaso_proximo and self._deficit_piedra(inv) > 0 and self._roca_acopio(pos, mina_actual) is not None:
+            estado["fase"] = "acopio"
+            return self._guardar_estado(estado)
         if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar):
             estado["fase"] = "cavar"
         else:
@@ -1003,6 +1006,26 @@ class RefugioNocturno(Definicion):
     def _saciedad(inv: Dict[str, float]) -> float:
         return acotar(min(inv.get("food", 0.0), inv.get("drink", 0.0)) / 9.0)
 
+    def _deficit_piedra(self, inv: Dict[str, float]) -> float:
+        """Fracción (0-1) de la piedra que falta para el sello (1), el pico de piedra (1) y el horno (4)."""
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("stone_pickaxe", "iron_pickaxe"))
+        hay_horno = any(m == "furnace" for m in self.mapa.values())
+        necesaria = 1 + (0 if tiene_pico else 1) + (0 if hay_horno else 4)
+        return acotar((necesaria - inv.get("stone", 0)) / necesaria)
+
+    def _roca_acopio(self, pos: Pos, mina: Optional[Tuple[Pos, Pos]]) -> Optional[Pos]:
+        """Roca recordada a ≤ 5 de la entrada de la mina que se puede picar sin abrir la galería: ni sus
+        paredes en cruz ni el fondo."""
+        if mina is None:
+            return None
+        e0, (dx, dy) = mina
+        protegidas: Set[Pos] = {(e0[0] + 4 * dx, e0[1] + 4 * dy)}
+        for k in (1, 2, 3):
+            ek = (e0[0] + k * dx, e0[1] + k * dy)
+            protegidas |= {ek, (ek[0] - dy, ek[1] + dx), (ek[0] + dy, ek[1] - dx)}
+        rocas = [p for p, m in self.mapa.items() if m in ROCA_EXCAVABLE and p not in protegidas and _dist(p, e0) <= 5]
+        return min(rocas, key=lambda r: _dist(pos, r)) if rocas else None
+
     def _falta_mina(self, mina: Optional[Tuple[Pos, Pos]]) -> float:
         """Lo que falta (0-1) para tener el refugio de esta noche localizado: sin mina, todo; con mina,
         una parte por no tener pared de agua dentro y otra por las rocas que quedan por picar."""
@@ -1027,7 +1050,7 @@ class RefugioNocturno(Definicion):
             # comer o beber; queda por debajo de plan_tecnologico (0,8) y de alimentarse con su continuidad.
             if self._falta_herramienta(inv):
                 return 0.28, 0.52
-            empuje = self._falta_mina(mina) * self._saciedad(inv)
+            empuje = max(self._falta_mina(mina), 0.5 * self._deficit_piedra(inv)) * self._saciedad(inv)
             return 0.30 + 0.20 * empuje, 0.50 + 0.18 * empuje
         coste = self._coste_restante_pasos(pos, inv, mina)
         pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
@@ -1213,7 +1236,7 @@ class RefugioNocturno(Definicion):
         sed_critica = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
-        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer", "acopio") and not anticipa and not sed_critica:
             if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est) and self._falta_mina(mina_est) <= 0:
                 return None
 
@@ -1240,6 +1263,20 @@ class RefugioNocturno(Definicion):
 
         if fase == "abastecer":
             return self._abastecer(ctx, pos, inv, ar, conf)
+
+        if fase == "acopio":
+            roca = self._roca_acopio(pos, mina_est)
+            if roca is None:
+                return None
+            clase_r = MATERIALES.get(self.mapa[roca], "piedra")
+            if _dist(pos, roca) == 1:
+                return Propuesta(Verbo.COGER, f"{clase_r}_{roca[0]}_{roca[1]}", ar, conf, "refugio: acopiar piedra junto a la mina",
+                                 clase=clase_r)
+            paso_p = self._paso_hacia(ctx, pos, roca)
+            if paso_p is not None:
+                return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a por piedra junto a la mina", clase=paso_p.clase)
+            self.rocas_inspeccionadas.add(roca)
+            return None
 
         if fase == "madera":
             arboles = [p for p in list( self.mapa.keys()) if self.mapa.get(p) == "tree"]
