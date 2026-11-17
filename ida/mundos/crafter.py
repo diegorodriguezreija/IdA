@@ -22,13 +22,15 @@ Componente propio:
   plantar, carbón, hierro, diamante). Puntúa por debajo de la supervivencia.
 """
 
+from collections import deque
 import collections
+import math
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
-from ida.core.pieza import Pieza
+from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
@@ -85,7 +87,8 @@ class MundoCrafter(Mundo):
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
-                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),
+                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
+                                 Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
@@ -167,11 +170,26 @@ class MundoCrafter(Mundo):
 
     def _vitales(self) -> Dict[str, float]:
         inv = self.jugador.inventory
+        w = self.env._world
         return {"vitalidad": self.jugador.health / 9 * 100, "alimentacion": min(inv["food"], inv["drink"]) / 9 * 100,
                 "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100,
-                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100}
+                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100,
+                "cobijo": max(2.0, float(w.daylight) * 100)}
 
     # --- percepción ----------------------------------------------------------
+    def _vista_local(self) -> Dict[Pos, str]:
+        """Rejilla cruda (coordenada -> material) de todas las casillas dentro del radio de visión actual."""
+        w, (px, py) = self.env._world, self.jugador.pos
+        radio = self.radio if w.daylight >= 0.3 else max(2, self.radio // 2)
+        vista: Dict[Pos, str] = {}
+        for x in range(px - radio, px + radio + 1):
+            for y in range(py - radio, py + radio + 1):
+                if 0 <= x < w.area[0] and 0 <= y < w.area[1]:
+                    mat, _ = w[(int(x), int(y))]
+                    if mat is not None:
+                        vista[(int(x), int(y))] = str(mat)
+        return vista
+
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:
         """(id, clase, posición, objeto) de lo que hay en el radio de visión."""
         w, (px, py) = self.env._world, self.jugador.pos
@@ -241,7 +259,8 @@ class MundoCrafter(Mundo):
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
-                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1]))}, ambiente={"luz": float(w.daylight)})
+                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "vista": self._vista_local()},
+                           ambiente={"luz": float(w.daylight)})
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -336,7 +355,7 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia()], "S3": [PlanTecnologico(self.constantes)]}
+        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()], "S3": [PlanTecnologico(self.constantes)]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -448,6 +467,13 @@ def _orientacion(ctx: Contexto) -> Optional[Pos]:
     return (int(cara[0]), int(cara[1])) if cara is not None else None
 
 
+def _vista(ctx: Contexto) -> Dict[Pos, str]:
+    """Rejilla cruda de materiales dentro del radio de visión actual, leída de la propiocepción."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    raw = yo.carga.get("cuerpo", {}).get("vista", {}) if yo is not None else {}
+    return {(int(k[0]), int(k[1])): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
+
+
 def _terreno(ctx: Contexto) -> Dict[Pos, str]:
     """Terreno de las casillas libres a las que se puede ir (lugares percibidos)."""
     return {tuple(p.carga["datos"]["pos"]): p.carga["datos"].get("terreno", "")
@@ -457,6 +483,964 @@ def _terreno(ctx: Contexto) -> Dict[Pos, str]:
 def _luz(ctx: Contexto) -> float:
     a = ctx.onda.ev("Ambiente").get("ambiente")
     return float(a.carga.get("luz", 1.0)) if a is not None else 1.0
+
+
+NO_TRANSITABLES_ZOMBI = {"stone", "coal", "iron", "diamond", "water", "tree", "table", "furnace"}
+ROCA_EXCAVABLE = {"stone", "coal"}
+TRANSITABLES_JUGADOR = {"grass", "path", "sand"}
+
+
+class RefugioNocturno(Definicion):
+    """Estrategia propia de Crafter (S2) para el reloj circadiano («cobijo»): construir, reutilizar y
+    ocupar un refugio excavado en roca durante la noche (sección 4 de ``docs/ENCARGO_CRAFTER_NOCHE.md``).
+
+    Máquina de estados determinista disparada por lo percibido (regla 4):
+    - ``madera``: reunir madera hasta cubrir mesa (2), pico de madera (1) y espada de madera (1).
+    - ``herramientas``: colocar la mesa y fabricar pico y espada de madera.
+    - ``provisiones``: beber y comer mientras los pasos restantes hasta la puesta de sol superen con
+      holgura el coste estimado de llegar a la mina, excavar y cerrarse (contando que interactuar
+      puede gastar 2 pasos de Crafter por latido).
+    - ``elegir_mina``: seleccionar o mantener una mina percibida/recordada con 3 casillas en línea
+      recta, laterales en cruz no transitables para un zombi, sin lava cerca ni túnel ajeno al fondo,
+      valorando cercanía al agua y fidelidad al hogar/mina previa.
+    - ``cavar``: acercarse a la entrada y picar las 3 casillas en línea recta hasta el fondo.
+    - ``cerrarse``: desde el fondo, retroceder 1 casilla (quedando orientado hacia la entrada) y
+      colocar piedra en la entrada.
+    - ``dormir``: descansar dentro del refugio sellado; si despierta con energía máxima antes de que
+      suba la luz, beber de una pared de agua adyacente o esperar sin abrir el sello.
+    - ``amanecer``: cuando la luz sube, picar la piedra de la entrada (recuperándola) y salir.
+
+    Solo lee la percepción (regla 3): el mapa de materiales lo recuerda la propia estrategia a partir
+    de ``_vista(ctx)`` y se reinicia vacío al comenzar cada vida (``latido == 1``).
+    Nota (pendiente de la base): en calma el Tribunal pondera sobre todo ``confianza`` y no recibe la
+    intensidad del impulso; como apaño declarado del mundo, tanto ``arousal`` como ``confianza`` de la
+    propuesta crecen de forma continua con la oscuridad y el coste de llegar y excavar la mina.
+    """
+
+    nombre = "refugio_nocturno"
+    impulsos = ("cobijo",)
+    prioridad = 20
+    agotable = False
+
+    RUMBO_PASOS = 12
+    PACIENCIA_AVANCE = 10
+    LUZ_PLENO_DIA = 0.83      # Crafter: con luz > 0,83 el máximo de zombis por zona (3,5 − 3·luz) baja de 1
+    MEMORIA_VACA = 40         # latidos que se recuerda dónde se vio una vaca
+
+    def __init__(self) -> None:
+        self.mapa: Dict[Pos, str] = {}
+        self.visitadas: Set[Pos] = set()
+        self.rocas_inspeccionadas: Set[Pos] = set()
+        self.mina_recordada: Optional[Tuple[Pos, Pos]] = None
+        self._estado_mem: Dict[str, Any] = {}
+        self.luz_previa: float = 0.0
+        self.bajando: bool = False
+        self.paso_oscuro: bool = False
+        self.ultimo_latido: int = 0
+        self.rumbo: Pos = (1, 0)
+        self.pasos_rumbo: int = 0
+        self.dominante: bool = False   # usado solo por el arnés de prueba de la Fase A
+        self.vacas: Dict[Pos, int] = {}
+
+    def _reiniciar_vida(self) -> None:
+        self.vacas.clear()
+        self.mapa.clear()
+        self.visitadas.clear()
+        self.rocas_inspeccionadas.clear()
+        self.mina_recordada = None
+        self._estado_mem.clear()
+        self.luz_previa = 0.0
+        self.bajando = False
+        self.paso_oscuro = False
+        self.ultimo_latido = 0
+        self.rumbo = (1, 0)
+        self.pasos_rumbo = 0
+
+    def _actualizar_memoria(self, ctx: Contexto) -> None:
+        if ctx.latido == 1 or ctx.latido < self.ultimo_latido:
+            self._reiniciar_vida()
+        self.ultimo_latido = ctx.latido
+        luz = _luz(ctx)
+        if luz > self.luz_previa + 1e-4:
+            self.bajando = False
+        elif luz < self.luz_previa - 1e-4:
+            self.bajando = True
+        if luz < 0.35:
+            self.paso_oscuro = True
+        self.luz_previa = luz
+        vista = _vista(ctx)
+        if vista:
+            self.mapa.update(vista)
+        pos = _posicion(ctx)
+        vistas = {tuple(p.carga["datos"]["pos"]) for p in ctx.onda.ev("Exterocepcion").values()
+                  if p.clase == "vaca" and "pos" in p.carga.get("datos", {})}
+        for v in vistas:
+            self.vacas[v] = ctx.latido
+        for v, lat in list(self.vacas.items()):
+            olvidada = ctx.latido - lat > self.MEMORIA_VACA
+            if olvidada or (pos is not None and v not in vistas and _dist(pos, v) <= 1):
+                del self.vacas[v]
+        if pos is not None:
+            self.visitadas.add(pos)
+            for p, m in self.mapa.items():
+                if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
+                    self.rocas_inspeccionadas.add(p)
+
+    def _hay_hostil_cerca(self, ctx: Contexto, pos: Pos) -> bool:
+        return any(
+            p.clase in ("zombi", "esqueleto", "flecha") and "pos" in p.carga.get("datos", {})
+            and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 4
+            for p in ctx.onda.ev("Exterocepcion").values()
+        )
+
+    def _mesa_cerca(self, pos: Pos) -> bool:
+        return any(self.mapa.get((pos[0] + dx, pos[1] + dy)) == "table"
+                   for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+
+    def _mesa_conocida(self) -> Optional[Pos]:
+        mesas = [p for p, m in self.mapa.items() if m == "table"]
+        return mesas[0] if mesas else None
+
+    def _falta_herramienta(self, inv: Dict[str, float]) -> bool:
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+        tiene_espada = any(inv.get(k, 0) >= 1 for k in ESPADAS)
+        return not (tiene_pico and tiene_espada)
+
+    def _madera_faltante(self, inv: Dict[str, float]) -> int:
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+        tiene_espada = any(inv.get(k, 0) >= 1 for k in ESPADAS)
+        necesaria = (0 if tiene_pico else 1) + (0 if tiene_espada else 1)
+        if necesaria > 0 and self._mesa_conocida() is None:
+            necesaria += 2
+        return max(0, necesaria - int(inv.get("wood", 0)))
+
+    def _agua_accesible_dentro(self, mina: Optional[Tuple[Pos, Pos]]) -> Optional[Tuple[Pos, Pos]]:
+        """Devuelve ``(casilla_desde_donde_beber, casilla_agua)`` si e2 o e3 tienen pared de agua."""
+        if mina is None:
+            return None
+        e0, (dx, dy) = mina
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        for ldx, ldy in ((-dy, dx), (dy, -dx)):
+            vec2 = (e2[0] + ldx, e2[1] + ldy)
+            if self.mapa.get(vec2) == "water":
+                return e2, vec2
+        for ldx, ldy in ((-dy, dx), (dy, -dx), (dx, dy)):
+            vec3 = (e3[0] + ldx, e3[1] + ldy)
+            if self.mapa.get(vec3) == "water":
+                return e3, vec3
+        return None
+
+    def _evaluar_candidato(self, e0: Pos, d: Pos, pos_actual: Pos, hogar_pos: Optional[Pos]) -> Optional[float]:
+        """Evalúa una mina con acceso ``e0`` y dirección de excavación ``d``. Devuelve su puntuación o None."""
+        m0 = self.mapa.get(e0)
+        if m0 not in TRANSITABLES_JUGADOR and e0 != pos_actual:
+            return None
+        dx, dy = d
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        es_recordada = self.mina_recordada == (e0, d) or (hogar_pos is not None and hogar_pos == e2)
+
+        for idx, ek in enumerate((e1, e2, e3), start=1):
+            mk = self.mapa.get(ek)
+            if mk is None:
+                return None
+            if mk in ROCA_EXCAVABLE:
+                pass
+            elif mk == "path" and (es_recordada or pos_actual in (e0, e1, e2, e3)):
+                pass
+            else:
+                return None
+            # Condición de buen refugio: las casillas en cruz alrededor del hueco no son transitables para un zombi
+            laterales = [(-dy, dx), (dy, -dx)]
+            if idx == 3:
+                laterales.append((dx, dy))   # fondo de la galería
+            for ldx, ldy in laterales:
+                vec = (ek[0] + ldx, ek[1] + ldy)
+                mv = self.mapa.get(vec)
+                if mv not in NO_TRANSITABLES_ZOMBI:
+                    return None
+                if idx >= 2 and mv == "water":
+                    if any(self.mapa.get((vec[0] + k * ldx, vec[1] + k * ldy)) == "path" for k in (1, 2)):
+                        return None
+
+        # Sin lava en un entorno de radio 2 de la galería
+        for x in range(min(e0[0], e3[0]) - 2, max(e0[0], e3[0]) + 3):
+            for y in range(min(e0[1], e3[1]) - 2, max(e0[1], e3[1]) + 3):
+                if self.mapa.get((x, y)) == "lava":
+                    return None
+
+        dist_jugador = _dist(pos_actual, e0)
+        aguas = [p for p, m in self.mapa.items() if m == "water"]
+        dist_agua = min((_dist(e0, a) for a in aguas), default=12)
+        agua_pared_e2 = any(self.mapa.get((e2[0] + ldx, e2[1] + ldy)) == "water" for ldx, ldy in ((-dy, dx), (dy, -dx)))
+        agua_pared_e3 = any(
+            self.mapa.get((e3[0] + ldx, e3[1] + ldy)) == "water"
+            for ldx, ldy in ((-dy, dx), (dy, -dx), (dx, dy))
+        )
+        rocas_a_picar = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+
+        bono_agua_pared = 16.0 if agua_pared_e2 else (12.0 if agua_pared_e3 else 0.0)
+        puntuacion = 100.0 - 3.0 * dist_jugador - 2.0 * dist_agua + bono_agua_pared
+        if es_recordada:
+            puntuacion += 25.0
+        # Si aún no tiene piedra en el inventario, necesita que la mina dé al menos 1 piedra al cavar
+        puntuacion += 2.0 * rocas_a_picar
+        return puntuacion
+
+    def _buscar_mejor_mina(self, ctx: Contexto, pos: Pos, inv: Dict[str, float]) -> Optional[Tuple[Pos, Pos, float]]:
+        hogar_id = ctx.memoria.hogar() if ctx.perfil.hogar else None
+        hogar_pos: Optional[Pos] = None
+        if hogar_id and hogar_id.startswith("celda_"):
+            partes = hogar_id.split("_")
+            if len(partes) == 3:
+                hogar_pos = (int(partes[1]), int(partes[2]))
+
+        mejor: Optional[Tuple[Pos, Pos, float]] = None
+        tiene_piedra = inv.get("stone", 0) >= 1
+        for e0, m0 in list(self.mapa.items()):
+            if m0 not in TRANSITABLES_JUGADOR and e0 != pos:
+                continue
+            for d in MOVIMIENTOS:
+                e1 = (e0[0] + d[0], e0[1] + d[1])
+                e2 = (e0[0] + 2 * d[0], e0[1] + 2 * d[1])
+                e3 = (e0[0] + 3 * d[0], e0[1] + 3 * d[1])
+                rocas = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+                if not tiene_piedra and rocas < 1:
+                    continue
+                s = self._evaluar_candidato(e0, d, pos, hogar_pos)
+                if s is not None and (mejor is None or s > mejor[2]):
+                    mejor = (e0, d, s)
+        return mejor
+
+    def _en_galeria(self, pos: Pos, mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        if mina is None:
+            return False
+        e0, (dx, dy) = mina
+        return pos in ((e0[0] + dx, e0[1] + dy), (e0[0] + 2 * dx, e0[1] + 2 * dy), (e0[0] + 3 * dx, e0[1] + 3 * dy))
+
+    def _sellado(self, mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        if mina is None:
+            return False
+        e0, (dx, dy) = mina
+        e1 = (e0[0] + dx, e0[1] + dy)
+        return self.mapa.get(e1) == "stone"
+
+    def _coste_restante_pasos(self, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> int:
+        """Estimación de pasos de Crafter necesarios para quedar encerrado desde el estado actual
+        (contando 2 pasos por interacción de giro + acción)."""
+        madera_falta = self._madera_faltante(inv)
+        pasos_herramientas = madera_falta * 4 + (4 if self._falta_herramienta(inv) else 0)
+        if mina is None:
+            return pasos_herramientas + 28   # margen de búsqueda + excavación (3×2 + 3 movs) + cierre (3)
+        e0, (dx, dy) = mina
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        if pos == e2 and self._sellado(mina):
+            return 0
+        dist_acceso = 0 if pos in (e0, e1, e2, e3) else _dist(pos, e0)
+        rocas = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+        # Cada roca cuesta hasta 2 pasos (girar + picar) + 1 paso de avanzar; retroceder y tapar cuesta 3 pasos
+        return pasos_herramientas + dist_acceso + rocas * 3 + 4
+
+    def _pasos_luz_restantes(self, luz: float) -> float:
+        """Pasos de Crafter estimados que quedan antes de que la luz caiga de 0,5 según la pendiente solar."""
+        if luz < 0.5:
+            return 0.0
+        p_ocaso = 1.0 - math.acos(0.5 ** (1.0 / 3.0)) / math.pi
+        c = max(0.0, min(1.0, 1.0 - luz)) ** (1.0 / 3.0)
+        dist_mediodia = 0.5 - math.acos(c) / math.pi
+        p_est = (0.5 + dist_mediodia) if self.bajando else (0.5 - dist_mediodia)
+        return max(0.0, (p_ocaso - p_est) * 300.0)
+
+    def _guardar_estado(self, estado: Dict[str, Any]) -> Dict[str, Any]:
+        self._estado_mem = dict(estado)
+        return estado
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return _posicion(ctx) is not None
+
+    def paso(self, ctx: Contexto, estrategia: Pieza) -> Dict[str, Any]:
+        self._actualizar_memoria(ctx)
+        pos = _posicion(ctx)
+        inv = _inventario(ctx)
+        luz = _luz(ctx)
+        subiendo = not self.bajando
+
+        prev = estrategia.carga.get("paso")
+        if not isinstance(prev, dict) and self._estado_mem:
+            prev = self._estado_mem
+        estado: Dict[str, Any] = dict(prev) if isinstance(prev, dict) else {
+            "fase": "madera",
+            "mina": None,
+            "mejor_dist": 999,
+            "sin_avance": 0,
+            "saliendo": False,
+        }
+        if pos is None:
+            return self._guardar_estado(estado)
+
+        # Recuperar o validar la mina guardada en el estado (coherencia contra el vaivén)
+        mina_actual: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        hogar_id = ctx.memoria.hogar() if ctx.perfil.hogar else None
+        hogar_pos: Optional[Pos] = None
+        if hogar_id and hogar_id.startswith("celda_"):
+            partes = hogar_id.split("_")
+            if len(partes) == 3:
+                hogar_pos = (int(partes[1]), int(partes[2]))
+
+        previa_acc = ctx.onda.ei("Accion").get("Accion")
+        ejecuto_refugio = previa_acc is not None and str(previa_acc.carga.get("motivo", "")).startswith("refugio:")
+
+        if mina_actual is not None:
+            e0, d = mina_actual
+            e2_m = (e0[0] + 2 * d[0], e0[1] + 2 * d[1])
+            e3_m = (e0[0] + 3 * d[0], e0[1] + 3 * d[1])
+            dentro_sellado = pos in (e2_m, e3_m) and self._sellado(mina_actual)
+            if not dentro_sellado and not estado.get("saliendo"):
+                val = self._evaluar_candidato(e0, d, pos, hogar_pos)
+                dist_ahora = 0 if self._en_galeria(pos, mina_actual) else _dist(pos, e0)
+                if val is None:
+                    mina_actual = None
+                elif dist_ahora == 0:
+                    estado["mejor_dist"] = 0
+                    estado["sin_avance"] = 0
+                else:
+                    # Si mientras el individuo se desplazaba descubrió una mina claramente mejor/más cercana, adoptarla
+                    mejor_alt = self._buscar_mejor_mina(ctx, pos, inv)
+                    if mejor_alt is not None and mejor_alt[2] > val + 10.0:
+                        mina_actual = (mejor_alt[0], mejor_alt[1])
+                        estado["mejor_dist"] = _dist(pos, mejor_alt[0])
+                        estado["sin_avance"] = 0
+                    elif not ejecuto_refugio:
+                        estado["mejor_dist"] = dist_ahora
+                    elif estado.get("fase") in ("elegir_mina", "cavar"):
+                        if dist_ahora < int(estado.get("mejor_dist", 999)):
+                            estado["mejor_dist"] = dist_ahora
+                            estado["sin_avance"] = 0
+                        else:
+                            estado["sin_avance"] = int(estado.get("sin_avance", 0)) + 1
+                            if int(estado["sin_avance"]) >= self.PACIENCIA_AVANCE:
+                                mina_actual = None
+
+        if mina_actual is None:
+            candidata = self._buscar_mejor_mina(ctx, pos, inv)
+            if candidata is not None:
+                mina_actual = (candidata[0], candidata[1])
+                estado["mejor_dist"] = _dist(pos, candidata[0])
+                estado["sin_avance"] = 0
+
+        estado["mina"] = mina_actual
+        pasos_luz = self._pasos_luz_restantes(luz)
+        coste = self._coste_restante_pasos(pos, inv, mina_actual)
+        es_noche = luz < 0.5
+        margen_cierre = max(12.0, coste * 1.55)
+
+        # ¿Hay agua o comida alcanzable para llenar antes de que el margen de cierre obligue a entrar?
+        hay_agua_viable = False
+        hay_comida_viable = False
+        e0_ref = mina_actual[0] if mina_actual is not None else pos
+        rocas_pend_ref = (
+            sum(1 for k in (1, 2, 3) if self.mapa.get((e0_ref[0] + k * mina_actual[1][0], e0_ref[1] + k * mina_actual[1][1])) in ROCA_EXCAVABLE)
+            if mina_actual is not None else 3
+        )
+        tiene_agua_dentro = self._agua_accesible_dentro(mina_actual) is not None
+        if not tiene_agua_dentro and inv.get("drink", 0) < 9:
+            aguas_cerca = [
+                p for p, m in self.mapa.items()
+                if m == "water" and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+            ]
+            hay_agua_viable = bool(aguas_cerca)
+        comidas_visibles = [
+            p for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+        ]
+        if inv.get("food", 0) < 9 and comidas_visibles:
+            comidas_cerca = [
+                p for p in comidas_visibles
+                if (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+            ]
+            hay_comida_viable = bool(comidas_cerca)
+        falta_llenar_antes_de_cerrar = hay_agua_viable or hay_comida_viable
+        ocaso_proximo = es_noche or (self.bajando and pasos_luz <= margen_cierre) or (
+            self.bajando and pasos_luz <= max(28.0, coste * 1.8) and not falta_llenar_antes_de_cerrar
+        )
+
+        # 1. ¿Está ya dentro de la galería (e1, e2 o e3)?
+        if mina_actual is not None:
+            e0, (dx, dy) = mina_actual
+            e1 = (e0[0] + dx, e0[1] + dy)
+            e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+            e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+            if pos not in (e1, e2, e3):
+                estado["saliendo"] = False
+            if estado.get("saliendo") and pos in (e1, e2, e3):
+                # Mientras el sello siga puesto, la salida se revisa con lo percibido (p. ej. un zombi en la entrada)
+                if self._sellado(mina_actual) and estado.get("manana") and not self._conviene_salir(ctx, inv, luz, mina_actual):
+                    estado["saliendo"] = False
+                    self.paso_oscuro = True
+                    estado["fase"] = "dormir"
+                    return self._guardar_estado(estado)
+                estado["fase"] = "amanecer"
+                return self._guardar_estado(estado)
+            if pos in (e2, e3) and self._sellado(mina_actual):
+                self.mina_recordada = mina_actual
+                if ctx.con_experiencia and ctx.perfil.hogar:
+                    ctx.memoria.recordar_lugar(f"celda_{e2[0]}_{e2[1]}", 1.0)
+                debe_salir = (self.paso_oscuro and subiendo and self._conviene_salir(ctx, inv, luz, mina_actual)) or (
+                    not self.paso_oscuro and not ocaso_proximo and subiendo and luz >= 0.65)
+                if debe_salir:
+                    estado["manana"] = self.paso_oscuro
+                    self.paso_oscuro = False
+                    estado["saliendo"] = True
+                    estado["fase"] = "amanecer"
+                else:
+                    estado["fase"] = "dormir"
+                return self._guardar_estado(estado)
+            # Solo cerrarse cuando ya esté lleno o cuando el margen de cierre lo exija
+            if ocaso_proximo and inv.get("stone", 0) >= 1 and not estado.get("saliendo"):
+                if pos == e2 and self.mina_recordada == mina_actual and not self._sellado(mina_actual):
+                    estado["fase"] = "cerrarse"
+                    return self._guardar_estado(estado)
+                if pos == e3:
+                    estado["fase"] = "cerrarse"
+                    return self._guardar_estado(estado)
+                if pos == e2 and self.mapa.get(e3) == "path" and not self._sellado(mina_actual):
+                    estado["fase"] = "cerrarse"
+                    return self._guardar_estado(estado)
+
+        # 1b. Mañana tras salir del refugio: comer y beber es la prioridad hasta que la luz vuelva a bajar
+        if estado.get("manana"):
+            if self.bajando:
+                estado["manana"] = False
+            elif not self._en_galeria(pos, mina_actual) and (inv.get("food", 0) < 9 or inv.get("drink", 0) < 9):
+                estado["fase"] = "abastecer"
+                return self._guardar_estado(estado)
+
+        # 2. Preparación de madera y herramientas
+        if self._falta_herramienta(inv):
+            if self._madera_faltante(inv) > 0:
+                estado["fase"] = "madera"
+            else:
+                estado["fase"] = "herramientas"
+            return self._guardar_estado(estado)
+
+        # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar, o rescate de sed crítica con el mapa recordado
+        sed_critica_mapa = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
+        if (falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo):
+            estado["fase"] = "provisiones"
+            return self._guardar_estado(estado)
+
+        # 4. Elegir mina o cavar
+        if mina_actual is None:
+            estado["fase"] = "elegir_mina"
+            return self._guardar_estado(estado)
+
+        e0, (dx, dy) = mina_actual
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        rocas_pendientes = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+        hora_de_entrar = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
+        if rocas_pendientes == 0 and not ocaso_proximo and falta_llenar_antes_de_cerrar:
+            estado["fase"] = "provisiones"
+            return self._guardar_estado(estado)
+        if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar):
+            estado["fase"] = "cavar"
+        else:
+            estado["fase"] = "elegir_mina"
+        return self._guardar_estado(estado)
+
+    @staticmethod
+    def _presion_interna(inv: Dict[str, float], agua_dentro: bool) -> float:
+        """Presión continua (0-1) del hambre o la sed: déficit cuadrático de la reserva más baja. Con una
+        pared de agua dentro del refugio la sed se calma sin salir y no empuja a abrir."""
+        deficit_comida = 1.0 - inv.get("food", 9.0) / 9.0
+        deficit_agua = 0.0 if agua_dentro else 1.0 - inv.get("drink", 9.0) / 9.0
+        return acotar(max(deficit_comida, deficit_agua)) ** 2
+
+    def _riesgo_exterior(self, ctx: Contexto, luz: float, pos: Pos) -> float:
+        """Riesgo continuo de salir: crece cuanto más lejos está la luz del pleno día (en Crafter, con luz
+        por encima de LUZ_PLENO_DIA el máximo de zombis por zona es 0 y desaparecen) y por cada hostil
+        percibido cerca."""
+        hostiles = sum(
+            1 for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase in ("zombi", "esqueleto") and "pos" in p.carga.get("datos", {})
+            and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 4
+        )
+        return max(0.0, (self.LUZ_PLENO_DIA - luz) / 0.5) + 0.3 * hostiles
+
+    def _conviene_salir(self, ctx: Contexto, inv: Dict[str, float], luz: float, mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        """Al amanecer, salir si la presión del hambre o la sed, modulada por la salud (capacidad de
+        afrontar lo que quede fuera), iguala o supera el riesgo exterior. Con reservas o agua dentro la
+        presión es baja y espera a pleno día; con poca salud la capacidad es baja y se queda."""
+        pos = _posicion(ctx)
+        if pos is None:
+            return False
+        presion = self._presion_interna(inv, self._agua_accesible_dentro(mina) is not None)
+        capacidad = _salud(ctx) / 9.0
+        return presion * capacidad >= self._riesgo_exterior(ctx, luz, pos)
+
+    def _anticipa_refugio(self, luz: float, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        """Indica si la luz restante frente al coste de llegar, abastecerse, cavar y sellar exige activar el repliegue."""
+        if luz < 0.5:
+            return True
+        if not self.bajando:
+            return False
+        coste = self._coste_restante_pasos(pos, inv, mina)
+        falta_prov = max(0, 9 - int(inv.get("drink", 9))) + max(0, 9 - int(inv.get("food", 9)))
+        pasos_prov = min(14.0, falta_prov * 2.5) if mina is not None else 0.0
+        pasos_luz = self._pasos_luz_restantes(luz)
+        return pasos_luz <= max(32.0, coste * 1.9 + pasos_prov)
+
+    def _motivacion(self, ctx: Contexto, estado: Dict[str, Any], pos: Pos, inv: Dict[str, float]) -> Tuple[float, float]:
+        """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
+        if self.dominante:
+            return 0.98, 0.98
+        if inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values()):
+            return 0.92, 0.92
+        luz = _luz(ctx)
+        mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        if not self._anticipa_refugio(luz, pos, inv, mina):
+            # Con mucho día por delante: si ya tiene herramientas y no sufre hambre/sed pero aún no ha visto mina,
+            # explorar con rumbo (0,72 supera el 0,60+0,10 de continuidad de alimentarse ocioso, y cede en cuanto halla mina)
+            if mina is None and not self._falta_herramienta(inv) and inv.get("food", 0) >= 6 and inv.get("drink", 0) >= 6:
+                return 0.50, 0.72
+            return 0.28, 0.52
+        coste = self._coste_restante_pasos(pos, inv, mina)
+        pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
+        ratio = acotar(coste / pasos_luz)
+        oscuridad = acotar(1.0 - luz)
+        empuje = max(oscuridad, ratio)
+        urgencia = acotar(0.72 + 0.24 * empuje)
+        confianza = acotar(0.86 + 0.12 * empuje)
+        return urgencia, confianza
+
+    def _paso_hacia(self, ctx: Contexto, origen: Pos, destino: Pos) -> Optional[Pieza]:
+        """Elige la casilla vecina transitable (lugar en Exterocepcion) que acerca a ``destino`` por BFS en ``self.mapa``."""
+        lugares = {
+            tuple(p.carga["datos"]["pos"]): p
+            for p in ctx.onda.ev("Exterocepcion").values()
+            if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6 and "pos" in p.carga.get("datos", {})
+        }
+        if not lugares:
+            return None
+        if destino in lugares:
+            return lugares[destino]
+
+        # BFS sobre las casillas conocidas transitables para sortear agua y roca
+        cola: deque[Tuple[Pos, Optional[Pos], int]] = deque([(origen, None, 0)])
+        visitados: Set[Pos] = {origen}
+        mejor_salto: Optional[Pos] = None
+        mejor_dist = _dist(origen, destino)
+        while cola:
+            actual, primer, prof = cola.popleft()
+            if prof >= 30:
+                continue
+            for dx, dy in MOVIMIENTOS:
+                sig = (actual[0] + dx, actual[1] + dy)
+                if sig in visitados:
+                    continue
+                if prof == 0 and sig not in lugares:
+                    continue
+                mat = self.mapa.get(sig)
+                if sig != destino and mat not in TRANSITABLES_JUGADOR and mat is not None:
+                    continue
+                visitados.add(sig)
+                salto = primer if primer is not None else sig
+                if sig == destino:
+                    return lugares.get(salto)
+                d = _dist(sig, destino)
+                if d < mejor_dist:
+                    mejor_dist = d
+                    mejor_salto = salto
+                cola.append((sig, salto, prof + 1))
+
+        if mejor_salto is not None and mejor_salto in lugares:
+            return lugares[mejor_salto]
+        # Si está encajonado por obstáculo y ningún paso reduce la distancia Manhattan, seguir el rumbo exploratorio
+        return None
+
+    def _explorar_con_rumbo(self, ctx: Contexto, pos: Pos, ar: float, conf: float, motivo: str) -> Optional[Propuesta]:
+        """Mantiene un rumbo sostenido al buscar árbol o mina y bordea obstáculos hacia casillas no visitadas."""
+        lugares = {
+            tuple(p.carga["datos"]["pos"]): p
+            for p in ctx.onda.ev("Exterocepcion").values()
+            if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5 and "pos" in p.carga.get("datos", {})
+        }
+        if not lugares:
+            return None
+        adelante = (pos[0] + self.rumbo[0], pos[1] + self.rumbo[1])
+        if adelante in lugares and self.pasos_rumbo < self.RUMBO_PASOS and adelante not in self.visitadas:
+            self.pasos_rumbo += 1
+            elegido = lugares[adelante]
+            return Propuesta(Verbo.MOVER, elegido.id, ar, conf, motivo, clase=elegido.clase)
+
+        # Si el rumbo está bloqueado o pisa casilla ya visitada, buscar por BFS la casilla no visitada más cercana
+        cola: deque[Tuple[Pos, Optional[Pos], int]] = deque([(pos, None, 0)])
+        vistos: Set[Pos] = {pos}
+        while cola:
+            actual, primer, prof = cola.popleft()
+            if prof >= 24:
+                continue
+            for dx, dy in MOVIMIENTOS:
+                sig = (actual[0] + dx, actual[1] + dy)
+                if sig in vistos:
+                    continue
+                if prof == 0 and sig not in lugares:
+                    continue
+                mat = self.mapa.get(sig)
+                if mat not in TRANSITABLES_JUGADOR:
+                    continue
+                vistos.add(sig)
+                salto = primer if primer is not None else sig
+                if sig not in self.visitadas:
+                    if salto in lugares:
+                        self.rumbo = (salto[0] - pos[0], salto[1] - pos[1])
+                        self.pasos_rumbo = 1
+                        return Propuesta(Verbo.MOVER, lugares[salto].id, ar, conf, motivo, clase=lugares[salto].clase)
+                cola.append((sig, salto, prof + 1))
+
+        candidatos = sorted(
+            lugares.items(),
+            key=lambda kv: (
+                kv[0] in self.visitadas,
+                kv[0] == (pos[0] - self.rumbo[0], pos[1] - self.rumbo[1]),
+                -kv[1].rasgo("novedad"),
+            ),
+        )
+        destino_pos, elegido = candidatos[0]
+        self.rumbo = (destino_pos[0] - pos[0], destino_pos[1] - pos[1])
+        self.pasos_rumbo = 1
+        return Propuesta(Verbo.MOVER, elegido.id, ar, conf, motivo, clase=elegido.clase)
+
+    def _entrada_insegura(self, ctx: Contexto, pos: Pos, mina: Tuple[Pos, Pos], ar: float, conf: float) -> Optional[Propuesta]:
+        """Antes de sellar (el jugador ya está en e2 o e3): si hay un hostil percibido dentro de la galería
+        (e1 a e3), despejarlo con la espada si está al lado o esperar a que se aparte; sellar con él dentro lo
+        encerraría con el durmiente. Un hostil en e0 no lo impide: la piedra en e1 lo deja fuera."""
+        e0, (dx, dy) = mina
+        galeria = [(e0[0] + k * dx, e0[1] + k * dy) for k in (1, 2, 3)]
+        dentro = [p for p in ctx.onda.ev("Exterocepcion").values()
+                  if p.clase in ("zombi", "esqueleto") and "pos" in p.carga.get("datos", {})
+                  and tuple(p.carga["datos"]["pos"]) in galeria and tuple(p.carga["datos"]["pos"]) != pos]
+        if not dentro:
+            return None
+        cerca = [h for h in dentro if _dist(pos, tuple(h.carga["datos"]["pos"])) == 1]
+        if cerca and _tiene_espada(ctx) and _salud(ctx) >= 4:
+            return Propuesta(Verbo.ATACAR, cerca[0].id, ar, conf, f"refugio: despejar {cerca[0].clase} antes de sellar",
+                             clase=cerca[0].clase)
+        return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: esperar a que el hostil salga de la galería")
+
+    def _abastecer(self, ctx: Contexto, pos: Pos, inv: Dict[str, float], ar: float, conf: float) -> Optional[Propuesta]:
+        """Mañana fuera del refugio: ir a beber o comer (agua del mapa recordado, comida percibida o vacas
+        vistas hace poco), eligiendo el objetivo por cercanía y por el déficit de cada reserva, y apartarse
+        de los hostiles cercanos si no puede abatirlos."""
+        exter = [p for p in ctx.onda.ev("Exterocepcion").values() if "pos" in p.carga.get("datos", {})]
+        hostiles = [tuple(p.carga["datos"]["pos"]) for p in exter if p.clase in ("zombi", "esqueleto")]
+        deficit_agua = 9.0 - inv.get("drink", 9.0)
+        deficit_comida = 9.0 - inv.get("food", 9.0)
+        objetivos: List[Tuple[float, Pos, str, str]] = []   # (coste, posición, id, clase)
+        if deficit_agua > 0:
+            for a, m in self.mapa.items():
+                if m == "water":
+                    objetivos.append((_dist(pos, a) - 3.0 * deficit_agua, a, f"agua_{a[0]}_{a[1]}", "agua"))
+        if deficit_comida > 0:
+            vistas: Set[Pos] = set()
+            for p in exter:
+                if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05:
+                    cp = tuple(p.carga["datos"]["pos"])
+                    vistas.add(cp)
+                    objetivos.append((_dist(pos, cp) - 3.0 * deficit_comida, cp, p.id, p.clase))
+            for v in self.vacas:
+                if v not in vistas:
+                    objetivos.append((_dist(pos, v) + 2.0 - 3.0 * deficit_comida, v, "", "vaca"))
+        objetivo = min(objetivos, key=lambda o: o[0]) if objetivos else None
+
+        armado = _tiene_espada(ctx) and _salud(ctx) >= 4
+        if hostiles and not armado and min(_dist(pos, h) for h in hostiles) <= 2:
+            lugares = [p for p in exter if p.rasgo("lugar") >= 0.5]
+            if lugares:
+                def _valor(lugar: Pieza) -> Tuple[int, int]:
+                    lp = tuple(lugar.carga["datos"]["pos"])
+                    return (min(_dist(lp, h) for h in hostiles), -_dist(lp, objetivo[1]) if objetivo else 0)
+                mejor = max(lugares, key=_valor)
+                return Propuesta(Verbo.MOVER, mejor.id, ar, conf, "refugio: apartarse de hostil al salir", clase=mejor.clase)
+
+        if objetivo is not None:
+            _, opos, oid, oclase = objetivo
+            if _dist(pos, opos) == 1 and oid:
+                return Propuesta(Verbo.COMER, oid, ar, conf, f"refugio: {'beber' if oclase == 'agua' else 'comer'} al salir", clase=oclase)
+            paso_p = self._paso_hacia(ctx, pos, opos)
+            if paso_p is not None:
+                return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, f"refugio: ir a por {oclase} al salir", clase=paso_p.clase)
+        return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida al salir")
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        pos = _posicion(ctx)
+        if pos is None:
+            return None
+        inv = _inventario(ctx)
+        luz = _luz(ctx)
+        cara = _orientacion(ctx) or (0, 1)
+        estado = estrategia.carga.get("paso")
+        if not isinstance(estado, dict):
+            estado = self.paso(ctx, estrategia)
+        fase = estado.get("fase", "madera")
+        mina_est: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        anticipa = self._anticipa_refugio(luz, pos, inv, mina_est)
+        sed_critica = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
+
+        # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
+            if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
+                return None
+
+        ar, conf = self._motivacion(ctx, estado, pos, inv)
+        if fase == "abastecer":
+            empuje = self._presion_interna(inv, False)
+            ar, conf = max(ar, acotar(0.84 + 0.12 * empuje)), max(conf, acotar(0.86 + 0.12 * empuje))
+
+        # Defensa inmediata si un hostil bloquea al jugador en plena maniobra y tiene espada;
+        # si un esqueleto dispara a distancia 2-3 y tiene espada, cerrar distancia para abatirlo
+        if fase != "dormir" and (self.dominante or anticipa or fase in ("amanecer", "abastecer")) and _tiene_espada(ctx) and _salud(ctx) >= 4:
+            hostil = next((p for p in ctx.onda.ev("Exterocepcion").values()
+                           if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9), None)
+            if hostil is not None:
+                return Propuesta(Verbo.ATACAR, hostil.id, max(ar, 0.95), max(conf, 0.95),
+                                 f"refugio: despejar {hostil.clase}", clase=hostil.clase)
+            esq = next((p for p in ctx.onda.ev("Exterocepcion").values()
+                        if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9 and "pos" in p.carga.get("datos", {})), None)
+            if esq is not None and _salud(ctx) >= 5 and fase not in ("abastecer", "amanecer"):
+                paso_esq = self._paso_hacia(ctx, pos, (int(esq.carga["datos"]["pos"][0]), int(esq.carga["datos"]["pos"][1])))
+                if paso_esq is not None:
+                    return Propuesta(Verbo.MOVER, paso_esq.id, max(ar, 0.92), max(conf, 0.92),
+                                     "refugio: cerrar distancia a esqueleto", clase=paso_esq.clase)
+
+        if fase == "abastecer":
+            return self._abastecer(ctx, pos, inv, ar, conf)
+
+        if fase == "madera":
+            arboles = [p for p in list( self.mapa.keys()) if self.mapa.get(p) == "tree"]
+            if arboles:
+                objetivo_pos = min(arboles, key=lambda a: _dist(pos, a))
+                if _dist(pos, objetivo_pos) == 1:
+                    return Propuesta(Verbo.COGER, f"arbol_{objetivo_pos[0]}_{objetivo_pos[1]}", ar, conf,
+                                     "refugio: talar madera", clase="arbol")
+                paso_p = self._paso_hacia(ctx, pos, objetivo_pos)
+                if paso_p is not None:
+                    return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a por madera", clase=paso_p.clase)
+            return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar árboles")
+
+        if fase == "herramientas":
+            tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+            tiene_espada = any(inv.get(k, 0) >= 1 for k in ESPADAS)
+            if self._mesa_cerca(pos):
+                if not tiene_pico and inv.get("wood", 0) >= 1:
+                    return Propuesta(Verbo.USAR, "make_wood_pickaxe", ar, conf, "refugio: fabricar pico",
+                                     clase="make_wood_pickaxe", datos={"receta": "make_wood_pickaxe"})
+                if not tiene_espada and inv.get("wood", 0) >= 1:
+                    return Propuesta(Verbo.USAR, "make_wood_sword", ar, conf, "refugio: fabricar espada",
+                                     clase="make_wood_sword", datos={"receta": "make_wood_sword"})
+            mesa_pos = self._mesa_conocida()
+            if mesa_pos is not None and _dist(pos, mesa_pos) <= 6:
+                paso_p = self._paso_hacia(ctx, pos, mesa_pos)
+                if paso_p is not None:
+                    return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: acercarse a la mesa", clase=paso_p.clase)
+            if inv.get("wood", 0) >= 2:
+                frente = (pos[0] + cara[0], pos[1] + cara[1])
+                terreno = _terreno(ctx)
+                if terreno.get(frente) in ("grass", "sand", "path"):
+                    return Propuesta(Verbo.USAR, "place_table", ar, conf, "refugio: colocar mesa",
+                                     clase="place_table", datos={"receta": "place_table"})
+                for dx, dy in MOVIMIENTOS:
+                    c = (pos[0] + dx, pos[1] + dy)
+                    if terreno.get(c) in ("grass", "sand", "path"):
+                        return Propuesta(Verbo.MOVER, f"celda_{c[0]}_{c[1]}", ar, conf,
+                                         "refugio: orientarse para colocar mesa", clase="suelo")
+            return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar sitio para mesa")
+
+        if fase == "provisiones":
+            e0_ref = mina_est[0] if mina_est is not None else pos
+            rocas_ref = (
+                sum(
+                    1 for k in (1, 2, 3)
+                    if self.mapa.get((e0_ref[0] + k * mina_est[1][0], e0_ref[1] + k * mina_est[1][1])) in ROCA_EXCAVABLE
+                )
+                if mina_est is not None else 3
+            )
+            pasos_luz_ahora = self._pasos_luz_restantes(luz)
+            if inv.get("drink", 0) < 9:
+                aguas = [
+                    p for p, m in self.mapa.items()
+                    if m == "water"
+                    and (not anticipa or (_dist(pos, p) + _dist(p, e0_ref) + rocas_ref * 3 + 6) * 1.35 < pasos_luz_ahora)
+                ]
+                if aguas:
+                    agua_pos = min(aguas, key=lambda a: _dist(pos, a) + _dist(a, e0_ref))
+                    if _dist(pos, agua_pos) == 1:
+                        return Propuesta(Verbo.COMER, f"agua_{agua_pos[0]}_{agua_pos[1]}", max(ar, 0.90), max(conf, 0.90),
+                                         "refugio: beber hasta llenar antes de cerrar", clase="agua")
+                    paso_p = self._paso_hacia(ctx, pos, agua_pos)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
+                                         "refugio: ir al agua antes de cerrar", clase=paso_p.clase)
+            comidas = [
+                p for p in ctx.onda.ev("Exterocepcion").values()
+                if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+                and (
+                    not anticipa
+                    or (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_ref * 3 + 6) * 1.35
+                    < pasos_luz_ahora
+                )
+            ]
+            if comidas and inv.get("food", 0) < 9:
+                mejor_c = max(comidas, key=lambda p: p.rasgo("proximidad"))
+                if mejor_c.rasgo("proximidad") >= 0.9:
+                    return Propuesta(Verbo.COMER, mejor_c.id, max(ar, 0.90), max(conf, 0.90),
+                                     f"refugio: comer {mejor_c.clase} hasta llenar", clase=mejor_c.clase)
+                cpos = tuple(mejor_c.carga["datos"]["pos"])
+                paso_p = self._paso_hacia(ctx, pos, (int(cpos[0]), int(cpos[1])))
+                if paso_p is not None:
+                    return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
+                                     f"refugio: acercarse a {mejor_c.clase} antes de cerrar", clase=paso_p.clase)
+            if inv.get("drink", 0) < 8 or inv.get("food", 0) < 8:
+                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida")
+
+        if fase in ("elegir_mina", "provisiones"):
+            mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+            if mina is not None:
+                e0, (dx, dy) = mina
+                e1 = (e0[0] + dx, e0[1] + dy)
+                if pos != e0:
+                    paso_p = self._paso_hacia(ctx, pos, e0)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la mina elegida", clase=paso_p.clase)
+                # Ya está en e0: si ya está excavada y aún queda mucho día por delante, no encerrarse todavía
+                e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+                e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+                rocas_pend = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+                if rocas_pend == 0 and not anticipa:
+                    if self.dominante:
+                        return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: aguardar ocaso en el acceso")
+                    return None
+                fase = "cavar"
+            else:
+                # Si se ve alguna piedra aún no inspeccionada de cerca, ir hacia ella para revelar el resto del macizo
+                rocas = [p for p, m in self.mapa.items() if m == "stone" and p not in self.rocas_inspeccionadas]
+                if rocas:
+                    roca_pos = min(rocas, key=lambda r: _dist(pos, r))
+                    paso_p = self._paso_hacia(ctx, pos, roca_pos)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: inspeccionar veta de roca", clase=paso_p.clase)
+                    self.rocas_inspeccionadas.add(roca_pos)
+                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: explorar en busca de mina")
+
+        if fase == "cavar":
+            mina = estado.get("mina")
+            if mina is None:
+                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar mina")
+            e0, (dx, dy) = mina
+            e1 = (e0[0] + dx, e0[1] + dy)
+            e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+            e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+            secuencia = [e0, e1, e2, e3]
+            if pos not in secuencia:
+                paso_p = self._paso_hacia(ctx, pos, e0)
+                if paso_p is not None:
+                    return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la entrada de la mina", clase=paso_p.clase)
+                return None
+            idx = secuencia.index(pos)
+            if idx < 3:
+                sig = secuencia[idx + 1]
+                msig = self.mapa.get(sig)
+                if msig in ROCA_EXCAVABLE:
+                    clase_r = MATERIALES.get(msig, "piedra")
+                    return Propuesta(Verbo.COGER, f"{clase_r}_{sig[0]}_{sig[1]}", ar, conf,
+                                     f"refugio: cavar casilla {idx + 1}/3", clase=clase_r)
+                # Casilla ya excavada (path): avanzar hacia el fondo
+                return Propuesta(Verbo.MOVER, f"celda_{sig[0]}_{sig[1]}", ar, conf,
+                                 f"refugio: avanzar por galería {idx + 1}/3", clase="suelo")
+            # Ya está en e3: si aún no tiene piedra (mina reutilizada sin piedra en inventario), picar el fondo e3+d si es roca
+            if inv.get("stone", 0) < 1:
+                e4 = (e3[0] + dx, e3[1] + dy)
+                if self.mapa.get(e4) in ROCA_EXCAVABLE:
+                    clase_r = MATERIALES.get(self.mapa[e4], "piedra")
+                    return Propuesta(Verbo.COGER, f"{clase_r}_{e4[0]}_{e4[1]}", ar, conf,
+                                     "refugio: extraer piedra para sellar", clase=clase_r)
+            # Si ya excavó hasta e3 pero aún queda mucho día por delante, no encerrarse todavía
+            if not anticipa:
+                return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", ar, conf,
+                                 "refugio: galería lista, salir hasta el ocaso", clase="suelo")
+            fase = "cerrarse"
+
+        if fase == "cerrarse":
+            mina = estado.get("mina")
+            if mina is None:
+                return None
+            e0, (dx, dy) = mina
+            e1 = (e0[0] + dx, e0[1] + dy)
+            e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+            e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+            despejar = self._entrada_insegura(ctx, pos, mina, max(ar, 0.9), max(conf, 0.9))
+            if despejar is not None:
+                return despejar
+            if pos == e3:
+                # Retroceder 1 casilla hacia e2: deja al jugador en e2 mirando hacia e1 (-dx, -dy)
+                return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", max(ar, 0.9), max(conf, 0.9),
+                                 "refugio: retroceder para mirar a la salida", clase="suelo")
+            if pos == e2:
+                dir_salida = (-dx, -dy)
+                if cara != dir_salida:
+                    # Si por cualquier motivo no mira a e1, girar contra un lateral bloqueado o dar un paso a e3
+                    return Propuesta(Verbo.MOVER, f"celda_{e3[0]}_{e3[1]}", max(ar, 0.9), max(conf, 0.9),
+                                     "refugio: reorientar hacia la salida", clase="suelo")
+                return Propuesta(Verbo.USAR, "place_stone", max(ar, 0.95), max(conf, 0.95),
+                                 "refugio: tapar la entrada con piedra", clase="place_stone", datos={"receta": "place_stone"})
+
+        if fase == "dormir":
+            mina = estado.get("mina")
+            # Si una pared de e2 o e3 es agua y tiene sed, beber desde dentro sin abrir el sello
+            agua_dentro = self._agua_accesible_dentro(mina)
+            if agua_dentro is not None and inv.get("drink", 0) < 9:
+                casilla_beber, vec_agua = agua_dentro
+                if pos == casilla_beber:
+                    return Propuesta(Verbo.COMER, f"agua_{vec_agua[0]}_{vec_agua[1]}", 1.0, 1.0,
+                                     "refugio: beber agua desde dentro", clase="agua")
+                return Propuesta(Verbo.MOVER, f"celda_{casilla_beber[0]}_{casilla_beber[1]}", 1.0, 1.0,
+                                 "refugio: acercarse a pared de agua interior", clase="suelo")
+            if mina is not None:
+                e0, (dx, dy) = mina
+                e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+                if pos != e2:
+                    return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", 1.0, 1.0,
+                                     "refugio: colocarse en e2 tras beber", clase="suelo")
+            # Dormir si falta energía (incluso con sed/hambre a 0: en Crafter dormir reduce a la mitad la tasa de degeneración)
+            if inv.get("energy", 9) < 9:
+                return Propuesta(Verbo.DORMIR, "", 1.0, 1.0, "refugio: dormir a salvo")
+            # Mientras esté encerrado dentro del refugio esperando a que amanezca, prioridad máxima para que otra
+            # estrategia (p. ej. Alimentarse o Explorar) no mueva al jugador hacia el fondo e3 ni rompa el sello
+            return Propuesta(Verbo.ESPERAR, "", 1.0, 1.0, "refugio: esperar al amanecer")
+
+        if fase == "amanecer":
+            mina = estado.get("mina")
+            if mina is not None:
+                e0, (dx, dy) = mina
+                e1 = (e0[0] + dx, e0[1] + dy)
+                e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+                if self.mapa.get(e1) == "stone":
+                    if _dist(pos, e1) == 1:
+                        return Propuesta(Verbo.COGER, f"piedra_{e1[0]}_{e1[1]}", max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: abrir salida al amanecer", clase="piedra")
+                    return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", max(ar, 0.95), max(conf, 0.95),
+                                     "refugio: acercarse al sello para abrir", clase="suelo")
+                if pos != e0:
+                    paso_p = self._paso_hacia(ctx, pos, e0)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: salir al exterior", clase=paso_p.clase)
+        return None
 
 
 class PlanTecnologico(Plan, ConPropuestas):
@@ -541,7 +1525,8 @@ class PlanTecnologico(Plan, ConPropuestas):
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
         hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Exterocepcion").values())
-        if inv.get("energy", 9) <= 6 and _luz(ctx) >= 0.5 and not hostiles:
+        umbral_energia = 4 if any(n.nombre == "cobijo" for n in ctx.perfil.necesidades) else 6
+        if inv.get("energy", 9) <= umbral_energia and _luz(ctx) >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
             self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
             return True
@@ -572,6 +1557,7 @@ class PlanTecnologico(Plan, ConPropuestas):
             return
         plan = estado_plan(estrategia) if estrategia is not None and ctx.perfil.mecanismos.plan else None
         orden = [p["meta"] for p in plan["pasos"][int(plan["i"]):]] if plan is not None and not plan["fallido"] else self.OBJETIVOS
+        pendiente: Optional[str] = None
         for receta in orden:
             if receta in hecho or self.fallos.get(receta, 0) >= 3:
                 continue
@@ -592,9 +1578,12 @@ class PlanTecnologico(Plan, ConPropuestas):
                         continue
                 self.proponer(ctx, Verbo.USAR, receta, 0.55, 0.8, f"plan: {receta}", clase=receta, receta=receta)
                 return
-            faltan = [k for k, v in usos.items() if inv.get(k, 0) < v]
-            self._buscar(ctx, faltan[0])
-            return
+            # Receta sin recursos: anotar lo primero que falta y seguir mirando si una receta posterior ya se
+            # puede hacer (p. ej. el horno con 4 piedras mientras al pico de piedra le falta madera)
+            if pendiente is None:
+                pendiente = next(k for k, v in usos.items() if inv.get(k, 0) < v)
+        if pendiente is not None:
+            self._buscar(ctx, pendiente)
 
     def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
         """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Exterocepcion o el hipocampo del Core."""

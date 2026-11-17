@@ -43,6 +43,7 @@ def _metricas(mundo: str, r: Dict[str, Any]) -> Dict[str, float]:
     p = r["puntuacion"] or {}
     if mundo == "crafter":
         m["logros"] = float(p.get("n_logros", 0))
+        m["noches"] = float(r.get("noches", 0))
     elif mundo == "archivos":
         m["nutritivos"], m["toxicos"] = float(p.get("nutritivos", 0)), float(p.get("toxicos", 0))
     elif mundo == "minimo":
@@ -79,7 +80,7 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
         clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
     if mecanismos is not None or tasa_herencia is not None:   # bloque E: interruptores de memoria
         from ida.core.mundo import MecanismosMemoria
-        activos = {m: True for m in (mecanismos or []) if m != "ninguno"}
+        activos: Dict[str, Any] = {m: True for m in (mecanismos or []) if m != "ninguno"}
         if tasa_herencia is not None:
             activos["tasa_herencia"] = tasa_herencia
         clase_mundo.perfil = replace(clase_mundo.perfil, mecanismos=MecanismosMemoria(**activos))
@@ -95,6 +96,8 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                                    "despierto_peligro": 0, "despierto_calma": 0, "s3_peligro": 0, "s3_calma": 0}
 
             finales: List[Dict[str, Any]] = []     # último latido de cada vida, para deducir la causa de muerte
+            noches_por_vida: List[int] = []
+            estado_noche: Dict[str, Any] = {"en_noche": False, "noches": 0}
 
             def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
                 ind["latidos"] += 1   # noqa: B023 (se usa en la misma iteración)
@@ -103,23 +106,38 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                           "alimentacion": float(_o.soma.alimentacion)}
                 if onda.ciclo == 1 or not finales:   # noqa: B023
                     finales.append(estado)   # noqa: B023
+                    estado_noche["en_noche"] = False   # noqa: B023
+                    estado_noche["noches"] = 0   # noqa: B023
+                    noches_por_vida.append(0)   # noqa: B023
                 else:
                     finales[-1] = estado   # noqa: B023
+
+                if mundo == "crafter":   # noqa: B023
+                    amb = onda.ev("Ambiente").get("ambiente")
+                    luz = float(amb.carga.get("luz", 1.0)) if amb else 1.0
+                    if luz < 0.3:
+                        estado_noche["en_noche"] = True   # noqa: B023
+                    elif estado_noche["en_noche"] and luz >= 0.5:   # noqa: B023
+                        estado_noche["noches"] += 1   # noqa: B023
+                        estado_noche["en_noche"] = False   # noqa: B023
+                    if noches_por_vida:   # noqa: B023
+                        noches_por_vida[-1] = estado_noche["noches"]   # noqa: B023
                 if onda.guillotina and "plazo" in onda.motivo_guillotina:
                     ind["plazo"] += 1   # noqa: B023
                 if onda.notas.get("plus_decide"):
                     ind["plus"] += 1   # noqa: B023
-                e1 = onda.notas.get("estrategias_S1")
-                if e1:
-                    for n in e1["activas"]:
-                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["activa"] += 1   # noqa: B023
-                    if e1["ejecutada"]:
-                        ind["estrategias"].setdefault(e1["ejecutada"], {"activa": 0, "ejecutada": 0, "abandonos": 0})["ejecutada"] += 1  # noqa: B023
-                    for n in e1["abandonos"]:
-                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["abandonos"] += 1   # noqa: B023
-                    ind["reflejos"] += int(e1["reflejo"])   # noqa: B023
-                    ind["interrumpe"] += int(e1["interrumpe"])   # noqa: B023
-                    ind["sustituciones"] += int(e1.get("sustituciones", 0))   # noqa: B023
+                for s in ("S1", "S2", "S3"):
+                    es = onda.notas.get(f"estrategias_{s}")
+                    if es:
+                        for n in es["activas"]:
+                            ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["activa"] += 1   # noqa: B023
+                        if es["ejecutada"]:
+                            ind["estrategias"].setdefault(es["ejecutada"], {"activa": 0, "ejecutada": 0, "abandonos": 0})["ejecutada"] += 1  # noqa: B023
+                        for n in es["abandonos"]:
+                            ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["abandonos"] += 1   # noqa: B023
+                        ind["reflejos"] += int(es["reflejo"])   # noqa: B023
+                        ind["interrumpe"] += int(es["interrumpe"])   # noqa: B023
+                        ind["sustituciones"] += int(es.get("sustituciones", 0))   # noqa: B023
                 consumo = getattr(onda, "consumo", None)
                 if consumo is None:
                     return
@@ -139,9 +157,21 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                 resumenes = vivir(mundo, latidos=latidos, semilla=semilla, generaciones=generaciones, tabula_rasa=True,
                                   consola=False, datos=datos, al_latir=al_latir, sin_experiencia=sin_exp,
                                   arquetipo_inicial=PERFILES[perfil])
+            for i, r in enumerate(resumenes):
+                if mundo == "crafter":
+                    r["noches"] = noches_por_vida[i] if i < len(noches_por_vida) else 0
             vidas = [_metricas(mundo, r) for r in resumenes]
             causas = [_causa(r, finales[i] if i < len(finales) else {}) for i, r in enumerate(resumenes)]
-            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas, "indicadores": ind})
+            logros_vidas: List[List[str]] = []
+            if mundo == "crafter":
+                for r in resumenes:
+                    raw_l = (r.get("puntuacion") or {}).get("logros", [])
+                    if isinstance(raw_l, dict):
+                        logros_vidas.append([k for k, v in raw_l.items() if v > 0])
+                    else:
+                        logros_vidas.append(list(raw_l))
+            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas,
+                          "logros": logros_vidas, "indicadores": ind})
             print(f"{mundo} {grupo} semilla {semilla}: {len(vidas)} vidas", flush=True)
     with open(salida, "w", encoding="utf-8") as f:
         json.dump({"mundo": mundo, "filas": filas}, f)
@@ -159,7 +189,7 @@ def comparar(base: str, nueva: str) -> None:
     with open(nueva, encoding="utf-8") as f:
         b = json.load(f)
     mundo = a["mundo"]
-    metricas = list(a["filas"][0]["vidas"][0])
+    metricas = list(dict.fromkeys(list(a["filas"][0]["vidas"][0]) + list(b["filas"][0]["vidas"][0])))
     print(f"\n### {mundo} (N = {len(SEMILLAS)} linajes, IC 95 %; Δ = nueva − base, pareado por semilla)\n")
     print("| Grupo | Métrica | Base | Nueva | Δ pareado |\n|---|---|---|---|---|")
     for grupo, _, _ in GRUPOS:
@@ -169,6 +199,8 @@ def comparar(base: str, nueva: str) -> None:
         if not semillas:
             continue
         for m in metricas:
+            if m not in fa[semillas[0]]["vidas"][0] or m not in fb[semillas[0]]["vidas"][0]:
+                continue
             xa = [statistics.fmean(v[m] for v in fa[s]["vidas"]) for s in semillas]
             xb = [statistics.fmean(v[m] for v in fb[s]["vidas"]) for s in semillas]
             print(f"| {grupo} | {m} | {_ic(xa)} | {_ic(xb)} | {_ic([y - x for x, y in zip(xa, xb, strict=True)])} |")
@@ -196,6 +228,20 @@ def comparar(base: str, nueva: str) -> None:
         cb = Counter(c for r in b["filas"] if r["grupo"] == grupo for c in r.get("causas", []))
         for causa in sorted(set(ca) | set(cb)):
             print(f"| {grupo} | {causa} | {ca.get(causa, 0)} | {cb.get(causa, 0)} |")
+
+    tiene_logros = any("logros" in r for r in a.get("filas", []) + b.get("filas", []))
+    if mundo == "crafter" and tiene_logros:
+        print("\n### Logros por tipo (total de vidas que lo consiguen en los 4 grupos, N = 120 vidas)")
+        print("| Logro | Vidas base | Vidas nueva | Δ vidas |\n|---|---|---|---|")
+        todos_logros: set[str] = set()
+        for d in (a, b):
+            for r in d.get("filas", []):
+                for lv in r.get("logros", []):
+                    todos_logros.update(lv if isinstance(lv, list) else lv.keys())
+        for logro in sorted(todos_logros):
+            va = sum(1 for r in a.get("filas", []) for lv in r.get("logros", []) if (logro in lv if isinstance(lv, (list, set, dict)) else False))
+            vb = sum(1 for r in b.get("filas", []) for lv in r.get("logros", []) if (logro in lv if isinstance(lv, (list, set, dict)) else False))
+            print(f"| {logro} | {va} | {vb} | {vb - va:+d} |")
     filas_b = [r for r in b["filas"] if r["indicadores"].get("estrategias")]
     if not filas_b:
         return
@@ -210,7 +256,7 @@ def comparar(base: str, nueva: str) -> None:
             t = total.setdefault(nombre, {"activa": 0, "ejecutada": 0, "abandonos": 0})
             for k in t:
                 t[k] += c[k]
-    print("\n| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |\n|---|---|---|---|")
+    print("\n| Estrategia (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |\n|---|---|---|---|")
     for nombre, t in sorted(total.items(), key=lambda kv: -kv[1]["activa"]):
         print(f"| {nombre} | {t['activa']} | {t['ejecutada']} | {t['abandonos']} |")
 

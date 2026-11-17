@@ -6,7 +6,7 @@ pytest.importorskip("crafter")
 
 from ida.core.vocabulario import RASGOS, Verbo  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
-from ida.mundos.crafter import MundoCrafter  # noqa: E402
+from ida.mundos.crafter import MundoCrafter, RefugioNocturno  # noqa: E402
 
 
 @pytest.fixture
@@ -42,3 +42,42 @@ def test_coger_sin_obtener_nada_no_es_exito(mundo):
 def test_vida_corta_en_crafter(tmp_path):
     r = ejecutar("crafter", latidos=80, semilla=3, consola=False, datos=str(tmp_path))[0]
     assert r["latidos"] > 0 and "logros" in r["puntuacion"]
+
+
+def test_mapa_refugio_empieza_vacio_en_cada_vida(mundo):
+    from types import SimpleNamespace
+
+    refugio = RefugioNocturno()
+    assert refugio.mapa == {}
+    assert refugio.visitadas == set()
+
+    # Vida 1: simular latidos 1 y 2 poblando el mapa y el estado recordado
+    obs1 = mundo.observar()
+    yo1 = SimpleNamespace(carga={"ubicacion": obs1.ubicacion, "inventario": obs1.inventario, "cuerpo": obs1.cuerpo})
+    amb1 = SimpleNamespace(carga=obs1.ambiente)
+    onda1 = SimpleNamespace(
+        ev=lambda canal: {"Propiocepcion": {"yo": yo1}, "Ambiente": {"ambiente": amb1}}.get(canal, {})
+    )
+    ctx1 = SimpleNamespace(latido=1, onda=onda1)
+    refugio._actualizar_memoria(ctx1)
+    assert len(refugio.mapa) > 0
+    refugio.mapa[(999, 999)] = "stone"
+    refugio.mina_recordada = ((10, 10), (1, 0))
+    refugio.paso_oscuro = True
+
+    ctx2 = SimpleNamespace(latido=2, onda=onda1)
+    refugio._actualizar_memoria(ctx2)
+    assert (999, 999) in refugio.mapa
+
+    # Vida 2 (comienza en latido 1): el mapa y los recuerdos de la vida anterior se vacían antes de incorporar la vista actual
+    mundo.reiniciar(2)
+    obs_nueva = mundo.observar()
+    yo_nuevo = SimpleNamespace(carga={"ubicacion": obs_nueva.ubicacion, "inventario": obs_nueva.inventario, "cuerpo": {"orientacion": (0, 1), "vista": {}}})
+    onda_nueva = SimpleNamespace(
+        ev=lambda canal: {"Propiocepcion": {"yo": yo_nuevo}, "Ambiente": {"ambiente": amb1}}.get(canal, {})
+    )
+    ctx_nueva_vida = SimpleNamespace(latido=1, onda=onda_nueva)
+    refugio._actualizar_memoria(ctx_nueva_vida)
+    assert refugio.mapa == {}
+    assert refugio.mina_recordada is None
+    assert refugio.paso_oscuro is False
