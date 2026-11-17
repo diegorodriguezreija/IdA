@@ -78,3 +78,26 @@ def test_impulso_nido_y_recursos(mundo):
     obs = mundo.observar()
     assert "nido" in obs.vitales
     assert obs.vitales["nido"] <= 50.0
+
+
+def test_estrategia_anidar_fases(mundo, capsys):
+    from ida.core.azar import Azar
+    from ida.core.latido import Organismo
+    from ida.core.linaje import Arquetipo
+    from ida.core.memoria import Memoria
+    from ida.mundos.crafter import Anidar
+    from ida.sistemas import crear_sistemas
+
+    ests = mundo.estrategias_propias()
+    assert "S1" in ests
+    anidar = next((e for e in ests["S1"] if isinstance(e, Anidar)), None)
+    assert anidar is not None
+    assert "preparar_nido" in anidar.impulsos
+
+    azar = Azar(1)
+    arq = Arquetipo.nuevo(azar)
+    org = Organismo(mundo, crear_sistemas(), arq, Memoria("completa"), azar)
+    for _ in range(5):
+        org.latir()
+    captured = capsys.readouterr()
+    assert "[anidar] paso:" in captured.out
