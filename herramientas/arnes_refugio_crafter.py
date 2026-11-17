@@ -12,6 +12,7 @@ Mide:
 """
 
 import argparse
+from collections import Counter
 from dataclasses import replace
 import os
 import sys
@@ -28,7 +29,10 @@ from ida.mundos import cargar  # noqa: E402
 from ida.mundos.crafter import RefugioNocturno  # noqa: E402
 
 
-def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equilibrado", detalle: bool = True) -> Dict[str, Any]:
+def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equilibrado", detalle: bool = True,
+                   real: bool = False) -> Dict[str, Any]:
+    """Con ``real`` la estrategia compite con su motivación real (Perfil fusionado, sin ``dominante``):
+    es el modo de ajuste de la Fase B. Sin él, es la prueba de competencia de la Fase A."""
     clase_mundo = cargar("crafter")
     perfil_original = clase_mundo.perfil
     init_original = RefugioNocturno.__init__
@@ -37,10 +41,11 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
         init_original(self)
         self.dominante = True
 
-    # Activar el impulso cobijo en el arnés y marcar la estrategia como dominante solo durante la prueba
-    necesidades_arnes = tuple(n for n in perfil_original.necesidades if n.nombre != "cobijo") + (Necesidad("cobijo", ("cobijo",), 100.0),)
-    clase_mundo.perfil = replace(perfil_original, necesidades=necesidades_arnes)
-    RefugioNocturno.__init__ = _init_dominante  # type: ignore[method-assign]
+    if not real:
+        # Activar el impulso cobijo en el arnés y marcar la estrategia como dominante solo durante la prueba
+        necesidades_arnes = tuple(n for n in perfil_original.necesidades if n.nombre != "cobijo") + (Necesidad("cobijo", ("cobijo",), 100.0),)
+        clase_mundo.perfil = replace(perfil_original, necesidades=necesidades_arnes)
+        RefugioNocturno.__init__ = _init_dominante  # type: ignore[method-assign]
 
     resultados: List[Dict[str, Any]] = []
     try:
@@ -65,6 +70,13 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                 "vivo_final": True,
                 "latidos_vividos": 0,
                 "logros": [],
+                "inv_sello": None,
+                "salida": None,
+                "bebe_tras_salida": None,
+                "come_tras_salida": None,
+                "dano_tras_salida": 0,
+                "inv_final": None,
+                "ejecutadas": {},
             }
 
             def al_latir(org: Any, onda: Any, _r: Dict[str, Any], iv: Dict[str, Any] = info_vida) -> None:
@@ -76,6 +88,22 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                     iv["tuvo_pico"] = True
                 if inv.get("wood_sword", 0) >= 1:
                     iv["tuvo_espada"] = True
+                previo = iv.get("_inv_previo")
+                salida = iv["salida"]
+                if salida is not None and previo is not None:
+                    if iv["bebe_tras_salida"] is None and inv.get("drink", 0) > previo["drink"]:
+                        iv["bebe_tras_salida"] = onda.ciclo - salida["latido"]
+                    if iv["come_tras_salida"] is None and inv.get("food", 0) > previo["food"]:
+                        iv["come_tras_salida"] = onda.ciclo - salida["latido"]
+                    if int(p.health) < previo["health"]:
+                        iv["dano_tras_salida"] += previo["health"] - int(p.health)
+                iv["_inv_previo"] = {"drink": int(inv.get("drink", 0)), "food": int(inv.get("food", 0)), "health": int(p.health)}
+                iv["inv_final"] = (int(inv.get("food", 0)), int(inv.get("drink", 0)), int(inv.get("energy", 0)), int(p.health),
+                                   int(inv.get("stone", 0)))
+                for sis in ("S1", "S2", "S3"):
+                    ejecutada = (onda.notas.get(f"estrategias_{sis}") or {}).get("ejecutada")
+                    if ejecutada:
+                        iv["ejecutadas"][ejecutada] = iv["ejecutadas"].get(ejecutada, 0) + 1
 
                 est = onda.estrategias.get("S2:refugio_nocturno:cobijo")
                 paso = est.carga.get("paso") if est is not None else None
@@ -94,6 +122,7 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                             iv["luz_sello"] = round(luz, 3)
                             iv["sellada_antes_05"] = luz >= 0.5
                             iv["salud_al_sellar"] = int(p.health)
+                            iv["inv_sello"] = (int(inv.get("food", 0)), int(inv.get("drink", 0)), int(p.health))
                             iv["primera_noche_terminada"] = False
                         elif not iv.get("primera_noche_terminada", False):
                             # Daño causado por un monstruo mientras el jugador está dentro del refugio sellado en este latido
@@ -104,6 +133,9 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                     else:
                         if iv["sellada"] and fase == "amanecer":
                             iv["primera_noche_terminada"] = True
+                            if iv["salida"] is None:
+                                iv["salida"] = {"latido": onda.ciclo, "luz": round(luz, 2), "comida": int(inv.get("food", 0)),
+                                                "agua": int(inv.get("drink", 0)), "salud": int(p.health)}
                     iv["fase_previa"] = fase
 
             with tempfile.TemporaryDirectory(prefix=f"ida_fase_a_{sem}_") as td:
@@ -134,7 +166,17 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
                 causa_fallo = f"sello_tardio(luz={info_vida['luz_sello']})"
             info_vida["causa_fallo"] = causa_fallo
             resultados.append(info_vida)
-            if detalle:
+            if detalle and real:
+                print(
+                    f"Semilla {sem:2d}: L_sello={info_vida['latido_sello']} luz={info_vida['luz_sello']} "
+                    f"sello(c,a,s)={info_vida['inv_sello']} salida={info_vida['salida']} "
+                    f"bebe+{info_vida['bebe_tras_salida']} come+{info_vida['come_tras_salida']} "
+                    f"dano_fuera={info_vida['dano_tras_salida']} final(c,a,e,s,piedra)={info_vida['inv_final']} "
+                    f"vivo={info_vida['vivo_final']} causa={info_vida['causa_muerte']} L={info_vida['latidos_vividos']} "
+                    f"wake={info_vida['wake_up']} logros={len(logros)}",
+                    flush=True,
+                )
+            elif detalle:
                 print(
                     f"Semilla {sem:2d}: sellada={info_vida['sellada']} (antes_05={info_vida['sellada_antes_05']}) "
                     f"L_sello={info_vida['latido_sello']} luz={info_vida['luz_sello']} "
@@ -152,8 +194,14 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
     sin_dano = [r for r in selladas if not r["dano_dentro"]]
     con_wake = [r for r in resultados if r["wake_up"]]
 
+    salidas = [r for r in resultados if r["salida"] is not None]
     resumen = {
         "n": n,
+        "vivas": sum(1 for r in resultados if r["vivo_final"]),
+        "causas": dict(Counter(r["causa_muerte"] for r in resultados if not r["vivo_final"])),
+        "salidas": len(salidas),
+        "logros_medios": sum(len(r["logros"]) for r in resultados) / max(1, n),
+        "latidos_medios": sum(r["latidos_vividos"] for r in resultados) / max(1, n),
         "selladas": len(selladas),
         "pct_selladas": 100.0 * len(selladas) / max(1, n),
         "selladas_antes_05": len(selladas_05),
@@ -170,6 +218,18 @@ def evaluar_fase_a(semillas: List[int], latidos: int = 600, perfil: str = "Equil
         print(f"Vidas selladas con luz >= 0.5: {resumen['selladas_antes_05']}/{n} ({resumen['pct_selladas_antes_05']:.1f} %)")
         print(f"Selladas sin daño nocturno:    {resumen['sin_dano_de_selladas']}/{len(selladas)} ({resumen['pct_sin_dano_de_selladas']:.1f} %)")
         print(f"Vidas con wake_up:             {resumen['wake_up']}/{n} ({resumen['pct_wake_up']:.1f} %)")
+        if real:
+            beben = [r for r in salidas if r["bebe_tras_salida"] is not None]
+            luz_media = sum(r["salida"]["luz"] for r in salidas) / max(1, len(salidas))
+            espera = sum(r["bebe_tras_salida"] for r in beben) / max(1, len(beben))
+            ejecutadas: Counter = Counter()
+            for r in resultados:
+                ejecutadas.update(r["ejecutadas"])
+            print(f"Vivas al final:                {resumen['vivas']}/{n}  causas={resumen['causas']}")
+            print(f"Salen del refugio:             {len(salidas)}  luz media {luz_media:.2f}  beben tras salir {len(beben)} "
+                  f"(latidos medios {espera:.1f})  daño fuera {sum(r['dano_tras_salida'] for r in salidas)}")
+            print(f"Logros medios {resumen['logros_medios']:.2f}  latidos medios {resumen['latidos_medios']:.1f}")
+            print(f"Latidos ejecutados por estrategia: {dict(ejecutadas.most_common(8))}")
     return resumen
 
 
@@ -178,8 +238,9 @@ def main() -> int:
     p.add_argument("--semillas", type=int, nargs="*", default=list(range(11, 31)))
     p.add_argument("--latidos", type=int, default=600)
     p.add_argument("--perfil", default="Equilibrado", choices=sorted(PERFILES))
+    p.add_argument("--real", action="store_true", help="motivación real (Fase B): sin dominante ni cambios de Perfil")
     args = p.parse_args()
-    evaluar_fase_a(args.semillas, args.latidos, args.perfil)
+    evaluar_fase_a(args.semillas, args.latidos, args.perfil, real=args.real)
     return 0
 
 
