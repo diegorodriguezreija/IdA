@@ -281,23 +281,30 @@ class MundoCrafter(Mundo):
         return cosas
 
     def _valor_recurso(self, clase: str) -> float:
-        """Da valor a la madera y la piedra según lo que falte y lo que ya se lleva."""
+        """Da valor a la madera y la piedra conservándolo hasta llenar el inventario, decreciendo suavemente."""
         inv = self.jugador.inventory
         tiene_pico = (inv["wood_pickaxe"] >= 1 or inv["stone_pickaxe"] >= 1 or inv["iron_pickaxe"] >= 1)
+        capacidad = 9.0
+
         if clase == "arbol":
-            if inv["wood"] < 2:
+            madera = float(inv.get("wood", 0))
+            if madera < 2:
                 return 0.95
-            if not tiene_pico and inv["wood"] < 4:
-                return 0.85
-            return 0.4
+            frac = min(1.0, madera / capacidad)
+            return max(0.35, 0.92 - 0.55 * frac)
+
         if clase == "piedra":
-            if tiene_pico and inv["stone"] < 1:
+            piedra = float(inv.get("stone", 0))
+            if not tiene_pico:
+                return 0.35
+            if piedra < 1:
                 return 0.95
-            if tiene_pico and inv["stone"] < 3:
-                return 0.75
-            return 0.4
+            frac = min(1.0, piedra / capacidad)
+            return max(0.35, 0.92 - 0.55 * frac)
+
         if clase in ("carbon", "hierro", "diamante"):
-            return 0.6
+            return 0.75 if tiene_pico else 0.40
+
         return 0.0
 
     def _deseo(self, clase: str, obj: Any) -> float:
@@ -789,13 +796,21 @@ class ExplorarCrafter(Definicion):
             self.rumbo = None
             return None
 
-        # Hallazgo: objeto útil al alcance
-        objetos_alcance = [p for p in vistas if p.rasgo("recurso") >= 0.5 and p.rasgo("peligro") < 0.4 and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+        # Hallazgo: objeto útil al alcance (distancia <= 1) para acopiar
+        inv = _inventario(ctx)
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+        objetos_alcance = [
+            p for p in vistas
+            if (p.rasgo("recurso") >= 0.4 or p.clase == "arbol" or (p.clase == "piedra" and tiene_pico))
+            and p.rasgo("peligro") < 0.4
+            and "pos" in p.carga.get("datos", {})
+            and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1
+        ]
         if objetos_alcance:
             self.rumbo = None
             self.pasos_rumbo = 0
             mejor_obj = max(objetos_alcance, key=lambda o: float(o.rasgo("recurso")))
-            return Propuesta(Verbo.COGER, mejor_obj.id, 0.45, 0.7, f"explorar: coger {mejor_obj.clase}", clase=mejor_obj.clase)
+            return Propuesta(Verbo.COGER, mejor_obj.id, 0.50, 0.8, f"explorar: acopiar {mejor_obj.clase}", clase=mejor_obj.clase)
 
         if self.pasos_rumbo >= self.max_pasos:
             self.rumbo = None
@@ -1097,8 +1112,21 @@ class Anidar(Definicion):
         piedras = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})}
         lugares = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.rasgo("lugar") >= 0.5 and "pos" in p.carga.get("datos", {})}
 
-        # Si aún no está en la madriguera: navegar a E
+        # Si aún no está en la madriguera: acopio al paso si es de día; si no, navegar a E
         if pos != e and pos != c1 and pos != c2:
+            if luz >= 0.65:
+                madera = inv.get("wood", 0)
+                piedra = inv.get("stone", 0)
+                if madera < 5:
+                    arboles_alcance = [p for p in vistas if p.clase == "arbol" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+                    if arboles_alcance:
+                        return Propuesta(Verbo.COGER, arboles_alcance[0].id, 0.78, 0.85, "anidar: acopiar madera al paso", clase="arbol")
+                if piedra < 5:
+                    piedras_alcance = [p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+                    for p_roca in piedras_alcance:
+                        rpos = tuple(p_roca.carga["datos"]["pos"])
+                        if rpos not in (e, c1, c2):
+                            return Propuesta(Verbo.COGER, p_roca.id, 0.76, 0.85, "anidar: acopiar piedra al paso", clase="piedra")
             return _navegar_hacia(ctx, e)
 
         # 3. Fase entrar_tapar
