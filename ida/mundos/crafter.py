@@ -899,8 +899,9 @@ class RefugioNocturno(Definicion):
                 estado["fase"] = "herramientas"
             return self._guardar_estado(estado)
 
-        # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar mientras quede margen de luz para volver y sellar
-        if falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre:
+        # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar, o rescate de sed crítica con el mapa recordado
+        sed_critica_mapa = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
+        if (falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo):
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
 
@@ -929,6 +930,11 @@ class RefugioNocturno(Definicion):
         """Luz a la que conviene abrir el refugio al amanecer según la energía y provisiones."""
         energia = inv.get("energy", 9.0)
         hambre_sed = min(inv.get("food", 9.0), inv.get("drink", 9.0))
+        # Con sed o hambre crítica (<= 1), salir en cuanto claree a 0,30 (donde Crafter devuelve el radio de visión 4 completo)
+        if hambre_sed <= 1.0:
+            return 0.30
+        if hambre_sed <= 2.0:
+            return 0.42
         # Si aún no ha recuperado toda la energía y no sufre hambre/sed crítica, aprovecha el sueño hasta que claree más
         if energia < 9.0 and hambre_sed >= 3.0:
             return 0.75
@@ -950,6 +956,8 @@ class RefugioNocturno(Definicion):
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
         if self.dominante:
             return 0.98, 0.98
+        if inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values()):
+            return 0.92, 0.92
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         if not self._anticipa_refugio(luz, pos, inv, mina):
@@ -1078,9 +1086,10 @@ class RefugioNocturno(Definicion):
         fase = estado.get("fase", "madera")
         mina_est: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         anticipa = self._anticipa_refugio(luz, pos, inv, mina_est)
+        sed_critica = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
 
-        # Con mucho día por delante, si ya tiene herramientas y mina localizada, dejar vía libre a alimentarse y plan_tecnologico
-        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse") and not anticipa:
+        # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse") and not anticipa and not sed_critica:
             if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
                 return None
 
@@ -1294,8 +1303,8 @@ class RefugioNocturno(Definicion):
                 if pos != e2:
                     return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", 1.0, 1.0,
                                      "refugio: colocarse en e2 tras beber", clase="suelo")
-            # Dormir si falta energía y hay comida/bebida para no sufrir degeneración de salud mientras duerme
-            if inv.get("energy", 9) < 9 and inv.get("food", 0) >= 1 and inv.get("drink", 0) >= 1:
+            # Dormir si falta energía (incluso con sed/hambre a 0: en Crafter dormir reduce a la mitad la tasa de degeneración)
+            if inv.get("energy", 9) < 9:
                 return Propuesta(Verbo.DORMIR, "", 1.0, 1.0, "refugio: dormir a salvo")
             # Mientras esté encerrado dentro del refugio esperando a que amanezca, prioridad máxima para que otra
             # estrategia (p. ej. Alimentarse o Explorar) no mueva al jugador hacia el fondo e3 ni rompa el sello
