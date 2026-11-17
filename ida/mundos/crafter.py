@@ -167,11 +167,26 @@ class MundoCrafter(Mundo):
 
     def _vitales(self) -> Dict[str, float]:
         inv = self.jugador.inventory
+        w = self.env._world
         return {"vitalidad": self.jugador.health / 9 * 100, "alimentacion": min(inv["food"], inv["drink"]) / 9 * 100,
                 "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100,
-                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100}
+                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100,
+                "cobijo": float(w.daylight) * 100}
 
     # --- percepción ----------------------------------------------------------
+    def _vista_local(self) -> Dict[Pos, str]:
+        """Rejilla cruda (coordenada -> material) de todas las casillas dentro del radio de visión actual."""
+        w, (px, py) = self.env._world, self.jugador.pos
+        radio = self.radio if w.daylight >= 0.3 else max(2, self.radio // 2)
+        vista: Dict[Pos, str] = {}
+        for x in range(px - radio, px + radio + 1):
+            for y in range(py - radio, py + radio + 1):
+                if 0 <= x < w.area[0] and 0 <= y < w.area[1]:
+                    mat, _ = w[(int(x), int(y))]
+                    if mat is not None:
+                        vista[(int(x), int(y))] = str(mat)
+        return vista
+
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:
         """(id, clase, posición, objeto) de lo que hay en el radio de visión."""
         w, (px, py) = self.env._world, self.jugador.pos
@@ -241,7 +256,8 @@ class MundoCrafter(Mundo):
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
-                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1]))}, ambiente={"luz": float(w.daylight)})
+                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "vista": self._vista_local()},
+                           ambiente={"luz": float(w.daylight)})
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -446,6 +462,13 @@ def _orientacion(ctx: Contexto) -> Optional[Pos]:
     yo = ctx.onda.ev("Propiocepcion").get("yo")
     cara = yo.carga.get("cuerpo", {}).get("orientacion") if yo is not None else None
     return (int(cara[0]), int(cara[1])) if cara is not None else None
+
+
+def _vista(ctx: Contexto) -> Dict[Pos, str]:
+    """Rejilla cruda de materiales dentro del radio de visión actual, leída de la propiocepción."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    raw = yo.carga.get("cuerpo", {}).get("vista", {}) if yo is not None else {}
+    return {(int(k[0]), int(k[1])): str(v) for k, v in raw.items()} if isinstance(raw, dict) else {}
 
 
 def _terreno(ctx: Contexto) -> Dict[Pos, str]:
