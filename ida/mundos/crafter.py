@@ -833,6 +833,10 @@ class RefugioNocturno(Definicion):
                 estado["sin_avance"] = 0
 
         estado["mina"] = mina_actual
+        if mina_actual is not None and all(
+            self.mapa.get((mina_actual[0][0] + k * mina_actual[1][0], mina_actual[0][1] + k * mina_actual[1][1])) == "path" for k in (1, 2, 3)
+        ):
+            self.mina_recordada = mina_actual      # galería ya cavada (de día, sin sellar): se recuerda para volver a ella
         pasos_luz = self._pasos_luz_restantes(luz)
         coste = self._coste_restante_pasos(pos, inv, mina_actual)
         es_noche = luz < 0.5
@@ -995,6 +999,20 @@ class RefugioNocturno(Definicion):
         pasos_luz = self._pasos_luz_restantes(luz)
         return pasos_luz <= max(32.0, coste * 1.9 + pasos_prov)
 
+    @staticmethod
+    def _saciedad(inv: Dict[str, float]) -> float:
+        return acotar(min(inv.get("food", 0.0), inv.get("drink", 0.0)) / 9.0)
+
+    def _falta_mina(self, mina: Optional[Tuple[Pos, Pos]]) -> float:
+        """Lo que falta (0-1) para tener el refugio de esta noche localizado: sin mina, todo; con mina,
+        una parte por no tener pared de agua dentro y otra por las rocas que quedan por picar."""
+        if mina is None:
+            return 1.0
+        e0, (dx, dy) = mina
+        rocas = sum(1 for k in (1, 2, 3) if self.mapa.get((e0[0] + k * dx, e0[1] + k * dy)) in ROCA_EXCAVABLE)
+        sin_agua = self._agua_accesible_dentro(mina) is None
+        return 0.35 * sin_agua + 0.65 * rocas / 3.0
+
     def _motivacion(self, ctx: Contexto, estado: Dict[str, Any], pos: Pos, inv: Dict[str, float]) -> Tuple[float, float]:
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
         if self.dominante:
@@ -1004,11 +1022,13 @@ class RefugioNocturno(Definicion):
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         if not self._anticipa_refugio(luz, pos, inv, mina):
-            # Con mucho día por delante: si ya tiene herramientas y no sufre hambre/sed pero aún no ha visto mina,
-            # explorar con rumbo (0,72 supera el 0,60+0,10 de continuidad de alimentarse ocioso, y cede en cuanto halla mina)
-            if mina is None and not self._falta_herramienta(inv) and inv.get("food", 0) >= 6 and inv.get("drink", 0) >= 6:
-                return 0.50, 0.72
-            return 0.28, 0.52
+            # Con día por delante: motivación baja y continua de «tener la mina localizada», que crece con lo que
+            # falta por tener (mina, pared de agua, galería cavada) y con la saciedad, para no quitar tiempo a
+            # comer o beber; queda por debajo de plan_tecnologico (0,8) y de alimentarse con su continuidad.
+            if self._falta_herramienta(inv):
+                return 0.28, 0.52
+            empuje = self._falta_mina(mina) * self._saciedad(inv)
+            return 0.30 + 0.20 * empuje, 0.50 + 0.18 * empuje
         coste = self._coste_restante_pasos(pos, inv, mina)
         pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
         ratio = acotar(coste / pasos_luz)
@@ -1177,7 +1197,7 @@ class RefugioNocturno(Definicion):
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
         if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
-            if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
+            if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est) and self._falta_mina(mina_est) <= 0:
                 return None
 
         ar, conf = self._motivacion(ctx, estado, pos, inv)
@@ -1307,6 +1327,16 @@ class RefugioNocturno(Definicion):
                 if rocas_pend == 0 and not anticipa:
                     if self.dominante:
                         return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: aguardar ocaso en el acceso")
+                    # Galería lista sin pared de agua: inspeccionar vetas cercanas por si hay una candidata mejor
+                    if self._agua_accesible_dentro(mina) is None:
+                        rocas = [p for p, m in self.mapa.items()
+                                 if m == "stone" and p not in self.rocas_inspeccionadas and _dist(p, e0) <= 10]
+                        if rocas:
+                            roca_pos = min(rocas, key=lambda r: _dist(pos, r))
+                            paso_p = self._paso_hacia(ctx, pos, roca_pos)
+                            if paso_p is not None:
+                                return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: buscar mina con agua", clase=paso_p.clase)
+                            self.rocas_inspeccionadas.add(roca_pos)
                     return None
                 fase = "cavar"
             else:
