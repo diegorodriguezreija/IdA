@@ -524,6 +524,8 @@ class RefugioNocturno(Definicion):
 
     RUMBO_PASOS = 12
     PACIENCIA_AVANCE = 10
+    LUZ_PLENO_DIA = 0.83      # Crafter: con luz > 0,83 el máximo de zombis por zona (3,5 − 3·luz) baja de 1
+    MEMORIA_VACA = 40         # latidos que se recuerda dónde se vio una vaca
 
     def __init__(self) -> None:
         self.mapa: Dict[Pos, str] = {}
@@ -538,8 +540,10 @@ class RefugioNocturno(Definicion):
         self.rumbo: Pos = (1, 0)
         self.pasos_rumbo: int = 0
         self.dominante: bool = False   # usado solo por el arnés de prueba de la Fase A
+        self.vacas: Dict[Pos, int] = {}
 
     def _reiniciar_vida(self) -> None:
+        self.vacas.clear()
         self.mapa.clear()
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
@@ -568,6 +572,14 @@ class RefugioNocturno(Definicion):
         if vista:
             self.mapa.update(vista)
         pos = _posicion(ctx)
+        vistas = {tuple(p.carga["datos"]["pos"]) for p in ctx.onda.ev("Exterocepcion").values()
+                  if p.clase == "vaca" and "pos" in p.carga.get("datos", {})}
+        for v in vistas:
+            self.vacas[v] = ctx.latido
+        for v, lat in list(self.vacas.items()):
+            olvidada = ctx.latido - lat > self.MEMORIA_VACA
+            if olvidada or (pos is not None and v not in vistas and _dist(pos, v) <= 1):
+                del self.vacas[v]
         if pos is not None:
             self.visitadas.add(pos)
             for p, m in self.mapa.items():
@@ -865,14 +877,22 @@ class RefugioNocturno(Definicion):
             if pos not in (e1, e2, e3):
                 estado["saliendo"] = False
             if estado.get("saliendo") and pos in (e1, e2, e3):
+                # Mientras el sello siga puesto, la salida se revisa con lo percibido (p. ej. un zombi en la entrada)
+                if self._sellado(mina_actual) and estado.get("manana") and not self._conviene_salir(ctx, inv, luz, mina_actual):
+                    estado["saliendo"] = False
+                    self.paso_oscuro = True
+                    estado["fase"] = "dormir"
+                    return self._guardar_estado(estado)
                 estado["fase"] = "amanecer"
                 return self._guardar_estado(estado)
             if pos in (e2, e3) and self._sellado(mina_actual):
                 self.mina_recordada = mina_actual
                 if ctx.con_experiencia and ctx.perfil.hogar:
                     ctx.memoria.recordar_lugar(f"celda_{e2[0]}_{e2[1]}", 1.0)
-                debe_salir = (self.paso_oscuro and subiendo and luz >= self._luz_salida(inv)) or (not ocaso_proximo and subiendo and luz >= 0.65)
+                debe_salir = (self.paso_oscuro and subiendo and self._conviene_salir(ctx, inv, luz, mina_actual)) or (
+                    not self.paso_oscuro and not ocaso_proximo and subiendo and luz >= 0.65)
                 if debe_salir:
+                    estado["manana"] = self.paso_oscuro
                     self.paso_oscuro = False
                     estado["saliendo"] = True
                     estado["fase"] = "amanecer"
@@ -890,6 +910,14 @@ class RefugioNocturno(Definicion):
                 if pos == e2 and self.mapa.get(e3) == "path" and not self._sellado(mina_actual):
                     estado["fase"] = "cerrarse"
                     return self._guardar_estado(estado)
+
+        # 1b. Mañana tras salir del refugio: comer y beber es la prioridad hasta que la luz vuelva a bajar
+        if estado.get("manana"):
+            if self.bajando:
+                estado["manana"] = False
+            elif not self._en_galeria(pos, mina_actual) and (inv.get("food", 0) < 9 or inv.get("drink", 0) < 9):
+                estado["fase"] = "abastecer"
+                return self._guardar_estado(estado)
 
         # 2. Preparación de madera y herramientas
         if self._falta_herramienta(inv):
@@ -926,19 +954,34 @@ class RefugioNocturno(Definicion):
         return self._guardar_estado(estado)
 
     @staticmethod
-    def _luz_salida(inv: Dict[str, float]) -> float:
-        """Luz a la que conviene abrir el refugio al amanecer según la energía y provisiones."""
-        energia = inv.get("energy", 9.0)
-        hambre_sed = min(inv.get("food", 9.0), inv.get("drink", 9.0))
-        # Con sed o hambre crítica (<= 1), salir en cuanto claree a 0,30 (donde Crafter devuelve el radio de visión 4 completo)
-        if hambre_sed <= 1.0:
-            return 0.30
-        if hambre_sed <= 2.0:
-            return 0.42
-        # Si aún no ha recuperado toda la energía y no sufre hambre/sed crítica, aprovecha el sueño hasta que claree más
-        if energia < 9.0 and hambre_sed >= 3.0:
-            return 0.75
-        return 0.55
+    def _presion_interna(inv: Dict[str, float], agua_dentro: bool) -> float:
+        """Presión continua (0-1) del hambre o la sed: déficit cuadrático de la reserva más baja. Con una
+        pared de agua dentro del refugio la sed se calma sin salir y no empuja a abrir."""
+        deficit_comida = 1.0 - inv.get("food", 9.0) / 9.0
+        deficit_agua = 0.0 if agua_dentro else 1.0 - inv.get("drink", 9.0) / 9.0
+        return acotar(max(deficit_comida, deficit_agua)) ** 2
+
+    def _riesgo_exterior(self, ctx: Contexto, luz: float, pos: Pos) -> float:
+        """Riesgo continuo de salir: crece cuanto más lejos está la luz del pleno día (en Crafter, con luz
+        por encima de LUZ_PLENO_DIA el máximo de zombis por zona es 0 y desaparecen) y por cada hostil
+        percibido cerca."""
+        hostiles = sum(
+            1 for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase in ("zombi", "esqueleto") and "pos" in p.carga.get("datos", {})
+            and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 4
+        )
+        return max(0.0, (self.LUZ_PLENO_DIA - luz) / 0.5) + 0.3 * hostiles
+
+    def _conviene_salir(self, ctx: Contexto, inv: Dict[str, float], luz: float, mina: Optional[Tuple[Pos, Pos]]) -> bool:
+        """Al amanecer, salir si la presión del hambre o la sed, modulada por la salud (capacidad de
+        afrontar lo que quede fuera), iguala o supera el riesgo exterior. Con reservas o agua dentro la
+        presión es baja y espera a pleno día; con poca salud la capacidad es baja y se queda."""
+        pos = _posicion(ctx)
+        if pos is None:
+            return False
+        presion = self._presion_interna(inv, self._agua_accesible_dentro(mina) is not None)
+        capacidad = _salud(ctx) / 9.0
+        return presion * capacidad >= self._riesgo_exterior(ctx, luz, pos)
 
     def _anticipa_refugio(self, luz: float, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> bool:
         """Indica si la luz restante frente al coste de llegar, abastecerse, cavar y sellar exige activar el repliegue."""
@@ -1073,6 +1116,50 @@ class RefugioNocturno(Definicion):
         self.pasos_rumbo = 1
         return Propuesta(Verbo.MOVER, elegido.id, ar, conf, motivo, clase=elegido.clase)
 
+    def _abastecer(self, ctx: Contexto, pos: Pos, inv: Dict[str, float], ar: float, conf: float) -> Optional[Propuesta]:
+        """Mañana fuera del refugio: ir a beber o comer (agua del mapa recordado, comida percibida o vacas
+        vistas hace poco), eligiendo el objetivo por cercanía y por el déficit de cada reserva, y apartarse
+        de los hostiles cercanos si no puede abatirlos."""
+        exter = [p for p in ctx.onda.ev("Exterocepcion").values() if "pos" in p.carga.get("datos", {})]
+        hostiles = [tuple(p.carga["datos"]["pos"]) for p in exter if p.clase in ("zombi", "esqueleto")]
+        deficit_agua = 9.0 - inv.get("drink", 9.0)
+        deficit_comida = 9.0 - inv.get("food", 9.0)
+        objetivos: List[Tuple[float, Pos, str, str]] = []   # (coste, posición, id, clase)
+        if deficit_agua > 0:
+            for a, m in self.mapa.items():
+                if m == "water":
+                    objetivos.append((_dist(pos, a) - 3.0 * deficit_agua, a, f"agua_{a[0]}_{a[1]}", "agua"))
+        if deficit_comida > 0:
+            vistas: Set[Pos] = set()
+            for p in exter:
+                if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05:
+                    cp = tuple(p.carga["datos"]["pos"])
+                    vistas.add(cp)
+                    objetivos.append((_dist(pos, cp) - 3.0 * deficit_comida, cp, p.id, p.clase))
+            for v in self.vacas:
+                if v not in vistas:
+                    objetivos.append((_dist(pos, v) + 2.0 - 3.0 * deficit_comida, v, "", "vaca"))
+        objetivo = min(objetivos, key=lambda o: o[0]) if objetivos else None
+
+        armado = _tiene_espada(ctx) and _salud(ctx) >= 4
+        if hostiles and not armado and min(_dist(pos, h) for h in hostiles) <= 2:
+            lugares = [p for p in exter if p.rasgo("lugar") >= 0.5]
+            if lugares:
+                def _valor(lugar: Pieza) -> Tuple[int, int]:
+                    lp = tuple(lugar.carga["datos"]["pos"])
+                    return (min(_dist(lp, h) for h in hostiles), -_dist(lp, objetivo[1]) if objetivo else 0)
+                mejor = max(lugares, key=_valor)
+                return Propuesta(Verbo.MOVER, mejor.id, ar, conf, "refugio: apartarse de hostil al salir", clase=mejor.clase)
+
+        if objetivo is not None:
+            _, opos, oid, oclase = objetivo
+            if _dist(pos, opos) == 1 and oid:
+                return Propuesta(Verbo.COMER, oid, ar, conf, f"refugio: {'beber' if oclase == 'agua' else 'comer'} al salir", clase=oclase)
+            paso_p = self._paso_hacia(ctx, pos, opos)
+            if paso_p is not None:
+                return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, f"refugio: ir a por {oclase} al salir", clase=paso_p.clase)
+        return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida al salir")
+
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
         pos = _posicion(ctx)
         if pos is None:
@@ -1089,15 +1176,18 @@ class RefugioNocturno(Definicion):
         sed_critica = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
-        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse") and not anticipa and not sed_critica:
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
             if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
                 return None
 
         ar, conf = self._motivacion(ctx, estado, pos, inv)
+        if fase == "abastecer":
+            empuje = self._presion_interna(inv, False)
+            ar, conf = max(ar, acotar(0.84 + 0.12 * empuje)), max(conf, acotar(0.86 + 0.12 * empuje))
 
         # Defensa inmediata si un hostil bloquea al jugador en plena maniobra y tiene espada;
         # si un esqueleto dispara a distancia 2-3 y tiene espada, cerrar distancia para abatirlo
-        if fase != "dormir" and (self.dominante or anticipa or fase == "amanecer") and _tiene_espada(ctx) and _salud(ctx) >= 4:
+        if fase != "dormir" and (self.dominante or anticipa or fase in ("amanecer", "abastecer")) and _tiene_espada(ctx) and _salud(ctx) >= 4:
             hostil = next((p for p in ctx.onda.ev("Exterocepcion").values()
                            if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9), None)
             if hostil is not None:
@@ -1105,11 +1195,14 @@ class RefugioNocturno(Definicion):
                                  f"refugio: despejar {hostil.clase}", clase=hostil.clase)
             esq = next((p for p in ctx.onda.ev("Exterocepcion").values()
                         if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9 and "pos" in p.carga.get("datos", {})), None)
-            if esq is not None and _salud(ctx) >= 5:
+            if esq is not None and _salud(ctx) >= 5 and fase not in ("abastecer", "amanecer"):
                 paso_esq = self._paso_hacia(ctx, pos, (int(esq.carga["datos"]["pos"][0]), int(esq.carga["datos"]["pos"][1])))
                 if paso_esq is not None:
                     return Propuesta(Verbo.MOVER, paso_esq.id, max(ar, 0.92), max(conf, 0.92),
                                      "refugio: cerrar distancia a esqueleto", clase=paso_esq.clase)
+
+        if fase == "abastecer":
+            return self._abastecer(ctx, pos, inv, ar, conf)
 
         if fase == "madera":
             arboles = [p for p in list( self.mapa.keys()) if self.mapa.get(p) == "tree"]
