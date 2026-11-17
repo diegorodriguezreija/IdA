@@ -228,6 +228,20 @@ class MundoCrafter(Mundo):
 
         if self._en_refugio_cerrado():
             return 100.0
+
+        pos = tuple(self.jugador.pos)
+        # Si hay madriguera conocida, considerar la distancia a ella al caer la tarde
+        if self.madriguera is not None:
+            e = self.madriguera["e"]
+            d_refugio = _dist(pos, e)
+            if luz < 0.65:
+                factor_caida = (0.65 - luz) / 0.35
+                penalizacion_dist = min(1.0, d_refugio / 8.0)
+                urgencia = min(1.0, max(factor_caida, factor_caida * 0.7 + penalizacion_dist * 0.5))
+                return max(0.0, 100.0 * (1.0 - urgencia))
+            if d_refugio > 12:
+                return 65.0
+
         if luz < 0.3:
             return 0.0
         if luz < 0.6:
@@ -331,6 +345,10 @@ class MundoCrafter(Mundo):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
+            if self.madriguera is not None:
+                dist_hogar = _dist(c, self.madriguera["e"])
+                if dist_hogar > 12:
+                    novedad = max(0.1, novedad * (1.0 - min(0.8, (dist_hogar - 12) / 6.0)))
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c, "terreno": mat}))
 
@@ -673,8 +691,12 @@ class Anidar(Definicion):
         if not tiene_pico:
             fase = "equipar"
         else:
+            if self.madriguera is None and hasattr(ctx, "extra") and "mundo" in ctx.extra:
+                self.madriguera = getattr(ctx.extra["mundo"], "madriguera", None)
             if self.madriguera is None:
                 self.madriguera = _buscar_madriguera(ctx)
+                if self.madriguera is not None and hasattr(ctx, "extra") and "mundo" in ctx.extra:
+                    ctx.extra["mundo"].madriguera = self.madriguera
             if self.madriguera is None:
                 fase = "sin_sitio" if luz < 0.6 else "ir_sitio"
             else:
