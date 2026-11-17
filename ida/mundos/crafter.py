@@ -465,7 +465,7 @@ class MundoCrafter(Mundo):
         return {"S1.Interpretar": [EvaluacionNido()]}
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia(), Anidar()],
+        return {"S1": [DefensaArmada(), CerrarDistancia(), AlimentarseCrafter(), Anidar()],
                 "S2": [ExplorarCrafter()],
                 "S3": [PlanTecnologico(self.constantes)]}
 
@@ -583,6 +583,141 @@ def _terreno(ctx: Contexto) -> Dict[Pos, str]:
     """Terreno de las casillas libres a las que se puede ir (lugares percibidos)."""
     return {tuple(p.carga["datos"]["pos"]): p.carga["datos"].get("terreno", "")
             for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and "pos" in p.carga.get("datos", {})}
+
+
+class PersistenciaObjetivo:
+    """Mantiene la persistencia de un objetivo dentro de una estrategia.
+
+    El objetivo se mantiene hasta alcanzarlo, que desaparezca o que resulte inalcanzable
+    (varios latidos sin reducir la distancia, descartándolo entonces temporalmente).
+    """
+
+    def __init__(self, latidos_max_sin_avance: int = 4, tiempo_descarte: int = 30) -> None:
+        self.objetivo_id: Optional[str] = None
+        self.pos_objetivo: Optional[Pos] = None
+        self.dist_minima: float = 9999.0
+        self.latidos_sin_avance: int = 0
+        self.descartados: Dict[str, int] = {}
+        self.latidos_max = latidos_max_sin_avance
+        self.tiempo_descarte = tiempo_descarte
+
+    def limpiar_descartes(self, latido_actual: int) -> None:
+        if self.descartados:
+            self.descartados = {k: v for k, v in self.descartados.items() if v > latido_actual}
+
+    def es_descartado(self, obj_id: str, latido_actual: int) -> bool:
+        self.limpiar_descartes(latido_actual)
+        return obj_id in self.descartados
+
+    def descartar_actual(self, latido_actual: int) -> None:
+        if self.objetivo_id is not None:
+            self.descartados[self.objetivo_id] = latido_actual + self.tiempo_descarte
+            self.objetivo_id = None
+            self.pos_objetivo = None
+            self.dist_minima = 9999.0
+            self.latidos_sin_avance = 0
+
+    def actualizar(self, pos_agente: Pos, latido_actual: int, candidatos_visibles: Dict[str, Pos]) -> Optional[str]:
+        self.limpiar_descartes(latido_actual)
+
+        if self.objetivo_id is not None:
+            if self.objetivo_id not in candidatos_visibles:
+                self.objetivo_id = None
+                self.pos_objetivo = None
+                self.dist_minima = 9999.0
+                self.latidos_sin_avance = 0
+            else:
+                self.pos_objetivo = candidatos_visibles[self.objetivo_id]
+                d = float(_dist(pos_agente, self.pos_objetivo))
+                if d <= 1.0:
+                    return self.objetivo_id
+                if d < self.dist_minima:
+                    self.dist_minima = d
+                    self.latidos_sin_avance = 0
+                else:
+                    self.latidos_sin_avance += 1
+                    if self.latidos_sin_avance >= self.latidos_max:
+                        self.descartar_actual(latido_actual)
+                        return None
+                return self.objetivo_id
+        return None
+
+    def fijar(self, obj_id: str, pos_obj: Pos, pos_agente: Pos) -> None:
+        self.objetivo_id = obj_id
+        self.pos_objetivo = pos_obj
+        self.dist_minima = float(_dist(pos_agente, pos_obj))
+        self.latidos_sin_avance = 0
+
+
+class AlimentarseCrafter(Definicion):
+    """Estrategia de S1 propia de Crafter para alimentarse con persistencia de objetivo.
+
+    Mantiene el objetivo alimenticio (agua para sed, vaca o planta para hambre)
+    fijado hasta alcanzarlo, que desaparezca o que sea inalcanzable (4 latidos sin
+    acercarse, descartándolo temporalmente durante 30 latidos).
+    """
+
+    nombre = "alimentarse"
+    rasgo = "nutritivo"
+    prioridad = 10
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.tracker = PersistenciaObjetivo(latidos_max_sin_avance=4, tiempo_descarte=30)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        yo = ctx.onda.ev("Propiocepcion").get("yo")
+        if yo is None:
+            return False
+        hambre = ctx.soma.hambre()
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+        comestibles = [p for p in vistas if p.rasgo("nutritivo") > 0.1 and not self.tracker.es_descartado(p.id, ctx.latido)]
+        return bool(comestibles) or hambre > 0.15
+
+    def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
+        pos = _posicion(ctx)
+        if pos is None:
+            return "buscar"
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+        comestibles = [p for p in vistas if p.rasgo("nutritivo") > 0.1 and "pos" in p.carga.get("datos", {})]
+        al_alcance = [p for p in comestibles if _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+        if al_alcance and ctx.soma.alimentacion < 95.0:
+            return "comer"
+        if comestibles:
+            return "acercarse"
+        return "buscar"
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        pos = _posicion(ctx)
+        if pos is None:
+            return None
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+        comestibles = {p.id: p for p in vistas if p.rasgo("nutritivo") > 0.1 and "pos" in p.carga.get("datos", {})}
+        candidatos_pos = {p.id: tuple(p.carga["datos"]["pos"]) for p in comestibles.values()}
+
+        obj_id = self.tracker.actualizar(pos, ctx.latido, candidatos_pos)
+        if obj_id is None:
+            disponibles = [p for p in comestibles.values() if not self.tracker.es_descartado(p.id, ctx.latido) and p.rasgo("peligro") < 0.6]
+            if disponibles:
+                mejor = max(disponibles, key=lambda p: float(p.rasgo("nutritivo")) / max(1.0, float(_dist(pos, tuple(p.carga["datos"]["pos"])))))
+                self.tracker.fijar(mejor.id, tuple(mejor.carga["datos"]["pos"]), pos)
+                obj_id = mejor.id
+
+        if obj_id is not None and obj_id in comestibles:
+            p_obj = comestibles[obj_id]
+            pos_obj = tuple(p_obj.carga["datos"]["pos"])
+            d = _dist(pos, pos_obj)
+            if d <= 1 and ctx.soma.alimentacion < 95.0:
+                arousal = min(1.0, 0.4 + 0.6 * ctx.soma.hambre())
+                return Propuesta(Verbo.COMER, p_obj.id, arousal, 0.85, f"alimentarse: consumir {p_obj.clase}", clase=p_obj.clase)
+            else:
+                return _navegar_hacia(ctx, pos_obj)
+
+        lugares = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5 and "pos" in p.carga.get("datos", {})]
+        if lugares:
+            mejor_lugar = max(lugares, key=lambda l: float(l.rasgo("novedad")) - float(l.rasgo("peligro")))
+            return Propuesta(Verbo.MOVER, mejor_lugar.id, 0.35, 0.65, "alimentarse: buscar comida", clase=mejor_lugar.clase)
+        return None
 
 
 def _luz(ctx: Contexto) -> float:
@@ -801,6 +936,8 @@ class Anidar(Definicion):
         self.pasos_rumbo: int = 0
         self.pos_previa: Optional[Tuple[int, int]] = None
         self.recientes: Dict[Tuple[int, int], int] = {}
+        self.tracker_arbol = PersistenciaObjetivo(latidos_max_sin_avance=4, tiempo_descarte=30)
+        self.tracker_roca = PersistenciaObjetivo(latidos_max_sin_avance=4, tiempo_descarte=30)
 
     def _explorar_rumbo(self, ctx: Contexto, vistas: List[Pieza], pos: Pos, motivo: str) -> Optional[Propuesta]:
         self.recientes[pos] = ctx.latido
@@ -911,10 +1048,19 @@ class Anidar(Definicion):
                 if enfrente in lugares_mesa:
                     return Propuesta(Verbo.USAR, "place_table", 0.88, 0.95, "anidar: colocar mesa para pico",
                                      clase="place_table", datos={"receta": "place_table"})
-            # Necesita madera: buscar arbol
-            arboles = [p for p in vistas if p.clase == "arbol" and "pos" in p.carga.get("datos", {})]
-            if arboles:
-                cercano = min(arboles, key=lambda a: _dist(pos, tuple(a.carga["datos"]["pos"])))
+            # Necesita madera: buscar arbol con persistencia de objetivo
+            arboles_dict = {p.id: p for p in vistas if p.clase == "arbol" and "pos" in p.carga.get("datos", {})}
+            candidatos_arboles = {p.id: tuple(p.carga["datos"]["pos"]) for p in arboles_dict.values()}
+            arb_id = self.tracker_arbol.actualizar(pos, ctx.latido, candidatos_arboles)
+            if arb_id is None:
+                disponibles_arb = [p for p in arboles_dict.values() if not self.tracker_arbol.es_descartado(p.id, ctx.latido) and p.rasgo("peligro") < 0.6]
+                if disponibles_arb:
+                    mejor_arb = min(disponibles_arb, key=lambda a: _dist(pos, tuple(a.carga["datos"]["pos"])))
+                    self.tracker_arbol.fijar(mejor_arb.id, tuple(mejor_arb.carga["datos"]["pos"]), pos)
+                    arb_id = mejor_arb.id
+
+            if arb_id is not None and arb_id in arboles_dict:
+                cercano = arboles_dict[arb_id]
                 c_pos = tuple(cercano.carga["datos"]["pos"])
                 if _dist(pos, c_pos) <= 1:
                     return Propuesta(Verbo.COGER, cercano.id, 0.85, 0.9, "anidar: talar madera", clase="arbol")
@@ -930,10 +1076,19 @@ class Anidar(Definicion):
                 _trazar_anidar("sin_sitio", pos, "anochecer sin frente de roca valido: delegando en huir/defenderse")
                 return None
             vistas = list(ctx.onda.ev("Exterocepcion").values())
-            piedras_cerca = [p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})]
-            if piedras_cerca:
-                cercana = min(piedras_cerca, key=lambda p: _dist(pos, tuple(p.carga["datos"]["pos"])))
-                return _navegar_hacia(ctx, tuple(cercana.carga["datos"]["pos"]))
+            piedras_dict = {p.id: p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})}
+            candidatos_rocas = {p.id: tuple(p.carga["datos"]["pos"]) for p in piedras_dict.values()}
+            roca_id = self.tracker_roca.actualizar(pos, ctx.latido, candidatos_rocas)
+            if roca_id is None:
+                disponibles_roca = [p for p in piedras_dict.values() if not self.tracker_roca.es_descartado(p.id, ctx.latido) and p.rasgo("peligro") < 0.6]
+                if disponibles_roca:
+                    mejor_roca = min(disponibles_roca, key=lambda p: _dist(pos, tuple(p.carga["datos"]["pos"])))
+                    self.tracker_roca.fijar(mejor_roca.id, tuple(mejor_roca.carga["datos"]["pos"]), pos)
+                    roca_id = mejor_roca.id
+
+            if roca_id is not None and roca_id in piedras_dict:
+                roca_p = piedras_dict[roca_id]
+                return _navegar_hacia(ctx, tuple(roca_p.carga["datos"]["pos"]))
             # Explorar para encontrar frente de roca con rumbo persistente
             return self._explorar_rumbo(ctx, vistas, pos, "frente de roca")
 
