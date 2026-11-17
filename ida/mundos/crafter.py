@@ -230,17 +230,15 @@ class MundoCrafter(Mundo):
             return 100.0
 
         pos = tuple(self.jugador.pos)
-        # Si hay madriguera conocida, considerar la distancia a ella al caer la tarde
+        # Si hay madriguera conocida, atracción creciente al refugio al caer la luz según la distancia
         if self.madriguera is not None:
             e = self.madriguera["e"]
             d_refugio = _dist(pos, e)
-            if luz < 0.65:
-                factor_caida = (0.65 - luz) / 0.35
-                penalizacion_dist = min(1.0, d_refugio / 8.0)
-                urgencia = min(1.0, max(factor_caida, factor_caida * 0.7 + penalizacion_dist * 0.5))
+            if luz < 0.70:
+                factor_caida = (0.70 - luz) / 0.40
+                factor_dist = min(1.0, d_refugio / 16.0)
+                urgencia = min(1.0, factor_caida * (0.6 + 0.4 * factor_dist))
                 return max(0.0, 100.0 * (1.0 - urgencia))
-            if d_refugio > 12:
-                return 65.0
 
         if luz < 0.3:
             return 0.0
@@ -360,9 +358,16 @@ class MundoCrafter(Mundo):
                 else:
                     novedad = min(1.0, (delta - 8) / 42.0)
             if self.madriguera is not None:
-                dist_hogar = _dist(c, self.madriguera["e"])
-                if dist_hogar > 12:
-                    novedad = max(0.05, novedad * (1.0 - min(0.8, (dist_hogar - 12) / 6.0)))
+                e = self.madriguera["e"]
+                dist_c = _dist(c, e)
+                dist_pos = _dist(pos, e)
+                factor_ocaso = max(0.0, min(1.0, (0.70 - float(w.daylight)) / 0.45))
+                if factor_ocaso > 0.0:
+                    urgencia_retorno = factor_ocaso * min(1.0, dist_pos / 16.0)
+                    if dist_c > dist_pos:
+                        novedad = max(0.01, novedad * (1.0 - 0.85 * urgencia_retorno))
+                    elif dist_c < dist_pos:
+                        novedad = min(1.0, novedad + 0.25 * urgencia_retorno)
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c, "terreno": mat}))
 
