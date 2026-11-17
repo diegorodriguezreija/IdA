@@ -147,6 +147,7 @@ class Creencia(Componente):
     """
 
     tipo = "Creencia"
+    MAX_CREENCIAS = 64   # bloque E: la emisión queda acotada aunque la memoria crezca
 
     def reactiva(self, ctx: Contexto) -> None:
         if not ctx.con_experiencia:
@@ -154,7 +155,15 @@ class Creencia(Componente):
         valencias: Dict[str, float] = {}
         for pv in ctx.onda.ev("Valor").values():
             valencias.setdefault(str(pv.carga.get("clase", "")), float(pv.carga.get("valencia", 0.0)))
-        for (clase, rel), p in list(ctx.memoria.saber.items()):
+        saber = list(ctx.memoria.saber.items())
+        if len(saber) > self.MAX_CREENCIAS:
+            # Por encima del tope: primero lo que está a la vista o recordado, luego lo de más confianza;
+            # se conserva el orden original entre lo elegido.
+            presentes = {o.clase for o in objetos(ctx)} | {str(r.carga.get("clase", "")) for r in ctx.onda.ev("Recuerdo").values()}
+            orden = sorted(range(len(saber)), key=lambda i: (saber[i][0][0] not in presentes, -saber[i][1].confianza, i))
+            elegidos = set(orden[: self.MAX_CREENCIAS])
+            saber = [x for i, x in enumerate(saber) if i in elegidos]
+        for (clase, rel), p in saber:
             v = valencias.get(clase, 0.0)
             afectiva = max(0.0, -v) if rel == Relacion.PELIGROSO else max(0.0, v) if rel == Relacion.NUTRITIVO else 0.0
             estado = p.estado(ctx.latido)

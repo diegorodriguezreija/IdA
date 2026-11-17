@@ -10,15 +10,17 @@
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
+| Actuar      | Anticipacion   | Expectativa: cambio esperado de las necesidades si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
 
 from typing import Callable, Dict, List, Optional, Tuple
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import Accion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
+                                exterocepcion, lugares, mejor, objetos)
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -60,10 +62,13 @@ class Objeto(Componente):
     entradas = ("Imagen",)
 
     def reactiva(self, ctx: Contexto) -> None:
+        conceptos = ctx.perfil.mecanismos.conceptos and ctx.con_experiencia and ctx.memoria.activa
         for p in _cosas(ctx)[:MAX_OBJETOS]:
             self.percibir(ctx, self.pieza(ctx, p.id, arousal=p.arousal, confianza=p.confianza,
                                           carga={"clase": p.clase, "rasgos": dict(p.carga["rasgos"])},
                                           entradas=[p.id]))
+            if conceptos:   # bloque E, E3: la instancia actualiza el concepto de su clase (decisión 20)
+                ctx.memoria.instancia(p.id, p.clase, p.carga["rasgos"], ctx.latido)
 
 
 RECURSO, PELIGRO, NEUTRO = "recurso", "peligro", "neutro"
@@ -456,6 +461,13 @@ class Feedback(Componente):
         previo = ctx.onda.ei("Feedback").get(f"feedback:{self.sistema}")
         antes = previo.carga["deficits"] if previo is not None else ahora
         cambios = {k: round(antes.get(k, v) - v, 4) for k, v in ahora.items()}
+        e = expectativa_ejecutada(ctx.onda, self.sistema) if ctx.perfil.mecanismos.expectativa else None
+        if e is not None and e.carga["esperado"]:
+            # Bloque F, F1: error de predicción con signo (mejor de lo esperado = positivo) por necesidad.
+            for k, base in e.carga["base"].items():
+                if k in ahora and k in e.carga["esperado"]:
+                    rpe = float(e.carga["esperado"][k]) - (ahora[k] - float(base))
+                    cambios[k] = round(cambios.get(k, 0.0) + PESO_PREDICCION * rpe, 4)
         self.registrar(ctx, self.pieza(ctx, f"feedback:{self.sistema}", arousal=0.0,
                                        carga={"valor": round(sum(cambios.values()), 4), "por_impulso": cambios, "deficits": ahora}))
 
@@ -466,5 +478,5 @@ def crear_s1() -> Sistema:
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
-        Modulo("Actuar", [Accion(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo), Anticipacion()]),
     ])

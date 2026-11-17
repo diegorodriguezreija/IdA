@@ -66,16 +66,23 @@ def _causa(resumen: Dict[str, Any], final: Dict[str, Any]) -> str:
 UMBRAL_PELIGRO = 0.3   # indicador de peligro de Soma a partir del cual un latido cuenta «con peligro»
 
 
-def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None, grupos: Optional[List[str]] = None) -> None:
+def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None, grupos: Optional[List[str]] = None,
+             mecanismos: Optional[List[str]] = None, tasa_herencia: Optional[float] = None) -> None:
     sys.path.insert(0, os.path.abspath(raiz))
     from dataclasses import replace
 
     from ida.ejecutor import ejecutar as vivir
     from ida.mundos import cargar
 
+    clase_mundo = cargar(mundo)
     if amplitud is not None:      # barrido del Marcapasos: amplitud base del perfil del mundo (potencia = amplitud)
-        clase_mundo = cargar(mundo)
         clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
+    if mecanismos is not None or tasa_herencia is not None:   # bloque E: interruptores de memoria
+        from ida.core.mundo import MecanismosMemoria
+        activos = {m: True for m in (mecanismos or []) if m != "ninguno"}
+        if tasa_herencia is not None:
+            activos["tasa_herencia"] = tasa_herencia
+        clase_mundo.perfil = replace(clase_mundo.perfil, mecanismos=MecanismosMemoria(**activos))
 
     generaciones, latidos = PROTOCOLO[mundo]
     filas: List[Dict[str, Any]] = []
@@ -91,6 +98,7 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
 
             def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
                 ind["latidos"] += 1   # noqa: B023 (se usa en la misma iteración)
+                ind["ms"] = ind.get("ms", 0.0) + float(onda.notas.get("ms_total", 0.0))   # noqa: B023
                 estado = {"causa": getattr(_o.ultimo_efecto, "causa", None) if _o.ultimo_efecto else None,
                           "alimentacion": float(_o.soma.alimentacion)}
                 if onda.ciclo == 1 or not finales:   # noqa: B023
@@ -164,14 +172,15 @@ def comparar(base: str, nueva: str) -> None:
             xa = [statistics.fmean(v[m] for v in fa[s]["vidas"]) for s in semillas]
             xb = [statistics.fmean(v[m] for v in fb[s]["vidas"]) for s in semillas]
             print(f"| {grupo} | {m} | {_ic(xa)} | {_ic(xb)} | {_ic([y - x for x, y in zip(xa, xb, strict=True)])} |")
-    print("\n| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido |")
-    print("|---|---|---|---|---|---|")
+    print("\n| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido | ms por latido |")
+    print("|---|---|---|---|---|---|---|")
     for grupo, _, _ in GRUPOS:
         for nombre, datos in (("base", a), ("nueva", b)):
             ind = [r["indicadores"] for r in datos["filas"] if r["grupo"] == grupo]
             n = sum(i["latidos"] for i in ind) or 1
             pot = " / ".join(f"{sum(i['potencia'][s] for i in ind) / n:.2f}" for s in ("S1", "S2", "S3"))
-            print(f"| {grupo} | {nombre} | {n} | {sum(i['plazo'] for i in ind)} | {sum(i['s3_sin_recursos'] for i in ind)} | {pot} |")
+            ms = sum(i.get("ms", 0.0) for i in ind) / n
+            print(f"| {grupo} | {nombre} | {n} | {sum(i['plazo'] for i in ind)} | {sum(i['s3_sin_recursos'] for i in ind)} | {pot} | {ms:.2f} |")
     print("\n| Grupo | Versión | S3 sin recursos con peligro | S3 sin recursos en calma |\n|---|---|---|---|")
     for grupo, _, _ in GRUPOS:
         for nombre, datos in (("base", a), ("nueva", b)):
@@ -215,12 +224,14 @@ def main() -> int:
     e.add_argument("--salida", required=True)
     e.add_argument("--amplitud", type=int, default=None, help="amplitud base del perfil del mundo (barrido del Marcapasos)")
     e.add_argument("--grupos", nargs="*", default=None, help="solo estos grupos (p. ej. Equilibrado)")
+    e.add_argument("--mecanismos", nargs="*", default=None, help="mecanismos de memoria activados (bloque E)")
+    e.add_argument("--tasa-herencia", type=float, default=None, help="tasa de herencia (bloque E, E7)")
     c = sub.add_parser("comparar")
     c.add_argument("base")
     c.add_argument("nueva")
     args = p.parse_args()
     if args.orden == "ejecutar":
-        ejecutar(args.raiz, args.mundo, args.salida, args.amplitud, args.grupos)
+        ejecutar(args.raiz, args.mundo, args.salida, args.amplitud, args.grupos, args.mecanismos, args.tasa_herencia)
     else:
         comparar(args.base, args.nueva)
     return 0

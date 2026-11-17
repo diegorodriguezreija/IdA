@@ -26,7 +26,7 @@ import collections
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
-from ida.core.estrategia import ConPropuestas, Definicion, Propuesta
+from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
@@ -459,7 +459,7 @@ def _luz(ctx: Contexto) -> float:
     return float(a.carga.get("luz", 1.0)) if a is not None else 1.0
 
 
-class PlanTecnologico(ConPropuestas):
+class PlanTecnologico(Plan, ConPropuestas):
     """Estrategia de S3 propia de Crafter para la intención «progresar» (decisión 11): avanza por el
     árbol tecnológico del juego. Si puede fabricar o colocar algo útil, lo propone (USAR); si no, va
     hacia el recurso que le falta o lo recoge si está al lado (COGER). Aprovecha logros baratos al
@@ -470,6 +470,10 @@ class PlanTecnologico(ConPropuestas):
     Los logros conseguidos los recuerda él: lo que su plan logró y lo que ha llegado a tener en el
     inventario. Las recetas (``crafter.constants``) son reglas fijas del mundo, no su estado. Lleva su
     propio control de fallos, así que no se agota.
+
+    Con el interruptor de plan (bloque F, F2) es un ``Plan``: la cadena son las recetas pendientes en el
+    orden del árbol; un paso se cumple al tenerlo hecho y falla (sorpresa) cuando la receta ha fallado
+    tres veces. Rehacer el plan la deja fuera; si vuelve a fallar, la estrategia se agota.
     """
 
     nombre = "plan_tecnologico"
@@ -550,13 +554,25 @@ class PlanTecnologico(ConPropuestas):
                     return True
         return False
 
+    def construir(self, ctx: Contexto, estrategia: Pieza) -> Optional[List[Dict[str, Any]]]:
+        hecho = self._hechos(_inventario(ctx))
+        return [{"meta": r} for r in self.OBJETIVOS if r not in hecho and self.fallos.get(r, 0) < 3] or None
+
+    def cumplido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        return paso["meta"] in self._hechos(_inventario(ctx))
+
+    def fallido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        return self.fallos.get(paso["meta"], 0) >= 3
+
     def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
         inv = _inventario(ctx)
         self._recordar(ctx, inv)
         hecho = self._hechos(inv)
         if self._oportunidades(ctx, inv, hecho):
             return
-        for receta in self.OBJETIVOS:
+        plan = estado_plan(estrategia) if estrategia is not None and ctx.perfil.mecanismos.plan else None
+        orden = [p["meta"] for p in plan["pasos"][int(plan["i"]):]] if plan is not None and not plan["fallido"] else self.OBJETIVOS
+        for receta in orden:
             if receta in hecho or self.fallos.get(receta, 0) >= 3:
                 continue
             usos = self._falta(receta)

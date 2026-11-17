@@ -87,6 +87,30 @@ NECESIDADES_BASE: Tuple[Necesidad, ...] = (
 )
 
 
+@dataclass(frozen=True)
+class MecanismosMemoria:
+    """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22). Todos apagados:
+    IdA se comporta como ``base-v2.0``. Cada uno se activa por separado."""
+
+    buffer: bool = False          # E1: búfer diurno de tamaño fijo y episodio del día
+    consolidacion: bool = False   # E2: al dormir (o al final de la vida), del búfer al grafo semántico
+    conceptos: bool = False       # E3: prototipo de cada clase a partir de sus instancias
+    reduccion: bool = False       # E4: reducción nocturna proporcional y poda (sustituye al olvido de hipótesis)
+    evocacion: bool = False       # E5: recuperación evocada y reconsolidación
+    repaso: bool = False          # E6: repaso en calma de lo reciente
+    tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
+    expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
+    plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
+
+
+# Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).
+# Ningún mundo los declara: no mejoraron ninguno. Se activarán por mundo solo donde se demuestre su valor.
+MEMORIA_E = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True)
+# E + Expectativa (F1) y Plan (F2).
+MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True,
+                               expectativa=True, plan=True)
+
+
 @dataclass
 class Perfil:
     """Las pocas perillas de un mundo. Cada una tiene un efecto visible al ejecutar."""
@@ -103,6 +127,7 @@ class Perfil:
     latidos_por_episodio: int = 6
     necesidades: Tuple[Necesidad, ...] = NECESIDADES_BASE   # de cada una sale un impulso de S1
     intenciones: Tuple[str, ...] = ()         # intenciones deliberadas propias del mundo (S3), además de «saber»
+    mecanismos: MecanismosMemoria = MecanismosMemoria()   # memoria del bloque E (interruptores)
     # Estrategias y reflejo (bloque C, decisiones 4, 6 y 16)
     umbral_reflejo: float = 0.4               # salto del peligro entre latidos que dispara el reflejo
     duracion_reflejo: int = 3                 # latidos fijos que dura el reflejo

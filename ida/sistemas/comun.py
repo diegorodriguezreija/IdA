@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from ida.core.arquitectura import Componente, Contexto
+from ida.core.arquitectura import SIN_EXPECTATIVA, Componente, Contexto, variables_proactivas
 from ida.core import estrategia as est
 from ida.core.estrategia import Catalogo, Definicion
 from ida.core.pieza import Pieza
@@ -51,6 +51,43 @@ def mejor(piezas: Iterable[Pieza], clave) -> Optional[Pieza]:
 
 def alarma(ctx: Contexto) -> Optional[Pieza]:
     return ctx.onda.ev("Supervivencia").get("alarma")
+
+
+PESO_PREDICCION = 0.5   # bloque F, F1: peso del error de predicción con signo en el feedback de S1 y S2
+
+
+class Anticipacion(Componente):
+    """Expectativa (bloque F, F1; decisión 24). En el barrido proactivo, con la potencia que sobra, deja
+    en ``ef`` lo que el sistema espera del latido siguiente si se ejecuta su propuesta de mayor arousal:
+    el cambio de sus ``variables`` según la memoria (lo vivido, el concepto parecido o el grafo). Lleva
+    la base para que el Core y el feedback midan el cambio real. Sin expectativa previa queda vacía
+    (``esperado`` = {}) y sirve para aprender la transición."""
+
+    tipo = "Expectativa"
+    POTENCIA_MINIMA = 0.25
+
+    def __init__(self, variables: Tuple[str, ...] = ()):
+        super().__init__("Anticipacion")
+        self.variables = variables      # vacío = las necesidades del mundo
+
+    def proactiva(self, ctx: Contexto) -> None:
+        if not (ctx.perfil.mecanismos.expectativa and ctx.con_experiencia and ctx.memoria.activa):
+            return
+        onda = ctx.onda
+        if onda.potencia_max <= 0 or onda.potencia_restante() < self.POTENCIA_MINIMA * onda.potencia_max:
+            return
+        propias = [p for p in onda.acc("Accion").values() if p.sistema == self.sistema and p.carga["verbo"] not in SIN_EXPECTATIVA
+                   and p.carga.get("clase")]
+        if not propias:
+            return
+        p = max(propias, key=lambda q: (q.arousal, q.id))
+        verbo, clase = p.carga["verbo"], str(p.carga["clase"])
+        todas = variables_proactivas(onda, ctx.soma, ctx.perfil)
+        nombres = self.variables or tuple(n.nombre for n in ctx.perfil.necesidades)
+        esperado = ctx.memoria.esperar(self.sistema, verbo.value, clase)
+        self.registrar(ctx, self.pieza(ctx, f"expectativa:{self.sistema}", arousal=0.0, carga={
+            "verbo": verbo, "objetivo": p.carga["objetivo"], "clase": clase, "base": {k: todas[k] for k in nombres if k in todas},
+            "esperado": dict(esperado[0]) if esperado else {}, "fuente": esperado[1] if esperado else None}))
 
 
 class Accion(Componente):
@@ -135,10 +172,17 @@ class Estrategia(Componente):
             cambios = est.avanzar(c, intensidad, p.id == ejecutada, ctx.latido, perfil.gracia_estrategia, perfil.ritmo_esperado_estrategia)
             if p.id == ejecutada:          # el mérito se lo lleva la estrategia que se ejecutó (decisión 23)
                 cambios["merito"] = float(c.get("merito", 0.0)) + float(feedback.get(c["impulso"], 0.0))
-            self.modificar(ctx, p, carga=cambios)
             definicion = self.catalogo.get(c["nombre"])
+            plan = est.estado_plan(p) if perfil.mecanismos.plan and isinstance(definicion, est.Plan) else None
+            if plan is not None and (pp := est.progreso_plan(plan)) is not None:
+                cambios["progreso"] = pp      # bloque F, F2: el progreso de un plan es la parte completada
+            self.modificar(ctx, p, carga=cambios)
             if intensidad <= c["objetivo"] + 1e-9:
                 self._cerrar(ctx, p, est.COMPLETADA)
+            elif plan is not None and plan["fallido"]:
+                self._cerrar(ctx, p, est.AGOTADA)       # el plan falló tras rehacerse
+                self.enfriando[(c["impulso"], c["nombre"])] = ctx.latido + perfil.enfriamiento_estrategia
+                notas["abandonos"].append(c["nombre"])
             elif c["agotamiento"] >= 1.0 and (definicion is None or definicion.agotable):
                 self._cerrar(ctx, p, est.AGOTADA)
                 self.enfriando[(c["impulso"], c["nombre"])] = ctx.latido + perfil.enfriamiento_estrategia

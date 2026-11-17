@@ -15,7 +15,7 @@ Orden de un latido:
 import time
 from typing import Any, Callable, Dict, List, Optional, cast
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
+from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
@@ -134,6 +134,8 @@ class Organismo:
         # 4. Aprender del efecto de la acción anterior (el cuarteto)
         with onda.fase("aprender"):
             self._aprender(ctx)
+            if self.con_experiencia and self.perfil.mecanismos.expectativa:
+                self._contrastar(ctx)
 
         # 5. Cognición (o sueño)
         if soma.dormido:
@@ -175,6 +177,8 @@ class Organismo:
         with onda.fase("cierre"):
             self._indicadores(ctx)
             self._memoria_rapida(ctx)
+            if self.perfil.mecanismos.buffer:
+                self._marcar_dia(ctx)
             self._episodio(ctx)
         soma.agotado_previo = onda.amplitud_agotada
         onda.notas["ms_total"] = round(onda.ms_transcurridos(), 2)
@@ -227,6 +231,28 @@ class Organismo:
                     for d in [n.deficit(valores)] if d is not None and d >= 0.99]
         return max(agotadas)[1] if agotadas else "desgaste"
 
+    def _contrastar(self, ctx: Contexto) -> None:
+        """Bloque F, F1 (decisión 24): contrasta las expectativas que S1 y S2 dejaron en el latido anterior
+        con lo que ha llegado. Aprende la transición; con error alto, la ``Sorpresa`` de siempre (por
+        sistema) entra en el foco y lo percibido de esa clase gana arousal (atrae atención)."""
+        onda = ctx.onda
+        ahora = variables_proactivas(onda, ctx.soma, self.perfil)
+        for sistema in ("S1", "S2"):
+            e = expectativa_ejecutada(onda, sistema)
+            if e is None:
+                continue
+            c = e.carga
+            observado = {k: round(ahora[k] - float(b), 4) for k, b in c["base"].items() if k in ahora}
+            error = self.memoria.contrastar(sistema, c["verbo"].value, c["clase"], observado, ctx.latido)
+            if error is None or error < Memoria.UMBRAL_SORPRESA:
+                continue
+            s = Pieza(id=f"sorpresa_{sistema}_{ctx.latido}", tipo="Sorpresa", arousal=min(1.0, 0.5 + error),
+                      carga={"sistema": sistema, "clase": c["clase"], "error": error}, sistema="CORE", creada=ctx.latido)
+            onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))
+            for p in list(onda.ev("Exterocepcion").values()):
+                if p.clase == c["clase"]:
+                    onda.modificar(p, None, arousal=min(1.0, p.arousal + 0.2 * min(1.0, error)))   # el Core, sin autor
+
     def _aprender_de_la_muerte(self, onda: Onda) -> None:
         """El último latido no tiene sucesor: se aprende ya de la acción que acabó con la vida."""
         ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
@@ -276,6 +302,22 @@ class Organismo:
         ]
         self.memoria.guardar_rapido(piezas)
 
+    def _marcar_dia(self, ctx: Contexto) -> None:
+        """Búfer diurno (bloque E, E1): las piezas de la experiencia reactiva, puntuadas por su arousal y el
+        feedback del latido (suma de los de S1, S2 y S3), y la onda resumida en el episodio del día."""
+        if not self.con_experiencia or not self.memoria.activa or self.soma.dormido:
+            return
+        onda = ctx.onda
+        feedback = sum(float(p.carga.get("valor", 0.0)) for p in onda.ef("Feedback").values())
+        piezas = [
+            {"latido": ctx.latido, "tipo": p.tipo, "id": p.id, "arousal": round(p.arousal, 3), "clase": p.clase, "sistema": p.sistema}
+            for canal, d in onda.reactiva.ev.items() if canal not in CANALES_SENSORES
+            for p in d.values()
+        ]
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        resumen = {"verbo": ej.carga["verbo"].value, "clase": ej.carga.get("clase", ""), "exito": ej.carga.get("exito")} if ej else {}
+        self.memoria.marcar(ctx.latido, piezas, feedback, resumen)
+
     def _episodio(self, ctx: Contexto) -> None:
         """Apertura y cierre de episodios (reglas de partida de la versión limpia, §5)."""
         soma, onda = self.soma, ctx.onda
@@ -322,7 +364,9 @@ class Organismo:
             onda = self.latir()
             if self.soma.dormido and not estaba_dormido:
                 if self.con_experiencia:
-                    self.memoria.consolidar(self.ciclo)
+                    self.memoria.consolidar(self.ciclo, reduccion=self.perfil.mecanismos.reduccion)
+                    if self.perfil.mecanismos.consolidacion:
+                        self.memoria.consolidar_dia(self.ciclo)
                 if self.al_dormir:
                     self.al_dormir(self)
             if al_latir:
@@ -344,4 +388,6 @@ class Organismo:
                 restante = self.perfil.frecuencia_ms / 1000.0 - (time.perf_counter() - t0)
                 if restante > 0:
                     time.sleep(restante)
+        if self.con_experiencia and self.perfil.mecanismos.consolidacion and not self.perfil.duerme:
+            self.memoria.consolidar_dia(self.ciclo)   # mundos sin sueño: al final de la vida o de la partida
         return self.ciclo

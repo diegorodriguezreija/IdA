@@ -89,6 +89,73 @@ class Definicion:
         return None
 
 
+class Plan(Definicion):
+    """Plan (bloque F, F2; decisión 24): una estrategia que es una cadena de pasos hacia su meta.
+
+    Con ``Perfil.mecanismos.plan``, la cadena se construye al activarse (``construir``) y se guarda en
+    el estado de la propia estrategia (``paso`` = {"pasos", "i", "rehecho", "fallido"}). Cada latido se
+    consumen los pasos cumplidos (``cumplido``); el progreso es la parte completada. Si la expectativa
+    del paso en curso falla (``fallido``: la sorpresa de no encontrar lo esperado), el plan se rehace
+    hasta ``REHACER`` veces; después queda fallido y la estrategia se agota. Sin el interruptor, la
+    definición se comporta como antes (``paso_sin_plan`` y sus propios métodos)."""
+
+    REHACER = 1
+
+    def construir(self, ctx: Any, estrategia: Pieza) -> Optional[List[Dict[str, Any]]]:
+        return None
+
+    def cumplido(self, ctx: Any, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        return False
+
+    def fallido(self, ctx: Any, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        return False
+
+    def paso_sin_plan(self, ctx: Any, estrategia: Pieza) -> Any:
+        return estrategia.carga.get("paso", 0)
+
+    def paso(self, ctx: Any, estrategia: Pieza) -> Any:
+        if not ctx.perfil.mecanismos.plan:
+            return self.paso_sin_plan(ctx, estrategia)
+        previo = estrategia.carga.get("paso")
+        if isinstance(previo, dict) and "pasos" in previo:
+            estado = dict(previo)
+        else:
+            estado = {"pasos": self.construir(ctx, estrategia) or [], "i": 0, "rehecho": 0, "fallido": False}
+        if estado["fallido"]:
+            return estado
+        pasos, i = estado["pasos"], int(estado["i"])
+        while i < len(pasos) and self.cumplido(ctx, pasos[i], {**estado, "i": i}):
+            i += 1
+        estado["i"] = i
+        if i < len(pasos) and self.fallido(ctx, pasos[i], estado):
+            nuevos = self.construir(ctx, estrategia) if estado["rehecho"] < self.REHACER else None
+            if nuevos:
+                estado = {"pasos": nuevos, "i": 0, "rehecho": estado["rehecho"] + 1, "fallido": False}
+            else:
+                estado["fallido"] = True
+        return estado
+
+
+def estado_plan(estrategia: Pieza) -> Optional[Dict[str, Any]]:
+    """El estado del plan de una estrategia, si lo tiene."""
+    e = estrategia.carga.get("paso")
+    return e if isinstance(e, dict) and "pasos" in e else None
+
+
+def progreso_plan(estado: Optional[Dict[str, Any]]) -> Optional[float]:
+    """Parte completada de la cadena, en [0, 1] (None sin plan o con la cadena vacía)."""
+    if not estado or not estado["pasos"]:
+        return None
+    return acotar(int(estado["i"]) / len(estado["pasos"]))
+
+
+def paso_actual(estrategia: Pieza) -> Optional[Dict[str, Any]]:
+    e = estado_plan(estrategia)
+    if e is None or e["fallido"] or int(e["i"]) >= len(e["pasos"]):
+        return None
+    return dict(e["pasos"][int(e["i"])])
+
+
 class Catalogo:
     """Las definiciones de estrategia de un sistema, por nombre. La comparten su componente
     ``Estrategia`` (que elige) y su componente ``Accion`` (que traduce a acción)."""

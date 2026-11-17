@@ -199,11 +199,84 @@ Se juntan para ahorrar un benchmark: C1 ya adelantó la elección del objeto por
 
 ## Antes de la mejora de mundos
 
-- [ ] Fusionar el bloque D.
-- [ ] **Calibrar la escasez de atención:** barrido del `Marcapasos` con dos o tres niveles de amplitud y potencia, en Crafter y Mínimo, para comprobar que una atención escasa estrecha el foco con peligro sin hundir el fitness. Es base: lo hace el agente principal.
-- [ ] **Congelar la referencia:** etiqueta en git y benchmark de la base tal como quede, para atribuir después cada mejora de mundo.
+- [x] Fusionar el bloque D.
+- [x] **Calibrar la escasez de atención:** barrido del `Marcapasos` con dos o tres niveles de amplitud y potencia, en Crafter y Mínimo, para comprobar que una atención escasa estrecha el foco con peligro sin hundir el fitness. Es base: lo hace el agente principal.
+- [x] **Congelar la referencia:** etiqueta en git y benchmark de la base tal como quede, para atribuir después cada mejora de mundo.
 - [ ] **Mejora de mundos** (otro modelo): solo estrategias e impulsos del mundo, solo percepción (regla 3), sin secuencias cableadas (regla 4), sin tocar `ida/core/` ni `ida/sistemas/`, con revisión antes de fusionar. Crafter primero: noches (refugio y anticipación con la luz) y `PlanTecnologico`; además, neofobia de Archivos que ceda con el hambre y recetas como dotación innata o aprendizaje.
 - [ ] Después, el bloque E.
+
+Estado (16/11/2026): base congelada en la etiqueta `base-v2.0` (`56f45b7`), con `Marcapasos.FACTOR_AMPLITUD = 0,45` y referencia en `docs/REFERENCIA_BASE.md`. **Cambio de orden decidido por el autor:** el bloque E se lanza ya, en una rama propia contra `base-v2.0`, en paralelo a la mejora de mundos. Apenas hay conflicto: E toca `ida/core/` e `ida/sistemas/`, y la mejora de mundos solo `ida/mundos/`.
+
+## Encargo del bloque E: memoria
+
+**Objetivo:** implementar la memoria de las decisiones 19 a 22, mecanismo a mecanismo, de modo que **cada uno se pueda activar y desactivar por separado** y solo quede activado si no empeora. Pensado para **trabajar sin supervisión**.
+
+**Referencia:** `docs/REDISENO_BASE.md`, decisiones 19 a 22 (y 7 para *decay*). Base: etiqueta `base-v2.0`. Comparación: `docs/REFERENCIA_BASE.md`.
+
+**Permiso:** este encargo levanta, solo para sus pasos, la regla de la fase de mundos que prohíbe tocar `ida/core/` e `ida/sistemas/`. No toca `ida/mundos/` salvo lo imprescindible para declarar opciones del `Perfil`. Un commit por paso, sin `push`.
+
+### Regla central: interruptores
+
+Cada mecanismo va detrás de un interruptor del `Perfil` (por ejemplo `memoria.buffer`, `memoria.reduccion`…). **Con todos apagados, IdA debe comportarse igual que `base-v2.0`**: se comprueba con `herramientas/invariancia.py` en cada paso. Es la red de seguridad del bloque.
+
+### Pasos
+
+| Paso | Mecanismo | Decisión | Qué hace |
+| --- | --- | --- | --- |
+| E0 | Inventario | — | Documento breve (`docs/E0_MEMORIA.md`): qué memoria hay hoy (`Memoria`, proposiciones, lugares, mapa, episodios, `consolidar`, *replay*, olvido, `memoria.db`, `legado`/`heredar`) y en qué se convierte cada parte. **No se detiene:** sigue con E1 |
+| E1 | Búfer diurno | 19 | De día, el Core puntúa cada pieza (arousal y feedback) y guarda las mejores en un búfer de tamaño fijo, al que solo se añade. La secuencia de ondas forma el episodio del día |
+| E2 | Consolidación | 19 | Al dormir, lo mejor puntuado pasa al grafo semántico (nodos y relaciones) y al almacén de episodios; el búfer se vacía. En mundos sin sueño, al final de la vida o de la partida |
+| E3 | Instancias y conceptos | 20 | `Objeto` mantiene el concepto de cada clase como prototipo promediado de sus instancias. Ids estables sin significado; etiqueta legible como metadato |
+| E4 | Reducción nocturna | 21 | Cada noche, todas las fuerzas del grafo se reducen en proporción y se poda lo que queda por debajo de un umbral (homeostasis sináptica). Con el interruptor activado, sustituye a la regla de olvido actual de `consolidar` |
+| E5 | Recuperación evocada y reconsolidación | 22 | Una pieza de la experiencia reactiva, también interna (un `Impulso`), trae a la dimensión activa los recuerdos relacionados, con la potencia que sobre. Lo recuperado puede modificarlo su dueño y se persiste de noche. `recordar_comida` y `Valor` pasan a recuperar así, en lugar de leer la memoria directamente |
+| E6 | Repaso en calma | 21 | En calma, con potencia de sobra y la dimensión activa casi vacía, los componentes traen recuerdos recientes de alto arousal y los refuerzan |
+| E7 | Herencia configurable | 22 | Parámetro de tasa de herencia (0 a 1) de lo aprendido con trust alto, además de la dotación innata. Valor por defecto: el que reproduce el comportamiento actual |
+
+### Medición y decisión por mecanismo
+
+- **Invariancia con todo apagado** en cada paso (`herramientas/invariancia.py`).
+- **Benchmark acumulativo** tras cada mecanismo de E1 a E7 (E1 y E2 juntos): Crafter y Mínimo, perfil Equilibrado y control sin experiencia, N = 10, frente a la configuración anterior.
+- **Decisión autónoma:** si el mecanismo no empeora de forma significativa, queda activado. Si empeora, queda desactivado, se documenta la causa probable en una línea y se sigue con el siguiente. No se ajustan parámetros más de un intento por mecanismo.
+- **Al final:** benchmark completo (Crafter, Mínimo y Archivos; Equilibrado, Valiente, Reactivo y sin experiencia) con la configuración final, frente a `docs/REFERENCIA_BASE.md`, con muertes por causa.
+
+### Rendimiento
+
+- Nada caro dentro del latido: lo pesado (consolidar, reducir, podar) va en la fase de sueño o al final de la vida. Medir los milisegundos por latido antes y después; la guillotina usa el reloj real.
+- La emisión de una creencia por proposición (bloque D) debe seguir acotada al crecer la memoria.
+
+### Trabajo sin supervisión
+
+- Ante una duda no prevista, la opción más simple que respete el borrador; anotarla y seguir.
+- Detenerse solo si un paso exige romper una regla de `AGENTS.md` distinta de la que levanta este encargo.
+- **Si se acerca el límite de cuota o de tiempo:** terminar el paso en curso, hacer commit y dejar `docs/E_ESTADO.md` con lo hecho, lo pendiente y cómo continuar.
+
+### Entrega
+
+`docs/MEDICIONES_E.md` con: tabla por mecanismo (activado o no, y por qué), benchmark final frente a la referencia, milisegundos por latido, y decisiones tomadas sin consultar.
+
+**Estado de E (16/11/2026): infraestructura completa, sin fusionar.** En `feature/bloque-e` (subida, sin PR). Con E1 a E6 activados, ninguna diferencia significativa frente a `base-v2.0` en ningún mundo. La memoria aún no aporta porque nada usa el grafo ni los conceptos, y recordar ahora cuesta atención. E4 en Archivos corregido: la reducción nocturna respeta *decay*, y los recuerdos de daño se reducen menos. E7 en 1,0. Cada latido es 0,11 a 0,22 ms más lento. **Decisión del autor:** E no se fusiona hasta comprobar, junto con F, si la memoria aporta.
+
+## Encargo del bloque F: experiencia proactiva (Expectativa y Plan)
+
+**Objetivo:** que IdA use la memoria del bloque E para anticipar (Expectativa) y para encadenar pasos hacia una intención (Plan). Es lo que debe hacer que la memoria aporte. Pensado para **trabajar sin supervisión**.
+
+**Referencia:** `docs/REDISENO_BASE.md`, decisión 24. Base: rama `feature/bloque-e`; rama nueva `feature/bloque-f` desde ella. Comparación: `docs/REFERENCIA_BASE.md` y la configuración de E.
+
+**Permiso:** como en E, se levanta para estos pasos la prohibición de tocar `ida/core/` e `ida/sistemas/`. Un commit por paso, sin PR.
+
+**Interruptores:** cada mecanismo de F detrás de un interruptor del `Perfil`. Con todos (E y F) apagados, la conducta debe ser igual a `base-v2.0` (`herramientas/invariancia.py`).
+
+| Paso | Qué hace |
+| --- | --- |
+| F0 | Inventario breve en `docs/F0_PROACTIVA.md`: qué hay ya de proactivo (pasada proactiva, `Memoria.proyectar`, pieza `Sorpresa`, feedback de S3 por error de predicción) y en qué se convierte. Además, **benchmark de E tal como está** en Mínimo y Crafter (Equilibrado y sin experiencia, N = 10), porque el ajuste de E4 no se midió allí. Sin detenerse |
+| F1 | **Expectativa.** En la pasada proactiva, con la potencia que sobre, cada sistema deja expectativas sobre el siguiente latido, a partir del grafo, los conceptos y los episodios de E: S1, cómo cambiarán sus necesidades con la acción elegida; S2, qué valencia espera. Al empezar el latido siguiente, el Core las compara con lo que llega: la sorpresa sube el arousal de lo inesperado (atrae atención) y alimenta el feedback de cada sistema. Unificar con la `Sorpresa` y el error de predicción que ya existen |
+| F2 | **Plan.** Tipo de estrategia de S3: una cadena de pasos hacia una intención, construida a partir del grafo semántico y el mapa. Se consume paso a paso; el progreso es la parte de la cadena completada; si una expectativa del plan falla (sorpresa alta), se rehace el plan o la estrategia se agota. Aplicarlo al menos a `recordar_comida` (ir donde hubo comida por la ruta del mapa) y a `PlanTecnologico` (la cadena de recetas de Crafter) |
+
+**Medición y decisión:** tras F1 y tras F2, benchmark en Mínimo y Crafter (Equilibrado y sin experiencia, N = 10) frente a la configuración anterior. Si un mecanismo no empeora de forma significativa, queda activado; si empeora, queda apagado con la causa anotada, y se sigue. Un solo intento de ajuste por mecanismo.
+
+**Veredicto final:** benchmark completo (Crafter, Mínimo y Archivos; Equilibrado, Valiente, Reactivo y sin experiencia; N = 10, muertes por causa) de E + F frente a `docs/REFERENCIA_BASE.md`. Entregar `docs/VEREDICTO_E_F.md` con la respuesta a una sola pregunta: **¿aporta la memoria, con su uso proactivo?** Con la recomendación de fusionar E y F, fusionar solo parte (y cuál) o no fusionar, y por qué.
+
+**Rendimiento y supervisión:** como en E. Nada caro dentro del latido; medir milisegundos por latido. Ante una duda, la opción más simple, anotada. Si se acerca el límite de cuota o de tiempo, commit y `docs/F_ESTADO.md`. Todo en español.
 
 **Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
 
@@ -269,3 +342,5 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Encargo del bloque D (pasos D1 a D4), pensado para una sola interacción sin supervisión. |
 | 2026-11-16 | Bloque C aceptado (C2 y C3). Notas para la fase de mejora de mundos. |
 | 2026-11-16 | Bloque D aceptado. Pasos antes de la mejora de mundos: calibración, referencia congelada y reglas para el otro modelo. |
+| 2026-11-16 | Base congelada en base-v2.0. Encargo del bloque E (E0 a E7) para trabajo sin supervisión, en paralelo a la mejora de mundos. |
+| 2026-11-16 | Estado de E (infraestructura, sin fusionar). Encargo del bloque F (Expectativa y Plan) sobre la rama de E, con veredicto conjunto. |
