@@ -80,7 +80,7 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
         clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
     if mecanismos is not None or tasa_herencia is not None:   # bloque E: interruptores de memoria
         from ida.core.mundo import MecanismosMemoria
-        activos = {m: True for m in (mecanismos or []) if m != "ninguno"}
+        activos: Dict[str, Any] = {m: True for m in (mecanismos or []) if m != "ninguno"}
         if tasa_herencia is not None:
             activos["tasa_herencia"] = tasa_herencia
         clase_mundo.perfil = replace(clase_mundo.perfil, mecanismos=MecanismosMemoria(**activos))
@@ -126,17 +126,18 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                     ind["plazo"] += 1   # noqa: B023
                 if onda.notas.get("plus_decide"):
                     ind["plus"] += 1   # noqa: B023
-                e1 = onda.notas.get("estrategias_S1")
-                if e1:
-                    for n in e1["activas"]:
-                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["activa"] += 1   # noqa: B023
-                    if e1["ejecutada"]:
-                        ind["estrategias"].setdefault(e1["ejecutada"], {"activa": 0, "ejecutada": 0, "abandonos": 0})["ejecutada"] += 1  # noqa: B023
-                    for n in e1["abandonos"]:
-                        ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["abandonos"] += 1   # noqa: B023
-                    ind["reflejos"] += int(e1["reflejo"])   # noqa: B023
-                    ind["interrumpe"] += int(e1["interrumpe"])   # noqa: B023
-                    ind["sustituciones"] += int(e1.get("sustituciones", 0))   # noqa: B023
+                for s in ("S1", "S2", "S3"):
+                    es = onda.notas.get(f"estrategias_{s}")
+                    if es:
+                        for n in es["activas"]:
+                            ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["activa"] += 1   # noqa: B023
+                        if es["ejecutada"]:
+                            ind["estrategias"].setdefault(es["ejecutada"], {"activa": 0, "ejecutada": 0, "abandonos": 0})["ejecutada"] += 1  # noqa: B023
+                        for n in es["abandonos"]:
+                            ind["estrategias"].setdefault(n, {"activa": 0, "ejecutada": 0, "abandonos": 0})["abandonos"] += 1   # noqa: B023
+                        ind["reflejos"] += int(es["reflejo"])   # noqa: B023
+                        ind["interrumpe"] += int(es["interrumpe"])   # noqa: B023
+                        ind["sustituciones"] += int(es.get("sustituciones", 0))   # noqa: B023
                 consumo = getattr(onda, "consumo", None)
                 if consumo is None:
                     return
@@ -232,7 +233,7 @@ def comparar(base: str, nueva: str) -> None:
     if mundo == "crafter" and tiene_logros:
         print("\n### Logros por tipo (total de vidas que lo consiguen en los 4 grupos, N = 120 vidas)")
         print("| Logro | Vidas base | Vidas nueva | Δ vidas |\n|---|---|---|---|")
-        todos_logros = set()
+        todos_logros: set[str] = set()
         for d in (a, b):
             for r in d.get("filas", []):
                 for lv in r.get("logros", []):
@@ -255,7 +256,7 @@ def comparar(base: str, nueva: str) -> None:
             t = total.setdefault(nombre, {"activa": 0, "ejecutada": 0, "abandonos": 0})
             for k in t:
                 t[k] += c[k]
-    print("\n| Estrategia de S1 (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |\n|---|---|---|---|")
+    print("\n| Estrategia (todos los grupos) | Latidos activa | Latidos ejecutada | Abandonos por agotamiento |\n|---|---|---|---|")
     for nombre, t in sorted(total.items(), key=lambda kv: -kv[1]["activa"]):
         print(f"| {nombre} | {t['activa']} | {t['ejecutada']} | {t['abandonos']} |")
 
