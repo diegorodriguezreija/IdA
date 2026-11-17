@@ -602,6 +602,23 @@ class RefugioNocturno(Definicion):
             necesaria += 2
         return max(0, necesaria - int(inv.get("wood", 0)))
 
+    def _agua_accesible_dentro(self, mina: Optional[Tuple[Pos, Pos]]) -> Optional[Tuple[Pos, Pos]]:
+        """Devuelve ``(casilla_desde_donde_beber, casilla_agua)`` si e2 o e3 tienen pared de agua."""
+        if mina is None:
+            return None
+        e0, (dx, dy) = mina
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        for ldx, ldy in ((-dy, dx), (dy, -dx)):
+            vec2 = (e2[0] + ldx, e2[1] + ldy)
+            if self.mapa.get(vec2) == "water":
+                return e2, vec2
+        for ldx, ldy in ((-dy, dx), (dy, -dx), (dx, dy)):
+            vec3 = (e3[0] + ldx, e3[1] + ldy)
+            if self.mapa.get(vec3) == "water":
+                return e3, vec3
+        return None
+
     def _evaluar_candidato(self, e0: Pos, d: Pos, pos_actual: Pos, hogar_pos: Optional[Pos]) -> Optional[float]:
         """Evalúa una mina con acceso ``e0`` y dirección de excavación ``d``. Devuelve su puntuación o None."""
         m0 = self.mapa.get(e0)
@@ -645,10 +662,15 @@ class RefugioNocturno(Definicion):
         dist_jugador = _dist(pos_actual, e0)
         aguas = [p for p, m in self.mapa.items() if m == "water"]
         dist_agua = min((_dist(e0, a) for a in aguas), default=12)
-        agua_pared = any(self.mapa.get((e2[0] + ldx, e2[1] + ldy)) == "water" for ldx, ldy in ((-dy, dx), (dy, -dx)))
+        agua_pared_e2 = any(self.mapa.get((e2[0] + ldx, e2[1] + ldy)) == "water" for ldx, ldy in ((-dy, dx), (dy, -dx)))
+        agua_pared_e3 = any(
+            self.mapa.get((e3[0] + ldx, e3[1] + ldy)) == "water"
+            for ldx, ldy in ((-dy, dx), (dy, -dx), (dx, dy))
+        )
         rocas_a_picar = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
 
-        puntuacion = 100.0 - 2.5 * dist_jugador - 2.0 * dist_agua + (8.0 if agua_pared else 0.0)
+        bono_agua_pared = 16.0 if agua_pared_e2 else (12.0 if agua_pared_e3 else 0.0)
+        puntuacion = 100.0 - 3.0 * dist_jugador - 2.0 * dist_agua + bono_agua_pared
         if es_recordada:
             puntuacion += 25.0
         # Si aún no tiene piedra en el inventario, necesita que la mina dé al menos 1 piedra al cavar
@@ -804,7 +826,7 @@ class RefugioNocturno(Definicion):
         es_noche = luz < 0.5
         margen_cierre = max(12.0, coste * 1.55)
 
-        # ¿Hay agua o comida alcanzable para llenar a 9 antes de que el margen de cierre obligue a entrar?
+        # ¿Hay agua o comida alcanzable para llenar antes de que el margen de cierre obligue a entrar?
         hay_agua_viable = False
         hay_comida_viable = False
         e0_ref = mina_actual[0] if mina_actual is not None else pos
@@ -812,7 +834,8 @@ class RefugioNocturno(Definicion):
             sum(1 for k in (1, 2, 3) if self.mapa.get((e0_ref[0] + k * mina_actual[1][0], e0_ref[1] + k * mina_actual[1][1])) in ROCA_EXCAVABLE)
             if mina_actual is not None else 3
         )
-        if inv.get("drink", 0) < 9:
+        tiene_agua_dentro = self._agua_accesible_dentro(mina_actual) is not None
+        if not tiene_agua_dentro and inv.get("drink", 0) < 9:
             aguas_cerca = [
                 p for p, m in self.mapa.items()
                 if m == "water" and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
@@ -1256,15 +1279,21 @@ class RefugioNocturno(Definicion):
 
         if fase == "dormir":
             mina = estado.get("mina")
-            # Si una pared lateral del refugio es agua y tiene sed, beber desde dentro sin abrir el sello
-            if mina is not None and inv.get("drink", 0) < 9:
+            # Si una pared de e2 o e3 es agua y tiene sed, beber desde dentro sin abrir el sello
+            agua_dentro = self._agua_accesible_dentro(mina)
+            if agua_dentro is not None and inv.get("drink", 0) < 9:
+                casilla_beber, vec_agua = agua_dentro
+                if pos == casilla_beber:
+                    return Propuesta(Verbo.COMER, f"agua_{vec_agua[0]}_{vec_agua[1]}", 1.0, 1.0,
+                                     "refugio: beber agua desde dentro", clase="agua")
+                return Propuesta(Verbo.MOVER, f"celda_{casilla_beber[0]}_{casilla_beber[1]}", 1.0, 1.0,
+                                 "refugio: acercarse a pared de agua interior", clase="suelo")
+            if mina is not None:
                 e0, (dx, dy) = mina
                 e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
-                for ldx, ldy in ((-dy, dx), (dy, -dx)):
-                    vec = (e2[0] + ldx, e2[1] + ldy)
-                    if self.mapa.get(vec) == "water":
-                        return Propuesta(Verbo.COMER, f"agua_{vec[0]}_{vec[1]}", max(ar, 0.99), max(conf, 0.99),
-                                         "refugio: beber agua desde dentro", clase="agua")
+                if pos != e2:
+                    return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", 1.0, 1.0,
+                                     "refugio: colocarse en e2 tras beber", clase="suelo")
             # Dormir si falta energía y hay comida/bebida para no sufrir degeneración de salud mientras duerme
             if inv.get("energy", 9) < 9 and inv.get("food", 0) >= 1 and inv.get("drink", 0) >= 1:
                 return Propuesta(Verbo.DORMIR, "", 1.0, 1.0, "refugio: dormir a salvo")
@@ -1277,9 +1306,13 @@ class RefugioNocturno(Definicion):
             if mina is not None:
                 e0, (dx, dy) = mina
                 e1 = (e0[0] + dx, e0[1] + dy)
-                if self.mapa.get(e1) == "stone" and _dist(pos, e1) == 1:
-                    return Propuesta(Verbo.COGER, f"piedra_{e1[0]}_{e1[1]}", max(ar, 0.95), max(conf, 0.95),
-                                     "refugio: abrir salida al amanecer", clase="piedra")
+                e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+                if self.mapa.get(e1) == "stone":
+                    if _dist(pos, e1) == 1:
+                        return Propuesta(Verbo.COGER, f"piedra_{e1[0]}_{e1[1]}", max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: abrir salida al amanecer", clase="piedra")
+                    return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", max(ar, 0.95), max(conf, 0.95),
+                                     "refugio: acercarse al sello para abrir", clase="suelo")
                 if pos != e0:
                     paso_p = self._paso_hacia(ctx, pos, e0)
                     if paso_p is not None:
