@@ -1557,6 +1557,7 @@ class PlanTecnologico(Plan, ConPropuestas):
             return
         plan = estado_plan(estrategia) if estrategia is not None and ctx.perfil.mecanismos.plan else None
         orden = [p["meta"] for p in plan["pasos"][int(plan["i"]):]] if plan is not None and not plan["fallido"] else self.OBJETIVOS
+        pendiente: Optional[str] = None
         for receta in orden:
             if receta in hecho or self.fallos.get(receta, 0) >= 3:
                 continue
@@ -1577,9 +1578,12 @@ class PlanTecnologico(Plan, ConPropuestas):
                         continue
                 self.proponer(ctx, Verbo.USAR, receta, 0.55, 0.8, f"plan: {receta}", clase=receta, receta=receta)
                 return
-            faltan = [k for k, v in usos.items() if inv.get(k, 0) < v]
-            self._buscar(ctx, faltan[0])
-            return
+            # Receta sin recursos: anotar lo primero que falta y seguir mirando si una receta posterior ya se
+            # puede hacer (p. ej. el horno con 4 piedras mientras al pico de piedra le falta madera)
+            if pendiente is None:
+                pendiente = next(k for k, v in usos.items() if inv.get(k, 0) < v)
+        if pendiente is not None:
+            self._buscar(ctx, pendiente)
 
     def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
         """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Exterocepcion o el hipocampo del Core."""
