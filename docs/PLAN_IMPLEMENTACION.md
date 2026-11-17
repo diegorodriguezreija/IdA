@@ -286,6 +286,53 @@ Cada mecanismo va detrás de un interruptor del `Perfil` (por ejemplo `memoria.b
 
 **Reglas de la fase de mundos, afinadas:** componentes propios del mundo permitidos para percepción, interpretación e impulsos, siempre con piezas de su propio tipo; las acciones solo mediante estrategias del mundo; ni `ida/core/` ni `ida/sistemas/`.
 
+## Fase de mundos: Crafter (S1)
+
+**Objetivo del autor:** que el individuo sobreviva al menos un par de noches en Crafter con S1. Referencia: `docs/REFERENCIA_BASE.md` y `docs/COMPONENTES_Y_PIEZAS.md` (mapa de componentes de `base-v2.1`).
+
+**Decisiones del autor (17/11/2026):**
+
+- Zombi y esqueleto se tratan igual: un enemigo en escena da una alarma alta, sin graduar por distancia, y debe ganar en el `Tribunal` para huir o atacar.
+- Lo innato entra con trust 0,95 (refutable), no 1.
+- Mesa, pico y refugio pasan a una estrategia instintiva de S1; `PlanTecnologico` (S3) se queda con el progreso avanzado.
+
+### Encargo 1, agente principal (base)
+
+| Paso | Cambio |
+| --- | --- |
+| M1 | **Dotación innata:** `Mundo.dotacion_innata()` y fuente "instinto" (trust 0,95, refutable por la experiencia). Se aplica a cada individuo al nacer, antes de `heredar()`. Solo valoraciones y conocimiento, nunca secuencias de acciones. Por defecto vacía: invariancia en todos los mundos |
+| M2 | **Dos Imágenes en S1:** interna (el cuerpo) y externa (la escena y la propia posición). Intentar invariancia |
+| M3 | **Prioridad innata por impulso** para desempatar en el `Tribunal` (Seguridad, después comida y agua, después el resto) en lugar del azar |
+| M4 | **Verificar en el código de Crafter**, sin cambiar nada, y citar fichero y línea: si se puede girar sin moverse; si el zombi ataca en diagonal; si colocar piedra va a la casilla de enfrente; si minar una piedra colocada la devuelve al inventario; si los zombis pueden aparecer dentro de un recinto cerrado. Resultado en `docs/CRAFTER_MECANICAS.md` |
+
+### Encargo 2, Flash (solo `ida/mundos/crafter.py` y sus tests)
+
+- **Contenido innato de Crafter** (trust 0,95): zombi y esqueleto, peligro; comida y agua, recurso; árbol y piedra, material.
+- **Alarma de enemigo:** cualquier hostil en escena, peligro alto, sin graduar por distancia ni por tipo.
+- **Impulso del mundo "preparar el nido"** (componente de impulso en S1): sube si falta refugio, mesa o pico, y al bajar la luz (`Ambiente`). Da valor a la madera y la piedra según lo que falte y lo que ya se lleva.
+- **Estrategia `anidar`** (S1), una sola estrategia con fases que dependen de lo percibido: equiparse (madera → mesa → pico de madera, solo lo que falte) → ir al sitio (el recordado o un frente de roca nuevo) → entrar y tapar → dormir → salir. Se entra de noche o con enemigos cerca; se sale de día, sin enemigos y sin necesidad crítica. Forma: la **madriguera** descrita abajo.
+- **"Ir al refugio"** no es estrategia aparte: es la fase de `anidar` que lleva al sitio recordado. Frente a enemigos compite con huir y defenderse.
+- **`PlanTecnologico` recortado** a lo avanzado (horno, hierro…).
+- **Explorar sin perder el refugio**, con el mapa.
+- **Medición:** benchmark de Crafter (cuatro perfiles, N = 10) frente a `docs/REFERENCIA_BASE.md`, con muertes por causa y noches sobrevividas por vida.
+
+**Madriguera (forma del refugio).** Se excava en la roca en lugar de levantar un recinto: las diagonales ya son roca y basta una piedra, la que se acaba de picar. Casillas: E, la de fuera, frente a la roca; C1 y C2, dos casillas de roca seguidas hacia dentro. Sitio válido: C1 y C2 son piedra y las casillas que rodean a C1 y a C2 (salvo E, C1 y C2) no son transitables (piedra, árbol, agua, mesa…).
+
+1. Desde E, mirando a C1: picar C1 si es piedra; avanzar a C1.
+2. Picar C2 si es piedra; avanzar a C2.
+3. Moverse hacia C1: avanza a C1 y queda mirando a E.
+4. Colocar piedra en E.
+5. Avanzar a C2 y dormir.
+6. Salir: moverse hacia C1 (queda mirando a E), picar E, salir.
+
+La misma secuencia sirve para volver: con C1 y C2 ya excavadas, los pasos 1 y 2 solo avanzan. El mapa guarda E y la orientación de la madriguera.
+
+**Supuestos** (el autor los comprobará observando; si `docs/CRAFTER_MECANICAS.md` del encargo 1 dice otra cosa, manda ese documento): picar piedra exige pico de madera y deja `path`; `move_*` orienta aunque no avance; colocar piedra vale sobre hierba, arena y `path`; los esqueletos no aparecen en `path` excavado por el agente; el zombi puede atacar en diagonal (la madriguera lo cubre igual).
+
+**Sin sitio válido** al anochecer: conducta actual (huir o defenderse), sin recinto en campo abierto. Se registra para la revisión.
+
+**Traza para la observación:** cada cambio de fase de `anidar` se escribe en el log con paso, posición y motivo, y hay un comando para ver un episodio en pantalla.
+
 **Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 8, 9 y 12. Base: `main` con el bloque C fusionado.
@@ -353,3 +400,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Base congelada en base-v2.0. Encargo del bloque E (E0 a E7) para trabajo sin supervisión, en paralelo a la mejora de mundos. |
 | 2026-11-16 | Estado de E (infraestructura, sin fusionar). Encargo del bloque F (Expectativa y Plan) sobre la rama de E, con veredicto conjunto. |
 | 2026-11-17 | Veredicto de E y F: no aportan con lo medido. Fusión con mecanismos apagados (base-v2.1). Reglas de la fase de mundos afinadas. |
+| 2026-11-17 | Fase de mundos, Crafter: decisiones del autor; encargo 1 (base, agente principal) y encargo 2 (Flash). |
