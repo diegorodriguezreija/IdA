@@ -32,9 +32,9 @@ Diagnóstico: salía con luz 0,30 a 0,43 (umbrales fijos de `_luz_salida`), con 
 | B.2c (entrada segura) | Sellar con un hostil dentro de la galería lo encierra con el durmiente (7 de daño por golpe). Comprobarlo antes de sellar evita ese daño. | `_entrada_insegura` en la fase `cerrarse`: si hay un zombi o esqueleto percibido en e1 a e3 (distinto de la casilla propia), lo abate si está al lado y tiene espada con salud ≥ 4, o espera. Un hostil en e0 no impide sellar desde e2. Arnés (300 latidos): resultados idénticos a B.2b. En 20 vidas × 600 latidos la comprobación no se activa ninguna vez. | Idéntico a B.2b: Δ = 0,00 ± 0,00 en latidos, fitness, logros y noches; mismas muertes y logros. Frente a B.1: latidos +37,70 ± 65,60; logros +0,47 ± 0,65. | Se mantiene (no empeora), sin efecto medible: el caso no aparece en las semillas medidas. La defensa de hostiles adyacentes que ya existía al anochecer cubre los casos observados. |
 | B.2d (progreso: acopio de piedra) | Hay pocas vidas con piedra para el horno (4) y el pico de piedra. Recoger en la mina la piedra del sello, el pico y el horno, sin abrir la galería, los recupera. Comprobación pedida: el sello no consume piedra de forma permanente. En las 11 vidas selladas (semillas 11 a 30, 600 latidos), la piedra al abrir es la del sello + 1, salvo la semilla 30 (1 → 1). | Fase `acopio`: con la galería cavada y sin ocaso próximo, si falta piedra (1 sello + 1 si no tiene pico de piedra + 4 si no ha visto un horno), pica la roca recordada más cercana a ≤ 5 de la entrada que no sea pared en cruz de e1 a e3 ni el fondo e4. El déficit de piedra entra en la motivación diurna continua (0,5 × déficit × saciedad). Diagnóstico (semillas 11 a 30, 600 latidos): vidas con ≥ 4 piedras de 6 a 7, horno de 2 a 4, pico de piedra 2 → 2. Arnés (300 latidos): sin cambios frente a B.2c. | Frente a B.1: latidos +23,30 ± 53,34; fitness +424,30 ± 588,84; logros +0,40 ± 0,55; noches +0,17 ± 0,30. Frente a B.2c: latidos −14,40 ± 20,88; logros −0,07 ± 0,15. Frente a B.2a: latidos −33,07 ± 52,27; logros −0,17 ± 0,52. Muertes (30 vidas): zombi 12, esqueleto 7, hambre 3, sed 3, vive 5. `place_furnace` 7 (B.2c 6, B.1 5), `wake_up` 19. Frente a la referencia: latidos +120,13 ± 78,97; logros +1,03 ± 1,06. | Se mantiene (no empeora de forma significativa frente a B.1). Desde B.2a, la estimación puntual de latidos baja en cada paso (400,6 → 382,0 → 382,0 → 367,6), sin que ningún Δ sea significativo. |
 | B.2d-2 (progreso: plan sin bloqueo) | `plan_tecnologico.decidir` busca el recurso de la primera receta que no puede pagar y sale: si al pico de piedra le falta madera, nunca llega al horno aunque tenga 4 piedras (semilla 16: 7 piedras sin horno). Seguir con las recetas posteriores usa la piedra acopiada. | Si una receta no tiene recursos, se anota lo primero que falta y se sigue mirando si alguna receta posterior ya se puede hacer. Si ninguna, se busca lo anotado (igual que antes). Diagnóstico (semillas 11 a 30, 600 latidos): horno de 4 a 5. | Frente a B.2d: latidos +2,83 ± 4,75; fitness +102,87 ± 161,95; logros +0,10 ± 0,16. Frente a B.1: latidos +26,13 ± 55,27; fitness +527,17 ± 675,88; logros +0,50 ± 0,63. Frente a B.2a: latidos −30,23 ± 53,19. `place_furnace` 9 (B.2d 7, B.1 5). Muertes: zombi 13, esqueleto 6, hambre 3, sed 3, vive 5. Frente a la referencia: latidos +122,97 ± 79,53; logros +1,13 ± 1,01. | Se mantiene. |
-| B.2lite (reducida) | Evaluar si omitir B.2b (motivación diurna de mina) y B.2d (acopio de piedra) recupera los latidos altos de B.2a sin perder el horno gracias a B.2d-2 (plan no bloqueante) y con B.2c (entrada segura). | Rama desde B.2a (`8fd0592`) con cherry-pick de B.2c (`ec6aaab`, entrada segura) y B.2d-2 (`937b4d0`, plan posterior), sin B.2b ni B.2d. En git hubo conflicto en `docs/INFORME_B2.md` por el contexto de B.2b/B.2d; en código (`crafter.py`) ambos aplicaron sin conflicto. | Frente a B.1: latidos +49,97 ± 41,70; fitness +617,57 ± 445,81; logros +0,57 ± 0,42; noches +0,23 ± 0,25. Muertes (30 vidas): zombi 8 → 5, hambre 8 → 5, sed 5 → 6, esqueleto 5 → 6, vive 2 → 7. `wake_up` 18 → 20, `place_furnace` 5 → 6. Frente a B.2 completo (b3f0e64): latidos +31,60 ± 49,64; logros +0,13 ± 0,83; muertes por zombi 13 → 5, viven 5 → 7, pero `place_furnace` 9 → 6 (-3 vidas). | Se descarta para el segundo benchmark completo: aunque sube latidos (+31,60) y reduce zombis (13 → 5), pierde el horno (9 → 6 vidas), confirmando que B.2d (`acopio`) era necesario para sustentar los 9 hornos. |
+| B.2lite (reducida) | Evaluar si omitir B.2b (motivación diurna de mina) y B.2d (acopio de piedra) mantiene los latidos altos de B.2a sin perder el horno gracias a B.2d-2 (plan no bloqueante) y con B.2c (entrada segura). | Rama desde B.2a (`8fd0592`) con cherry-pick de B.2c (`ec6aaab`, entrada segura) y B.2d-2 (`937b4d0`, plan posterior), sin B.2b ni B.2d. En git hubo conflicto en `docs/INFORME_B2.md` por el contexto de B.2b/B.2d; en código (`crafter.py`) ambos aplicaron sin conflicto. | Frente a B.1: latidos +49,97 ± 41,70; fitness +617,57 ± 445,81; logros +0,57 ± 0,42; noches +0,23 ± 0,25. Muertes (30 vidas): zombi 8 → 5, hambre 8 → 5, sed 5 → 6, esqueleto 5 → 6, vive 2 → 7. `wake_up` 18 → 20, `place_furnace` 5 → 6. Frente a B.2 completa (b3f0e64): latidos +31,60 ± 49,64; logros +0,13 ± 0,83; muertes por zombi 13 → 5, viven 5 → 7, `place_furnace` 9 → 6 (-3 vidas). | Se selecciona para el 2.º benchmark completo final al ser la mejor configuración en latidos, logros y muertes por zombi, considerándose 6 vs 9 hornos en 30 vidas una pérdida asumible frente a la ganancia de supervivencia. |
 
-## Benchmark completo final (1 de 2 permitidos; 4 grupos, N = 10, semillas 1 a 10, commit `b3f0e64`, 2026-11-17)
+## Benchmark completo final 1 (1 de 2 permitidos; 4 grupos, N = 10, semillas 1 a 10, commit `b3f0e64`, 2026-11-17)
 
 Comando: `python herramientas/benchmark.py ejecutar --raiz . --mundo crafter --salida b2_completo1.json`, comparado con `comparar` frente a `b1_completo.json` y frente a `ref_crafter.json`.
 
@@ -54,6 +54,43 @@ Comando: `python herramientas/benchmark.py ejecutar --raiz . --mundo crafter --s
 | Sin experiencia | logros | +0,30 ± 0,51 | +1,33 ± 1,23 |
 
 Muertes por causa (120 vidas), referencia → B.1 → B.2: zombi 74 → 43 → 52; hambre + sed 15 → 47 → 30; esqueleto 19 → 20 → 20; viven 3 → 5 → 17.
+
+## Benchmark completo final 2: configuración reducida B.2lite (2 de 2 permitidos; 4 grupos, N = 10, semillas 1 a 10, commit `937b4d0`, 2026-11-17)
+
+Comando: `python herramientas/benchmark.py ejecutar --raiz . --mundo crafter --salida b2lite_completo.json`, comparado frente a `ref_crafter.json`, `b1_completo.json` y `b2_completo1.json`.
+
+| Grupo | Métrica | Base (ref_crafter) | B.2lite | Δ frente a ref_crafter | Δ frente a B.1 | Δ frente a B.2 completa |
+|---|---|---|---|---|---|---|
+| Equilibrado | latidos | 247,43 ± 37,93 | 397,77 ± 59,64 | +150,33 ± 62,00 | +53,50 ± 39,73 | +35,13 ± 49,60 |
+| Equilibrado | fitness | 10126,43 ± 1485,51 | 11476,50 ± 1344,34 | +1350,07 ± 1013,17 | +621,10 ± 444,08 | +168,33 ± 863,36 |
+| Equilibrado | logros | 9,87 ± 1,47 | 11,07 ± 1,30 | +1,20 ± 1,03 | +0,57 ± 0,42 | +0,13 ± 0,83 |
+| Equilibrado | noches | 0,37 ± 0,21 | 1,03 ± 0,29 | +0,67 ± 0,25 | +0,23 ± 0,25 | +0,10 ± 0,23 |
+| Valiente | latidos | 252,50 ± 65,72 | 351,77 ± 77,47 | +99,27 ± 68,63 | +21,23 ± 30,20 | −10,57 ± 58,18 |
+| Valiente | fitness | 10932,10 ± 1709,16 | 11629,87 ± 1435,35 | +697,77 ± 2147,85 | +221,13 ± 270,35 | −211,37 ± 644,99 |
+| Valiente | logros | 10,67 ± 1,66 | 11,27 ± 1,37 | +0,60 ± 2,09 | +0,20 ± 0,26 | −0,20 ± 0,60 |
+| Valiente | noches | 0,40 ± 0,29 | 0,87 ± 0,34 | +0,47 ± 0,32 | +0,13 ± 0,17 | −0,10 ± 0,20 |
+| Reactivo | latidos | 282,00 ± 44,07 | 368,67 ± 82,10 | +86,67 ± 66,46 | +50,63 ± 53,61 | +47,67 ± 29,49 |
+| Reactivo | fitness | 9660,57 ± 1481,90 | 10879,77 ± 1383,42 | +1219,20 ± 1762,16 | +283,93 ± 427,71 | +382,03 ± 537,34 |
+| Reactivo | logros | 9,37 ± 1,46 | 10,50 ± 1.31 | +1,13 ± 1,72 | +0,23 ± 0,41 | +0,33 ± 0,53 |
+| Reactivo | noches | 0,50 ± 0,28 | 0,87 ± 0,41 | +0,37 ± 0,36 | +0,20 ± 0,20 | +0,20 ± 0,20 |
+| Sin experiencia | latidos | 265,00 ± 51,19 | 377,93 ± 47,78 | +112,93 ± 44,89 | +16,30 ± 27,90 | −1,60 ± 34,27 |
+| Sin experiencia | fitness | 9942,70 ± 1426,24 | 11523,07 ± 885,18 | +1580,37 ± 1157,60 | +450,50 ± 235,86 | +132,27 ± 553,92 |
+| Sin experiencia | logros | 9,67 ± 1,40 | 11,13 ± 0,86 | +1,47 ± 1,15 | +0,43 ± 0,23 | +0,13 ± 0,54 |
+| Sin experiencia | noches | 0,40 ± 0,25 | 1,00 ± 0,19 | +0,60 ± 0,15 | +0,07 ± 0,22 | +0,07 ± 0,15 |
+
+Muertes por causa (120 vidas), referencia → B.1 → B.2 completa → B.2lite:
+- zombi: 74 → 43 → 52 → **38** (mínimo histórico, -48,6 % frente a ref)
+- hambre + sed: 15 → 47 → 30 → **27** (baja 3 vidas más frente a B.2 completa)
+- esqueleto: 19 → 20 → 20 → **30** (al sobrevivir más noches al aire libre al salir del refugio)
+- viven (superan 600 latidos): 3 → 5 → 17 → **23** (máximo histórico: 19,2 % de todas las vidas)
+
+Logros clave (120 vidas), referencia → B.1 → B.2 completa → B.2lite:
+- `place_furnace`: 45 → 18 → 31 → **22** (+4 vidas sobre B.1)
+- `wake_up`: 95 → 73 → 77 → **76** (+3 vidas sobre B.1)
+- `make_stone_pickaxe`: 17 → 9 → 3 → **13** (+10 vidas sobre B.2 completa)
+- `make_stone_sword`: 6 → 5 → 0 → **5** (+5 vidas sobre B.2 completa, recuperada)
+- `defeat_skeleton`: 3 → 45 → 48 → **50**
+- `defeat_zombie`: 64 → 56 → 66 → **66**
 Las muertes por zombi antes del latido 300 pasan de 33 (B.1) a 36, y las del latido 300 en adelante de 10 a 16.
 
 Logros por tipo (vidas), referencia → B.1 → B.2: `wake_up` 95 → 73 → 77; `place_furnace` 45 → 18 → 31; `make_stone_pickaxe` 17 → 9 → 3; `make_stone_sword` 6 → 5 → 0; `collect_drink` 93 → 90 → 92; `eat_cow` 67 → 62 → 64; `defeat_zombie` 64 → 56 → 66.
