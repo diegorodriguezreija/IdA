@@ -802,7 +802,36 @@ class RefugioNocturno(Definicion):
         pasos_luz = self._pasos_luz_restantes(luz)
         coste = self._coste_restante_pasos(pos, inv, mina_actual)
         es_noche = luz < 0.5
-        ocaso_proximo = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
+        margen_cierre = max(12.0, coste * 1.55)
+
+        # ¿Hay agua o comida alcanzable para llenar a 9 antes de que el margen de cierre obligue a entrar?
+        hay_agua_viable = False
+        hay_comida_viable = False
+        e0_ref = mina_actual[0] if mina_actual is not None else pos
+        rocas_pend_ref = (
+            sum(1 for k in (1, 2, 3) if self.mapa.get((e0_ref[0] + k * mina_actual[1][0], e0_ref[1] + k * mina_actual[1][1])) in ROCA_EXCAVABLE)
+            if mina_actual is not None else 3
+        )
+        if inv.get("drink", 0) < 9:
+            aguas_cerca = [
+                p for p, m in self.mapa.items()
+                if m == "water" and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+            ]
+            hay_agua_viable = bool(aguas_cerca)
+        comidas_visibles = [
+            p for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+        ]
+        if inv.get("food", 0) < 9 and comidas_visibles:
+            comidas_cerca = [
+                p for p in comidas_visibles
+                if (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+            ]
+            hay_comida_viable = bool(comidas_cerca)
+        falta_llenar_antes_de_cerrar = hay_agua_viable or hay_comida_viable
+        ocaso_proximo = es_noche or (self.bajando and pasos_luz <= margen_cierre) or (
+            self.bajando and pasos_luz <= max(28.0, coste * 1.8) and not falta_llenar_antes_de_cerrar
+        )
 
         # 1. ¿Está ya dentro de la galería (e1, e2 o e3)?
         if mina_actual is not None:
@@ -827,7 +856,7 @@ class RefugioNocturno(Definicion):
                 else:
                     estado["fase"] = "dormir"
                 return self._guardar_estado(estado)
-            # Solo cerrarse cuando la anticipación del ocaso o la noche lo pidan, nunca con mucho día por delante
+            # Solo cerrarse cuando ya esté lleno o cuando el margen de cierre lo exija
             if ocaso_proximo and inv.get("stone", 0) >= 1 and not estado.get("saliendo"):
                 if pos == e2 and self.mina_recordada == mina_actual and not self._sellado(mina_actual):
                     estado["fase"] = "cerrarse"
@@ -847,19 +876,8 @@ class RefugioNocturno(Definicion):
                 estado["fase"] = "herramientas"
             return self._guardar_estado(estado)
 
-        # 3. Transición continua entre provisiones y mina según el margen entre la luz que queda y el coste de cavar
-        en_progreso = estado.get("fase") == "provisiones"
-        umbral_prov = 8 if en_progreso else 7
-        falta_agua = inv.get("drink", 0) < umbral_prov
-        falta_comida = inv.get("food", 0) < umbral_prov
-        aguas = [p for p, m in self.mapa.items() if m == "water" and _dist(pos, p) <= 8]
-        comidas = [
-            p for p in ctx.onda.ev("Exterocepcion").values()
-            if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.1
-        ]
-        hay_provision = (falta_agua and bool(aguas)) or (falta_comida and bool(comidas))
-        urgencia_prov = mina_actual is not None or min(inv.get("drink", 9), inv.get("food", 9)) < 5
-        if urgencia_prov and hay_provision and pasos_luz > max(24.0, coste * 1.8) and not self._en_galeria(pos, mina_actual):
+        # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar mientras quede margen de luz para volver y sellar
+        if falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre:
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
 
@@ -873,8 +891,8 @@ class RefugioNocturno(Definicion):
         e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
         e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
         rocas_pendientes = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-        hora_de_entrar = ocaso_proximo
-        if rocas_pendientes == 0 and not hora_de_entrar and hay_provision:
+        hora_de_entrar = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
+        if rocas_pendientes == 0 and not ocaso_proximo and falta_llenar_antes_de_cerrar:
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
         if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar):
@@ -894,14 +912,16 @@ class RefugioNocturno(Definicion):
         return 0.55
 
     def _anticipa_refugio(self, luz: float, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> bool:
-        """Indica si la luz restante frente al coste de llegar, cavar y sellar exige activar el repliegue al refugio."""
+        """Indica si la luz restante frente al coste de llegar, abastecerse, cavar y sellar exige activar el repliegue."""
         if luz < 0.5:
             return True
         if not self.bajando:
             return False
         coste = self._coste_restante_pasos(pos, inv, mina)
+        falta_prov = max(0, 9 - int(inv.get("drink", 9))) + max(0, 9 - int(inv.get("food", 9)))
+        pasos_prov = min(14.0, falta_prov * 2.5) if mina is not None else 0.0
         pasos_luz = self._pasos_luz_restantes(luz)
-        return pasos_luz <= max(32.0, coste * 2.0)
+        return pasos_luz <= max(32.0, coste * 1.9 + pasos_prov)
 
     def _motivacion(self, ctx: Contexto, estado: Dict[str, Any], pos: Pos, inv: Dict[str, float]) -> Tuple[float, float]:
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
@@ -1100,28 +1120,49 @@ class RefugioNocturno(Definicion):
             return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar sitio para mesa")
 
         if fase == "provisiones":
+            e0_ref = mina_est[0] if mina_est is not None else pos
+            rocas_ref = (
+                sum(
+                    1 for k in (1, 2, 3)
+                    if self.mapa.get((e0_ref[0] + k * mina_est[1][0], e0_ref[1] + k * mina_est[1][1])) in ROCA_EXCAVABLE
+                )
+                if mina_est is not None else 3
+            )
+            pasos_luz_ahora = self._pasos_luz_restantes(luz)
             if inv.get("drink", 0) < 9:
-                aguas = [p for p, m in self.mapa.items() if m == "water"]
+                aguas = [
+                    p for p, m in self.mapa.items()
+                    if m == "water"
+                    and (not anticipa or (_dist(pos, p) + _dist(p, e0_ref) + rocas_ref * 3 + 6) * 1.35 < pasos_luz_ahora)
+                ]
                 if aguas:
-                    agua_pos = min(aguas, key=lambda a: _dist(pos, a))
+                    agua_pos = min(aguas, key=lambda a: _dist(pos, a) + _dist(a, e0_ref))
                     if _dist(pos, agua_pos) == 1:
-                        return Propuesta(Verbo.COMER, f"agua_{agua_pos[0]}_{agua_pos[1]}", ar, conf,
-                                         "refugio: beber antes de anochecer", clase="agua")
+                        return Propuesta(Verbo.COMER, f"agua_{agua_pos[0]}_{agua_pos[1]}", max(ar, 0.90), max(conf, 0.90),
+                                         "refugio: beber hasta llenar antes de cerrar", clase="agua")
                     paso_p = self._paso_hacia(ctx, pos, agua_pos)
                     if paso_p is not None:
-                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir al agua", clase=paso_p.clase)
+                        return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
+                                         "refugio: ir al agua antes de cerrar", clase=paso_p.clase)
             comidas = [
                 p for p in ctx.onda.ev("Exterocepcion").values()
-                if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.1
+                if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+                and (
+                    not anticipa
+                    or (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_ref * 3 + 6) * 1.35
+                    < pasos_luz_ahora
+                )
             ]
             if comidas and inv.get("food", 0) < 9:
                 mejor_c = max(comidas, key=lambda p: p.rasgo("proximidad"))
                 if mejor_c.rasgo("proximidad") >= 0.9:
-                    return Propuesta(Verbo.COMER, mejor_c.id, ar, conf, f"refugio: comer {mejor_c.clase}", clase=mejor_c.clase)
+                    return Propuesta(Verbo.COMER, mejor_c.id, max(ar, 0.90), max(conf, 0.90),
+                                     f"refugio: comer {mejor_c.clase} hasta llenar", clase=mejor_c.clase)
                 cpos = tuple(mejor_c.carga["datos"]["pos"])
                 paso_p = self._paso_hacia(ctx, pos, (int(cpos[0]), int(cpos[1])))
                 if paso_p is not None:
-                    return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, f"refugio: acercarse a {mejor_c.clase}", clase=paso_p.clase)
+                    return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
+                                     f"refugio: acercarse a {mejor_c.clase} antes de cerrar", clase=paso_p.clase)
             if inv.get("drink", 0) < 8 or inv.get("food", 0) < 8:
                 return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida")
 
