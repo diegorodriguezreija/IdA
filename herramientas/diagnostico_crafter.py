@@ -55,51 +55,53 @@ def diagnosticar(
         for sem in semillas:
             vidas_registros: List[List[Dict[str, Any]]] = []
 
-            def al_latir(org: Any, onda: Any, _r: Dict[str, Any]) -> None:
-                if onda.ciclo == 1 or not vidas_registros:
-                    vidas_registros.append([])
-                registros = vidas_registros[-1]
+            def crear_al_latir(registros_lista: List[List[Dict[str, Any]]]) -> Any:
+                def al_latir(org: Any, onda: Any, _r: Dict[str, Any]) -> None:
+                    if onda.ciclo == 1 or not registros_lista:
+                        registros_lista.append([])
+                    registros = registros_lista[-1]
 
-                yo = onda.ev("Propiocepcion").get("yo")
-                pos: Optional[Tuple[int, int]] = None
-                if yo is not None:
-                    partes = str(yo.carga.get("ubicacion", "")).split("_")
-                    if len(partes) == 3 and partes[0] == "celda":
-                        pos = (int(partes[1]), int(partes[2]))
+                    yo = onda.ev("Propiocepcion").get("yo")
+                    pos: Optional[Tuple[int, int]] = None
+                    if yo is not None:
+                        partes = str(yo.carga.get("ubicacion", "")).split("_")
+                        if len(partes) == 3 and partes[0] == "celda":
+                            pos = (int(partes[1]), int(partes[2]))
 
-                a = onda.ef("Accion").get("Accion")
-                est_id = a.carga.get("origen", {}).get("estrategia") if a is not None else None
-                est = onda.estrategias.get(est_id) if est_id is not None else None
-                est_nom = est.carga.get("nombre") if est is not None else (a.carga.get("sistema") if a is not None else None)
-                fase = est.carga.get("paso") if est is not None else None
-                obj = a.carga.get("objetivo") if a is not None else None
+                    a = onda.ef("Accion").get("Accion")
+                    est_id = a.carga.get("origen", {}).get("estrategia") if a is not None else None
+                    est = onda.estrategias.get(est_id) if est_id is not None else None
+                    est_nom = est.carga.get("nombre") if est is not None else (a.carga.get("sistema") if a is not None else None)
+                    fase = est.carga.get("paso") if est is not None else None
+                    obj = a.carga.get("objetivo") if a is not None else None
 
-                inv = dict(yo.carga.get("inventario", {})) if yo is not None else {}
-                tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+                    inv = dict(yo.carga.get("inventario", {})) if yo is not None else {}
+                    tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
 
-                madriguera = getattr(org.mundo, "madriguera", None)
-                dist_ref: Optional[int] = None
-                if madriguera and pos:
-                    e = madriguera.get("e")
-                    if e:
-                        dist_ref = abs(pos[0] - e[0]) + abs(pos[1] - e[1])
+                    madriguera = getattr(org.mundo, "madriguera", None)
+                    dist_ref: Optional[int] = None
+                    if madriguera and pos:
+                        e = madriguera.get("e")
+                        if e:
+                            dist_ref = abs(pos[0] - e[0]) + abs(pos[1] - e[1])
 
-                anidar_p = next((p for p in onda.estrategias.values() if p.carga.get("nombre") == "anidar"), None)
-                fase_anidar = anidar_p.carga.get("paso") if anidar_p is not None else None
+                    anidar_p = next((p for p in onda.estrategias.values() if p.carga.get("nombre") == "anidar"), None)
+                    fase_anidar = anidar_p.carga.get("paso") if anidar_p is not None else None
 
-                registros.append({
-                    "ciclo": onda.ciclo,
-                    "pos": pos,
-                    "est": est_nom,
-                    "fase": fase,
-                    "obj": obj,
-                    "inv": inv,
-                    "tiene_pico": tiene_pico,
-                    "dist_ref": dist_ref,
-                    "fase_anidar": fase_anidar,
-                })
+                    registros.append({
+                        "ciclo": onda.ciclo,
+                        "pos": pos,
+                        "est": est_nom,
+                        "fase": fase,
+                        "obj": obj,
+                        "inv": inv,
+                        "tiene_pico": tiene_pico,
+                        "dist_ref": dist_ref,
+                        "fase_anidar": fase_anidar,
+                    })
+                return al_latir
 
-            resumenes = vivir(
+            vivir(
                 "crafter",
                 latidos=latidos,
                 semilla=sem,
@@ -109,7 +111,7 @@ def diagnosticar(
                 datos=td,
                 sin_experiencia=False,
                 arquetipo_inicial=PERFILES[perfil],
-                al_latir=al_latir,
+                al_latir=crear_al_latir(vidas_registros),
             )
 
             # Analizar cada vida por separado
@@ -198,8 +200,8 @@ def diagnosticar(
 
 def imprimir_informe(r: Dict[str, Any]) -> None:
     print(f"\n=== DIAGNÓSTICO CRAFTER ({r['perfil']}, {r['vidas']} vidas, semillas {r['semillas']}) ===")
-    print(f"| Métrica | Valor |")
-    print(f"|---|---|")
+    print("| Métrica | Valor |")
+    print("|---|---|")
     print(f"| Vidas analizadas | {r['vidas']} |")
     print(f"| Consiguen pico | {r['con_pico']}/{r['vidas']} ({r['pct_con_pico']:.1f}%) |")
     print(f"| Anidan (duermen) | {r['anidan']}/{r['vidas']} ({r['pct_anidan']:.1f}%) |")
@@ -208,7 +210,7 @@ def imprimir_informe(r: Dict[str, Any]) -> None:
     print(f"| - Por cambio de objetivo (misma est.) | {r['oscilaciones_objetivo']} |")
     print(f"| Media máx. madera acumulada | {r['media_max_madera']:.2f} |")
     print(f"| Media máx. piedra acumulada | {r['media_max_piedra']:.2f} |")
-    print(f"\nFases de anidar atascadas:")
+    print("\nFases de anidar atascadas:")
     for fase, cnt in sorted(r["fases_atascadas"].items(), key=lambda x: -x[1]):
         print(f"  - {fase}: {cnt} vida(s)")
     print("=" * 60)

@@ -1184,11 +1184,17 @@ class Anidar(Definicion):
                 madera = inv.get("wood", 0)
                 piedra = inv.get("stone", 0)
                 if madera < 5:
-                    arboles_alcance = [p for p in vistas if p.clase == "arbol" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+                    arboles_alcance = [
+                        p for p in vistas
+                        if p.clase == "arbol" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1
+                    ]
                     if arboles_alcance:
                         return Propuesta(Verbo.COGER, arboles_alcance[0].id, 0.78, 0.85, "anidar: acopiar madera al paso", clase="arbol")
                 if piedra < 5:
-                    piedras_alcance = [p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+                    piedras_alcance = [
+                        p for p in vistas
+                        if p.clase == "piedra" and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1
+                    ]
                     for p_roca in piedras_alcance:
                         rpos = tuple(p_roca.carga["datos"]["pos"])
                         if rpos not in (e, c1, c2):
