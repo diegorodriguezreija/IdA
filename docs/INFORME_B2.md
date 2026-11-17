@@ -110,3 +110,9 @@ Logros por tipo (vidas), referencia → B.1 → B.2: `wake_up` 95 → 73 → 77;
   - La caída de `wake_up` frente a la referencia (95 → 77) sigue sin explicar.
   - B.2b y B.2c no tienen efecto demostrado: B.2c no se activa en ninguna vida medida.
 - **Presupuesto:** queda 1 de los 2 benchmarks completos sin usar.
+
+## Decisión de cierre de la fase B
+
+Se fusiona en `main` la versión B.2lite (B.2a + B.2c + B.2d-2). Frente a la referencia cumple los puntos 1 y 3 del criterio de éxito en los cuatro grupos. El punto 2 (no inferioridad en logros) se cumple en Equilibrado, Reactivo y Sin experiencia; en Valiente el límite inferior del IC es −1,49 por la alta variabilidad del grupo (semi-intervalo ±2,09 con N = 10), con media +0,60. Frente a B.1, Valiente da +0,20 ± 0,26 en logros, lo que descarta una pérdida: se acepta por falta de precisión, no por empeoramiento. Decisión del autor, 17/11/2026.
+
+Pendiente para la siguiente fase: muertes por esqueleto (19 → 30), horno (45 → 22) y herramientas de piedra, y la caída de `wake_up` (95 → 76).
