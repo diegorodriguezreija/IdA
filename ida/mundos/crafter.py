@@ -738,8 +738,8 @@ class Anidar(Definicion):
                                  clase="make_wood_pickaxe", datos={"receta": "make_wood_pickaxe"})
             if madera >= 2 and not mesa_cerca and cara is not None:
                 enfrente = (pos[0] + cara[0], pos[1] + cara[1])
-                lugares = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.rasgo("lugar") >= 0.5 and "pos" in p.carga.get("datos", {})}
-                if enfrente in lugares:
+                lugares_mesa = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.rasgo("lugar") >= 0.5 and "pos" in p.carga.get("datos", {})}
+                if enfrente in lugares_mesa:
                     return Propuesta(Verbo.USAR, "place_table", 0.88, 0.95, "anidar: colocar mesa para pico",
                                      clase="place_table", datos={"receta": "place_table"})
             # Necesita madera: buscar arbol
@@ -751,9 +751,9 @@ class Anidar(Definicion):
                     return Propuesta(Verbo.COGER, cercano.id, 0.85, 0.9, "anidar: talar madera", clase="arbol")
                 return _navegar_hacia(ctx, c_pos)
             # Explorar para encontrar árboles
-            lugares = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
-            if lugares:
-                mejor = max(lugares, key=lambda l: float(l.rasgo("novedad")))
+            lugares_explorar = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
+            if lugares_explorar:
+                mejor = max(lugares_explorar, key=lambda l: float(l.rasgo("novedad")))
                 return Propuesta(Verbo.MOVER, mejor.id, 0.7, 0.8, "anidar: buscar arboles", clase=mejor.clase)
             return None
 
@@ -765,13 +765,13 @@ class Anidar(Definicion):
                 _trazar_anidar("sin_sitio", pos, "anochecer sin frente de roca valido: delegando en huir/defenderse")
                 return None
             vistas = list(ctx.onda.ev("Exterocepcion").values())
-            piedras = [p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})]
-            if piedras:
-                cercana = min(piedras, key=lambda p: _dist(pos, tuple(p.carga["datos"]["pos"])))
+            piedras_cerca = [p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})]
+            if piedras_cerca:
+                cercana = min(piedras_cerca, key=lambda p: _dist(pos, tuple(p.carga["datos"]["pos"])))
                 return _navegar_hacia(ctx, tuple(cercana.carga["datos"]["pos"]))
-            lugares = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
-            if lugares:
-                mejor = max(lugares, key=lambda l: float(l.rasgo("novedad")))
+            lugares_roca = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
+            if lugares_roca:
+                mejor = max(lugares_roca, key=lambda l: float(l.rasgo("novedad")))
                 return Propuesta(Verbo.MOVER, mejor.id, 0.7, 0.8, "anidar: buscar frente de roca", clase=mejor.clase)
             return None
 

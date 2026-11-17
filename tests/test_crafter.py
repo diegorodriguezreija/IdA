@@ -46,7 +46,6 @@ def test_vida_corta_en_crafter(tmp_path):
 
 def test_dotacion_innata_y_alarma_hostiles(mundo):
     from ida.core.memoria import Memoria
-    from ida.core.vocabulario import Relacion
     from ida.mundos.crafter import asegurar_dotacion_innata, DOTACION_INNATA, HOSTILES
 
     mem = Memoria("completa")
@@ -54,7 +53,7 @@ def test_dotacion_innata_y_alarma_hostiles(mundo):
     for sujeto, relacion, confianza in DOTACION_INNATA:
         assert (sujeto, relacion) in mem.saber
         p = mem.saber[(sujeto, relacion)]
-        assert p.confianza == pytest.approx(0.95)
+        assert p.confianza == pytest.approx(confianza)
 
     assert HOSTILES["zombi"] == 1.0
     assert HOSTILES["esqueleto"] == 1.0
