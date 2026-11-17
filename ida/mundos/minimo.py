@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
-from ida.core.mundo import MEMORIA_EF, Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
@@ -31,7 +31,7 @@ def _dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
 
 class MundoMinimo(Mundo):
     nombre = "minimo"
-    perfil = Perfil(mecanismos=MEMORIA_EF, frecuencia_ms=100.0, amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
+    perfil = Perfil(frecuencia_ms=100.0, amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
 
     def __init__(self, **_):
         self.azar = Azar(0)

@@ -27,7 +27,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
-from ida.core.mundo import MEMORIA_EF, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
@@ -82,7 +82,7 @@ def _dist(a: Pos, b: Pos) -> int:
 
 class MundoCrafter(Mundo):
     nombre = "crafter"
-    perfil = Perfil(mecanismos=MEMORIA_EF, frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
+    perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),

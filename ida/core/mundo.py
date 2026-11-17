@@ -103,10 +103,10 @@ class MecanismosMemoria:
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
 
 
-# Mecanismos del bloque E aceptados por el benchmark (docs/MEDICIONES_E.md); los mundos con memoria
-# completa y sueño los declaran en su perfil.
+# Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).
+# Ningún mundo los declara: no mejoraron ninguno. Se activarán por mundo solo donde se demuestre su valor.
 MEMORIA_E = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True)
-# Bloque F: Expectativa (F1) y Plan (F2) sobre la memoria del bloque E (docs/MEDICIONES_F.md).
+# E + Expectativa (F1) y Plan (F2).
 MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, reduccion=True, evocacion=True, repaso=True,
                                expectativa=True, plan=True)
 

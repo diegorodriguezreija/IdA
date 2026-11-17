@@ -284,3 +284,17 @@ def test_planes_en_una_vida_con_el_interruptor():
     assert org.ciclo > 0
     assert planes and all(isinstance(e, dict) and "pasos" in e for e in planes)
     assert max(int(e["i"]) for e in planes) >= 2                          # la cadena se consume paso a paso
+
+
+def test_ningun_mundo_activa_los_mecanismos_de_memoria():
+    """Cierre de E y F (docs/VEREDICTO_E_F.md): código fusionado, mecanismos apagados en todos los mundos."""
+    import importlib.util
+
+    from ida.mundos import MUNDOS, cargar
+
+    for nombre in MUNDOS:
+        if nombre == "ajedrez" and importlib.util.find_spec("chess") is None:
+            continue
+        if nombre == "crafter" and importlib.util.find_spec("crafter") is None:
+            continue
+        assert cargar(nombre).perfil.mecanismos == MecanismosMemoria(), nombre
