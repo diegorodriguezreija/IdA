@@ -43,6 +43,7 @@ def _metricas(mundo: str, r: Dict[str, Any]) -> Dict[str, float]:
     p = r["puntuacion"] or {}
     if mundo == "crafter":
         m["logros"] = float(p.get("n_logros", 0))
+        m["noches"] = float(r.get("noches", 0))
     elif mundo == "archivos":
         m["nutritivos"], m["toxicos"] = float(p.get("nutritivos", 0)), float(p.get("toxicos", 0))
     elif mundo == "minimo":
@@ -95,6 +96,8 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                                    "despierto_peligro": 0, "despierto_calma": 0, "s3_peligro": 0, "s3_calma": 0}
 
             finales: List[Dict[str, Any]] = []     # último latido de cada vida, para deducir la causa de muerte
+            noches_por_vida: List[int] = []
+            estado_noche: Dict[str, Any] = {"en_noche": False, "noches": 0}
 
             def al_latir(_o: Any, onda: Any, _r: Dict[str, Any]) -> None:
                 ind["latidos"] += 1   # noqa: B023 (se usa en la misma iteración)
@@ -103,8 +106,21 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                           "alimentacion": float(_o.soma.alimentacion)}
                 if onda.ciclo == 1 or not finales:   # noqa: B023
                     finales.append(estado)   # noqa: B023
+                    estado_noche["en_noche"] = False   # noqa: B023
+                    estado_noche["noches"] = 0   # noqa: B023
+                    noches_por_vida.append(0)   # noqa: B023
                 else:
                     finales[-1] = estado   # noqa: B023
+
+                if mundo == "crafter":   # noqa: B023
+                    luz = float(onda.ev("Ambiente").get("ambiente").carga.get("luz", 1.0)) if onda.ev("Ambiente").get("ambiente") else 1.0
+                    if luz < 0.3:
+                        estado_noche["en_noche"] = True   # noqa: B023
+                    elif estado_noche["en_noche"] and luz >= 0.5:   # noqa: B023
+                        estado_noche["noches"] += 1   # noqa: B023
+                        estado_noche["en_noche"] = False   # noqa: B023
+                    if noches_por_vida:   # noqa: B023
+                        noches_por_vida[-1] = estado_noche["noches"]   # noqa: B023
                 if onda.guillotina and "plazo" in onda.motivo_guillotina:
                     ind["plazo"] += 1   # noqa: B023
                 if onda.notas.get("plus_decide"):
@@ -139,6 +155,9 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                 resumenes = vivir(mundo, latidos=latidos, semilla=semilla, generaciones=generaciones, tabula_rasa=True,
                                   consola=False, datos=datos, al_latir=al_latir, sin_experiencia=sin_exp,
                                   arquetipo_inicial=PERFILES[perfil])
+            for i, r in enumerate(resumenes):
+                if mundo == "crafter":
+                    r["noches"] = noches_por_vida[i] if i < len(noches_por_vida) else 0
             vidas = [_metricas(mundo, r) for r in resumenes]
             causas = [_causa(r, finales[i] if i < len(finales) else {}) for i, r in enumerate(resumenes)]
             filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas, "indicadores": ind})
@@ -159,7 +178,7 @@ def comparar(base: str, nueva: str) -> None:
     with open(nueva, encoding="utf-8") as f:
         b = json.load(f)
     mundo = a["mundo"]
-    metricas = list(a["filas"][0]["vidas"][0])
+    metricas = list(dict.fromkeys(list(a["filas"][0]["vidas"][0]) + list(b["filas"][0]["vidas"][0])))
     print(f"\n### {mundo} (N = {len(SEMILLAS)} linajes, IC 95 %; Δ = nueva − base, pareado por semilla)\n")
     print("| Grupo | Métrica | Base | Nueva | Δ pareado |\n|---|---|---|---|---|")
     for grupo, _, _ in GRUPOS:
@@ -169,8 +188,8 @@ def comparar(base: str, nueva: str) -> None:
         if not semillas:
             continue
         for m in metricas:
-            xa = [statistics.fmean(v[m] for v in fa[s]["vidas"]) for s in semillas]
-            xb = [statistics.fmean(v[m] for v in fb[s]["vidas"]) for s in semillas]
+            xa = [statistics.fmean(v.get(m, 0.0) for v in fa[s]["vidas"]) for s in semillas]
+            xb = [statistics.fmean(v.get(m, 0.0) for v in fb[s]["vidas"]) for s in semillas]
             print(f"| {grupo} | {m} | {_ic(xa)} | {_ic(xb)} | {_ic([y - x for x, y in zip(xa, xb, strict=True)])} |")
     print("\n| Grupo | Versión | Latidos | Plazo agotado | S3 sin amplitud o potencia | Potencia media S1 / S2 / S3 por latido | ms por latido |")
     print("|---|---|---|---|---|---|---|")
