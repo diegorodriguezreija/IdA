@@ -884,7 +884,8 @@ def _trazar_anidar(fase: str, pos: Optional[Pos], motivo: str) -> None:
 def _buscar_madriguera(ctx: Contexto) -> Optional[Dict[str, Any]]:
     """Busca en Exterocepcion un frente de roca válido para excavar la madriguera:
     Casillas: E (fuera, transitable), C1 y C2 (dos casillas seguidas hacia dentro que sean piedra o path).
-    Condición: C1 y C2 son piedra (o path) y las casillas que las rodean (salvo E, C1 y C2) son intransitables.
+    Condición completa: C1 y C2 son piedra (o path) y todas las casillas que las rodean
+    en 8 direcciones (salvo E, C1 y C2) son intransitables (roca ciega).
     """
     pos = _posicion(ctx)
     if pos is None:
@@ -896,6 +897,8 @@ def _buscar_madriguera(ctx: Contexto) -> Optional[Dict[str, Any]]:
     candidatas_e = sorted(transitables, key=lambda c: _dist(pos, c))
 
     dirs = ((0, -1), (0, 1), (-1, 0), (1, 0))
+    vecinos_8 = [(vx, vy) for vx in (-1, 0, 1) for vy in (-1, 0, 1) if not (vx == 0 and vy == 0)]
+
     for e in candidatas_e:
         for d in dirs:
             c1 = (e[0] + d[0], e[1] + d[1])
@@ -905,9 +908,9 @@ def _buscar_madriguera(ctx: Contexto) -> Optional[Dict[str, Any]]:
             if not (c1_es_roca and c2_es_roca):
                 continue
             exclusiones = {e, c1, c2}
-            vecinos_c1 = {(c1[0] + vd[0], c1[1] + vd[1]) for vd in dirs} - exclusiones
-            vecinos_c2 = {(c2[0] + vd[0], c2[1] + vd[1]) for vd in dirs} - exclusiones
-            entorno = vecinos_c1 | vecinos_c2
+            entorno_c1 = {(c1[0] + vx, c1[1] + vy) for vx, vy in vecinos_8} - exclusiones
+            entorno_c2 = {(c2[0] + vx, c2[1] + vy) for vx, vy in vecinos_8} - exclusiones
+            entorno = entorno_c1 | entorno_c2
             if any(vc in transitables for vc in entorno):
                 continue
             return {"e": e, "c1": c1, "c2": c2, "dir": d}
@@ -1014,6 +1017,12 @@ class Anidar(Definicion):
         luz = _luz(ctx)
         pos = _posicion(ctx)
 
+        salud = inv.get("health", 9.0)
+        sed = inv.get("drink", 9.0)
+        hambre = inv.get("food", 9.0)
+        critico = (salud <= 3.0 or sed <= 2.0 or hambre <= 2.0)
+        debe_salir = (luz >= 0.5 or critico)
+
         if not tiene_pico:
             fase = "equipar"
         else:
@@ -1024,23 +1033,29 @@ class Anidar(Definicion):
                 if self.madriguera is not None and hasattr(ctx, "extra") and "mundo" in ctx.extra:
                     ctx.extra["mundo"].madriguera = self.madriguera
             if self.madriguera is None:
-                fase = "sin_sitio" if luz < 0.6 else "ir_sitio"
+                fase = "sin_sitio" if luz < 0.65 else "ir_sitio"
             else:
                 c1, c2, e = self.madriguera["c1"], self.madriguera["c2"], self.madriguera["e"]
                 vistas = list(ctx.onda.ev("Exterocepcion").values())
                 piedras = {tuple(p.carga["datos"]["pos"]) for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})}
                 e_tapado = e in piedras
+
                 if pos == c2 and e_tapado:
-                    fase = "dormir" if luz < 0.5 else "salir"
-                elif pos == c1 and self.fase_previa in ("dormir", "salir") and luz >= 0.5:
+                    fase = "salir" if debe_salir else "dormir"
+                elif (pos == c1 or pos == c2) and debe_salir:
                     fase = "salir"
+                elif pos == e and debe_salir:
+                    fase = "ir_sitio"
                 elif pos in (e, c1, c2):
                     fase = "entrar_tapar"
                 else:
                     fase = "ir_sitio"
 
         if fase != self.fase_previa:
-            _trazar_anidar(fase, pos, f"cambio de {self.fase_previa} a {fase}")
+            motivo = f"cambio de {self.fase_previa} a {fase}"
+            if critico and fase == "salir":
+                motivo = "salida anticipada por necesidad critica (salud/sed/hambre)"
+            _trazar_anidar(fase, pos, motivo)
             self.fase_previa = fase
         return fase
 
@@ -1053,10 +1068,23 @@ class Anidar(Definicion):
         if pos is None:
             return None
 
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+
+        # Beber antes de entrar si tiene sed y aún no anochece del todo
+        sed = inv.get("drink", 9.0)
+        if sed < 7.0 and luz >= 0.35 and (self.madriguera is None or pos not in (self.madriguera["c1"], self.madriguera["c2"])):
+            aguas = [p for p in vistas if p.clase == "agua" and "pos" in p.carga.get("datos", {})]
+            if aguas:
+                cercana_agua = min(aguas, key=lambda a: _dist(pos, tuple(a.carga["datos"]["pos"])))
+                a_pos = tuple(cercana_agua.carga["datos"]["pos"])
+                if _dist(pos, a_pos) <= 1:
+                    return Propuesta(Verbo.COMER, cercana_agua.id, 0.95, 0.95, "anidar: beber agua antes de entrar", clase="agua")
+                elif self.madriguera is None or _dist(pos, self.madriguera["e"]) > 2 or _dist(pos, a_pos) <= 2:
+                    return _navegar_hacia(ctx, a_pos)
+
         # 1. Fase equipar
         if not tiene_pico:
             madera = inv.get("wood", 0)
-            vistas = list(ctx.onda.ev("Exterocepcion").values())
             mesas = [p for p in vistas if p.clase == "mesa" and "pos" in p.carga.get("datos", {})]
             mesa_cerca = any(_dist(pos, tuple(m.carga["datos"]["pos"])) <= 1 for m in mesas)
             if mesa_cerca and madera >= 1:
@@ -1092,10 +1120,9 @@ class Anidar(Definicion):
         if self.madriguera is None:
             self.madriguera = _buscar_madriguera(ctx)
         if self.madriguera is None:
-            if luz < 0.6:
+            if luz < 0.65:
                 _trazar_anidar("sin_sitio", pos, "anochecer sin frente de roca valido: delegando en huir/defenderse")
                 return None
-            vistas = list(ctx.onda.ev("Exterocepcion").values())
             piedras_dict = {p.id: p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})}
             candidatos_rocas = {p.id: tuple(p.carga["datos"]["pos"]) for p in piedras_dict.values()}
             roca_id = self.tracker_roca.actualizar(pos, ctx.latido, candidatos_rocas)
@@ -1113,13 +1140,47 @@ class Anidar(Definicion):
             return self._explorar_rumbo(ctx, vistas, pos, "frente de roca")
 
         e, c1, c2, d = self.madriguera["e"], self.madriguera["c1"], self.madriguera["c2"], self.madriguera["dir"]
-        vistas = list(ctx.onda.ev("Exterocepcion").values())
         piedras = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.clase == "piedra" and "pos" in p.carga.get("datos", {})}
         lugares = {tuple(p.carga["datos"]["pos"]): p for p in vistas if p.rasgo("lugar") >= 0.5 and "pos" in p.carga.get("datos", {})}
 
-        # Si aún no está en la madriguera: acopio al paso si es de día; si no, navegar a E
+        fase = estrategia.carga.get("paso", "ir_sitio")
+
+        # Salir de la madriguera: con luz >= 0.5 o necesidad crítica
+        if fase == "salir":
+            if pos == c2:
+                if c1 in lugares:
+                    return Propuesta(Verbo.MOVER, lugares[c1].id, 0.95, 0.98, "anidar: avanzar a C1 para salir", clase="suelo")
+            if pos == c1:
+                if e in piedras:
+                    return Propuesta(Verbo.COGER, piedras[e].id, 0.96, 0.98, "anidar: picar piedra en E para salir", clase="piedra")
+                if e in lugares:
+                    return Propuesta(Verbo.MOVER, lugares[e].id, 0.92, 0.98, "anidar: salir a exterior E", clase="suelo")
+            if pos == e:
+                if luz >= 0.5:
+                    self.madriguera = None
+                    if hasattr(ctx, "extra") and "mundo" in ctx.extra:
+                        ctx.extra["mundo"].madriguera = None
+                return None
+
+        # Dormir en C2 protegida con E tapado
+        if fase == "dormir":
+            if pos == c2 and e in piedras:
+                if inv.get("energy", 9.0) < 9.0:
+                    return Propuesta(Verbo.DORMIR, "", 0.96, 0.98, "anidar: durmiendo en C2 protegida", clase="")
+                return Propuesta(Verbo.ESPERAR, "", 0.80, 0.95, "anidar: esperando amanecer en C2 protegida", clase="")
+            fase = "entrar_tapar"
+
+        salud = inv.get("health", 9.0)
+        hambre = inv.get("food", 9.0)
+        critico = salud <= 3.0 or sed <= 2.0 or hambre <= 2.0
+        debe_salir = luz >= 0.5 or critico
+
+        # Si aún no está en la madriguera: navegar hacia E
         if pos != e and pos != c1 and pos != c2:
             if luz >= 0.65:
+                self.madriguera = None
+                if hasattr(ctx, "extra") and "mundo" in ctx.extra:
+                    ctx.extra["mundo"].madriguera = None
                 madera = inv.get("wood", 0)
                 piedra = inv.get("stone", 0)
                 if madera < 5:
@@ -1134,48 +1195,40 @@ class Anidar(Definicion):
                             return Propuesta(Verbo.COGER, p_roca.id, 0.76, 0.85, "anidar: acopiar piedra al paso", clase="piedra")
             return _navegar_hacia(ctx, e)
 
-        # 3. Fase entrar_tapar
+        # 3. Fase entrar_tapar: excava C1 y C2, duerme en C2, tapa la casilla exterior E
         if pos == e:
+            if debe_salir:
+                if luz >= 0.5:
+                    self.madriguera = None
+                    if hasattr(ctx, "extra") and "mundo" in ctx.extra:
+                        ctx.extra["mundo"].madriguera = None
+                return None
             if c1 in piedras:
-                return Propuesta(Verbo.COGER, piedras[c1].id, 0.92, 0.95, "anidar: picar roca C1", clase="piedra")
+                return Propuesta(Verbo.COGER, piedras[c1].id, 0.94, 0.98, "anidar: picar roca C1", clase="piedra")
             if c1 in lugares:
-                return Propuesta(Verbo.MOVER, lugares[c1].id, 0.9, 0.95, "anidar: entrar a C1", clase="suelo")
+                return Propuesta(Verbo.MOVER, lugares[c1].id, 0.92, 0.98, "anidar: entrar a C1", clase="suelo")
 
         if pos == c1:
             if c2 in piedras:
-                return Propuesta(Verbo.COGER, piedras[c2].id, 0.92, 0.95, "anidar: picar roca C2", clase="piedra")
+                return Propuesta(Verbo.COGER, piedras[c2].id, 0.94, 0.98, "anidar: picar roca C2", clase="piedra")
             if c2 in lugares:
-                # Comprobar si E ya está tapado
                 if e in piedras:
-                    return Propuesta(Verbo.MOVER, lugares[c2].id, 0.9, 0.95, "anidar: pasar al fondo C2", clase="suelo")
-                # E aún no está tapado
-                if cara == (-d[0], -d[1]):
+                    return Propuesta(Verbo.MOVER, lugares[c2].id, 0.95, 0.98, "anidar: pasar al fondo C2 a dormir", clase="suelo")
+                dir_hacia_e = (-d[0], -d[1])
+                if cara == dir_hacia_e:
                     if inv.get("stone", 0) >= 1:
-                        return Propuesta(Verbo.USAR, "place_stone", 0.95, 0.95, "anidar: tapar entrada E con piedra",
+                        return Propuesta(Verbo.USAR, "place_stone", 0.96, 0.98, "anidar: tapar entrada E con piedra",
                                          clase="place_stone", datos={"receta": "place_stone"})
-                # Si no está mirando a E, ir a C2 para poder volver hacia C1 mirando a E
-                return Propuesta(Verbo.MOVER, lugares[c2].id, 0.9, 0.95, "anidar: avanzar a C2", clase="suelo")
+                    return Propuesta(Verbo.MOVER, lugares[c2].id, 0.90, 0.95, "anidar: pasar al fondo C2 sin piedra", clase="suelo")
+                return Propuesta(Verbo.MOVER, lugares[c2].id, 0.90, 0.95, "anidar: avanzar a C2 para orientarse a E", clase="suelo")
 
         if pos == c2:
-            if e not in piedras and c1 in lugares:
-                # Volver a C1: queda mirando a E
-                return Propuesta(Verbo.MOVER, lugares[c1].id, 0.9, 0.95, "anidar: volver a C1 mirando a E", clase="suelo")
-            # E tapado y en C2: dormir si es noche
-            if luz < 0.5:
-                if inv.get("energy", 9) < 9:
-                    return Propuesta(Verbo.DORMIR, "", 0.9, 0.95, "anidar: dormir a salvo", clase="")
-                return Propuesta(Verbo.ESPERAR, "", 0.75, 0.9, "anidar: esperar amanecer a salvo", clase="")
-            # Amaneció (luz >= 0.5): salir
-            if c1 in lugares:
-                return Propuesta(Verbo.MOVER, lugares[c1].id, 0.88, 0.95, "anidar: avanzar a C1 para salir", clase="suelo")
+            if inv.get("stone", 0) >= 1 and e not in piedras and c1 in lugares:
+                return Propuesta(Verbo.MOVER, lugares[c1].id, 0.95, 0.98, "anidar: volver a C1 mirando a E", clase="suelo")
+            if inv.get("energy", 9.0) < 9.0:
+                return Propuesta(Verbo.DORMIR, "", 0.96, 0.98, "anidar: durmiendo en C2 protegida", clase="")
+            return Propuesta(Verbo.ESPERAR, "", 0.80, 0.95, "anidar: esperando amanecer en C2 protegida", clase="")
 
-        # 4. Fase salir
-        if luz >= 0.5:
-            if pos == c1:
-                if e in piedras:
-                    return Propuesta(Verbo.COGER, piedras[e].id, 0.92, 0.95, "anidar: picar piedra en E para salir", clase="piedra")
-                if e in lugares:
-                    return Propuesta(Verbo.MOVER, lugares[e].id, 0.88, 0.95, "anidar: salir a E", clase="suelo")
         return None
 
 
