@@ -160,7 +160,12 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                     r["noches"] = noches_por_vida[i] if i < len(noches_por_vida) else 0
             vidas = [_metricas(mundo, r) for r in resumenes]
             causas = [_causa(r, finales[i] if i < len(finales) else {}) for i, r in enumerate(resumenes)]
-            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas, "indicadores": ind})
+            logros_vidas = [
+                {k: v for k, v in (r.get("puntuacion", {}).get("logros", {}) or {}).items() if v > 0}
+                for r in resumenes
+            ] if mundo == "crafter" else []
+            filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas,
+                          "logros": logros_vidas, "indicadores": ind})
             print(f"{mundo} {grupo} semilla {semilla}: {len(vidas)} vidas", flush=True)
     with open(salida, "w", encoding="utf-8") as f:
         json.dump({"mundo": mundo, "filas": filas}, f)
@@ -215,6 +220,21 @@ def comparar(base: str, nueva: str) -> None:
         cb = Counter(c for r in b["filas"] if r["grupo"] == grupo for c in r.get("causas", []))
         for causa in sorted(set(ca) | set(cb)):
             print(f"| {grupo} | {causa} | {ca.get(causa, 0)} | {cb.get(causa, 0)} |")
+
+    # Comparación de logros por tipo si están disponibles (Crafter)
+    tiene_logros = any("logros" in r for r in a.get("filas", []) + b.get("filas", []))
+    if mundo == "crafter" and tiene_logros:
+        print("\n### Logros por tipo (total de vidas que lo consiguen en los 4 grupos, N = 120 vidas)")
+        print("| Logro | Vidas base | Vidas nueva | Δ vidas |\n|---|---|---|---|")
+        todos_logros = set()
+        for d in (a, b):
+            for r in d.get("filas", []):
+                for lv in r.get("logros", []):
+                    todos_logros.update(lv.keys())
+        for logro in sorted(todos_logros):
+            va = sum(1 for r in a.get("filas", []) for lv in r.get("logros", []) if lv.get(logro, 0) > 0)
+            vb = sum(1 for r in b.get("filas", []) for lv in r.get("logros", []) if lv.get(logro, 0) > 0)
+            print(f"| {logro} | {va} | {vb} | {vb - va:+d} |")
     filas_b = [r for r in b["filas"] if r["indicadores"].get("estrategias")]
     if not filas_b:
         return
