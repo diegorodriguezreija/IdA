@@ -16,7 +16,12 @@ Implementa solo el bloque que te encarguen. Lo que el borrador describe para otr
 Tras el bloque D la base (Core y sistemas) queda congelada como referencia ([`docs/REFERENCIA_BASE.md`](docs/REFERENCIA_BASE.md)). Mientras dure esta fase:
 
 - **Solo se tocan `ida/mundos/` y sus tests.** Ni `ida/core/` ni `ida/sistemas/`, sin excepción.
-- **Las mejoras son estrategias, impulsos o percepción del mundo:** estrategias propias (`Mundo.estrategias_propias`, que pueden sustituir a una genérica con su mismo nombre), necesidades e intenciones declaradas en el `Perfil`, o rasgos y datos que el sensor entrega. Nunca un componente que proponga acciones directamente.
+- **Las mejoras son estrategias, impulsos, percepción o interpretación del mundo:**
+  - **Componentes propios del mundo** (`Mundo.componentes_propios`, por etapa: `"CORE.Sentir"`, `"S1.Interpretar"`, `"S3.Reaccionar"`...) para percepción, interpretación e impulsos, **siempre produciendo piezas de su propio tipo** (un tipo nuevo del mundo, nunca uno de un componente de la base).
+  - **Estrategias propias** (`Mundo.estrategias_propias`, que pueden sustituir a una genérica con su mismo nombre).
+  - Necesidades e intenciones declaradas en el `Perfil`, y rasgos y datos que el sensor entrega.
+- **Las acciones, solo mediante estrategias del mundo** (`estrategias_propias`). Ningún componente propio propone acciones directamente.
+- **Mecanismos de memoria (bloques E y F):** están en el código, apagados en todos los mundos. Un mundo solo los activa en su `Perfil` (`mecanismos`) si un benchmark pareado (N = 10) demuestra su valor frente a la referencia ([`docs/VEREDICTO_E_F.md`](docs/VEREDICTO_E_F.md)).
 - **Regla 3:** las estrategias leen solo la percepción (piezas de la Onda), no el estado interno del mundo.
 - **Regla 4:** nada de secuencias de acciones cableadas para un fin concreto; una estrategia es una máquina de estados con fases que responde a lo percibido.
 - **Si una mejora necesita cambiar la base, se anota y no se hace.** Va a la lista de pendientes para el bloque E o posteriores.
