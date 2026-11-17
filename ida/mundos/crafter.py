@@ -1116,6 +1116,23 @@ class RefugioNocturno(Definicion):
         self.pasos_rumbo = 1
         return Propuesta(Verbo.MOVER, elegido.id, ar, conf, motivo, clase=elegido.clase)
 
+    def _entrada_insegura(self, ctx: Contexto, pos: Pos, mina: Tuple[Pos, Pos], ar: float, conf: float) -> Optional[Propuesta]:
+        """Antes de sellar (el jugador ya está en e2 o e3): si hay un hostil percibido dentro de la galería
+        (e1 a e3), despejarlo con la espada si está al lado o esperar a que se aparte; sellar con él dentro lo
+        encerraría con el durmiente. Un hostil en e0 no lo impide: la piedra en e1 lo deja fuera."""
+        e0, (dx, dy) = mina
+        galeria = [(e0[0] + k * dx, e0[1] + k * dy) for k in (1, 2, 3)]
+        dentro = [p for p in ctx.onda.ev("Exterocepcion").values()
+                  if p.clase in ("zombi", "esqueleto") and "pos" in p.carga.get("datos", {})
+                  and tuple(p.carga["datos"]["pos"]) in galeria and tuple(p.carga["datos"]["pos"]) != pos]
+        if not dentro:
+            return None
+        cerca = [h for h in dentro if _dist(pos, tuple(h.carga["datos"]["pos"])) == 1]
+        if cerca and _tiene_espada(ctx) and _salud(ctx) >= 4:
+            return Propuesta(Verbo.ATACAR, cerca[0].id, ar, conf, f"refugio: despejar {cerca[0].clase} antes de sellar",
+                             clase=cerca[0].clase)
+        return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: esperar a que el hostil salga de la galería")
+
     def _abastecer(self, ctx: Contexto, pos: Pos, inv: Dict[str, float], ar: float, conf: float) -> Optional[Propuesta]:
         """Mañana fuera del refugio: ir a beber o comer (agua del mapa recordado, comida percibida o vacas
         vistas hace poco), eligiendo el objetivo por cercanía y por el déficit de cada reserva, y apartarse
@@ -1366,6 +1383,9 @@ class RefugioNocturno(Definicion):
             e1 = (e0[0] + dx, e0[1] + dy)
             e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
             e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+            despejar = self._entrada_insegura(ctx, pos, mina, max(ar, 0.9), max(conf, 0.9))
+            if despejar is not None:
+                return despejar
             if pos == e3:
                 # Retroceder 1 casilla hacia e2: deja al jugador en e2 mirando hacia e1 (-dx, -dy)
                 return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", max(ar, 0.9), max(conf, 0.9),
