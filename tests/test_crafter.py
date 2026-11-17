@@ -42,3 +42,21 @@ def test_coger_sin_obtener_nada_no_es_exito(mundo):
 def test_vida_corta_en_crafter(tmp_path):
     r = ejecutar("crafter", latidos=80, semilla=3, consola=False, datos=str(tmp_path))[0]
     assert r["latidos"] > 0 and "logros" in r["puntuacion"]
+
+
+def test_dotacion_innata_y_alarma_hostiles(mundo):
+    from ida.core.memoria import Memoria
+    from ida.core.vocabulario import Relacion
+    from ida.mundos.crafter import asegurar_dotacion_innata, DOTACION_INNATA, HOSTILES
+
+    mem = Memoria("completa")
+    asegurar_dotacion_innata(mem)
+    for sujeto, relacion, confianza in DOTACION_INNATA:
+        assert (sujeto, relacion) in mem.saber
+        p = mem.saber[(sujeto, relacion)]
+        assert p.confianza == pytest.approx(0.95)
+
+    assert HOSTILES["zombi"] == 1.0
+    assert HOSTILES["esqueleto"] == 1.0
+    assert HOSTILES["flecha"] == 1.0
+    assert HOSTILES["lava"] == 1.0

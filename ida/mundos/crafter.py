@@ -27,14 +27,15 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
+from ida.core.memoria import Proposicion
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.core.vocabulario import Relacion, Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
-HOSTILES = {"zombi": 0.8, "esqueleto": 0.7, "flecha": 0.5, "lava": 1.0}
+HOSTILES = {"zombi": 1.0, "esqueleto": 1.0, "flecha": 1.0, "lava": 1.0}
 MOVIMIENTOS = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
 LETRA = {"arbol": "T", "agua": "~", "piedra": "#", "carbon": "c", "hierro": "i", "diamante": "D", "mesa": "M", "horno": "H",
          "lava": "!", "vaca": "v", "zombi": "Z", "esqueleto": "S", "planta": "p", "flecha": "-"}
@@ -42,6 +43,31 @@ LOGROS = 22
 INVENTARIO = {"wood": "madera", "stone": "piedra", "coal": "carbon", "iron": "hierro", "diamond": "diamante", "sapling": "retoño",
               "wood_pickaxe": "pico_madera", "stone_pickaxe": "pico_piedra", "iron_pickaxe": "pico_hierro",
               "wood_sword": "espada_madera", "stone_sword": "espada_piedra", "iron_sword": "espada_hierro"}
+
+DOTACION_INNATA: List[Tuple[str, Relacion, float]] = [
+    ("zombi", Relacion.PELIGROSO, 0.95),
+    ("esqueleto", Relacion.PELIGROSO, 0.95),
+    ("vaca", Relacion.NUTRITIVO, 0.95),
+    ("planta", Relacion.NUTRITIVO, 0.95),
+    ("agua", Relacion.NUTRITIVO, 0.95),
+    ("arbol", Relacion.UTIL, 0.95),
+    ("piedra", Relacion.UTIL, 0.95),
+]
+
+
+def asegurar_dotacion_innata(memoria: Any) -> None:
+    """Asegura la dotación innata de Crafter (trust 0,95) en la memoria semántica del individuo."""
+    if memoria is None or not getattr(memoria, "activa", False):
+        return
+    saber = getattr(memoria, "saber", None)
+    if saber is None:
+        return
+    for sujeto, relacion, confianza in DOTACION_INNATA:
+        if (sujeto, relacion) not in saber:
+            p = Proposicion(sujeto, relacion, confianza=confianza)
+            p.confirmaciones = Proposicion.CONFIRMACIONES_MINIMAS - 1
+            p.heredada = True
+            saber[(sujeto, relacion)] = p
 
 Pos = Tuple[int, int]
 
