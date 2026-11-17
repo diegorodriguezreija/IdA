@@ -160,10 +160,14 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                     r["noches"] = noches_por_vida[i] if i < len(noches_por_vida) else 0
             vidas = [_metricas(mundo, r) for r in resumenes]
             causas = [_causa(r, finales[i] if i < len(finales) else {}) for i, r in enumerate(resumenes)]
-            logros_vidas = [
-                {k: v for k, v in (r.get("puntuacion", {}).get("logros", {}) or {}).items() if v > 0}
-                for r in resumenes
-            ] if mundo == "crafter" else []
+            logros_vidas = []
+            if mundo == "crafter":
+                for r in resumenes:
+                    raw_l = (r.get("puntuacion") or {}).get("logros", [])
+                    if isinstance(raw_l, dict):
+                        logros_vidas.append(list(raw_l.keys()))
+                    else:
+                        logros_vidas.append(list(raw_l))
             filas.append({"grupo": grupo, "semilla": semilla, "vidas": vidas, "causas": causas,
                           "logros": logros_vidas, "indicadores": ind})
             print(f"{mundo} {grupo} semilla {semilla}: {len(vidas)} vidas", flush=True)
@@ -230,10 +234,10 @@ def comparar(base: str, nueva: str) -> None:
         for d in (a, b):
             for r in d.get("filas", []):
                 for lv in r.get("logros", []):
-                    todos_logros.update(lv.keys())
+                    todos_logros.update(lv if isinstance(lv, list) else lv.keys())
         for logro in sorted(todos_logros):
-            va = sum(1 for r in a.get("filas", []) for lv in r.get("logros", []) if lv.get(logro, 0) > 0)
-            vb = sum(1 for r in b.get("filas", []) for lv in r.get("logros", []) if lv.get(logro, 0) > 0)
+            va = sum(1 for r in a.get("filas", []) for lv in r.get("logros", []) if (logro in lv if isinstance(lv, (list, set, dict)) else False))
+            vb = sum(1 for r in b.get("filas", []) for lv in r.get("logros", []) if (logro in lv if isinstance(lv, (list, set, dict)) else False))
             print(f"| {logro} | {va} | {vb} | {vb - va:+d} |")
     filas_b = [r for r in b["filas"] if r["indicadores"].get("estrategias")]
     if not filas_b:
