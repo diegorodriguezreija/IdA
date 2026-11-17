@@ -828,10 +828,11 @@ class PlanTecnologico(Plan, ConPropuestas):
     impulsos = ("progresar",)
     prioridad = 10
     agotable = False
-    OBJETIVOS = ["place_table", "make_wood_pickaxe", "make_wood_sword", "place_stone", "make_stone_pickaxe",
-                 "make_stone_sword", "place_furnace", "make_iron_pickaxe", "make_iron_sword"]
+    OBJETIVOS = ["place_stone", "make_stone_pickaxe", "make_stone_sword", "place_furnace",
+                 "make_iron_pickaxe", "make_iron_sword"]
     RECURSO = {"wood": "arbol", "stone": "piedra", "coal": "carbon", "iron": "hierro"}
-    LOGROS_PLAN = set(OBJETIVOS) | {"collect_diamond", "collect_iron", "collect_coal", "place_plant", "collect_sapling"}
+    LOGROS_PLAN = set(OBJETIVOS) | {"place_table", "make_wood_pickaxe", "make_wood_sword",
+                                    "collect_diamond", "collect_iron", "collect_coal", "place_plant", "collect_sapling"}
 
     def __init__(self, constantes: Any):
         super().__init__()

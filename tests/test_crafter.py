@@ -101,3 +101,11 @@ def test_estrategia_anidar_fases(mundo, capsys):
         org.latir()
     captured = capsys.readouterr()
     assert "[anidar] paso:" in captured.out
+
+
+def test_plan_tecnologico_recortado(mundo):
+    from ida.mundos.crafter import PlanTecnologico
+
+    assert "place_table" not in PlanTecnologico.OBJETIVOS
+    assert "make_wood_pickaxe" not in PlanTecnologico.OBJETIVOS
+    assert "place_furnace" in PlanTecnologico.OBJETIVOS
