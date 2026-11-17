@@ -344,17 +344,30 @@ class MundoCrafter(Mundo):
                 if _dist(c, dpos) < _dist(pos, dpos):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
-            novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
+            if ultima is None:
+                novedad = 1.0
+            else:
+                delta = self.t - ultima
+                if delta < 8:
+                    novedad = 0.05 * (delta / 8.0)
+                else:
+                    novedad = min(1.0, (delta - 8) / 42.0)
             if self.madriguera is not None:
                 dist_hogar = _dist(c, self.madriguera["e"])
                 if dist_hogar > 12:
-                    novedad = max(0.1, novedad * (1.0 - min(0.8, (dist_hogar - 12) / 6.0)))
+                    novedad = max(0.05, novedad * (1.0 - min(0.8, (dist_hogar - 12) / 6.0)))
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
                                                                        "nutritivo": nutritivo, "novedad": novedad}, {"pos": c, "terreno": mat}))
 
+        cuerpo: Dict[str, Any] = {"orientacion": (int(p.facing[0]), int(p.facing[1]))}
+        if self.madriguera is not None:
+            e = self.madriguera["e"]
+            cuerpo["vector_refugio"] = (e[0] - pos[0], e[1] - pos[1])
+            cuerpo["distancia_refugio"] = _dist(pos, e)
+
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
-                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1]))}, ambiente={"luz": float(w.daylight)})
+                           cuerpo=cuerpo, ambiente={"luz": float(w.daylight)})
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -452,7 +465,9 @@ class MundoCrafter(Mundo):
         return {"S1.Interpretar": [EvaluacionNido()]}
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia(), Anidar()], "S3": [PlanTecnologico(self.constantes)]}
+        return {"S1": [DefensaArmada(), CerrarDistancia(), Anidar()],
+                "S2": [ExplorarCrafter()],
+                "S3": [PlanTecnologico(self.constantes)]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -575,6 +590,110 @@ def _luz(ctx: Contexto) -> float:
     return float(a.carga.get("luz", 1.0)) if a is not None else 1.0
 
 
+def _vector_refugio(ctx: Contexto) -> Optional[Tuple[int, int]]:
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    if yo is not None:
+        v = yo.carga.get("cuerpo", {}).get("vector_refugio")
+        if v is not None:
+            return (int(v[0]), int(v[1]))
+    return None
+
+
+class ExplorarCrafter(Definicion):
+    """Exploración con rumbo persistente e integración de camino para Crafter.
+
+    Mantiene un rumbo hasta encontrar un obstáculo, un hallazgo o un número de pasos;
+    penaliza las casillas visitadas hace poco (inhibición de retorno) y conserva el vector
+    hacia el refugio.
+    """
+
+    nombre = "explorar"
+    impulsos = ("exploracion",)
+    prioridad = 15
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.rumbo: Optional[Tuple[int, int]] = None
+        self.pasos_rumbo: int = 0
+        self.max_pasos: int = 12
+        self.vector_refugio: Optional[Tuple[int, int]] = None
+        self.pos_previa: Optional[Tuple[int, int]] = None
+        self.recientes: Dict[Tuple[int, int], int] = {}
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        yo = ctx.onda.ev("Propiocepcion").get("yo")
+        if yo is None:
+            return False
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+        if any(p.rasgo("peligro") >= 0.5 for p in vistas) or ctx.soma.hambre() > 0.7:
+            return False
+        return True
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        pos = _posicion(ctx)
+        if pos is None:
+            return None
+
+        self.recientes[pos] = ctx.latido
+        if len(self.recientes) > 30:
+            viejo = ctx.latido - 30
+            self.recientes = {k: v for k, v in self.recientes.items() if v >= viejo}
+
+        v_ref = _vector_refugio(ctx)
+        if v_ref is not None:
+            self.vector_refugio = v_ref
+
+        if self.pos_previa == pos:
+            self.rumbo = None
+            self.pasos_rumbo = 0
+        self.pos_previa = pos
+
+        vistas = list(ctx.onda.ev("Exterocepcion").values())
+        lugares = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.4 and "pos" in p.carga.get("datos", {})]
+        if not lugares:
+            self.rumbo = None
+            return None
+
+        # Hallazgo: objeto útil al alcance
+        objetos_alcance = [p for p in vistas if p.rasgo("recurso") >= 0.5 and p.rasgo("peligro") < 0.4 and "pos" in p.carga.get("datos", {}) and _dist(pos, tuple(p.carga["datos"]["pos"])) <= 1]
+        if objetos_alcance:
+            self.rumbo = None
+            self.pasos_rumbo = 0
+            mejor_obj = max(objetos_alcance, key=lambda o: float(o.rasgo("recurso")))
+            return Propuesta(Verbo.COGER, mejor_obj.id, 0.45, 0.7, f"explorar: coger {mejor_obj.clase}", clase=mejor_obj.clase)
+
+        if self.pasos_rumbo >= self.max_pasos:
+            self.rumbo = None
+            self.pasos_rumbo = 0
+
+        mapa_lugares = {tuple(p.carga["datos"]["pos"]): p for p in lugares}
+        if self.rumbo is not None:
+            dest = (pos[0] + self.rumbo[0], pos[1] + self.rumbo[1])
+            if dest in mapa_lugares:
+                self.pasos_rumbo += 1
+                p_dest = mapa_lugares[dest]
+                return Propuesta(Verbo.MOVER, p_dest.id, 0.40, 0.75, "explorar: mantener rumbo persistente", clase=p_dest.clase)
+            else:
+                self.rumbo = None
+                self.pasos_rumbo = 0
+
+        def evaluar(lugar: Pieza) -> float:
+            lpos = tuple(lugar.carga["datos"]["pos"])
+            s = float(lugar.rasgo("novedad")) - float(lugar.rasgo("peligro"))
+            t_visita = self.recientes.get(lpos)
+            if t_visita is not None:
+                delta = ctx.latido - t_visita
+                s -= max(0.0, 0.8 * (1.0 - delta / 15.0))
+            return s
+
+        mejor = max(lugares, key=evaluar)
+        m_pos = tuple(mejor.carga["datos"]["pos"])
+        self.rumbo = (m_pos[0] - pos[0], m_pos[1] - pos[1])
+        self.pasos_rumbo = 1
+        self.max_pasos = 10
+        return Propuesta(Verbo.MOVER, mejor.id, 0.38, 0.75, "explorar: nuevo rumbo persistente", clase=mejor.clase)
+
+
 class EvaluacionNido(Componente):
     """Componente propio de Crafter en S1.Interpretar.
 
@@ -678,6 +797,56 @@ class Anidar(Definicion):
         super().__init__()
         self.madriguera: Optional[Dict[str, Any]] = None
         self.fase_previa: Optional[str] = None
+        self.rumbo_explorar: Optional[Tuple[int, int]] = None
+        self.pasos_rumbo: int = 0
+        self.pos_previa: Optional[Tuple[int, int]] = None
+        self.recientes: Dict[Tuple[int, int], int] = {}
+
+    def _explorar_rumbo(self, ctx: Contexto, vistas: List[Pieza], pos: Pos, motivo: str) -> Optional[Propuesta]:
+        self.recientes[pos] = ctx.latido
+        if len(self.recientes) > 30:
+            viejo = ctx.latido - 30
+            self.recientes = {k: v for k, v in self.recientes.items() if v >= viejo}
+
+        if self.pos_previa == pos:
+            self.rumbo_explorar = None
+            self.pasos_rumbo = 0
+        self.pos_previa = pos
+
+        lugares = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6 and "pos" in p.carga.get("datos", {})]
+        if not lugares:
+            self.rumbo_explorar = None
+            return None
+
+        if self.pasos_rumbo >= 10:
+            self.rumbo_explorar = None
+            self.pasos_rumbo = 0
+
+        mapa_lugares = {tuple(p.carga["datos"]["pos"]): p for p in lugares}
+        if self.rumbo_explorar is not None:
+            dest = (pos[0] + self.rumbo_explorar[0], pos[1] + self.rumbo_explorar[1])
+            if dest in mapa_lugares:
+                self.pasos_rumbo += 1
+                p_dest = mapa_lugares[dest]
+                return Propuesta(Verbo.MOVER, p_dest.id, 0.72, 0.82, f"anidar: rumbo persistente hacia {motivo}", clase=p_dest.clase)
+            else:
+                self.rumbo_explorar = None
+                self.pasos_rumbo = 0
+
+        def evaluar(lugar: Pieza) -> float:
+            lpos = tuple(lugar.carga["datos"]["pos"])
+            s = float(lugar.rasgo("novedad")) - float(lugar.rasgo("peligro"))
+            t_visita = self.recientes.get(lpos)
+            if t_visita is not None:
+                delta = ctx.latido - t_visita
+                s -= max(0.0, 0.8 * (1.0 - delta / 15.0))
+            return s
+
+        mejor = max(lugares, key=evaluar)
+        m_pos = tuple(mejor.carga["datos"]["pos"])
+        self.rumbo_explorar = (m_pos[0] - pos[0], m_pos[1] - pos[1])
+        self.pasos_rumbo = 1
+        return Propuesta(Verbo.MOVER, mejor.id, 0.70, 0.80, f"anidar: nuevo rumbo hacia {motivo}", clase=mejor.clase)
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
         return impulso == "preparar_nido" and intensidad > 0.05
@@ -750,12 +919,8 @@ class Anidar(Definicion):
                 if _dist(pos, c_pos) <= 1:
                     return Propuesta(Verbo.COGER, cercano.id, 0.85, 0.9, "anidar: talar madera", clase="arbol")
                 return _navegar_hacia(ctx, c_pos)
-            # Explorar para encontrar árboles
-            lugares_explorar = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
-            if lugares_explorar:
-                mejor = max(lugares_explorar, key=lambda l: float(l.rasgo("novedad")))
-                return Propuesta(Verbo.MOVER, mejor.id, 0.7, 0.8, "anidar: buscar arboles", clase=mejor.clase)
-            return None
+            # Explorar para encontrar árboles con rumbo persistente
+            return self._explorar_rumbo(ctx, vistas, pos, "arboles")
 
         # 2. Fase ir_sitio / localizar madriguera
         if self.madriguera is None:
@@ -769,11 +934,8 @@ class Anidar(Definicion):
             if piedras_cerca:
                 cercana = min(piedras_cerca, key=lambda p: _dist(pos, tuple(p.carga["datos"]["pos"])))
                 return _navegar_hacia(ctx, tuple(cercana.carga["datos"]["pos"]))
-            lugares_roca = [p for p in vistas if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.6]
-            if lugares_roca:
-                mejor = max(lugares_roca, key=lambda l: float(l.rasgo("novedad")))
-                return Propuesta(Verbo.MOVER, mejor.id, 0.7, 0.8, "anidar: buscar frente de roca", clase=mejor.clase)
-            return None
+            # Explorar para encontrar frente de roca con rumbo persistente
+            return self._explorar_rumbo(ctx, vistas, pos, "frente de roca")
 
         e, c1, c2, d = self.madriguera["e"], self.madriguera["c1"], self.madriguera["c2"], self.madriguera["dir"]
         vistas = list(ctx.onda.ev("Exterocepcion").values())
