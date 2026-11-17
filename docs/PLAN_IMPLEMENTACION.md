@@ -278,6 +278,14 @@ Cada mecanismo va detrás de un interruptor del `Perfil` (por ejemplo `memoria.b
 
 **Rendimiento y supervisión:** como en E. Nada caro dentro del latido; medir milisegundos por latido. Ante una duda, la opción más simple, anotada. Si se acerca el límite de cuota o de tiempo, commit y `docs/F_ESTADO.md`. Todo en español.
 
+**Veredicto de E y F (17/11/2026): la memoria, con su uso proactivo, no aporta con lo medido.** Ninguna mejora significativa en ningún mundo ni perfil frente a `base-v2.0`; un empeoramiento significativo (Crafter Valiente, −0,77 logros con E + F); los nueve resultados de logros de Crafter son negativos; en Archivos, 3 muertes más por hambre por perfil; cada latido entre un 7 % y un 14 % más lento. Causa: ninguna decisión depende de algo que solo E y F sepan, y los mundos actuales (vidas cortas, entornos estables) apenas exigen memoria. Detalle en `docs/VEREDICTO_E_F.md` y `docs/MEDICIONES_F.md`.
+
+**Decisión del autor:** fusionar el código de E y F con todos sus mecanismos apagados por defecto (la conducta sigue siendo la de `base-v2.0`), con el tope de 64 Creencias y la herencia configurable; etiqueta `base-v2.1` tras la fusión. Cada mecanismo se activará por mundo solo donde se demuestre su valor.
+
+**Pendiente de memoria:** unificar el modelo de transiciones de F1 con el grafo semántico; medir la memoria en escenarios que la exijan (recursos que se agotan o se mueven, clases nuevas parecidas a otras conocidas, ciclos como las noches de Crafter); traer de la Fase 5 la dotación innata por mundo (`Mundo.dotacion_innata()` y la fuente "instinto", refutable), que hoy no está en `main`.
+
+**Reglas de la fase de mundos, afinadas:** componentes propios del mundo permitidos para percepción, interpretación e impulsos, siempre con piezas de su propio tipo; las acciones solo mediante estrategias del mundo; ni `ida/core/` ni `ida/sistemas/`.
+
 **Objetivo:** dar a las relaciones de S1, S2 y S3 los datos que acordamos, sin cambiar cómo decide IdA: cambian los datos con los que decide. Se lanza cuando C esté aceptado, **en una sola interacción**.
 
 **Referencia:** `docs/REDISENO_BASE.md`, decisiones 8, 9 y 12. Base: `main` con el bloque C fusionado.
@@ -344,3 +352,4 @@ Se detallan como encargo cuando termine el anterior. A partir del bloque B la co
 | 2026-11-16 | Bloque D aceptado. Pasos antes de la mejora de mundos: calibración, referencia congelada y reglas para el otro modelo. |
 | 2026-11-16 | Base congelada en base-v2.0. Encargo del bloque E (E0 a E7) para trabajo sin supervisión, en paralelo a la mejora de mundos. |
 | 2026-11-16 | Estado de E (infraestructura, sin fusionar). Encargo del bloque F (Expectativa y Plan) sobre la rama de E, con veredicto conjunto. |
+| 2026-11-17 | Veredicto de E y F: no aportan con lo medido. Fusión con mecanismos apagados (base-v2.1). Reglas de la fase de mundos afinadas. |
