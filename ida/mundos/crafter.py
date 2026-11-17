@@ -25,7 +25,7 @@ Componente propio:
 import collections
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.arquitectura import Contexto
+from ida.core.arquitectura import Componente, Contexto
 from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
 from ida.core.memoria import Proposicion
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
@@ -111,7 +111,8 @@ class MundoCrafter(Mundo):
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
-                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0)),
+                                 Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
+                                 Necesidad("preparar_nido", ("nido",), 100.0, "recurso")),
                     intenciones=("progresar",))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
@@ -126,6 +127,7 @@ class MundoCrafter(Mundo):
         self.visitas: Dict[Pos, int] = {}
         self.t = 0
         self.fin = False
+        self.madriguera: Optional[Dict[str, Any]] = None
         self._tk: Any = None
         self._label: Any = None
         self._photo: Any = None
@@ -143,6 +145,7 @@ class MundoCrafter(Mundo):
         mundo.reset = reset_ordenado
         self.env.reset()
         self.visitas, self.t, self.fin = {}, 0, False
+        self.madriguera = None
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
@@ -191,11 +194,57 @@ class MundoCrafter(Mundo):
     def inventario(self) -> Dict[str, int]:
         return dict(self.jugador.inventory)
 
+    def _en_refugio_cerrado(self) -> bool:
+        """Determina si el jugador se encuentra en una celda protegida/sellada (madriguera)."""
+        if self.env is None:
+            return False
+        w = self.env._world
+        pos = tuple(self.jugador.pos)
+        adyacentes_transitables = 0
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            c = (pos[0] + dx, pos[1] + dy)
+            if not (0 <= c[0] < w.area[0] and 0 <= c[1] < w.area[1]):
+                continue
+            mat, obj = w[c]
+            if mat in self.constantes.walkable and obj is None:
+                adyacentes_transitables += 1
+        if adyacentes_transitables == 0:
+            return True
+        if self.madriguera is not None:
+            c1, c2, e = self.madriguera.get("c1"), self.madriguera.get("c2"), self.madriguera.get("e")
+            if pos in (c1, c2) and e is not None:
+                mat_e, obj_e = w[e]
+                if mat_e not in self.constantes.walkable or obj_e is not None:
+                    return True
+        return False
+
+    def _calcular_nido(self) -> float:
+        """Constante vital 'nido' (0-100). Déficit = (100 - nido) / 100."""
+        w = self.env._world
+        inv = self.jugador.inventory
+        luz = float(w.daylight)
+        tiene_pico = (inv["wood_pickaxe"] >= 1 or inv["stone_pickaxe"] >= 1 or inv["iron_pickaxe"] >= 1)
+        tiene_madera = inv["wood"] >= 2
+
+        if self._en_refugio_cerrado():
+            return 100.0
+        if luz < 0.3:
+            return 0.0
+        if luz < 0.6:
+            factor_luz = max(0.0, (luz - 0.3) / 0.3)
+            return max(0.0, 50.0 * factor_luz)
+        if not tiene_pico:
+            return 40.0 if not tiene_madera else 50.0
+        if inv["stone"] < 1:
+            return 70.0
+        return 85.0
+
     def _vitales(self) -> Dict[str, float]:
         inv = self.jugador.inventory
         return {"vitalidad": self.jugador.health / 9 * 100, "alimentacion": min(inv["food"], inv["drink"]) / 9 * 100,
                 "energia": inv["energy"] / 9 * 100, "descanso": inv["energy"] / 9 * 100,
-                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100}
+                "comida": inv["food"] / 9 * 100, "agua": inv["drink"] / 9 * 100,
+                "nido": self._calcular_nido()}
 
     # --- percepción ----------------------------------------------------------
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:
@@ -216,6 +265,26 @@ class MundoCrafter(Mundo):
                         self._ids[obj] = f"{clase}_{len(self._ids) + 1}"
                     cosas.append((self._ids[obj], clase, (x, y), obj))
         return cosas
+
+    def _valor_recurso(self, clase: str) -> float:
+        """Da valor a la madera y la piedra según lo que falte y lo que ya se lleva."""
+        inv = self.jugador.inventory
+        tiene_pico = (inv["wood_pickaxe"] >= 1 or inv["stone_pickaxe"] >= 1 or inv["iron_pickaxe"] >= 1)
+        if clase == "arbol":
+            if inv["wood"] < 2:
+                return 0.95
+            if not tiene_pico and inv["wood"] < 4:
+                return 0.85
+            return 0.4
+        if clase == "piedra":
+            if tiene_pico and inv["stone"] < 1:
+                return 0.95
+            if tiene_pico and inv["stone"] < 3:
+                return 0.75
+            return 0.4
+        if clase in ("carbon", "hierro", "diamante"):
+            return 0.6
+        return 0.0
 
     def _deseo(self, clase: str, obj: Any) -> float:
         """Aliestesia: lo que vale cada cosa para el cuerpo depende de lo que le falta."""
@@ -242,7 +311,7 @@ class MundoCrafter(Mundo):
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
                 "nutritivo": self._deseo(clase, obj),
                 "peligro": HOSTILES.get(clase, 0.0),
-                "recurso": 0.6 if clase in ("arbol", "piedra", "carbon", "hierro", "diamante") else 0.0,
+                "recurso": self._valor_recurso(clase),
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }, {"pos": cpos}))
         deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) > 0.1]
@@ -360,6 +429,9 @@ class MundoCrafter(Mundo):
     def logros(self) -> List[str]:
         a = self.jugador.achievements
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
+
+    def componentes_propios(self) -> Dict[str, list]:
+        return {"S1.Interpretar": [EvaluacionNido()]}
 
     def estrategias_propias(self) -> Dict[str, list]:
         return {"S1": [DefensaArmada(), CerrarDistancia()], "S3": [PlanTecnologico(self.constantes)]}
@@ -483,6 +555,34 @@ def _terreno(ctx: Contexto) -> Dict[Pos, str]:
 def _luz(ctx: Contexto) -> float:
     a = ctx.onda.ev("Ambiente").get("ambiente")
     return float(a.carga.get("luz", 1.0)) if a is not None else 1.0
+
+
+class EvaluacionNido(Componente):
+    """Componente propio de Crafter en S1.Interpretar.
+
+    Interpreta el estado del nido y de los recursos necesarios, asegurando la
+    dotación innata en la memoria semántica del individuo. Produce una pieza
+    propia de tipo 'EvaluacionNido' en la Onda.
+    """
+
+    tipo = "EvaluacionNido"
+    entradas = ("Exterocepcion", "Propiocepcion", "Ambiente")
+
+    def reactiva(self, ctx: Contexto) -> None:
+        asegurar_dotacion_innata(ctx.memoria)
+        inv = _inventario(ctx)
+        luz = _luz(ctx)
+        tiene_pico = any(inv.get(k, 0) >= 1 for k in ("wood_pickaxe", "stone_pickaxe", "iron_pickaxe"))
+        madera = inv.get("wood", 0)
+        piedra = inv.get("stone", 0)
+        necesita_madera = madera < 2 or (not tiene_pico and madera < 3)
+        necesita_pico = not tiene_pico
+        urgencia_noche = 1.0 - luz if luz < 0.6 else 0.0
+
+        self.registrar(ctx, self.pieza(ctx, "estado_nido", arousal=max(urgencia_noche, 0.5 if necesita_pico else 0.0),
+                                       carga={"tiene_pico": tiene_pico, "madera": madera, "piedra": piedra,
+                                              "necesita_madera": necesita_madera, "necesita_pico": necesita_pico,
+                                              "luz": luz, "urgencia_noche": round(urgencia_noche, 3)}))
 
 
 class PlanTecnologico(Plan, ConPropuestas):

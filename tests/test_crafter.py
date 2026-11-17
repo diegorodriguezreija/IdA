@@ -60,3 +60,21 @@ def test_dotacion_innata_y_alarma_hostiles(mundo):
     assert HOSTILES["esqueleto"] == 1.0
     assert HOSTILES["flecha"] == 1.0
     assert HOSTILES["lava"] == 1.0
+
+
+def test_impulso_nido_y_recursos(mundo):
+    nec = {n.nombre: n for n in mundo.perfil.necesidades}
+    assert "preparar_nido" in nec
+    assert nec["preparar_nido"].constantes == ("nido",)
+
+    comps = mundo.componentes_propios()
+    assert "S1.Interpretar" in comps
+    assert any(c.tipo == "EvaluacionNido" for c in comps["S1.Interpretar"])
+
+    # Sin madera ni pico, el recurso arbol tiene valor alto
+    mundo.jugador.inventory["wood"] = 0
+    mundo.jugador.inventory["wood_pickaxe"] = 0
+    assert mundo._valor_recurso("arbol") > 0.8
+    obs = mundo.observar()
+    assert "nido" in obs.vitales
+    assert obs.vitales["nido"] <= 50.0
