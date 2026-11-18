@@ -998,15 +998,15 @@ class RefugioNocturno(Definicion):
         return max(0.0, (self.LUZ_PLENO_DIA - luz) / 0.5) + 0.3 * hostiles
 
     def _conviene_salir(self, ctx: Contexto, inv: Dict[str, float], luz: float, mina: Optional[Tuple[Pos, Pos]]) -> bool:
-        """Al amanecer, salir si la presión del hambre o la sed, modulada por la salud (capacidad de
-        afrontar lo que quede fuera), iguala o supera el riesgo exterior. Con reservas o agua dentro la
-        presión es baja y espera a pleno día; con poca salud la capacidad es baja y se queda."""
+        """Al amanecer, salir si la presión del hambre o la sed, modulada por la urgencia biológica
+        (forrajeo sensible al riesgo: mayor aceptación de riesgo cuanto más cerca de la muerte),
+        iguala o supera el riesgo exterior."""
         pos = _posicion(ctx)
         if pos is None:
             return False
         presion = self._presion_interna(inv, self._agua_accesible_dentro(mina) is not None)
-        capacidad = _salud(ctx) / 9.0
-        return presion * capacidad >= self._riesgo_exterior(ctx, luz, pos)
+        urgencia = 1.0 + (1.0 - _salud(ctx) / 9.0)      # de 1 (salud llena) a ~2 (a punto de morir)
+        return presion * urgencia >= self._riesgo_exterior(ctx, luz, pos)
 
     def _anticipa_refugio(self, luz: float, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> bool:
         """Indica si la luz restante frente al coste de llegar, abastecerse, cavar y sellar exige activar el repliegue."""
@@ -1444,9 +1444,10 @@ class RefugioNocturno(Definicion):
             # Dormir si falta energía (incluso con sed/hambre a 0: en Crafter dormir reduce a la mitad la tasa de degeneración)
             if inv.get("energy", 9) < 9:
                 return Propuesta(Verbo.DORMIR, "", 1.0, 1.0, "refugio: dormir a salvo")
-            # Mientras esté encerrado dentro del refugio esperando a que amanezca, prioridad máxima para que otra
-            # estrategia (p. ej. Alimentarse o Explorar) no mueva al jugador hacia el fondo e3 ni rompa el sello
-            return Propuesta(Verbo.ESPERAR, "", 1.0, 1.0, "refugio: esperar al amanecer")
+            # Mientras esté encerrado dentro del refugio esperando a que amanezca, esperar;
+            # la prioridad deja de ser 1,0/1,0 si hay presión interna (forrajeo sensible al riesgo)
+            p = self._presion_interna(inv, self._agua_accesible_dentro(mina) is not None)
+            return Propuesta(Verbo.ESPERAR, "", 1.0 - 0.3 * p, 1.0 - 0.3 * p, "refugio: esperar al amanecer")
 
         if fase == "amanecer":
             mina = estado.get("mina")
