@@ -141,7 +141,7 @@ Success: no issues found in 40 source files
 
 | Pieza | Commit | Hipótesis | Arnés (11–30, `--real`) | Validación (31–50) | Benchmark (1–10) | Decisión |
 |---|---|---|---|---|---|---|
-| **C.1** | `e0b5c7f` | Vidas selladas el día 1 $\ge 16/20$ sin perder `wake_up` dentro; tiempo por latido $\le +20\,\%$. | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)** (paso $\le 214$)<br>• Sin daño dentro: **16/16 (100 %)**<br>• `wake_up`: **16/20 (80,0 %)**<br>• Vivas al final: **4/20**<br>• Latidos medios: **398,2**<br>• Logros medios: **11,50**<br>• Tiempo/latido: **10,86 ms** | [No verificado: reservado para Flash] | [No verificado: reservado para Flash] | **Aceptada** |
+| **C.1** | `e0b5c7f` | Vidas selladas el día 1 $\ge 16/20$ sin perder `wake_up` dentro; tiempo por latido $\le +20\,\%$. | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)** (paso $\le 214$)<br>• Sin daño dentro: **16/16 (100 %)**<br>• `wake_up`: **16/20 (80,0 %)**<br>• Vivas al final: **4/20**<br>• Latidos medios: **398,2**<br>• Logros medios: **11,50**<br>• Tiempo/latido: **10,86 ms** | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)** (vs 12/20, +4 vidas)<br>• Agua dentro: **4/16 (25,0 %)**<br>• Vivas al final: **4/20** (vs 2/20)<br>• Latidos medios: **413,9** (vs 350,6)<br>• Criterio: del mismo orden que 11–30 (+4 vs +5 vidas) | • Latidos: **+52,60 ± 86,99** vs `ref_c0` (**+26,43 ± 102,50** vs `c0c_fix`)<br>• Noches: **+0,30 ± 0,38** vs `ref_c0`<br>• Vivas: **11/30** (vs 6/30 en `ref_c0`)<br>• Sed: **4/30** (vs 6 en `ref_c0`, 8 en `c0c_fix`)<br>• ms/latido: **5,24 ms** | **Aceptada** |
 
 ---
 
@@ -204,7 +204,7 @@ En el primer intento con el pseudocódigo literal se obtuvieron **14/20** vidas 
 
 ---
 
-### 2.6 Verificación de la base y tests
+### 2.7 Verificación de la base y tests
 
 Salida literal de los comandos de verificación:
 
@@ -222,7 +222,141 @@ PS F:\code\IdA> mypy ida
 Success: no issues found in 40 source files
 ```
 
-### 2.7 Estado de verificación de C.1
-- **Verificado:** Implementación de `_evaluar_recinto`, búsqueda acotada a distancia Manhattan $\le 20$, primitiva `_plan_mirar`, fase `tapar` y actualización de costes en `RefugioNocturno`; 5 tests unitarios en mapas sintéticos (`test_c1_1` a `test_c1_5`); arnés `--real` en semillas 11–30 con medición de tiempo por latido.
-- **No verificado:** Validación en semillas 31–50, benchmark rápido y benchmark completo (`c1_completo.json`), que quedan encargados a Flash según las instrucciones del usuario.
+---
+
+### 2.8 Validación de sobreajuste: semillas 31–50 (`--real`)
+
+Ejecución comparativa pareada en semillas 31–50 con el arnés `--real` (600 latidos, perfil Equilibrado) entre **C.0c-fix** (commit `2ffb684`, mediante `git worktree`) y **C.1** (commit `e0b5c7f`):
+
+| Métrica (semillas 31–50, N = 20) | C.0c-fix (`2ffb684`) | C.1 (`e0b5c7f`) | Δ (C.1 vs C.0c-fix) |
+|---|---|---|---|
+| **Vidas selladas el día 1 (paso $\le 300$)** | 12/20 (60,0 %) | **16/20 (80,0 %)** | **+4 vidas (+20,0 %)** |
+| **Agua accesible dentro del refugio** | 2/12 (16,7 %) | **4/16 (25,0 %)** | **+2 refugios con agua (+8,3 %)** |
+| **Comida media al salir del refugio** | 1,77 | 1,50 | -0,27 |
+| **Agua media al salir del refugio** | 2,08 | **3,25** | **+1,17** |
+| **Vivas al final (600 latidos)** | 2/20 (10,0 %) | **4/20 (20,0 %)** | **+2 vidas (+10,0 %)** |
+| **Latidos medios vividos** | 350,6 | **413,9** | **+63,3 latidos** |
+
+#### Muertes por causa en semillas 31–50
+| Causa de muerte | C.0c-fix | C.1 | Δ |
+|---|---|---|---|
+| **sed** | 6 | **3** | **-3** |
+| **zombi** | 4 | 5 | +1 |
+| **hambre** | 6 | 7 | +1 |
+| **esqueleto** | 2 | **1** | **-1** |
+| **vivas** | 2 | **4** | **+2** |
+
+#### Criterio de validación de sobreajuste
+**Confirmado:** La mejora de vidas selladas el día 1 en el conjunto de prueba (semillas 31–50) es de **+4 vidas** (pasando de 12 a 16, +20,0 %), exactamente del mismo orden que en el conjunto de diseño de semillas 11–30 (**+5 vidas**, pasando de 11 a 16, +25,0 %). En ambas baterías independientes de 20 vidas, C.1 alcanza un sellado nocturno en el día 1 del **80,0 % (16/20)**, superando holgadamente el criterio de no decaer en más de 2 vidas respecto a 11–30.
+
+#### Desglose por semilla en semillas 31–50
+| Semilla | C.0c-fix Sellada (paso) | C.0c-fix Resultado (L) | C.1 Sellada (paso) | C.1 Resultado (L) | C.1 Salida (comida, agua) |
+|---|---|---|---|---|---|
+| **31** | Sí (171) | sed (L323) | Sí (128) | sed (L295) | 0, 0 |
+| **32** | No | sed (L286) | **Sí (124)** | **Vive (L600)** | 0, 2 |
+| **33** | No | zombi (L190) | **Sí (180)** | sed (L318) | 1, 0 |
+| **34** | Sí (127) | zombi (L472) | Sí (128) | hambre (L355) | 1, 0 |
+| **35** | Sí (127) | hambre (L354) | No | zombi (L242) | — |
+| **36** | Sí (160) | hambre (L461) | Sí (133) | **Vive (L600)** | 3, 1 |
+| **37** | Sí (148) | Vive (L600) | No | zombi (L158) | — |
+| **38** | Sí (134) | hambre (L439) | Sí (135) | hambre (L496) | 2, 4 |
+| **39** | Sí (127) | hambre (L500) | Sí (136) | hambre (L491) | 5, 3 |
+| **40** | No | zombi (L145) | **Sí (125)** | **Vive (L600)** | 0, 9 |
+| **41** | Sí (131) | sed (L290) | Sí (168) | **Vive (L600)** | 0, 0 |
+| **42** | No | sed (L251) | No | zombi (L246) | — |
+| **43** | Sí (196) | sed (L283) | Sí (169) | sed (L297) | 4, 0 |
+| **44** | No | esqueleto (L184) | No | zombi (L255) | — |
+| **45** | No | hambre (L523) | **Sí (144)** | hambre (L489) | 4, 3 |
+| **46** | Sí (186) | sed (L391) | Sí (170) | esqueleto (L306) | 0, 9 |
+| **47** | No | zombi (L217) | **Sí (175)** | hambre (L599) | 1, 9 |
+| **48** | No | esqueleto (L153) | **Sí (181)** | zombi (L309) | 0, 1 |
+| **49** | Sí (129) | Vive (L600) | Sí (148) | hambre (L523) | 3, 9 |
+| **50** | Sí (130) | hambre (L350) | Sí (125) | hambre (L500) | 0, 2 |
+
+---
+
+### 2.9 Benchmark rápido: Equilibrado (10 linajes, 30 vidas)
+
+Fichero generado: `datos/benchmarks/c1_rapido.json`.  
+Comparación pareada frente a la referencia `datos/benchmarks/ref_c0.json` y frente a `datos/benchmarks/c0c_fix.json`:
+
+| Métrica | Base (`ref_c0`) | C.0c-fix | C.1 (`c1_rapido`) | Δ pareado vs `ref_c0` (IC 95 %) | Δ pareado vs C.0c-fix (IC 95 %) |
+|---|---|---|---|---|---|
+| **latidos** | 370,10 ± 66,57 | 396,27 ± 70,03 | **422,70 ± 74,92** | **+52,60 ± 86,99** | **+26,43 ± 102,50** |
+| **fitness** | 11315,50 ± 1407,01 | 11942,10 ± 1519,52 | **11734,53 ± 1299,05** | **+419,03 ± 1005,70** | -207,57 ± 1295,94 |
+| **logros** | 10,93 ± 1,36 | 11,53 ± 1,47 | **11,30 ± 1,23** | **+0,37 ± 0,94** | -0,23 ± 1,22 |
+| **noches** | 0,90 ± 0,28 | 1,03 ± 0,29 | **1,20 ± 0,30** | **+0,30 ± 0,38** | **+0,17 ± 0,41** |
+| **ms / latido** | 7,71 | 5,95 | **5,24** | **-2,47 ms** | **-0,71 ms** |
+
+#### Muertes por causa en Equilibrado (30 vidas)
+| Causa de muerte | Base (`ref_c0`) | C.0c-fix | C.1 (`c1_rapido`) | Δ (C.1 vs `ref_c0`) | Δ (C.1 vs C.0c-fix) |
+|---|---|---|---|---|---|
+| **vivas (a L600)** | 6 | 6 | **11** | **+5 (casi se duplica)** | **+5** |
+| **zombi** | 10 | 8 | **6** | **-4** | **-2** |
+| **sed** | 6 | 8 | **4** | **-2** | **-4** |
+| **hambre** | 6 | 7 | **6** | = 0 | -1 |
+| **esqueleto** | 2 | 1 | **3** | +1 | +2 |
+
+#### Logros destacados en Equilibrado (30 vidas)
+| Logro | Base (`ref_c0`) | C.0c-fix | C.1 | Observación |
+|---|---|---|---|---|
+| **wake_up** | 19 | 21 | **23** | +4 vidas despiertan tras dormir en refugio |
+| **make_stone_pickaxe** | 2 | 2 | **5** | +3 vidas alcanzan pico de piedra al sobrevivir |
+| **make_stone_sword** | 1 | 1 | **2** | +1 vida fabrica espada de piedra |
+| **collect_iron** | 0 | 0 | **1** | Primera recolección de hierro registrada |
+| **eat_plant** | 0 | 0 | **1** | Logro desbloqueado fuera de la rutina estándar |
+| **place_stone** | 21 | 23 | **25** | Incremento directo por colocación en `tapar` y cierre |
+
+---
+
+### 2.10 Diagnóstico de las semillas no selladas el día 1 en C.1 (15, 16, 24 y 26)
+
+En el arnés de semillas 11–30, 4 de las 20 vidas no llegaron a sellarse el primer día. El análisis detallado de los registros en los últimos 30 latidos antes de morir y del entorno espacial revela:
+
+#### 1. Semilla 15 (muerte por zombi en L169, paso 191)
+- **Fase en últimos 30 latidos:** `elegir_mina` (30/30).
+- **Estrategias ganadoras en últimos 30 latidos:** `huir` (18), `sobresalto` (6), `defensa_armada` (4), `refugio_nocturno` (1), `alimentarse` (1).
+- **Recinto candidato:** ninguno (`mina = None` durante toda la vida).
+- **Causa raíz:** En todo el mapa explorado por el individuo hasta el latido 100 hay **0 casillas de roca** (`ROCA_EXCAVABLE = 0`), y el inventario tenía `stone = 0`. El individuo apareció en una llanura abierta sin afloramientos rocosos en su campo visual. Al anochecer en campo abierto sin roca localizada, fue perseguido por zombis hasta morir.
+
+#### 2. Semilla 24 (muerte por zombi en L189, paso 207)
+- **Fase en últimos 30 latidos:** `elegir_mina` (30/30).
+- **Estrategias ganadoras en últimos 30 latidos:** `refugio_nocturno` (12), `huir` (10), `defensa_armada` (3), `sobresalto` (3), `alimentarse` (1), `defenderse` (1).
+- **Recinto candidato:** ninguno (`mina = None` durante toda la vida).
+- **Causa raíz:** Idéntica a la semilla 15. A L100 hay **0 casillas de roca** en todo el mapa explorado (`stone = 0`). Apareció en un bioma despejado sin vetas de piedra en su cono de exploración diurna, anocheciendo sin opción de recinto.
+
+#### 3. Semilla 26 (muerte por zombi en L271, paso 297)
+- **Fase en últimos 30 latidos:** `elegir_mina` (30/30).
+- **Estrategias ganadoras en últimos 30 latidos:** `None` (15, al ceder la estrategia por no anticipar de mañana), `huir` (8), `refugio_nocturno` (4), `sobresalto` (2), `alimentarse` (1).
+- **Recinto candidato:** localizó roca en `(44, 37)` con orientación `(1, 0)`.
+- **Causa raíz:** El jugador se hallaba en `(44, 31)` a 6 casillas del afloramiento y con `stone = 0`. Al llegar el ocaso sin piedra previa en el inventario para colocar las paredes faltantes, hostiles nocturnos bloquearon su aproximación. El individuo logró sobrevivir evadiendo zombis en campo abierto durante toda la primera noche (desde oscuridad total hasta la mañana siguiente, L250–L271 con luz 0,77), pero fue alcanzado por un zombi matutino antes de poder picar roca y sellar.
+
+#### 4. Semilla 16: Divergencia frente a la referencia (sellaba en paso 130)
+- **Comportamiento en referencia / C.0c-fix:**  
+  La búsqueda previa exigía estrictamente un túnel recto de 3 rocas macizas. En el área inicial solo existía un único candidato que cumplía este requisito: `((26, 32), (-1, 0))`, a solo 2 casillas del punto de inicio. El individuo se dirigió a él de inmediato, cavó en L111–L115 y completó el cierre en L119 (paso 131, luz 0,69), durmiendo a salvo.
+- **Comportamiento en C.1:**  
+  Al flexibilizar la búsqueda (`_evaluar_recinto`) para admitir recintos con paredes de piedra artificiales, el algoritmo detectó candidatos alternativos más lejanos: `((25, 29), (0, 1))` en L56, `((30, 40), (1, 0))` en L111 y `((36, 40), (-1, 0))` en L134. La heurística guió al individuo hacia el este hasta `pos = (36, 36)`. Al llegar allí con `stone = 0` y necesitar picar piedra para cerrar paredes, el anochecer cayó en campo abierto a L142 (luz 0,434). A L143 fue interceptado por un zombi en la oscuridad, muriendo en L155.
+- **Conclusión de la semilla 16:** La flexibilidad de C.1 permite encontrar refugio en biomas donde no hay 3 rocas en línea (beneficiando a semillas como 12, 13, 17, 20, 21, 22, 25, 27 que antes no sellaban), pero en casos límite como la 16 la presencia de múltiples candidatos semi-abiertos dispersos puede desviar al individuo lejos de una roca inmediata.
+
+---
+
+### 2.11 Pendientes fuera de este encargo
+
+- **Vaivén entre 2 casillas en mundo abierto (12/20 semillas en 11–30):**  
+  Tal como se diagnosticó en C.0c-2, el parche de destinos inalcanzables resolvió con éxito el atasco contra paredes de roca en la mina, pero en campo abierto 12 de las 20 vidas siguen presentando vaivén episódico (> 20 latidos entre 2 casillas transitables) debido a colisiones e interferencia de arbitraje entre `huir`, `sobresalto` y `alimentarse`. Este comportamiento queda registrado como pendiente fuera de este encargo para su tratamiento en una fase posterior.
+
+---
+
+### 2.12 Estado de verificación de C.1
+
+- **Verificado:**
+  1. Implementación de `_evaluar_recinto`, búsqueda acotada ($\le 20$), primitiva `_plan_mirar`, fase `tapar` y actualización de costes en `RefugioNocturno` (`ida/mundos/crafter.py`).
+  2. 5 tests unitarios sobre mapas sintéticos en `tests/test_crafter.py` pasando en verde.
+  3. Arnés `--real` en semillas 11–30: **16/20 selladas día 1**, 16/20 `wake_up`, 16/16 sin daño dentro, 10,86 ms/latido.
+  4. Validación de sobreajuste en semillas 31–50: **16/20 selladas día 1** (+4 vidas frente a C.0c-fix), 4 vivas, 413,9 latidos medios, confirmando ausencia de sobreajuste.
+  5. Benchmark rápido pareado en Equilibrado (`datos/benchmarks/c1_rapido.json`): **11/30 vivas** (frente a 6 en base), muertes por sed 4 (frente a 6 en base y 8 en C.0c-fix), 422,70 latidos medios, 5,24 ms/latido.
+  6. Diagnóstico de fases, recintos y causas en las 4 semillas no selladas día 1 (15, 16, 24, 26) y divergencia de la 16 frente a la referencia.
+  7. Pureza de framework intacta: `git diff --stat main...HEAD -- ida/core ida/sistemas` vacío.
+- **No verificado:** Benchmark completo de los 4 grupos (`c1_completo.json`), reservado para el cierre definitivo de la fase C según el plan.
+
 
