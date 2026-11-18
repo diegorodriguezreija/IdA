@@ -297,6 +297,31 @@ Si existen y no las ve, sigue el paso 2. Si no existen, se anota y se salta a C.
 - `eat_plant` ≥ 1 por día desde el día 2 en la mayoría de vidas;
 - los latidos medios suben.
 
+### 8.0 Ajuste tras C.3d: el huerto empieza el día 1 (prevalece sobre 8.3 donde choquen)
+
+**Datos** (apartado 7 de `INFORME_C.md`; arnés largo, semillas 11–30):
+- de 20 muertes, 10 ocurren el día 1, tras la primera noche, casi todas de hambre: comida 0 treinta latidos antes y agua llena;
+- se sale del refugio con comida 1–2 hacia el latido 280–300 y se muere entre el 317 y el 509;
+- la caza oportunista (C.3d) apenas cambia las vacas comidas en términos absolutos (12 → 13 de día), así que las vacas no bastan.
+
+**Consecuencia:** una planta tarda más de 300 pasos en madurar. Si se planta el día 2, llega tarde para la mitad de las vidas. **Hay que plantar el día 1, antes de sellar, junto al refugio elegido**:
+- plantada hacia el latido 110–150, madura hacia el 420–460, justo en la franja en que hoy se muere de hambre;
+- el individuo duerme a ≤ 18, así que la planta crece toda la noche;
+- los retoños ya se recogen el día 1 en el 100 % de las vidas (`collect_sapling` y `place_plant` 120/120), pero se plantan en campo abierto y las vacas se los comen.
+
+**Cambios respecto a 8.1–8.3:**
+1. **Bolsillo natural preferente:** una casilla de hierba a ≤ 6 de `e0` con **≥ 3 vecinos en cruz no transitables naturales** (roca, agua o árbol). El refugio suele estar en el borde roca–hierba, donde abundan. Cerrarlo solo cuesta **1 piedra**, la del acceso, y la da el propio cavado del refugio.
+2. **Cuándo:** el día 1, en cuanto hay recinto elegido (`mina_actual`), **solo mientras el presupuesto de luz lo permita**. Se suman al coste de `_coste_restante_pasos` los pasos del bolsillo (≈ 6–8 por planta). Si el margen no alcanza, no se planta: el refugio manda (las selladas el día 1 no pueden bajar de 32/40).
+3. **Primero 1–2 plantas el día 1;** el resto, hasta 4, los días siguientes con luz > 0,83 y saciado (8.3).
+4. **Redirigir la siembra temprana:** `PlanTecnologico` sigue plantando en campo abierto por el logro `place_plant`; no se toca. Los retoños para el huerto se recogen aparte (8.3, condición 2).
+5. **Cosecha:** como en 8.2. La motivación crece con el hambre y con la madurez esperada (latidos desde la plantación ≥ 300).
+
+**Hipótesis de C.4 (sustituye a la anterior).** Arnés largo (semillas 11–30, 3000 latidos) frente a C.3d:
+- `eat_plant` ≥ 1 en la mayoría de las vidas que pasan del latido 450;
+- bajan las muertes por hambre del día 1 (hoy 10/20 vidas mueren el día 1);
+- suben los latidos medios y la mediana;
+- en el arnés de 600 (semillas 11–50), las selladas el día 1 se mantienen en ≥ 32/40.
+
 ### 8.1 Bolsillo
 
 - **Bolsillo:** una casilla de hierba `B` con una planta y sus **4 vecinos en cruz no transitables**: agua, piedra, árbol, otra planta o pared del recinto. Ninguna criatura puede ponerse al lado, así que la planta no muere.
