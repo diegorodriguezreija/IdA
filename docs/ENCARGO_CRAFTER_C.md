@@ -67,7 +67,8 @@ Complementa la sección 3 de `ENCARGO_CRAFTER_NOCHE.md`.
 | C.1 | **Argon** | Recinto flexible (cavar y/o tapar) y primitiva de orientación | Arnés, semillas 31–50, rápido y completo |
 | C.2 | Flash | Reservas antes de sellar (**solo si hace falta** tras C.1) | Arnés y rápido |
 | C.3 | Flash | Línea base de horizonte largo | Arnés de 3000 latidos |
-| C.4 | **Argon** | Huerto en el recinto | Arnés largo, semillas 31–50 y completo |
+| C.3b | Flash | Patrulla de forrajeo (vacas que se reponen) | Arnés largo, arnés de 600 y rápido |
+| C.4 | **Argon** | Huerto en bolsillos cerrados junto al recinto | Arnés largo, semillas 31–50 y completo |
 
 **Reglas comunes:**
 - Una hipótesis por pieza; un commit por cambio.
@@ -257,55 +258,107 @@ Solo si, tras C.1, el arnés sigue mostrando más de 3 de 20 muertes por hambre 
 
 ---
 
-## 8. C.4: huerto en el recinto (Argon)
+## 7b. C.3b: patrulla de forrajeo (Flash)
 
-**Hipótesis:** con plantas protegidas en nichos junto al interior del recinto habitual, la comida deja de limitar. Frente a C.3, en el arnés largo:
-- `eat_plant` pasa de 0 a ≥ 1 por día en la mayoría de vidas;
-- los días vividos suben de forma significativa.
+**Datos de C.3** (semillas 11–20, 3000 latidos):
+- 0/10 vidas superan el latido 653;
+- tras la primera salida, todas las que sobreviven al amanecer mueren de hambre (latidos 428–653);
+- vacas comidas: 1–2 el día 0, ≤ 1 el día 1 y **0 el día 2**;
+- recinto repetido el 75 % de las noches y distancia máxima al recinto < 18 el 89 % de los días.
 
-### 8.1 Nicho
+**Mecánica** (`env.py:152-155`):
+- En cada chunk con ≥ 30 de hierba y 0 vacas, aparece una con probabilidad 0,01 cada 10 pasos, de media una cada ~1000 pasos por chunk.
+- Un área de campeo de radio 17 cubre unos 9 chunks: unas **2–3 vacas nuevas al día**, ≈ 12–18 de comida, si se encuentran.
+- El individuo ve a radio 4 (`crafter.py:94`) y `_explorar_con_rumbo` evita para siempre las casillas ya visitadas (`self.visitadas` no caduca). Por eso, tras el día 1, o no vuelve a mirar cerca o se aleja.
 
-Un **nicho** es una casilla de hierba `N`, lateral de `e2` o `e3`, cuyos otros 3 vecinos en cruz no son transitables desde fuera: pared natural, piedra colocada, otra planta, o `e1`/fondo si procede. Una planta en `N`:
-- se come desde la casilla interior de al lado, girando hacia ella porque está ocupada;
-- no la alcanza ninguna criatura.
+**Paso 1 (diagnóstico, sin cambiar código).** En el arnés largo, cada 50 latidos:
+- vacas que existen realmente a ≤ 17 del recinto (lectura del mundo, solo en la herramienta);
+- vacas que el individuo ha percibido en esos 50 latidos.
 
-Ejemplo (S3), con `X` y `I` como `e3` y `e2`:
+Si existen y no las ve, sigue el paso 2. Si no existen, se anota y se salta a C.4.
 
-```
-~  ~  ~  ~  ~
-#  P  X  P  #
-#  P  I  P  #
-   #  E  #
-```
+**Paso 2 (cambio). Hipótesis:** si las casillas visitadas «caducan» y la búsqueda de comida patrulla dentro del área de campeo, el individuo encuentra las vacas que se reponen. Se espera que suban las vacas comidas del día 1 en adelante y los latidos medios en el arnés largo.
+- `self.visitadas` pasa a `Dict[Pos, int]` (posición → último latido). Una casilla vuelve a contar como «no visitada» al cabo de 150 latidos.
+- En `_abastecer` y `provisiones`, cuando no hay comida conocida, `_explorar_con_rumbo` solo propone casillas a ≤ 17 del recinto recordado (`mina_recordada`, e2), si existe.
+- Sin componentes nuevos.
 
-### 8.2 Plan de S3, «asentarse»
+**Medición:**
+- arnés largo (semillas 11–20, 3000 latidos) frente a `c3_largo.json`;
+- arnés de 600 latidos (semillas 11–30);
+- benchmark rápido.
 
-Un `Plan` nuevo, con la estructura de `PlanTecnologico` y una intención nueva en el `Perfil` de Crafter. Solo avanza con **luz > 0,83 y comida y agua ≥ 6** (lección de B.2b y B.2d), y con un recinto recordado (`mina_recordada` o `memoria.hogar()`) a ≤ 17.
+---
+
+## 8. C.4: huerto en bolsillos cerrados (Argon)
+
+**Datos de C.3:** los recintos se eligen en roca; ninguno de 12 tiene hierba en los laterales del interior (tras `tapar`, los laterales son piedra). Así que el nicho dentro del recinto no se da por sí solo. Este diseño **no depende de la geometría del recinto**.
+
+**Hipótesis:** con 3–4 plantas en **bolsillos cerrados** a ≤ 6 del recinto habitual, la comida deja de limitar. En el arnés largo, frente a C.3b:
+- `eat_plant` ≥ 1 por día desde el día 2 en la mayoría de vidas;
+- los latidos medios suben.
+
+### 8.1 Bolsillo
+
+- **Bolsillo:** una casilla de hierba `B` con una planta y sus **4 vecinos en cruz no transitables**: agua, piedra, árbol, otra planta o pared del recinto. Ninguna criatura puede ponerse al lado, así que la planta no muere.
+- **Fila de bolsillos junto al agua:** plantas contiguas (cada planta hace de pared de la de al lado), el agua por un lado, piedra por el otro y en los extremos. Por ejemplo, 3 plantas cuestan unas 5 piedras, menos si hay árboles o roca.
+- **Planta madura:** el mundo la marca como nutritiva (`crafter.py:221`).
+
+  ```
+  ~  ~  ~  ~  ~
+  #  P  P  P  #     P planta; # piedra o pared natural
+     #  #  #        (para comer, se abre una # de abajo)
+  ```
+
+### 8.2 Ciclo de un bolsillo (usa `_plan_mirar` de C.1)
+
+1. **Preparar:** cerrar con piedra los vecinos de `B` salvo uno, el de acceso `A`.
+2. **Plantar:** llegar a `A` moviéndose hacia `B` → `place_plant`.
+3. **Cerrar:** apartarse y colocar piedra en `A` (`_plan_mirar(A)`).
+4. **Cosechar** (planta madura percibida):
+   - picar la piedra de `A` (devuelve la piedra; `A` queda como camino);
+   - entrar en `A` moviéndose hacia `B` → `COMER`;
+   - salir y volver a colocar piedra en `A`.
+
+   Son unos 8–10 pasos por cosecha. `A` es 1 casilla de camino por bolsillo.
+
+### 8.3 Plan de S3, «asentarse»
+
+Un `Plan` nuevo, con la estructura de `PlanTecnologico` y una intención nueva en el `Perfil` de Crafter. Solo avanza:
+- con luz > 0,83 y comida y agua ≥ 5 (lección de B.2b y B.2d), salvo cosechar, que se permite siempre que haya luz;
+- con un recinto recordado (`mina_recordada` o `memoria.hogar()`).
 
 Condiciones, en orden de prioridad. Se hace la primera incumplida que sea factible (estigmergia; regla 4):
-1. **Retoño:** si no lleva ninguno y faltan plantas, `COGER` hierba (probabilidad 0,1 por intento) a ≤ 6 del recinto.
-2. **Nicho:** si un lateral de hierba de `e2` o `e3` tiene un vecino exterior transitable, `place_stone` allí, usando `_plan_mirar`. Si no lleva piedra, la pica en la roca conocida más cercana que no sea pared del recinto.
-3. **Plantar:** si un nicho cerrado está libre y lleva retoño, `place_plant` usando `_plan_mirar` (la casilla está libre, así que hace falta llegar desde P).
-4. **Objetivo:** 4 plantas. Si en el arnés largo se pierden o no bastan, ampliar a 5–6.
+1. **Cosechar:** un bolsillo propio tiene la planta madura (la percibe al pasar) → ciclo de cosecha.
+2. **Retoño:** si faltan plantas y no lleva retoño → `COGER` hierba a ≤ 6 del recinto (probabilidad 0,1 por intento).
+3. **Piedra:** si lleva menos de 2 → picar la roca conocida más cercana que no sea pared del recinto ni de un bolsillo.
+4. **Bolsillo:** elegir la casilla de hierba a ≤ 6 del recinto con más vecinos ya no transitables (preferir junto al agua y junto a plantas propias) y completar los pasos 1–3 de 8.2.
+5. **Objetivo:** 4 plantas. Ampliar a 5–6 solo si el arnés largo lo pide.
 
-**Comer:** lo cubre `alimentarse` (S1), porque el mundo marca como nutritiva solo la planta madura (`crafter.py:221`). Hay que verificar que llega a comerla desde el interior. Si no llega, el cambio mínimo se hace en `RefugioNocturno.dormir`: si hay una planta madura en un lateral, girarse y comer, igual que hoy con el agua.
+Los bolsillos se guardan en el estado del plan: posición, acceso y latido de plantación (se reinicia al cosechar). Así se sabe cuándo volver aunque la planta madura no esté a la vista.
 
-**Elección del recinto:** sumar en `_evaluar_recinto` un bono por cada lateral de hierba de `e2` o `e3` que pueda ser nicho, y un bono mayor por cada planta ya plantada. Así el recinto con huerto se vuelve el hogar sin ningún interruptor.
+**Prioridad de cosecha:** la motivación crece de forma continua con el hambre y con la madurez esperada (latidos desde la plantación ≥ 300).
 
-**Memoria:** `recordar_lugar` ya se llama al sellar. El hogar surge del lugar con más bienestar.
+### 8.4 Riesgos que se miden (no se presuponen)
 
-### 8.3 Riesgos que se miden (no se presuponen)
+- Plantas destruidas (por causa), aunque el diseño debería dejarlas en 0.
+- Plantas que no crecen porque el individuo está a ≥ 18 (ya se mide la distancia diaria).
+- Coste de piedra: piedras colocadas y picadas por día.
+- Que cuidar el huerto quite tiempo a comer, beber y sellar (selladas el día 1 en el arnés de 600).
 
-- **Vacas o zombis dentro** con el individuo a ≥ 5 o 6 de distancia: en un recinto sellado el interior es de 2 casillas y está cerrado. Basta con comprobar las plantas destruidas y su causa.
-- **Plantas que no crecen** porque el individuo se aleja 18 o más de día.
+### 8.5 Tests (mapas sintéticos)
 
-### 8.4 Medición
+1. Bolsillo con 3 paredes naturales: el ciclo completo (plantar, cerrar, cosechar y volver a cerrar) es factible con `_plan_mirar`.
+2. Fila de 3 plantas junto al agua: orden factible.
+3. Sin piedra: el plan pica roca antes de preparar el bolsillo.
 
-- **Arnés largo** (semillas 11–20, 3000 latidos):
-  - plantas colocadas, maduradas, comidas y destruidas (con su causa);
+### 8.6 Medición
+
+- **Arnés largo** (semillas 11–20, 3000 latidos) frente a C.3b:
+  - plantas colocadas, maduradas, comidas y destruidas;
   - comida y agua mínimas de cada día;
   - días vividos y causa de la muerte.
-- **Validación** con las semillas 31–40.
+- **Arnés de 600 latidos** (semillas 11–30): selladas el día 1, que no deben bajar.
+- **Validación** con las semillas 31–40 (largo).
 - **Al cerrar, benchmark completo** (`c4_completo.json`).
 
 ---
