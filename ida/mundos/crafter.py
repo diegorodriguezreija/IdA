@@ -103,6 +103,7 @@ class MundoCrafter(Mundo):
         self.visitas: Dict[Pos, int] = {}
         self.t = 0
         self.fin = False
+        self._impacto_flecha = False
         self._tk: Any = None
         self._label: Any = None
         self._photo: Any = None
@@ -120,6 +121,7 @@ class MundoCrafter(Mundo):
         mundo.reset = reset_ordenado
         self.env.reset()
         self.visitas, self.t, self.fin = {}, 0, False
+        self._impacto_flecha = False
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
@@ -267,9 +269,19 @@ class MundoCrafter(Mundo):
         return {Verbo.MOVER, Verbo.COMER, Verbo.ATACAR, Verbo.COGER, Verbo.USAR, Verbo.DORMIR, Verbo.ESPERAR}
 
     def _paso(self, accion: str) -> None:
+        w = self.env._world
+        flechas_antes = {
+            id(o): (int(o.pos[0] + o.facing[0]), int(o.pos[1] + o.facing[1]))
+            for o in w.objects
+            if type(o).__name__ == "Arrow"
+        }
         _, _, terminado, _ = self.env.step(self.acciones[accion])
         self.t += 1
         self.fin = self.fin or terminado
+        pos_actual = (int(self.jugador.pos[0]), int(self.jugador.pos[1]))
+        flechas_ahora = {id(o) for o in w.objects if type(o).__name__ == "Arrow"}
+        impacto = any(target == pos_actual for fid, target in flechas_antes.items() if fid not in flechas_ahora)
+        self._impacto_flecha = getattr(self, "_impacto_flecha", False) or impacto
 
     def _posicion(self, objetivo: str) -> Optional[Pos]:
         partes = objetivo.rsplit("_", 2)
@@ -291,6 +303,7 @@ class MundoCrafter(Mundo):
         return True
 
     def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
+        self._impacto_flecha = False
         p = self.jugador
         antes = {"salud": p.health, **dict(p.inventory)}
         logros_antes = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
@@ -339,6 +352,27 @@ class MundoCrafter(Mundo):
             cerca = [c for c in self._cosas() if c[1] in HOSTILES and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
             if cerca:
                 causa = cerca[0][1]
+        if p.health <= 0:
+            danno_puntos = antes["salud"] - p.health
+            if self.env._world[tuple(p.pos)][0] == "lava":
+                causa = "lava"
+            elif getattr(self, "_impacto_flecha", False):
+                causa = "esqueleto"
+            else:
+                cerca_zombi = [c for c in self._cosas() if c[1] == "zombi" and _dist(tuple(p.pos), c[2]) <= 1]
+                cerca_esqueleto = [c for c in self._cosas() if c[1] == "esqueleto" and _dist(tuple(p.pos), c[2]) <= 5]
+                if cerca_zombi and (danno_puntos >= 2 or (inv["drink"] > 0 and inv["food"] > 0)):
+                    causa = "zombi"
+                elif inv["drink"] == 0:
+                    causa = "sed"
+                elif inv["food"] == 0:
+                    causa = "hambre"
+                elif cerca_zombi:
+                    causa = "zombi"
+                elif cerca_esqueleto:
+                    causa = "esqueleto"
+                elif inv.get("energy", 0) == 0:
+                    causa = "cansancio"
         ganados = [INVENTARIO.get(k, k) for k in inv if inv[k] > antes.get(k, 0) and k not in ("health", "food", "drink", "energy")]
         logros = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
         nuevos = sorted(logros - logros_antes)

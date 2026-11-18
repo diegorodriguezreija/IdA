@@ -81,3 +81,40 @@ def test_mapa_refugio_empieza_vacio_en_cada_vida(mundo):
     assert refugio.mapa == {}
     assert refugio.mina_recordada is None
     assert refugio.paso_oscuro is False
+
+
+def test_atribucion_causas_muerte(mundo):
+    # 1. Hambre cuando food == 0 en el paso de la muerte
+    mundo.jugador.health = 1
+    mundo.jugador.inventory["food"] = 0
+    mundo.jugador.inventory["drink"] = 5
+    mundo.jugador._recover = -15
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.causa == "hambre"
+    assert ef.muerte is True
+
+    # 2. Sed cuando drink == 0 en el paso de la muerte
+    mundo.reiniciar(1)
+    mundo.jugador.health = 1
+    mundo.jugador.inventory["food"] = 5
+    mundo.jugador.inventory["drink"] = 0
+    mundo.jugador._recover = -15
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.causa == "sed"
+    assert ef.muerte is True
+
+    # 3. Flecha de esqueleto impacta al jugador mortalmente
+    import numpy as np
+    from crafter import objects as crafter_objects
+
+    mundo.reiniciar(1)
+    mundo.jugador.health = 2
+    mundo.jugador.inventory["food"] = 5
+    mundo.jugador.inventory["drink"] = 5
+    pos_p = mundo.jugador.pos
+    flecha = crafter_objects.Arrow(mundo.env._world, pos_p - np.array([1, 0]), np.array([1, 0]))
+    mundo.env._world.add(flecha)
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.causa == "esqueleto"
+    assert ef.muerte is True
+
