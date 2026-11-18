@@ -197,3 +197,85 @@ En todas las vidas el primer atardecer (luz $< 0,5$) se alcanzó en el paso 148 
 3. **Herramientas de piedra:** Al atardecer, en 20 de 20 vidas (100 %) no había mesa de trabajo a distancia $\le 1$, y en 18 de 20 (90 %) faltaba madera (`madera = 0`). La mesa inicial queda abandonada en la zona de árboles mientras el agente se desplaza hacia la roca.
 4. **`wake_up` (caída frente a referencia):** En 7 de 20 vidas (35 %) el individuo nunca durmió porque murió al aire libre antes de completar el refugio (6 por zombi, 1 por esqueleto). En las 13 vidas que durmieron dentro del refugio sellado, el 89,6 % de las sesiones (43 de 48) alcanzaron el despertar natural con energía 9.
 5. **Muertes por esqueleto:** De 4 muertes atribuidas a esqueleto por Crafter, 2 eran falsos positivos (sed y hambre mal etiquetadas por proximidad). Las 4 muertes reales por esqueleto se debieron a individuos sorprendidos en el exterior o al salir del refugio por esqueletos generados en caminos naturales de cuevas (`worldgen`), nunca en casillas excavadas por el agente.
+
+
+---
+
+## 4. Ampliación del diagnóstico: Primera noche y reservas
+
+### E. Primera noche (todas las vidas)
+
+#### Fases de `RefugioNocturno` en la primera noche y momento de sellado
+Cada celda indica el paso de inicio de la fase y su duración acumulada en pasos durante el primer ciclo día/noche (hasta el paso 300 o fin de la vida).
+
+| Semilla | Madera (ini/dur) | Herram. (ini/dur) | Provis. (ini/dur) | Elegir mina (ini/dur) | Cavar (ini/dur) | Cerrarse (ini/dur) | Dormir (ini/dur) | Paso sello |
+|---|---|---|---|---|---|---|---|---|
+| 11 | p. 3 (17 p) | p. 20 (1 p) | p. 23 (73 p) | p. 21 (25 p) | p. 114 (10 p) | p. 129 (3 p) | p. 132 (150 p) | 130 |
+| 12 | p. 3 (39 p) | p. 42 (3 p) | p. 45 (34 p) | p. 69 (99 p) | — | — | — | nunca |
+| 13 | p. 3 (67 p) | p. 70 (7 p) | p. 77 (10 p) | p. 87 (31 p) | p. 118 (5 p) | p. 123 (3 p) | p. 126 (171 p) | 124 |
+| 14 | p. 3 (89 p) | p. 92 (2 p) | p. 125 (3 p) | p. 94 (21 p) | p. 112 (11 p) | p. 123 (5 p) | p. 134 (167 p) | 132 |
+| 15 | p. 3 (110 p) | p. 88 (5 p) | — | p. 118 (74 p) | — | — | — | nunca |
+| 16 | p. 3 (102 p) | p. 98 (3 p) | p. 108 (8 p) | p. 116 (6 p) | p. 122 (7 p) | p. 129 (3 p) | p. 132 (154 p) | 130 |
+| 17 | p. 3 (40 p) | p. 43 (6 p) | p. 49 (18 p) | p. 51 (59 p) | p. 126 (5 p) | p. 131 (3 p) | p. 134 (144 p) | 132 |
+| 18 | p. 3 (82 p) | p. 85 (17 p) | p. 102 (5 p) | p. 107 (68 p) | p. 175 (5 p) | p. 180 (3 p) | p. 183 (81 p) | 181 |
+| 19 | p. 3 (101 p) | p. 104 (7 p) | — | p. 111 (4 p) | p. 115 (7 p) | p. 122 (3 p) | p. 125 (176 p) | 123 |
+| 20 | p. 3 (28 p) | p. 31 (5 p) | p. 41 (38 p) | p. 36 (103 p) | — | — | — | nunca |
+| 21 | p. 3 (28 p) | p. 31 (61 p) | p. 92 (12 p) | p. 104 (171 p) | — | — | — | nunca |
+| 22 | p. 3 (85 p) | p. 88 (4 p) | p. 92 (9 p) | p. 97 (45 p) | p. 146 (5 p) | p. 151 (3 p) | p. 154 (109 p) | 152 |
+| 23 | p. 3 (24 p) | p. 27 (3 p) | p. 30 (90 p) | p. 33 (171 p) | p. 265 (5 p) | p. 270 (5 p) | — | nunca |
+| 24 | p. 3 (82 p) | p. 85 (7 p) | p. 92 (7 p) | p. 99 (109 p) | — | — | — | nunca |
+| 25 | p. 3 (37 p) | p. 40 (1 p) | p. 101 (6 p) | p. 41 (175 p) | — | — | — | nunca |
+| 26 | p. 3 (96 p) | p. 88 (5 p) | p. 104 (11 p) | p. 106 (186 p) | — | — | — | nunca |
+| 27 | p. 3 (116 p) | p. 92 (5 p) | p. 275 (26 p) | p. 124 (151 p) | — | — | — | nunca |
+| 28 | p. 3 (22 p) | p. 25 (5 p) | p. 30 (29 p) | p. 31 (62 p) | p. 121 (21 p) | p. 142 (3 p) | p. 145 (145 p) | 143 |
+| 29 | p. 3 (65 p) | p. 68 (1 p) | p. 69 (21 p) | p. 74 (139 p) | — | — | — | nunca |
+| 30 | p. 3 (65 p) | p. 68 (4 p) | p. 72 (15 p) | p. 87 (45 p) | p. 132 (5 p) | p. 137 (4 p) | p. 141 (133 p) | 138 |
+
+#### Elección de mina, entorno del chunk y vidas sin dormir
+- La aparición de zombis en un chunk de 12×12 requiere $\ge 50$ casillas de hierba (`crafter/env.py`, línea 147: `0 if space < 50 else 3.5 - 3 * light`).
+- Para las vidas que no llegaron a dormir, se indica la fase de RefugioNocturno en curso al morir y la cuenta de estrategias ganadoras en el Tribunal durante los últimos 20 latidos.
+
+| Semilla | Dist. piedra visible al inicio de `elegir_mina` | Dist. a mina finalmente elegida | Hierba en chunk mina (12×12) | ¿Llegó a dormir? | Fase al morir (si no durmió) | Estrategias ganadoras en Tribunal (últimos 20 latidos) |
+|---|---|---|---|---|---|---|
+| 11 | 2 casillas | 4 casillas | 99 casillas ($\ge 50$) | Sí | — | — |
+| 12 | Ninguna visible | Sin mina | Sin mina | No | elegir_mina | refugio_nocturno: 12, huir: 8 |
+| 13 | Ninguna visible | 16 casillas | 50 casillas ($\ge 50$) | Sí | — | — |
+| 14 | 2 casillas | 4 casillas | 90 casillas ($\ge 50$) | Sí | — | — |
+| 15 | 12 casillas | Sin mina | Sin mina | No | elegir_mina | huir: 12, sobresalto: 6, refugio_nocturno: 1, alimentarse: 1 |
+| 16 | 2 casillas | 19 casillas | 56 casillas ($\ge 50$) | Sí | — | — |
+| 17 | 9 casillas | 26 casillas | 13 casillas ($< 50$) | Sí | — | — |
+| 18 | 4 casillas | 15 casillas | 74 casillas ($\ge 50$) | Sí | — | — |
+| 19 | 1 casilla | 1 casilla | 134 casillas ($\ge 50$) | Sí | — | — |
+| 20 | 18 casillas | Sin mina | Sin mina | No | elegir_mina | refugio_nocturno: 14, huir: 5, sobresalto: 1 |
+| 21 | 2 casillas | Sin mina | Sin mina | No | elegir_mina | huir: 14, refugio_nocturno: 3, sobresalto: 2, defenderse: 1 |
+| 22 | Ninguna visible | 22 casillas | 11 casillas ($< 50$) | Sí | — | — |
+| 23 | 6 casillas | 32 casillas | 1 casilla ($< 50$) | Sí (día 1) | — | — |
+| 24 | Ninguna visible | Sin mina | Sin mina | No | elegir_mina | huir: 9, refugio_nocturno: 7, sobresalto: 3, defenderse: 1 |
+| 25 | 6 casillas | Sin mina | Sin mina | No | elegir_mina | sobresalto: 11, refugio_nocturno: 7, huir: 2 |
+| 26 | 2 casillas | 5 casillas | 20 casillas ($< 50$) | Sí (día 1) | — | — |
+| 27 | 3 casillas | Sin mina | Sin mina | Sí (día 1) | — | — |
+| 28 | 17 casillas | 24 casillas | 45 casillas ($< 50$) | Sí | — | — |
+| 29 | 9 casillas | Sin mina | Sin mina | No | elegir_mina | refugio_nocturno: 8, huir: 7, sobresalto: 5 |
+| 30 | 1 casilla | 7 casillas | 32 casillas ($< 50$) | Sí | — | — |
+
+---
+
+### F. Reservas (vidas que duermen al menos una vez)
+
+A continuación se detallan las 13 vidas que llegaron a dormir. Se registran las reservas de comida y agua al sellar y al salir del refugio, la distancia Manhattan mínima de la mina al agua más cercana en el mapa, y para las muertes por hambre o sed, el tramo temporal transcurrido desde la salida hasta el fallecimiento y la estrategia dominante en ese intervalo.
+
+| Semilla | Comida/Agua al sellar | Comida/Agua al salir | Dist. mina a agua | Causa de muerte real | Pasos salida → muerte | Estrategia dominante tras salir |
+|---|---|---|---|---|---|---|
+| 11 | 8 / 5 | 3 / 0 | 3 casillas | Sobrevive (600 latidos) | — | — |
+| 13 | 8 / 7 | 2 / 1 | 8 casillas | flecha (paso 507) | Murió por flecha | — |
+| 14 | 4 / 3 | No salió (murió dentro) | 10 casillas | sed (paso 337) | 0 pasos (murió dentro) | refugio_nocturno (fase dormir) |
+| 16 | 4 / 9 | 0 / 2 | 1 casilla | Sobrevive (600 latidos) | — | — |
+| 17 | 6 / 8 | 2 / 3 | 3 casillas | flecha (paso 348) | Murió por flecha | — |
+| 18 | 3 / 4 | 0 / 0 | 2 casillas | sed (paso 407) | 132 pasos | refugio_nocturno (abastecer, 84/104 L) |
+| 19 | 5 / 5 | 0 / 0 | 10 casillas | Sobrevive (600 latidos) | — | — |
+| 22 | 4 / 7 | 0 / 3 | 1 casilla | flecha (paso 331) | Murió por flecha | — |
+| 23 | No selló | Durmió fuera (p. 285) | 3 casillas | hambre (paso 327) | No selló (murió fuera) | — |
+| 26 | No selló | Durmió fuera (p. 280) | 1 casilla | hambre (paso 562) | No selló (murió fuera) | — |
+| 27 | No selló | Durmió fuera (p. 280) | Sin mina | sed (paso 320) | No selló (murió fuera) | — |
+| 28 | 6 / 8 | 1 / 2 | 7 casillas | Sobrevive (600 latidos) | — | — |
+| 30 | 4 / 7 | 0 / 9 (bebió dentro) | 1 casilla | hambre (paso 415) | 140 pasos | refugio_nocturno (abastecer, 72/92 L) |
