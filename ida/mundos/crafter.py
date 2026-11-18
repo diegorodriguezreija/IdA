@@ -566,9 +566,11 @@ class RefugioNocturno(Definicion):
         self.pasos_rumbo: int = 0
         self.dominante: bool = False   # usado solo por el arnés de prueba de la Fase A
         self.vacas: Dict[Pos, int] = {}
+        self.inalcanzables: Dict[Pos, int] = {}
 
     def _reiniciar_vida(self) -> None:
         self.vacas.clear()
+        self.inalcanzables.clear()
         self.mapa.clear()
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
@@ -875,7 +877,9 @@ class RefugioNocturno(Definicion):
         if not tiene_agua_dentro and inv.get("drink", 0) < 9:
             aguas_cerca = [
                 p for p, m in self.mapa.items()
-                if m == "water" and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+                if m == "water"
+                and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
+                and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
             ]
             hay_agua_viable = bool(aguas_cerca)
         comidas_visibles = [
@@ -953,7 +957,10 @@ class RefugioNocturno(Definicion):
             return self._guardar_estado(estado)
 
         # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar, o rescate de sed crítica con el mapa recordado
-        sed_critica_mapa = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
+        sed_critica_mapa = (
+            inv.get("drink", 0) <= 3
+            and any(m == "water" and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50) for p, m in self.mapa.items())
+        )
         if (falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo):
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
@@ -1024,7 +1031,10 @@ class RefugioNocturno(Definicion):
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
         if self.dominante:
             return 0.98, 0.98
-        if inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values()):
+        if inv.get("drink", 0) <= 3 and any(
+            m == "water" and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
+            for p, m in self.mapa.items()
+        ):
             return 0.92, 0.92
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
@@ -1060,9 +1070,11 @@ class RefugioNocturno(Definicion):
         visitados: Set[Pos] = {origen}
         mejor_salto: Optional[Pos] = None
         mejor_dist = _dist(origen, destino)
+        limite_profundidad_alcanzado = False
         while cola:
             actual, primer, prof = cola.popleft()
             if prof >= 30:
+                limite_profundidad_alcanzado = True
                 continue
             for dx, dy in MOVIMIENTOS:
                 sig = (actual[0] + dx, actual[1] + dy)
@@ -1083,9 +1095,10 @@ class RefugioNocturno(Definicion):
                     mejor_salto = salto
                 cola.append((sig, salto, prof + 1))
 
-        if mejor_salto is not None and mejor_salto in lugares:
+        if limite_profundidad_alcanzado and mejor_salto is not None and mejor_salto in lugares:
             return lugares[mejor_salto]
-        # Si está encajonado por obstáculo y ningún paso reduce la distancia Manhattan, seguir el rumbo exploratorio
+        # Si el BFS termina sin alcanzar el destino y sin haber llegado al límite de profundidad,
+        # el destino está cerrado por casillas conocidas no transitables: devolver None.
         return None
 
     def _explorar_con_rumbo(self, ctx: Contexto, pos: Pos, ar: float, conf: float, motivo: str) -> Optional[Propuesta]:
@@ -1170,18 +1183,24 @@ class RefugioNocturno(Definicion):
         if deficit_agua > 0:
             for a, m in self.mapa.items():
                 if m == "water":
+                    if a in self.inalcanzables and ctx.latido - self.inalcanzables[a] < 50:
+                        continue
                     objetivos.append((_dist(pos, a) - 3.0 * deficit_agua, a, f"agua_{a[0]}_{a[1]}", "agua"))
         if deficit_comida > 0:
             vistas: Set[Pos] = set()
             for p in exter:
                 if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05:
                     cp = tuple(p.carga["datos"]["pos"])
+                    if cp in self.inalcanzables and ctx.latido - self.inalcanzables[cp] < 50:
+                        continue
                     vistas.add(cp)
                     objetivos.append((_dist(pos, cp) - 3.0 * deficit_comida, cp, p.id, p.clase))
             for v in self.vacas:
                 if v not in vistas:
+                    if v in self.inalcanzables and ctx.latido - self.inalcanzables[v] < 50:
+                        continue
                     objetivos.append((_dist(pos, v) + 2.0 - 3.0 * deficit_comida, v, "", "vaca"))
-        objetivo = min(objetivos, key=lambda o: o[0]) if objetivos else None
+        objetivos.sort(key=lambda o: o[0])
 
         armado = _tiene_espada(ctx) and _salud(ctx) >= 4
         if hostiles and not armado and min(_dist(pos, h) for h in hostiles) <= 2:
@@ -1189,17 +1208,17 @@ class RefugioNocturno(Definicion):
             if lugares:
                 def _valor(lugar: Pieza) -> Tuple[int, int]:
                     lp = tuple(lugar.carga["datos"]["pos"])
-                    return (min(_dist(lp, h) for h in hostiles), -_dist(lp, objetivo[1]) if objetivo else 0)
+                    return (min(_dist(lp, h) for h in hostiles), -_dist(lp, objetivos[0][1]) if objetivos else 0)
                 mejor = max(lugares, key=_valor)
                 return Propuesta(Verbo.MOVER, mejor.id, ar, conf, "refugio: apartarse de hostil al salir", clase=mejor.clase)
 
-        if objetivo is not None:
-            _, opos, oid, oclase = objetivo
+        for _, opos, oid, oclase in objetivos:
             if _dist(pos, opos) == 1 and oid:
                 return Propuesta(Verbo.COMER, oid, ar, conf, f"refugio: {'beber' if oclase == 'agua' else 'comer'} al salir", clase=oclase)
             paso_p = self._paso_hacia(ctx, pos, opos)
             if paso_p is not None:
                 return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, f"refugio: ir a por {oclase} al salir", clase=paso_p.clase)
+            self.inalcanzables[opos] = ctx.latido
         return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida al salir")
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
@@ -1215,7 +1234,10 @@ class RefugioNocturno(Definicion):
         fase = estado.get("fase", "madera")
         mina_est: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         anticipa = self._anticipa_refugio(luz, pos, inv, mina_est)
-        sed_critica = inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values())
+        sed_critica = inv.get("drink", 0) <= 3 and any(
+            m == "water" and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
+            for p, m in self.mapa.items()
+        )
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
         if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
@@ -1300,10 +1322,11 @@ class RefugioNocturno(Definicion):
                 aguas = [
                     p for p, m in self.mapa.items()
                     if m == "water"
+                    and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
                     and (not anticipa or (_dist(pos, p) + _dist(p, e0_ref) + rocas_ref * 3 + 6) * 1.35 < pasos_luz_ahora)
                 ]
-                if aguas:
-                    agua_pos = min(aguas, key=lambda a: _dist(pos, a) + _dist(a, e0_ref))
+                aguas.sort(key=lambda a: _dist(pos, a) + _dist(a, e0_ref))
+                for agua_pos in aguas:
                     if _dist(pos, agua_pos) == 1:
                         return Propuesta(Verbo.COMER, f"agua_{agua_pos[0]}_{agua_pos[1]}", max(ar, 0.90), max(conf, 0.90),
                                          "refugio: beber hasta llenar antes de cerrar", clase="agua")
@@ -1311,9 +1334,11 @@ class RefugioNocturno(Definicion):
                     if paso_p is not None:
                         return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
                                          "refugio: ir al agua antes de cerrar", clase=paso_p.clase)
+                    self.inalcanzables[agua_pos] = ctx.latido
             comidas = [
                 p for p in ctx.onda.ev("Exterocepcion").values()
                 if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+                and (tuple(p.carga["datos"]["pos"]) not in self.inalcanzables or ctx.latido - self.inalcanzables[tuple(p.carga["datos"]["pos"])] >= 50)
                 and (
                     not anticipa
                     or (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_ref * 3 + 6) * 1.35
@@ -1321,15 +1346,17 @@ class RefugioNocturno(Definicion):
                 )
             ]
             if comidas and inv.get("food", 0) < 9:
-                mejor_c = max(comidas, key=lambda p: p.rasgo("proximidad"))
-                if mejor_c.rasgo("proximidad") >= 0.9:
-                    return Propuesta(Verbo.COMER, mejor_c.id, max(ar, 0.90), max(conf, 0.90),
-                                     f"refugio: comer {mejor_c.clase} hasta llenar", clase=mejor_c.clase)
-                cpos = tuple(mejor_c.carga["datos"]["pos"])
-                paso_p = self._paso_hacia(ctx, pos, (int(cpos[0]), int(cpos[1])))
-                if paso_p is not None:
-                    return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
-                                     f"refugio: acercarse a {mejor_c.clase} antes de cerrar", clase=paso_p.clase)
+                comidas.sort(key=lambda p: -p.rasgo("proximidad"))
+                for comida_pz in comidas:
+                    if comida_pz.rasgo("proximidad") >= 0.9:
+                        return Propuesta(Verbo.COMER, comida_pz.id, max(ar, 0.90), max(conf, 0.90),
+                                         f"refugio: comer {comida_pz.clase} hasta llenar", clase=comida_pz.clase)
+                    cpos = (int(comida_pz.carga["datos"]["pos"][0]), int(comida_pz.carga["datos"]["pos"][1]))
+                    paso_p = self._paso_hacia(ctx, pos, cpos)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
+                                         f"refugio: acercarse a {comida_pz.clase} antes de cerrar", clase=paso_p.clase)
+                    self.inalcanzables[cpos] = ctx.latido
             if inv.get("drink", 0) < 8 or inv.get("food", 0) < 8:
                 return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida")
 

@@ -173,3 +173,50 @@ def test_zombi_en_cruz_con_dano_2_es_zombi(mundo):
     assert mundo.jugador.health == 5
 
 
+def test_agua_inalcanzable_detras_roca_elige_accesible():
+    from ida.core.azar import Azar
+    from ida.core.memoria import Memoria
+    from ida.core.mundo import Perfil
+    from ida.core.onda import Onda, Pieza
+    from ida.core.soma import Soma
+    from ida.core.linaje import Arquetipo
+    from ida.core.arquitectura import Contexto
+    from ida.mundos.crafter import RefugioNocturno
+
+    ref = RefugioNocturno()
+    ref.bajando = False
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "stone",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (10, 13): "stone",
+        (10, 12): "water",  # agua inalcanzable: rodeada de roca por las 4 casillas en cruz
+        (11, 10): "grass",
+        (12, 10): "grass",
+        (13, 10): "grass",
+        (14, 10): "water",  # agua accesible por camino libre
+    }
+    onda = Onda(10, 100.0, 1e9)
+    onda.percibir("Propiocepcion", Pieza("yo", "Propiocepcion", carga={
+        "inventario": {"drink": 0, "food": 8, "health": 9, "stone": 1, "wood_pickaxe": 1, "wood_sword": 1},
+        "cuerpo": {"pos": (10, 10), "orientacion": (1, 0)},
+    }))
+    onda.percibir("Ambiente", Pieza("ambiente", "Ambiente", carga={"luz": 0.8}))
+    onda.percibir("Exterocepcion", Pieza("celda_11_10", "Exterocepcion", carga={
+        "datos": {"pos": (11, 10)},
+        "terreno": "grass",
+        "clase": "suelo",
+        "rasgos": {"lugar": 1.0, "peligro": 0.0},
+    }))
+
+    ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
+    prop = ref._abastecer(ctx, (10, 10), {"drink": 0, "food": 8}, 0.9, 0.9)
+
+    assert (10, 12) in ref.inalcanzables
+    assert prop is not None
+    assert prop.verbo == Verbo.MOVER
+    assert prop.objetivo == "celda_11_10"
+
+
+
