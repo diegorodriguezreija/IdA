@@ -1471,10 +1471,9 @@ class RefugioNocturno(Definicion):
             # Dormir si falta energía (incluso con sed/hambre a 0: en Crafter dormir reduce a la mitad la tasa de degeneración)
             if inv.get("energy", 9) < 9:
                 return Propuesta(Verbo.DORMIR, "", 1.0, 1.0, "refugio: dormir a salvo")
-            # Mientras esté encerrado dentro del refugio esperando a que amanezca, esperar;
-            # la prioridad deja de ser 1,0/1,0 si hay presión interna (forrajeo sensible al riesgo)
-            p = self._presion_interna(inv, self._agua_accesible_dentro(mina) is not None)
-            return Propuesta(Verbo.ESPERAR, "", 1.0 - 0.3 * p, 1.0 - 0.3 * p, "refugio: esperar al amanecer")
+            # Mientras esté encerrado dentro del refugio esperando a que amanezca, esperar inmóvil
+            # con prioridad máxima (1,0/1,0) para evitar que reflejos o vaivenes muevan al jugador dentro del refugio
+            return Propuesta(Verbo.ESPERAR, "", 1.0, 1.0, "refugio: esperar al amanecer")
 
         if fase == "amanecer":
             mina = estado.get("mina")
