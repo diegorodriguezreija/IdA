@@ -551,10 +551,11 @@ class RefugioNocturno(Definicion):
     PACIENCIA_AVANCE = 10
     LUZ_PLENO_DIA = 0.83      # Crafter: con luz > 0,83 el máximo de zombis por zona (3,5 − 3·luz) baja de 1
     MEMORIA_VACA = 40         # latidos que se recuerda dónde se vio una vaca
+    CADUCIDAD_VISITADA = 150  # latidos tras los cuales una casilla visitada vuelve a contar como no visitada
 
     def __init__(self) -> None:
         self.mapa: Dict[Pos, str] = {}
-        self.visitadas: Set[Pos] = set()
+        self.visitadas: Dict[Pos, int] = {}
         self.rocas_inspeccionadas: Set[Pos] = set()
         self.mina_recordada: Optional[Tuple[Pos, Pos]] = None
         self._estado_mem: Dict[str, Any] = {}
@@ -610,11 +611,16 @@ class RefugioNocturno(Definicion):
             if olvidada or (pos is not None and v not in vistas and _dist(pos, v) <= 1):
                 del self.vacas[v]
         if pos is not None:
-            self.visitadas.add(pos)
+            self.visitadas[pos] = ctx.latido
             if self._estado_mem.get("mina") is not None or _inventario(ctx).get("stone", 0) >= 3:
                 for p, m in self.mapa.items():
                     if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
                         self.rocas_inspeccionadas.add(p)
+
+    def _es_visitada(self, pos: Pos, latido: int) -> bool:
+        """Una casilla vuelve a contar como «no visitada» al cabo de 150 latidos."""
+        lat = self.visitadas.get(pos)
+        return lat is not None and (latido - lat) <= self.CADUCIDAD_VISITADA
 
     def _hay_hostil_cerca(self, ctx: Contexto, pos: Pos) -> bool:
         return any(
@@ -1250,8 +1256,18 @@ class RefugioNocturno(Definicion):
         # el destino está cerrado por casillas conocidas no transitables: devolver None.
         return None
 
-    def _explorar_con_rumbo(self, ctx: Contexto, pos: Pos, ar: float, conf: float, motivo: str) -> Optional[Propuesta]:
-        """Mantiene un rumbo sostenido al buscar árbol o mina y bordea obstáculos hacia casillas no visitadas."""
+    def _explorar_con_rumbo(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        ar: float,
+        conf: float,
+        motivo: str,
+        centro_max: Optional[Pos] = None,
+        radio_max: int = 17,
+    ) -> Optional[Propuesta]:
+        """Mantiene un rumbo sostenido al buscar árbol o mina y bordea obstáculos hacia casillas no visitadas.
+        Si se especifica centro_max y radio_max, limita la exploración a casillas dentro de ese radio."""
         lugares = {
             tuple(p.carga["datos"]["pos"]): p
             for p in ctx.onda.ev("Exterocepcion").values()
@@ -1259,8 +1275,16 @@ class RefugioNocturno(Definicion):
         }
         if not lugares:
             return None
+
+        # Si el jugador está fuera del área permitida, volver hacia el centro
+        if centro_max is not None and _dist(pos, centro_max) > radio_max:
+            paso_ret = self._paso_hacia(ctx, pos, centro_max)
+            if paso_ret is not None:
+                return Propuesta(Verbo.MOVER, paso_ret.id, ar, conf, f"{motivo}: volver a zona de campeo", clase=paso_ret.clase)
+
         adelante = (pos[0] + self.rumbo[0], pos[1] + self.rumbo[1])
-        if adelante in lugares and self.pasos_rumbo < self.RUMBO_PASOS and adelante not in self.visitadas:
+        adelante_en_area = centro_max is None or _dist(adelante, centro_max) <= radio_max
+        if adelante in lugares and self.pasos_rumbo < self.RUMBO_PASOS and adelante_en_area and not self._es_visitada(adelante, ctx.latido):
             self.pasos_rumbo += 1
             elegido = lugares[adelante]
             return Propuesta(Verbo.MOVER, elegido.id, ar, conf, motivo, clase=elegido.clase)
@@ -1278,22 +1302,35 @@ class RefugioNocturno(Definicion):
                     continue
                 if prof == 0 and sig not in lugares:
                     continue
+                if centro_max is not None and _dist(sig, centro_max) > radio_max:
+                    continue
                 mat = self.mapa.get(sig)
                 if mat not in TRANSITABLES_JUGADOR:
                     continue
                 vistos.add(sig)
                 salto = primer if primer is not None else sig
-                if sig not in self.visitadas:
+                if not self._es_visitada(sig, ctx.latido):
                     if salto in lugares:
                         self.rumbo = (salto[0] - pos[0], salto[1] - pos[1])
                         self.pasos_rumbo = 1
                         return Propuesta(Verbo.MOVER, lugares[salto].id, ar, conf, motivo, clase=lugares[salto].clase)
                 cola.append((sig, salto, prof + 1))
 
+        cands_items = [
+            (cpos, pz) for cpos, pz in lugares.items()
+            if centro_max is None or _dist(cpos, centro_max) <= radio_max
+        ]
+        if not cands_items:
+            if centro_max is not None:
+                paso_ret = self._paso_hacia(ctx, pos, centro_max)
+                if paso_ret is not None:
+                    return Propuesta(Verbo.MOVER, paso_ret.id, ar, conf, f"{motivo}: volver a zona de campeo", clase=paso_ret.clase)
+            cands_items = list(lugares.items())
+
         candidatos = sorted(
-            lugares.items(),
+            cands_items,
             key=lambda kv: (
-                kv[0] in self.visitadas,
+                self._es_visitada(kv[0], ctx.latido),
                 kv[0] == (pos[0] - self.rumbo[0], pos[1] - self.rumbo[1]),
                 -kv[1].rasgo("novedad"),
             ),
@@ -1368,7 +1405,13 @@ class RefugioNocturno(Definicion):
             if paso_p is not None:
                 return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, f"refugio: ir a por {oclase} al salir", clase=paso_p.clase)
             self.inalcanzables[opos] = ctx.latido
-        return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida al salir")
+        centro_ref: Optional[Pos] = None
+        if self.mina_recordada is not None:
+            e0_r, (dx_r, dy_r) = self.mina_recordada
+            centro_ref = (e0_r[0] + 2 * dx_r, e0_r[1] + 2 * dy_r)
+        return self._explorar_con_rumbo(
+            ctx, pos, ar, conf, "refugio: buscar agua o comida al salir", centro_max=centro_ref, radio_max=17
+        )
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
         pos = _posicion(ctx)
@@ -1509,7 +1552,14 @@ class RefugioNocturno(Definicion):
                                          f"refugio: acercarse a {comida_pz.clase} antes de cerrar", clase=paso_p.clase)
                     self.inalcanzables[cpos] = ctx.latido
             if inv.get("drink", 0) < 8 or inv.get("food", 0) < 8:
-                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar agua o comida")
+                centro_ref: Optional[Pos] = None
+                mina_ref = estado.get("mina") or self.mina_recordada
+                if mina_ref is not None:
+                    e0_r, (dx_r, dy_r) = mina_ref
+                    centro_ref = (e0_r[0] + 2 * dx_r, e0_r[1] + 2 * dy_r)
+                return self._explorar_con_rumbo(
+                    ctx, pos, ar, conf, "refugio: buscar agua o comida", centro_max=centro_ref, radio_max=17
+                )
 
         if fase in ("elegir_mina", "provisiones"):
             mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")

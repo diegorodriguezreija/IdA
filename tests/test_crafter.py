@@ -49,7 +49,7 @@ def test_mapa_refugio_empieza_vacio_en_cada_vida(mundo):
 
     refugio = RefugioNocturno()
     assert refugio.mapa == {}
-    assert refugio.visitadas == set()
+    assert refugio.visitadas == {}
 
     # Vida 1: simular latidos 1 y 2 poblando el mapa y el estado recordado
     obs1 = mundo.observar()
@@ -356,6 +356,16 @@ def test_c1_5_lava_a_distancia_2_se_rechaza():
         (12, 12): "lava",  # a distancia 2 de e2=(10, 12)
     }
     assert ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 0) is None
+
+
+def test_c3b_caducidad_visitadas():
+    ref = RefugioNocturno()
+    ref.visitadas[(5, 5)] = 10
+    assert ref._es_visitada((5, 5), latido=100) is True   # diferencia 90 <= 150
+    assert ref._es_visitada((5, 5), latido=160) is True   # diferencia 150 <= 150
+    assert ref._es_visitada((5, 5), latido=161) is False  # diferencia 151 > 150
+    assert ref._es_visitada((6, 6), latido=161) is False  # nunca visitada
+
 
 
 
