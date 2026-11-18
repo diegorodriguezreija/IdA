@@ -601,17 +601,14 @@ Se ejecutó un diagnóstico observacional sin alterar el código de toma de deci
 - **Tiempo de ejecución:** **42,38 s** (49 ventanas de 50 latidos con recinto activo).
 
 #### Resultados agregados del diagnóstico
-- **Vacas reales a $\le 17$ del recinto (media por 50 latidos):** **1,76** vacas.
-- **Vacas reales a $\le 17$ del recinto (media por 150 latidos):** **5,27** vacas.
-- **Tras la primera noche ($L \ge 300$, 28 ventanas):**
-  - Vacas reales a $\le 17$: **1,68** por cada 50 latidos (**5,04 vacas reales por cada 150 latidos**).
-  - Vacas percibidas por el individuo: **1,36** por cada 50 latidos.
+- **Vacas reales a $\le 17$ del recinto (en cada momento, media por foto):** **1,68** vacas tras la noche 1 (1,76 global).
+- **Vacas percibidas por el individuo (en cada ventana de 50 latidos):** **1,36** vacas tras la noche 1 (1,10 global), lo que representa el **81,0 %** de las vacas presentes.
 - **Casillas a $\le 17$ no visitadas hace $> 150$ latidos:** **96,5 %**.
 
 #### Conclusión del Paso 1
 > **¿Existen vacas en el área de campeo que no ve?**  
-> **SÍ.** La tasa de presencia real es de **5,04 vacas por cada 150 latidos** tras la primera noche, muy superior al umbral de parada ($< 1$). Las vacas reaparecen en los chunks con hierba del área de campeo según la dinámica de Crafter (`_balance_chunk`), pero el individuo no las detecta porque el 96,5 % del área permanece sin explorar debido a que `self.visitadas` nunca caducaba y la búsqueda no patrullaba el entorno del refugio.  
-> **Veredicto:** El diagnóstico **justifica plenamente** implementar el Paso 2 (patrulla de forrajeo).
+> En cada instante hay de media ~1,7 vacas reales a $\le 17$ del recinto, y el individuo percibe en cada ventana de 50 latidos una media de 1,36 vacas (el 81 %). La conclusión empírica es que **las ve y no se las come**. No es que las vacas no existan o que queden ocultas sin percibir; están en su campo perceptual pero el individuo no las abate sistemáticamente.  
+> Se procedió a implementar el Paso 2 para evaluar el efecto de la patrulla acotada a $\le 17$ y la caducidad de visitadas.
 
 ---
 
@@ -633,13 +630,13 @@ Se ejecutó un diagnóstico observacional sin alterar el código de toma de deci
 
 | Métrica | C.3 (Línea base) | C.3b (Patrulla) | Δ (C.3b vs C.3) |
 |---|---|---|---|
-| **Latidos medios vividos** | 391,2 | **418,4** | **+27,2 latidos (+7,0 %)** |
-| **Vacas comidas totales** | 11 | **13** | **+2 vacas (+18,2 %)** |
+| **Latidos medios vividos** | 391,2 | **418,4** | **+27,2 latidos** |
+| **Vacas comidas totales** | 11 | **13** | **+2 vacas** |
 | **Noches superadas totales** | 10 | **11** | **+1 noche** |
 | **Fidelidad de hábitat (repetición refugio)** | 3 / 4 (75,0 %) | **4 / 5 (80,0 %)** | +5,0 % |
 | **Semilla 17 (latidos)** | 428 (muerte L428, d1: 0 vacas) | **697 (muerte L697, d1: 2 vacas)** | **+269 latidos (+62,9 %)** |
 
-- **Detalle de la Semilla 17:** Gracias a la patrulla en el área de campeo tras el amanecer, caza **2 vacas adicionales en el Día 1**, superando con éxito la segunda noche en el mismo refugio (`((15, 27), (0, -1))[rep]`) y extendiendo su longevidad hasta el latido 697.
+- **Análisis crítico del arnés largo:** La subida de latidos (+27,2) se debe casi por completo a una única vida, la **semilla 17** (+269 latidos, que caza 2 vacas en el día 1). En el resto de las 9 semillas, la supervivencia y las vacas cazadas permanecen prácticamente idénticas (las vacas totales pasan de 11 a 13 solo por esa semilla).
 
 #### 2. Arnés de 600 latidos (semillas 11–30, `--real`)
 
@@ -662,14 +659,7 @@ Se ejecutó un diagnóstico observacional sin alterar el código de toma de deci
 | **Vivas a L600** | 11 | 9 | -2 |
 | **Tiempo por latido** | 5,24 ms | 5,45 ms | +0,21 ms ($\le +4\,\%$) |
 
-#### Logros por tipo frente a C.1 (N = 30 vidas)
-- `wake_up`: +1 vida (23 $\to$ 24)
-- `place_stone`: +1 vida (25 $\to$ 26)
-- `place_furnace`: +1 vida (4 $\to$ 5)
-- `collect_coal`: +1 vida (9 $\to$ 10)
-- `defeat_zombie`: -2 vidas (19 $\to$ 17)
-- `eat_cow`: -1 vida (19 $\to$ 18)
-- `make_stone_pickaxe`: -1 vida (5 $\to$ 4)
+- **Análisis crítico del benchmark rápido:** El resultado es **neutro**. Las vidas vivas bajan ligeramente de 11 a 9 (dentro del intervalo de confianza pareado), y el logro `eat_cow` baja de 19 a 18 vidas.
 
 ---
 
@@ -677,8 +667,104 @@ Se ejecutó un diagnóstico observacional sin alterar el código de toma de deci
 
 | Pieza | Hipótesis | Arnés largo (11–20) | Arnés 600 (11–30) | Benchmark rápido (1–10) | Decisión |
 |---|---|---|---|---|---|
-| **C.3b** | Caducidad a 150 latidos y patrulla $\le 17$ permiten cazar vacas repuestas y prolongar la vida. | **Confirmada:**<br>• Latidos: **+27,2** (391,2 $\to$ 418,4)<br>• Vacas: **+2** (11 $\to$ 13)<br>• Noches: **+1** (10 $\to$ 11)<br>• Sem. 17 vive **697 latidos** (+269) | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)** (no baja)<br>• Vivas: **5/20** (+1 vida)<br>• Latidos: **+16,4** (398,2 $\to$ 414,6) | **Estable:**<br>• Latidos: $\Delta = -3,40 \pm 28,22$<br>• Logros: $\Delta = 0,00 \pm 0,19$<br>• Noches: $\Delta = 0,00 \pm 0,16$ | **Aceptada** |
+| **C.3b** | Caducidad a 150 latidos y patrulla $\le 17$ permiten cazar vacas repuestas y prolongar la vida de forma generalizada. | **No confirmada de forma general:**<br>• Ganancia concentrada en 1 semilla (sem. 17: +269 latidos, +2 vacas).<br>• En las otras 9 semillas no hay aumento de vacas. | **Estable:**<br>• Selladas día 1: **16/20 (80,0 %)**.<br>• Vivas: **5/20** (+1 vida).<br>• Latidos: **414,6** (+16,4). | **Neutro:**<br>• Latidos: $\Delta = -3,40 \pm 28,22$.<br>• Vivas: 11 $\to$ 9.<br>• `eat_cow`: 19 $\to$ 18. | **No confirmada (mantenida provisionalmente)** |
 
 **Veredicto:**  
-C.3b confirma su hipótesis operativa aumentando la recolección de fauna repuesta y la longevidad en horizonte largo sin degradar el sellado en 600 latidos ni el benchmark pareado. Se acepta e integra como base para C.4.
+La hipótesis general de C.3b **no queda confirmada**: la patrulla no logra que la mayoría de los individuos cacen más vacas de forma general, ya que el cuello de botella central es que **ven las vacas pero no se las comen**.  
+Sin embargo, dado que el confinamiento de la exploración a $\le 17$ del recinto recordado no degrada el sellado (16/20) y es un requisito espacial necesario para operar en torno al huerto en C.4, **se mantiene provisionalmente** en el código y se reevaluará de forma conjunta con C.4.
+
+---
+
+## 6. C.3c: Diagnóstico de episodios de vacas percibidas (¿por qué no se come las vacas que ve?)
+
+### 6.1 Metodología y comando
+Se implementó en `herramientas/diagnostico_vacas_c3c.py` (commit `d9e0877`) un seguimiento observacional de cada episodio de vaca percibida a partir del latido 300 (después de la primera noche) en el arnés largo (`--real`, semillas 11–20, `--latidos 3000`).
+
+Un **episodio** se define desde que una vaca concreta entra en el campo perceptual del individuo (`Exterocepcion`, clase `"vaca"`) hasta que desaparece de la vista o es comida. Para cada episodio se registran:
+- Parámetros iniciales: comida, agua, salud, distancia euclídea, luz diurna y rasgo `nutritivo`.
+- Propuestas generadas por las estrategias hacia la vaca (`alimentarse`, `refugio_nocturno` `abastecer`), su activación/confianza y la estrategia ganadora del Tribunal en cada latido.
+- Desenlace del episodio clasificado en tres categorías excluyentes:
+  * `comida`: el individuo abate y consume la vaca (`eat_cow`).
+  * `perdida_de_vista`: el individuo intentó acercarse o atacarla pero la vaca salió de su rango de visión antes de ser consumida.
+  * `ignorada`: ninguna estrategia propuso actuar hacia la vaca o las propuestas fueron derrotadas de principio a fin por otras prioridades en el Tribunal.
+
+- **Comando exacto:**
+  ```powershell
+  $t0 = Get-Date; & "C:\Users\diego\AppData\Local\Python\pythoncore-3.15-64\python.exe" herramientas/diagnostico_vacas_c3c.py --semillas 11 12 13 14 15 16 17 18 19 20 --latidos 3000; $t1 = Get-Date; Write-Host "TIEMPO_TOTAL: $(($t1 - $t0).TotalSeconds) s"
+  ```
+- **Tiempo de ejecución:** **47,95 s** (65 episodios registrados en 10 semillas).
+
+---
+
+### 6.2 Resultados por semilla
+
+| Semilla | Latidos vividos | Causa muerte | Episodios totales | Comidos | Perdidos de vista | Ignorados | % Comidos |
+|---|---|---|---|---|---|---|---|
+| **11** | 620 | Hambre | 3 | 1 | 2 | 0 | 33,3 % |
+| **12** | 441 | Hambre | 6 | 0 | 0 | 6 | 0,0 % |
+| **13** | 479 | Hambre | 13 | 0 | 0 | 13 | 0,0 % |
+| **14** | 311 | Zombi | 0 | 0 | 0 | 0 | 0,0 % |
+| **15** | 169 | Zombi | 0 | 0 | 0 | 0 | 0,0 % |
+| **16** | 155 | Zombi | 0 | 0 | 0 | 0 | 0,0 % |
+| **17** | 697 | Hambre | 10 | 3 | 3 | 4 | 30,0 % |
+| **18** | 325 | Zombi | 0 | 0 | 0 | 0 | 0,0 % |
+| **19** | 315 | Zombi | 3 | 0 | 0 | 3 | 0,0 % |
+| **20** | 636 | Hambre | 30 | 2 | 3 | 25 | 6,7 % |
+
+- En las 4 vidas que mueren antes o inmediatamente al salir de la primera noche (semillas 14, 15, 16, 18) no se registran episodios tras L300.
+- En las 6 vidas restantes se registran **65 episodios** (media de **10,83 episodios por vida** que supera L300; media de **6,50 episodios/vida** sobre las 10 semillas).
+
+---
+
+### 6.3 Desglose por desenlace y estado metabólico
+
+| Desenlace | N episodios | % del total | Comida media al ver la vaca | Rango comida | Distancia media inicio | Golpes dados a la vaca |
+|---|---|---|---|---|---|---|
+| **Comida** | 6 | **9,2 %** | **2,50** | [0, 7] | 2,83 casillas | [0, 2, 0, 2, 2, 0] |
+| **Perdida de vista** | 8 | **12,3 %** | **2,75** | [0, 7] | 3,38 casillas | 0 golpes (0/8) |
+| **Ignorada** | 51 | **78,5 %** | **4,08** | [0, 9] | 3,33 casillas | 0 golpes (0/51) |
+| **Total / Global** | 65 | 100,0 % | 3,77 | [0, 9] | 3,29 casillas | — |
+
+#### Umbral de comida para perseguir la vaca
+- Hubo **14 episodios** en los que el individuo intentó activamente ir a por la vaca (`comida` + `perdida_de_vista`), sumando 17 latidos de inicio de aproximación.
+- Niveles de comida al inicio de dichos intentos: `[0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 6, 6, 7, 7, 7]`.
+  * En el **70,6 %** de los intentos (12/17), la comida es crítica: **$\le 1$**.
+  * Solo en 5 ocasiones intentó cazar con comida media-alta (6 o 7), todas ellas en las semillas 17 y 20 durante la fase matutina de abastecimiento (`refugio_nocturno.abastecer`).
+  * Con comida llena (8 o 9), el individuo **nunca** intentó perseguir una vaca (0/25 episodios con comida $\ge 8$).
+
+---
+
+### 6.4 Estrategias que ganan el Tribunal cuando se ignora la vaca
+
+Durante los episodios en que una vaca estuvo en el campo de visión pero no fue perseguida (159 latidos acumulados en total):
+
+| Estrategia ganadora | Latidos ganados | % de latidos | Contexto / Motivo predominante |
+|---|---|---|---|
+| **`S2:refugio_nocturno`** | 49 | **30,8 %** | Obras y cierre de la noche 2: cavar (3/3), tapar entrada, o abastecer agua de urgencia al atardecer antes de cerrar. |
+| **`desconocida`** | 30 | **18,9 %** | Individuo encerrado en la cueva a oscuras durante la noche 2 (sin luz ni estrategia activa, la vaca se percibe al otro lado del muro). |
+| **`S1:alimentarse`** | 24 | **15,1 %** | Buscando o bebiendo agua, recolectando comida vegetal ya localizada, o saciado. |
+| **`S1:huir`** | 17 | **10,7 %** | Huida reactiva de zombis o esqueletos detectados en la misma ventana visual. |
+| **`S3:plan_tecnologico`** | 12 | **7,5 %** | Tala de madera (`wood`) o extracción de piedra (`stone`) en pleno mediodía con comida alta. |
+| **`CORE`** | 9 | **5,7 %** | Dormido en el refugio sellado (`sigue dormido`). |
+| **`S1:sobresalto`** | 8 | **5,0 %** | Reacción refleja de sobresalto ante daño o monstruos en proximidad. |
+| **`S1` (reflejos)** | 4 | **2,5 %** | Movimientos reflejos de emergencia. |
+| **`S1:defenderse`** | 3 | **1,9 %** | Ataque defensivo contra zombis en cuerpo a cuerpo. |
+| **`S2:explorar`** | 3 | **1,9 %** | Desplazamiento por curiosidad hacia casillas inexploradas. |
+
+---
+
+### 6.5 Conclusión explícita: ¿dónde está el cuello de botella?
+
+El análisis empírico de los 65 episodios demuestra de forma concluyente que:
+
+1. **La MOTIVACIÓN (aliestesia homeostática y arbitraje del Tribunal) es el cuello de botella principal (78,5 % de episodios):**
+   - **Falta de caza preventiva:** La aliestesia actual calcula el deseo de carne como $\text{deseo} = \frac{9 - \text{comida}}{9}$. Con comida $\ge 7$, el rasgo nutritivo es $\le 0,22$ y la activación de `Alimentarse` queda por debajo del umbral competitivo del Tribunal ($\approx 0,35$). Por tanto, `S3:plan_tecnologico` (talar madera) o `S2:explorar` ganan sistemáticamente durante las horas centrales del día, impidiendo que el individuo aproveche vacas adyacentes para hacer acopio.
+   - **Conflicto con la rutina nocturna y percepción a través de muros:** El **55,4 %** de los latidos ignorados (88/159 latidos: `refugio_nocturno` 30,8 %, `desconocida` 18,9 %, `CORE` 5,7 %) ocurren mientras el individuo está ocupado en la preparación del refugio al atardecer (cavar, tapar) o durmiendo/esperando dentro de la cueva sellada durante la segunda noche. En Crafter el sensor percibe a través de las paredes de roca; las vacas pastan en el exterior a $r \le 5$, pero el individuo está legítimamente encerrado a salvo de la noche.
+
+2. **La PERSECUCIÓN es un cuello de botella secundario menor (12,3 % de episodios):**
+   - En los 8 episodios perdidos de vista, la vaca se desplazó (en Crafter se mueven con $p = 0,50$ por latido) o había obstáculos en la trayectoria (agua, rocas), perdiéndose de vista antes de que el individuo pudiera asestarle el primer golpe (**0 golpes dados en los 8 casos**). No obstante, solo afecta a ~1 de cada 8 episodios.
+
+3. **El COMBATE NO es un cuello de botella (0 % de fracasos):**
+   - En todos los episodios en que el individuo logró alcanzar a la vaca en cuerpo a cuerpo (los 6 episodios `comida`), la abatió y consumió con éxito requiriendo entre 0 y 2 golpes adicionales. Ningún episodio se frustró por interrupción o falta de daño una vez trabado el combate.
+
 
