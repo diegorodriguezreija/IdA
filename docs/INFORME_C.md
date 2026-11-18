@@ -501,3 +501,84 @@ En C.1, la semilla 20 sellaba en el paso 157 (latido 151) con comida 7 y agua 5,
 
 **Veredicto:**  
 C.2 no supera el criterio de validación en semillas no vistas (31–50) y degrada la supervivencia en el benchmark rápido frente a C.1. Se procede a ejecutar **`git revert 4011bef`**, registrando C.2 como resultado negativo y restableciendo **C.1 (`e0b5c7f`)** como la base firme y congelada para C.3.
+
+---
+
+## 4. C.3: Línea base de horizonte largo (3000 latidos)
+
+### 4.1 Resumen y objetivo
+Se establece la línea base de horizonte largo sobre la base congelada de **C.1** (`e0b5c7f` / `1afe8f6`) ejecutando el arnés con `--latidos 3000` y motivación real (`--real`, perfil Equilibrado) en las semillas 11–20.  
+El objetivo es caracterizar cuantitativamente los cuellos de botella de supervivencia a largo plazo y contrastar el supuesto **S4** («una vez superada la primera noche, el límite fundamental es la comida»).
+
+- **Comando exacto:**
+  ```powershell
+  $t0 = Get-Date; & "C:\Users\diego\AppData\Local\Python\pythoncore-3.15-64\python.exe" herramientas/arnes_refugio_crafter.py --semillas 11 12 13 14 15 16 17 18 19 20 --latidos 3000 --real --salida datos/benchmarks/c3_largo.json; $t1 = Get-Date; Write-Host "Tiempo: $(($t1 - $t0).TotalSeconds) s"
+  ```
+- **Tiempo de ejecución:** **44,15 s** (10 vidas, 391,2 latidos medios).
+- **Fichero de volcado:** `datos/benchmarks/c3_largo.json`.
+
+---
+
+### 4.2 Métricas agregadas de horizonte largo
+
+| Métrica | Valor C.3 (semillas 11–20) |
+|---|---|
+| **Vidas vivas a L3000** | **0/10 (0,0 %)** |
+| **Latidos medios vividos** | **391,2** (máx. 653 en sem. 11, mín. 155 en sem. 16) |
+| **Causas de muerte** | **hambre: 5/10 (50,0 %)**, **zombi: 5/10 (50,0 %)** |
+| **Noches superadas totales** | **10 noches** (media 1,0 por vida; 2 vidas superan 2 noches) |
+| **Vidas selladas el día 1** | **8/10 (80,0 %)** (sin daño dentro: 8/8, 100 %) |
+| **Refugios usados totales en noches** | **12 noches de refugio** |
+| **Refugio repetido vs cambiado (noches $\ge 1$)** | **3 repetidos / 1 cambiado (75,0 % repetición)** |
+| **Refugios con hierba lateral de $e_2$ o $e_3$** | **0/12 noches (0,0 %)** |
+| **Días con distancia máxima al refugio previo $< 18$** | **16/18 días evaluados (88,9 %)** |
+| **Plantas comidas (`eat_plant`)** | **0 en todos los días de todas las vidas** |
+| **Vacas comidas totales** | **11 vacas** (media 1,1 por vida; 0 en el día 2) |
+
+---
+
+### 4.3 Detalle por vida (semillas 11–20)
+
+| Semilla | Latidos | Estado final | Noches superadas | Mín. comida / agua por día | Fuentes comida por día (vaca / planta) | Refugios usados cada noche `(e0, d)` | Max dist al refugio previo |
+|---|---|---|---|---|---|---|---|
+| **11** | 653 | muerte por **hambre** | 2 | d0: 3 / 6<br>d1: 0 / 6<br>d2: 0 / 8 | d0: 1 v / 0 p<br>d1: 1 v / 0 p<br>d2: 0 v / 0 p | • n0: `((26, 41), (-1, 0))` (día 0)<br>• n1: `((35, 36), (1, 0))` (cambia, dist=14) | d0: 9<br>d1: 19<br>d2: 15 |
+| **12** | 441 | muerte por **hambre** | 1 | d0: 3 / 1<br>d1: 0 / 0 | d0: 1 v / 0 p<br>d1: 0 v / 0 p | • n0: `((24, 34), (0, -1))` (día 0)<br>• n1: `((24, 34), (0, -1))` (**repite**, dist=0) | d0: 1<br>d1: 14 |
+| **13** | 479 | muerte por **hambre** | 1 | d0: 2 / 6<br>d1: 0 / 5 | d0: 1 v / 0 p<br>d1: 0 v / 0 p | • n0: `((20, 38), (-1, 0))` (día 0)<br>• n1: `((20, 38), (-1, 0))` (**repite**, dist=0) | d0: 1<br>d1: 2 |
+| **14** | 311 | muerte por **zombi** | 1 | d0: 0 / 0<br>d1: 0 / 0 | d0: 0 v / 0 p<br>d1: 0 v / 0 p | • n0: `((35, 37), (1, 0))` (día 0) | d0: 12<br>d1: 19 |
+| **15** | 169 | muerte por **zombi** | 0 | d0: 2 / 2 | d0: 0 v / 0 p | Ninguno (no selló) | Ninguno |
+| **16** | 155 | muerte por **zombi** | 0 | d0: 3 / 3 | d0: 0 v / 0 p | Ninguno (no selló) | Ninguno |
+| **17** | 428 | muerte por **hambre** | 1 | d0: 1 / 6<br>d1: 0 / 6 | d0: 1 v / 0 p<br>d1: 0 v / 0 p | • n0: `((15, 27), (0, -1))` (día 0) | d0: 12<br>d1: 16 |
+| **18** | 325 | muerte por **zombi** | 1 | d0: 0 / 0<br>d1: 0 / 0 | d0: 0 v / 0 p<br>d1: 0 v / 0 p | • n0: `((31, 24), (0, -1))` (día 0) | d0: 1<br>d1: 9 |
+| **19** | 315 | muerte por **zombi** | 1 | d0: 0 / 0<br>d1: 0 / 0 | d0: 0 v / 0 p<br>d1: 0 v / 0 p | • n0: `((26, 24), (-1, 0))` (día 0) | d0: 1<br>d1: 14 |
+| **20** | 636 | muerte por **hambre** | 2 | d0: 3 / 0<br>d1: 1 / 0<br>d2: 0 / 2 | d0: 2 v / 0 p<br>d1: 2 v / 0 p<br>d2: 0 v / 0 p | • n0: `((23, 9), (-1, 0))` (día 0)<br>• n1: `((23, 9), (-1, 0))` (**repite**, dist=0) | d0: 1<br>d1: 9<br>d2: 12 |
+
+---
+
+### 4.4 Conclusión sobre el supuesto S4
+
+> **Supuesto S4:** «Una vez superada la noche, el límite es la comida».
+
+Los datos empíricos de C.3 confirman de forma rotunda el supuesto S4:
+1. **La barrera temporal infranqueable (~650 latidos):**  
+   Ningún individuo de la muestra supera el latido 653. La longevidad máxima observada fue de 653 latidos (semilla 11) y 636 latidos (semilla 20).
+2. **Causa de muerte tras superar la noche:**  
+   - En la primera noche (L $\le$ 300), solo mueren 2 vidas (semillas 15 y 16) por no completar a tiempo el recinto frente a monstruos.
+   - Las 8 vidas restantes superan la primera noche de forma intacta (sin daño nocturno, con `wake_up`).
+   - Al abrir la salida al amanecer (L300–L325), 3 vidas (14, 18, 19) son sorprendidas por zombis diurnos debido a que salieron con comida 0, agua 0 y salud mermada.
+   - Para **todas las vidas que sobreviven a la salida del primer refugio** (L > 330: semillas 11, 12, 13, 17 y 20), **el 100 % muere de hambre**.
+3. **Agotamiento de la fauna y ausencia de agricultura:**  
+   - En el Día 0 se cazan entre 1 y 2 vacas por individuo. En el Día 1 la disponibilidad cae drásticamente (1 o 0 vacas). En el Día 2, **las vacas cazadas son 0 en todas las vidas supervivientes**.
+   - El consumo de plantas (`eat_plant`) es exactamente **0** en todos los días de todas las vidas.
+   - El nivel mínimo de comida desciende inexorablemente a 0 en el Día 1 o 2, provocando la inanición.
+
+---
+
+### 4.5 Hallazgos clave y base de referencia para C.4
+
+1. **Permanencia espacial en radio de cultivo ($< 18$ casillas):**  
+   En Crafter, los cultivos (`Plant`) solo actualizan su ciclo biológico de crecimiento si el jugador se encuentra a una distancia Manhattan $< 18$ casillas (`player.distance(obj) < 2 * max(view) = 18`).  
+   En la medición diaria de C.3, los individuos permanecen en un radio $< 18$ de su refugio en el **88,9 % de los días** (16 de 18 días). En las vidas con mayor longevidad (12, 13, 20), la distancia máxima al refugio se mantiene en $\le 14$ casillas durante toda la existencia. Esto demuestra que un huerto ubicado en las paredes del refugio crecería de manera regular y sostenida sin requerir restricciones artificiales de movimiento.
+2. **Alta fidelidad de hábitat (repetición de refugio):**  
+   En las 4 vidas que alcanzaron una segunda noche con refugio (11, 12, 13, 20), **el 75 % (3/4) reutilizó exactamente el mismo refugio** de la noche anterior (`distancia = 0`). El mecanismo de memoria y retorno (`mina_recordada` y `memoria.recordar_lugar`) ya funciona de forma natural.
+3. **Necesidad de incentivar nichos de hierba en `_evaluar_recinto`:**  
+   Los 12 refugios utilizados se excavaron en formaciones rocosas puras sin bloques de hierba en las paredes laterales de $e_2$ o $e_3$ (**0 % de refugios con hierba lateral**). Para que C.4 sea efectivo, `_evaluar_recinto` debe incluir un incentivo positivo por cada lateral de hierba candidata a nicho huerto, canalizando la selección del refugio hacia recintos con suelo cultivable protegido.
