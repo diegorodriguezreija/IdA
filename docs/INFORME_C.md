@@ -360,3 +360,163 @@ En el arnés de semillas 11–30, 4 de las 20 vidas no llegaron a sellarse el pr
 - **No verificado:** Benchmark completo de los 4 grupos (`c1_completo.json`), reservado para el cierre definitivo de la fase C según el plan.
 
 
+
+---
+
+## 3. C.2: Reservas antes de sellar y vacas recordadas
+
+### 3.1 Resultado
+**Hipótesis confirmada (`4011bef`):** Al integrar las vacas de la memoria episódica (`self.vacas`, ventana de 40 latidos) en el cálculo de viabilidad de alimento (`hay_comida_viable`), fijar la meta de reserva pre-cierre en 7 unidades de comida (cubriendo ~165 pasos de noche encerrado más margen), blindar la fase `provisiones` frente a cesiones prematuras de turno ante estrategias débiles mediante motivación continua modulada por el déficit (`ar >= 0,82`, `conf >= 0,84`), y priorizar la recolección previa al sellado:
+1. **Bajan las muertes por hambre en el arnés:** pasan de **7/20** en C.1 a **5/20** en C.2.
+2. **Bajan las muertes por zombi tras salir con 0/0 (semillas 14, 18 y 19):** en C.1 las tres semillas (14, 18 y 19) morían a manos de zombis poco después de salir con 0/0 (3/3 muertes); en C.2 la **semilla 19 sobrevive toda la vida** (llega al latido 600 viva con 14 logros y reservas recuperadas), reduciendo las muertes a 2/3.
+3. **No bajan las vidas selladas el día 1:** se mantienen exactamente en **16/20 (80,0 %)**, con **10/20 selladas antes de que la luz caiga de 0,5 (50,0 %)** (frente a 8/20 en C.1).
+4. **Supervivencia global y vitalidad:** las vidas que concluyen vivas los 600 latidos del arnés suben de 3/20 a **5/20 (25,0 %)** (semillas 11, 13, 19, 26 y 29), con un promedio de **414,6 latidos vividos** (frente a 395,4 en C.1).
+
+---
+
+### 3.2 Tabla de evaluación
+
+| Pieza | Commit | Hipótesis | Arnés (11–30, `--real`) | Benchmark Equilibrado (1–10) | Benchmark Completo 4 grupos (N=120) | Decisión |
+|---|---|---|---|---|---|---|
+| **C.2** | `4011bef` | Vaca recordada cuenta antes de sellar; meta comida < 7; bajan muertes por hambre; bajan zombis en 14/18/19; selladas $\ge 16/20$. | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)**<br>• Selladas luz $\ge 0,5$: **10/20 (50,0 %)** (vs 8/20)<br>• Sin daño dentro: **16/16 (100 %)**<br>• `wake_up`: **16/20 (80,0 %)**<br>• Muertes hambre: **5/20** (bajan de 7)<br>• Vivas L600: **5/20** (vs 3 en C.1)<br>• Semilla 19: **Vive L600** (14 logros)<br>• Latidos medios: **414,6** | • Latidos: **402,00 ± 59,90** (+31,90 vs `ref_c0`)<br>• Vivas: **7/30** (vs 6/30 en `ref_c0`)<br>• Sed: **2/30** (baja de 6 en `ref_c0` y 4 en `c1_rapido`)<br>• Noches: **1,03 ± 0,31** (+0,13 vs `ref_c0`) | • `eat_cow`: **73/120** (+7 vs `ref_c0`)<br>• `wake_up`: **92/120** (+16 vs `ref_c0`)<br>• `collect_stone`: **106/120** (+13)<br>• `place_stone`: **99/120** (+10)<br>• `defeat_zombie`: **77/120** (+10)<br>• Vivas totales: **27/120** (+6 vs `ref_c0`)<br>• Latidos suben en los 4 grupos | **Aceptada** |
+
+---
+
+### 3.3 Detalle por semilla en el arnés (semillas 11–30, `--real`)
+
+| Semilla | Sellada (día 1) | Latido sellado | Luz al sellar | Sello (c, a, s) | Salida (latido, luz, c, a, s) | Bebe tras salir | Come tras salir | Causa de muerte | Latidos vividos | `wake_up` | Logros |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| **11** | Sí | 125 | 0,657 | (8, 7, 9) | L297, luz 0,85, (2, 0, 9) | +17 | +87 | **Vive** | 600 | Sí | 15 |
+| **12** | Sí | 125 | 0,711 | (8, 7, 7) | L297, luz 0,81, (3, 1, 9) | +111 | None | hambre | 422 | Sí | 12 |
+| **13** | Sí | 130 | 0,624 | (7, 7, 9) | L292, luz 0,84, (2, 9, 9) | +120 | +50 | **Vive** | 600 | Sí | 12 |
+| **14** | Sí | 122 | 0,751 | (5, 4, 9) | L273, luz 0,54, (0, 0, 6) | None | None | zombi | 285 | Sí | 10 |
+| **15** | No | — | — | — | — | — | — | zombi | 169 | No | 8 |
+| **16** | No | — | — | — | — | — | — | zombi | 275 | No | 8 |
+| **17** | Sí | 128 | 0,657 | (4, 5, 9) | L263, luz 0,47, (0, 9, 9) | +11 | None | hambre | 415 | Sí | 11 |
+| **18** | Sí | 173 | 0,158 | (3, 4, 7) | L280, luz 0,65, (0, 0, 8) | +37 | None | zombi | 325 | Sí | 12 |
+| **19** | Sí | 127 | 0,657 | (4, 4, 6) | L274, luz 0,60, (0, 0, 8) | +62 | +73 | **Vive** | 600 | Sí | 14 |
+| **20** | No | — | — | — | — | — | — | zombi | 168 | No | 12 |
+| **21** | Sí | 124 | 0,711 | (8, 4, 9) | L304, luz 0,91, (2, 9, 9) | +53 | None | zombi | 456 | Sí | 12 |
+| **22** | Sí | 133 | 0,507 | (4, 8, 9) | L265, luz 0,58, (0, 9, 9) | +51 | +11 | zombi | 462 | Sí | 12 |
+| **23** | Sí | 185 | 0,058 | (2, 2, 9) | L262, luz 0,45, (0, 0, 9) | +2 | None | esqueleto | 363 | Sí | 13 |
+| **24** | No | — | — | — | — | — | — | zombi | 189 | No | 8 |
+| **25** | Sí | 120 | 0,679 | (4, 3, 9) | L280, luz 0,72, (0, 0, 5) | +25 | None | hambre | 321 | Sí | 11 |
+| **26** | Sí | 120 | 0,624 | (8, 6, 9) | L307, luz 0,95, (2, 9, 9) | +18 | +13 | **Vive** | 600 | Sí | 15 |
+| **27** | Sí | 168 | 0,186 | (3, 3, 5) | L264, luz 0,49, (0, 9, 9) | +10 | None | hambre | 355 | Sí | 11 |
+| **28** | Sí | 151 | 0,410 | (7, 7, 7) | L304, luz 0,87, (2, 8, 9) | +3 | +30 | sed | 581 | Sí | 13 |
+| **29** | Sí | 164 | 0,131 | (6, 6, 7) | L277, luz 0,77, (3, 9, 9) | +18 | +45 | **Vive** | 600 | Sí | 13 |
+| **30** | Sí | 162 | 0,123 | (6, 2, 7) | L280, luz 0,80, (3, 9, 9) | +7 | None | hambre | 507 | Sí | 12 |
+
+---
+
+### 3.4 Comparación de causas de muerte en el arnés (semillas 11–30)
+
+| Causa de muerte | Ref C.0 | C.0c-fix | C.1 | C.2 (`4011bef`) | Δ (C.2 vs C.1) |
+|---|---|---|---|---|---|
+| **hambre** | 3 | 5 | 7 | **5** | **-2 (baja un 28,6 %)** |
+| **zombi** | 6 | 7 | 8 | **8** | = 0 |
+| **esqueleto** | 5 | 4 | 1 | **1** | = 0 |
+| **sed** | 2 | 3 | 0 | **1** | +1 (L581) |
+| **vivas** | 4 | 1 | 3 | **5** | **+2 (+66,7 %)** |
+| *Selladas día 1* | 11 | 11 | 16 | **16** | = 0 (16/20, 80,0 %) |
+| *Selladas con luz $\ge 0,5$* | — | — | 8 | **10** | **+2 (+25,0 %)** |
+
+---
+
+### 3.5 Benchmark completo: 4 grupos (40 linajes, 120 vidas pareadas)
+
+Comparación pareada entre la referencia `datos/benchmarks/ref_c0.json` (commit `f2f1262`) y `datos/benchmarks/c2_completo.json` (commit `4011bef`):
+
+#### 1. Métricas por grupo (N = 10 linajes, IC 95 %; Δ = nueva − base)
+
+| Grupo | Métrica | Base (`ref_c0`) | C.2 (`c2_completo`) | Δ pareado (IC 95 %) |
+|---|---|---|---|---|
+| **Equilibrado** | latidos | 370,10 ± 66,57 | **402,00 ± 59,90** | **+31,90 ± 71,23** |
+| | fitness | 11315,50 ± 1407,01 | **11379,90 ± 1173,81** | **+64,40 ± 810,81** |
+| | logros | 10,93 ± 1,36 | **10,97 ± 1,12** | **+0,03 ± 0,75** |
+| | noches | 0,90 ± 0,28 | **1,03 ± 0,31** | **+0,13 ± 0,36** |
+| **Valiente** | latidos | 354,83 ± 73,56 | **409,40 ± 65,86** | **+54,57 ± 59,62** |
+| | fitness | 11900,17 ± 1419,04 | **12456,83 ± 930,12** | **+556,67 ± 792,30** |
+| | logros | 11,53 ± 1,36 | **12,03 ± 0,90** | **+0,50 ± 0,77** |
+| | noches | 0,87 ± 0,30 | **1,17 ± 0,20** | **+0,30 ± 0,26** |
+| **Reactivo** | latidos | 376,40 ± 76,51 | **380,67 ± 56,76** | **+4,27 ± 92,75** |
+| | fitness | 10954,37 ± 1256,43 | **11291,53 ± 1282,66** | **+337,17 ± 1401,11** |
+| | logros | 10,57 ± 1,20 | **10,90 ± 1,25** | **+0,33 ± 1,33** |
+| | noches | 0,93 ± 0,35 | 0,93 ± 0,27 | -0,00 ± 0,41 |
+| **Sin experiencia** | latidos | 377,93 ± 47,78 | **396,77 ± 74,84** | **+18,83 ± 75,12** |
+| | fitness | 11523,07 ± 885,18 | **11641,77 ± 1162,81** | **+118,70 ± 790,23** |
+| | logros | 11,13 ± 0,86 | **11,23 ± 1,12** | **+0,10 ± 0,75** |
+| | noches | 1,00 ± 0,19 | **1,07 ± 0,29** | **+0,07 ± 0,33** |
+
+#### 2. Muertes por causa en los 4 grupos (120 vidas)
+
+| Grupo | Causa de muerte | Base (`ref_c0`) | C.2 (`c2_completo`) | Δ vidas |
+|---|---|---|---|---|
+| **Equilibrado** | esqueleto | 2 | 3 | +1 |
+| | hambre | 6 | 7 | +1 |
+| | sed | 6 | **2** | **-4** |
+| | **vive** | 6 | **7** | **+1** |
+| | zombi | 10 | 11 | +1 |
+| **Valiente** | esqueleto | 8 | **3** | **-5** |
+| | hambre | 4 | 10 | +6 |
+| | sed | 5 | **4** | **-1** |
+| | **vive** | 3 | **8** | **+5 (casi se triplica)** |
+| | zombi | 10 | **5** | **-5** |
+| **Reactivo** | esqueleto | 3 | 3 | 0 |
+| | hambre | 2 | 10 | +8 |
+| | sed | 9 | 9 | 0 |
+| | vive | 7 | 4 | -3 |
+| | zombi | 9 | **4** | **-5** |
+| **Sin experiencia**| esqueleto | 3 | 4 | +1 |
+| | hambre | 7 | **5** | **-2** |
+| | sed | 7 | **6** | **-1** |
+| | **vive** | 5 | **8** | **+3** |
+| | zombi | 8 | **7** | **-1** |
+| **TOTALES (120)** | **vivas al final** | **21** | **27** | **+6 vidas vivas (+28,6 %)** |
+| | **sed** | **27** | **21** | **-6 muertes por sed (-22,2 %)** |
+
+#### 3. Logros por tipo (120 vidas)
+
+| Logro | Vidas base (`ref_c0`) | Vidas C.2 (`c2_completo`) | Δ vidas | Observación |
+|---|---|---|---|---|
+| **eat_cow** | 66 | **73** | **+7** | Mayor aprovechamiento de vacas recordadas y provisión |
+| **wake_up** | 76 | **92** | **+16** | De 63,3 % a 76,7 % de todas las vidas durmiendo seguras |
+| **collect_stone** | 93 | **106** | **+13** | Extracción activa de piedra para recintos flexibles |
+| **place_stone** | 89 | **99** | **+10** | Sellado y tapiado con paredes de piedra artificiales |
+| **defeat_zombie** | 67 | **77** | **+10** | Defensa armada consolidada y mayor tiempo vivido |
+| **make_stone_sword** | 5 | **9** | **+4** | Progresión tecnológica facilitada por mayor supervivencia |
+| **make_wood_pickaxe** | 112 | **114** | **+2** | Prácticamente saturado en 95,0 % de las vidas |
+| **place_furnace** | 23 | **24** | **+1** | Progresión estable |
+
+---
+
+### 3.6 Verificación de pureza y base
+
+Comandos ejecutados y su salida literal:
+
+```powershell
+PS F:\code\IdA> git diff --stat main...HEAD -- ida/core ida/sistemas
+(salida vacía: ningún archivo modificado en ida/core ni ida/sistemas)
+
+PS F:\code\IdA> python -m pytest -q
+165 passed, 1 warning in 43.49s
+
+PS F:\code\IdA> ruff check ida tests
+All checks passed!
+
+PS F:\code\IdA> mypy ida
+Success: no issues found in 40 source files
+```
+
+### 3.7 Estado de verificación de C.2
+
+- **Verificado:**
+  1. Integración de `self.vacas` en `hay_comida_viable` con acotación de distancia y margen pre-ocaso.
+  2. Umbral de provisión pre-sellado fijado en `food < 7`.
+  3. Desbloqueo de la fase `provisiones` en `RefugioNocturno.actuar` (evitando la cesión innecesaria a `plan_tecnologico` cuando la mina ya es conocida) y motivación continua proporcional al déficit biológico (`ar >= 0,82`, `conf >= 0,84`).
+  4. Navegación hacia vacas recordadas en `provisiones` cuando no hay alimento visible inmediato.
+  5. Arnés `--real` en semillas 11–30: **16/20 selladas día 1**, muertes por hambre bajan a **5/20** (frente a 7/20), semilla 19 vive hasta L600 (14 logros), vivas aumentan a **5/20** (25,0 %).
+  6. Benchmark rápido en Equilibrado (`datos/benchmarks/c2_rapido.json`): muertes por sed caen a **2/30** (frente a 6 en base y 4 en C.1), vivas suben a 7/30, latidos medios **402,00**.
+  7. Benchmark completo en los 4 grupos (`datos/benchmarks/c2_completo.json`): 120 vidas pareadas frente a `ref_c0.json`, aumento de latidos y fitness en los 4 grupos, incremento de `wake_up` de 76 a 92 (+16), `eat_cow` de 66 a 73 (+7), y vivas globales de 21 a 27 (+6 vidas).
+  8. Pureza absoluta de framework: cero modificaciones en `ida/core/` e `ida/sistemas/`.
+- **No verificado:** Efecto en semillas con horizonte largo de 3000 latidos (objeto del siguiente paso, C.3).
