@@ -349,28 +349,19 @@ class MundoCrafter(Mundo):
         delta = {k: round(v, 2) for k, v in delta.items() if v}
         causa = None
         if delta.get("vitalidad", 0) < 0:
-            cerca = [c for c in self._cosas() if c[1] in HOSTILES and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
-            if cerca:
-                causa = cerca[0][1]
-        if p.health <= 0:
             danno_puntos = antes["salud"] - p.health
+            cerca_zombi = any(c[1] == "zombi" and _dist(tuple(p.pos), c[2]) <= 1 for c in self._cosas())
             if self.env._world[tuple(p.pos)][0] == "lava":
                 causa = "lava"
             elif getattr(self, "_impacto_flecha", False):
                 causa = "esqueleto"
-            else:
-                cerca_zombi = [c for c in self._cosas() if c[1] == "zombi" and _dist(tuple(p.pos), c[2]) <= 1]
-                cerca_esqueleto = [c for c in self._cosas() if c[1] == "esqueleto" and _dist(tuple(p.pos), c[2]) <= 5]
-                if cerca_zombi and (danno_puntos >= 2 or (inv["drink"] > 0 and inv["food"] > 0)):
-                    causa = "zombi"
-                elif inv["drink"] == 0:
+            elif cerca_zombi and (danno_puntos >= 2 or (p.health <= 0 and inv["drink"] > 0 and inv["food"] > 0)):
+                causa = "zombi"
+            elif p.health <= 0:
+                if inv["drink"] == 0:
                     causa = "sed"
                 elif inv["food"] == 0:
                     causa = "hambre"
-                elif cerca_zombi:
-                    causa = "zombi"
-                elif cerca_esqueleto:
-                    causa = "esqueleto"
                 elif inv.get("energy", 0) == 0:
                     causa = "cansancio"
         ganados = [INVENTARIO.get(k, k) for k in inv if inv[k] > antes.get(k, 0) and k not in ("health", "food", "drink", "energy")]

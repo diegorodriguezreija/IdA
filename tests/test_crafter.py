@@ -118,3 +118,58 @@ def test_atribucion_causas_muerte(mundo):
     assert ef.causa == "esqueleto"
     assert ef.muerte is True
 
+
+def test_dano_sed_con_esqueleto_a_4_es_none(mundo):
+    import numpy as np
+    from crafter import objects as crafter_objects
+
+    mundo.reiniciar(1)
+    mundo.jugador.health = 5
+    mundo.jugador.inventory["food"] = 5
+    mundo.jugador.inventory["drink"] = 0
+    mundo.jugador._recover = -15
+    pos_p = mundo.jugador.pos
+    esq = crafter_objects.Skeleton(mundo.env._world, pos_p + np.array([4, 0]), mundo.jugador)
+    mundo.env._world.add(esq)
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.delta.get("vitalidad", 0) < 0
+    assert ef.causa is None
+    assert ef.muerte is False
+
+
+def test_flecha_no_mortal_desde_5_es_esqueleto(mundo):
+    import numpy as np
+    from crafter import objects as crafter_objects
+
+    mundo.reiniciar(1)
+    mundo.jugador.health = 7
+    mundo.jugador.inventory["food"] = 5
+    mundo.jugador.inventory["drink"] = 5
+    pos_p = mundo.jugador.pos
+    flecha = crafter_objects.Arrow(mundo.env._world, pos_p - np.array([1, 0]), np.array([1, 0]))
+    mundo.env._world.add(flecha)
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.delta.get("vitalidad", 0) < 0
+    assert ef.causa == "esqueleto"
+    assert ef.muerte is False
+    assert mundo.jugador.health == 5
+
+
+def test_zombi_en_cruz_con_dano_2_es_zombi(mundo):
+    import numpy as np
+    from crafter import objects as crafter_objects
+
+    mundo.reiniciar(1)
+    mundo.jugador.health = 7
+    mundo.jugador.inventory["food"] = 5
+    mundo.jugador.inventory["drink"] = 5
+    pos_p = mundo.jugador.pos
+    zombi = crafter_objects.Zombie(mundo.env._world, pos_p + np.array([1, 0]), mundo.jugador)
+    mundo.env._world.add(zombi)
+    ef = mundo.ejecutar(Verbo.ESPERAR, "", {})
+    assert ef.delta.get("vitalidad", 0) < 0
+    assert ef.causa == "zombi"
+    assert ef.muerte is False
+    assert mundo.jugador.health == 5
+
+
