@@ -19,6 +19,17 @@ from ida.ejecutor import ejecutar as vivir  # noqa: E402
 from ida.mundos.crafter import RefugioNocturno, _dist  # noqa: E402
 
 
+def _obtener_refugio(org: Any) -> Optional[RefugioNocturno]:
+    for s in org.sistemas:
+        if s.nombre == "S2":
+            for c in s.componentes():
+                if type(c).__name__ == "Estrategia":
+                    inst = c.catalogo.get("refugio_nocturno")
+                    if isinstance(inst, RefugioNocturno):
+                        return inst
+    return None
+
+
 def diagnosticar_semilla_d(sem: int, max_latidos: int = 3000) -> Optional[Dict[str, Any]]:
     historial: List[Dict[str, Any]] = []
     causa_muerte: Optional[str] = None
@@ -32,10 +43,7 @@ def diagnosticar_semilla_d(sem: int, max_latidos: int = 3000) -> Optional[Dict[s
         luz = float(org.mundo.env._world.daylight)
 
         if refugio_instancia is None:
-            for comp in org.perfil.estrategias:
-                if isinstance(comp, RefugioNocturno):
-                    refugio_instancia = comp
-                    break
+            refugio_instancia = _obtener_refugio(org)
 
         paso_s2 = (onda.notas.get("estrategias_S2") or {}).get("refugio_nocturno")
         fase = paso_s2.get("fase", "") if isinstance(paso_s2, dict) else ""
@@ -135,10 +143,7 @@ def diagnosticar_semilla_e(sem: int, max_latidos: int = 600) -> Tuple[Optional[D
         luz = float(org.mundo.env._world.daylight)
 
         if refugio_inst is None:
-            for comp in org.perfil.estrategias:
-                if isinstance(comp, RefugioNocturno):
-                    refugio_inst = comp
-                    break
+            refugio_inst = _obtener_refugio(org)
 
         paso_s2 = (onda.notas.get("estrategias_S2") or {}).get("refugio_nocturno")
         fase = paso_s2.get("fase", "") if isinstance(paso_s2, dict) else ""

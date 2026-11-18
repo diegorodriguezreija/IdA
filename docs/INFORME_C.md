@@ -767,4 +767,320 @@ El análisis empírico de los 65 episodios demuestra de forma concluyente que:
 3. **El COMBATE NO es un cuello de botella (0 % de fracasos):**
    - En todos los episodios en que el individuo logró alcanzar a la vaca en cuerpo a cuerpo (los 6 episodios `comida`), la abatió y consumió con éxito requiriendo entre 0 y 2 golpes adicionales. Ningún episodio se frustró por interrupción o falta de daño una vez trabado el combate.
 
+---
+
+## 7. C.3d: Forrajeo oportunista y evaluación multiescala
+
+### 7.1 Subapartado A: Implementación del forrajeo oportunista
+
+- **Commit de la implementación:** [`d00d010`](file:///f:/code/IdA/ida/mundos/crafter.py) (`crafter: C.3d forrajeo oportunista de vacas en RefugioNocturno`).
+- **Ubicación:** Exclusivamente en `RefugioNocturno` (`ida/mundos/crafter.py`) y test sintético en `tests/test_crafter.py`. Cero cambios en `ida/core/` o `ida/sistemas/`.
+
+#### Lógica implementada
+En `RefugioNocturno.actuar`, antes de la cesión diurna (el `return None` cuando no `anticipa`, hay mina y no hay sed crítica), y también al inicio de las fases `abastecer` y `provisiones`:
+1. **Condiciones de activación:**
+   - Hay al menos una vaca percibida (`Exterocepcion`, clase `"vaca"`) a distancia Manhattan $\le 4$.
+   - Luz diurna $\ge 0,5$.
+   - No hay hostiles percibidos (`"zombi"`, `"esqueleto"`) a distancia $\le 3$.
+   - Nivel de comida del individuo $\le 5$ (`inv.get("food", 0) <= 5`).
+2. **Acción propuesta:**
+   - Si la vaca está adyacente ($\text{distancia} == 1$): propone `Verbo.COMER` con el `id` de la vaca.
+   - Si no está adyacente: propone `Verbo.MOVER` mediante `_paso_hacia`. Si no hay paso transitable, la posición se marca en `self.inalcanzables`.
+3. **Motivación continua según el hueco gástrico:**
+   $$h = \frac{9 - \text{comida}}{9}$$
+   $$\text{arousal} = 0,55 + 0,35 \cdot h, \quad \text{confianza} = 0,70 + 0,25 \cdot h$$
+4. **Límites espaciales y persistencia:**
+   - Respeta `self.inalcanzables` (cuarentena de 50 latidos).
+   - Registra en `self._vaca_origen` la posición del individuo al avistar la vaca y no la persigue si la distancia actual al punto de avistamiento supera las 6 casillas.
+   - No se alteró `_deseo`, la fase `dormir` ni `_conviene_salir`.
+
+#### Test sintético
+Implementado en `tests/test_crafter.py` (`test_c3d_forrajeo_oportunista`):
+- Vaca a distancia 2, comida 4, luz 1,0 $\to$ propone `Verbo.MOVER` hacia la vaca con $\text{arousal} = 0,744$ y $\text{confianza} = 0,839$.
+- Comida 8 $\to$ retorna `None` (no la propone).
+- Vaca adyacente a distancia 1, comida 4 $\to$ propone `Verbo.COMER` sobre la vaca.
+- Resultado: 167 tests pasados en pytest (`pytest -q`).
+
+---
+
+### 7.2 Subapartado B: Medición ANTES frente a DESPUÉS (muestras grandes)
+
+- **ANTES:** HEAD previo (C.3b, commit [`724b3fe`](file:///f:/code/IdA/docs/INFORME_C.md) ejecutado mediante `git worktree` en `F:\code\IdA_antes`).
+- **DESPUÉS:** Con forrajeo oportunista C.3d (commit [`d00d010`](file:///f:/code/IdA/ida/mundos/crafter.py)).
+
+#### B.1 Arnés largo (semillas 11–30, `--latidos 3000`, `--real`)
+- **Comandos:**
+  * ANTES: `python F:\code\IdA_antes\herramientas\arnes_refugio_crafter.py --real --semillas 11..30 --latidos 3000 --salida datos/benchmarks/arnes_largo_antes.json` (tiempo: **85,60 s**).
+  * DESPUÉS: `python herramientas/arnes_refugio_crafter.py --real --semillas 11..30 --latidos 3000 --salida datos/benchmarks/arnes_largo_despues.json` (tiempo: **87,34 s**).
+
+| Métrica | ANTES (C.3b) | DESPUÉS (C.3d) | Diferencia (Δ) |
+|---|---|---|---|
+| **Latidos vividos (media)** | 445,15 | **454,10** | **+8,95 latidos** |
+| **Latidos vividos (mediana)** | 426,50 | **417,00** | -9,50 latidos |
+| **Máximo de latidos en una vida** | 976 (sem. 21) | **1002 (sem. 20)** | **+26 latidos** |
+| **Noches superadas totales** | 24 (media 1,20) | 24 (media 1,20) | = 0 |
+| **Vacas comidas totales** | 24 en 42 días | **26 en 43 días** | **+2 vacas** |
+| **Vacas comidas por día vivido** | 0,571 vacas/día | **0,605 vacas/día** | **+0,034 vacas/día (+5,9 %)** |
+| **Muertes por causa** | Hambre: 11, Zombi: 8, Sed: 1 | Hambre: 11, Zombi: 7, Esqueleto: 1, Sed: 1 | Zombi: -1, Esqueleto: +1 |
+
+---
+
+#### B.2 Diagnóstico de episodios de vacas percibidas (`diagnostico_vacas_c3c.py`, semillas 11–30, 3000 latidos)
+- **Comandos:**
+  * ANTES: `python F:\code\IdA_antes\herramientas\diagnostico_vacas_c3c.py --semillas 11..30 --latidos 3000 --salida datos/benchmarks/diag_vacas_antes.json` (tiempo: **85,17 s**).
+  * DESPUÉS: `python herramientas/diagnostico_vacas_c3c.py --semillas 11..30 --latidos 3000 --salida datos/benchmarks/diag_vacas_despues.json` (tiempo: **85,54 s**).
+
+| Entorno / Subconjunto | Métrica | ANTES (C.3b) | DESPUÉS (C.3d) | Diferencia (Δ) |
+|---|---|---|---|---|
+| **DE DÍA Y FUERA DEL REFUGIO** | **Episodios totales** | N = 92 | N = 56 | -36 episodios |
+| | • **Comidos** | 12 (13,0 %) | **13 (23,2 %)** | **+10,2 puntos %** |
+| | • **Perdidos de vista** | 15 (16,3 %) | **14 (25,0 %)** | +8,7 puntos % |
+| | • **Ignorados** | 65 (70,7 %) | **29 (51,8 %)** | **-18,9 puntos %** |
+| | • **Comida media al ver vaca (comidos)** | 2,67 | **2,31** | -0,36 |
+| | • **Comida media al ver vaca (perdidos)** | 1,53 | **1,79** | +0,26 |
+| | • **Comida media al ver vaca (ignorados)** | 3,83 | **4,07** | +0,24 |
+| **RESTO (NOCHE O DENTRO REFUGIO)** | **Episodios totales** | N = 12 | N = 12 | 0 |
+| | • **Comidos** | 1 (8,3 %) | 0 (0,0 %) | -1 |
+| | • **Perdidos de vista** | 0 (0,0 %) | 0 (0,0 %) | 0 |
+| | • **Ignorados** | 11 (91,7 %) | 12 (100,0 %) | +1 |
+| | • **Comida media (ignorados)** | 4,00 | 4,08 | +0,08 |
+| **GLOBAL (TOTAL)** | **Episodios totales** | N = 104 | N = 68 | -36 |
+| | • **Comidos globales** | 13 (12,5 %) | **13 (19,1 %)** | **+6,6 puntos %** |
+| | • **Ignorados globales** | 76 (73,1 %) | **41 (60,3 %)** | **-12,8 puntos %** |
+
+---
+
+#### B.3 Arnés de 600 latidos (semillas 11–50, 40 vidas, `--real`)
+- **Comandos:**
+  * ANTES: `python F:\code\IdA_antes\herramientas\arnes_refugio_crafter.py --real --semillas 11..50 --latidos 600 --salida datos/benchmarks/arnes_600_antes.json` (tiempo: **159,60 s**).
+  * DESPUÉS: `python herramientas/arnes_refugio_crafter.py --real --semillas 11..50 --latidos 600 --salida datos/benchmarks/arnes_600_despues.json` (tiempo: **159,96 s**).
+
+| Métrica | ANTES (C.3b) | DESPUÉS (C.3d) | Diferencia (Δ) |
+|---|---|---|---|
+| **Vidas selladas el día 1** | **32 / 40 (80,0 %)** | **32 / 40 (80,0 %)** | **0 (sin degradación)** |
+| **Selladas sin daño dentro** | 32 / 32 (100,0 %) | 32 / 32 (100,0 %) | 0 (100 % intacto) |
+| **Vidas con `wake_up`** | 32 / 40 (80,0 %) | **33 / 40 (82,5 %)** | **+1 vida** |
+| **Vivas al final (L600)** | 9 / 40 (22,5 %) | **10 / 40 (25,0 %)** | **+1 vida viva** |
+| **Latidos medios** | 413,2 | **418,9** | **+5,7 latidos** |
+| **Logros medios** | 11,70 | 11,70 | 0,00 |
+| **Muertes por causa** | Hambre: 11<br>Zombi: 13<br>Sed: 4<br>Esqueleto: 3 | Hambre: 12<br>Zombi: 12<br>Sed: 4<br>Esqueleto: 2 | Hambre: +1<br>Zombi: -1<br>Sed: = 0<br>Esqueleto: -1 |
+
+---
+
+#### B.4 Benchmark rápido (Equilibrado, 30 vidas) DESPUÉS frente a `c3b_rapido.json`
+- **Comando ejecución:** `python herramientas/benchmark.py ejecutar --raiz . --mundo crafter --grupos Equilibrado --salida datos/benchmarks/c3d_rapido.json` (tiempo: **117,97 s**).
+- **Comando comparación:** `python herramientas/benchmark.py comparar datos/benchmarks/c3b_rapido.json datos/benchmarks/c3d_rapido.json`.
+
+| Métrica | Base (`c3b_rapido`) | Nueva (`c3d_rapido`) | Δ pareado (IC 95 %) |
+|---|---|---|---|
+| **Latidos** | 419,30 ± 74,43 | 409,10 ± 72,03 | -10,20 ± 30,52 |
+| **Fitness** | 11731,40 ± 1375,04 | 11721,47 ± 1420,73 | -9,93 ± 243,85 |
+| **Logros** | 11,30 ± 1,31 | 11,30 ± 1,37 | 0,00 ± 0,22 |
+| **Noches** | 1,20 ± 0,30 | 1,13 ± 0,30 | -0,07 ± 0,15 |
+| **Vivas a L600** | 9 | 9 | 0 |
+| **Muertes por hambre** | **8** | **5** | **-3 muertes por hambre** |
+| **Muertes por zombi** | 5 | 6 | +1 |
+| **Muertes por esqueleto** | 4 | 5 | +1 |
+| **Muertes por sed** | 4 | 5 | +1 |
+| **Logro `eat_cow` (vidas)** | **18** | **19** | **+1 vida (+5,6 %)** |
+| **Tiempo por latido** | 5,45 ms | 5,15 ms | -0,30 ms |
+
+---
+
+### 7.3 Subapartado C: Benchmark completo de las dos versiones
+
+- **Ejecución ANTES:** `python F:\code\IdA_antes\herramientas\benchmark.py ejecutar --raiz F:\code\IdA_antes --mundo crafter --salida datos/benchmarks/c3b_completo.json` (tiempo: **457,89 s**).
+- **Ejecución DESPUÉS:** `python herramientas/benchmark.py ejecutar --raiz . --mundo crafter --salida datos/benchmarks/c3d_completo.json` (tiempo: **455,06 s**).
+
+#### Tabla 1: `ref_c0.json` frente a `c3b_completo.json` (N = 10 linajes, 4 grupos, 120 vidas)
+*Comando: `python herramientas/benchmark.py comparar datos/benchmarks/ref_c0.json datos/benchmarks/c3b_completo.json`*
+
+| Grupo | Métrica | Base (`ref_c0`) | Nueva (`c3b_completo`) | Δ pareado (IC 95 %) |
+|---|---|---|---|---|
+| **Equilibrado** | Latidos | 370,10 ± 66,57 | 419,30 ± 74,43 | +49,20 ± 79,10 |
+| | Fitness | 11315,50 ± 1407,01 | 11731,40 ± 1375,04 | +415,90 ± 1030,89 |
+| | Logros | 10,93 ± 1,36 | 11,30 ± 1,31 | +0,37 ± 0,98 |
+| | Noches | 0,90 ± 0,28 | 1,20 ± 0,30 | +0,30 ± 0,31 |
+| **Valiente** | Latidos | 354,83 ± 73,56 | 411,60 ± 51,53 | +56,77 ± 53,49 |
+| | Fitness | 11900,17 ± 1419,04 | 12257,63 ± 954,43 | +357,47 ± 785,15 |
+| | Logros | 11,53 ± 1,36 | 11,83 ± 0,92 | +0,30 ± 0,75 |
+| | Noches | 0,87 ± 0,30 | 1,20 ± 0,26 | +0,33 ± 0,19 |
+| **Reactivo** | Latidos | 376,40 ± 76,51 | 352,47 ± 56,50 | -23,93 ± 97,73 |
+| | Fitness | 10954,37 ± 1256,43 | 11031,37 ± 1256,84 | +77,00 ± 1300,28 |
+| | Logros | 10,57 ± 1,20 | 10,67 ± 1,23 | +0,10 ± 1,23 |
+| | Noches | 0,93 ± 0,35 | 0,80 ± 0,28 | -0,13 ± 0,45 |
+| **Sin experiencia** | Latidos | 377,93 ± 47,78 | 395,27 ± 55,18 | +17,33 ± 78,59 |
+| | Fitness | 11523,07 ± 885,18 | 11741,43 ± 916,52 | +218,37 ± 683,28 |
+| | Logros | 11,13 ± 0,86 | 11,33 ± 0,89 | +0,20 ± 0,65 |
+| | Noches | 1,00 ± 0,19 | 1,07 ± 0,29 | +0,07 ± 0,40 |
+
+---
+
+#### Tabla 2: `c3b_completo.json` frente a `c3d_completo.json` (N = 10 linajes, 4 grupos, 120 vidas)
+*Comando: `python herramientas/benchmark.py comparar datos/benchmarks/c3b_completo.json datos/benchmarks/c3d_completo.json`*
+
+| Grupo | Métrica | Base (`c3b_completo`) | Nueva (`c3d_completo`) | Δ pareado (IC 95 %) |
+|---|---|---|---|---|
+| **Equilibrado** | Latidos | 419,30 ± 74,43 | 409,10 ± 72,03 | -10,20 ± 30,52 |
+| | Fitness | 11731,40 ± 1375,04 | 11721,47 ± 1420,73 | -9,93 ± 243,85 |
+| | Logros | 11,30 ± 1,31 | 11,30 ± 1,37 | 0,00 ± 0,22 |
+| | Noches | 1,20 ± 0,30 | 1,13 ± 0,30 | -0,07 ± 0,15 |
+| **Valiente** | Latidos | 411,60 ± 51,53 | 428,43 ± 61,44 | +16,83 ± 41,13 |
+| | Fitness | 12257,63 ± 954,43 | 12441,50 ± 1005,44 | +183,87 ± 448,76 |
+| | Logros | 11,83 ± 0,92 | 12,00 ± 0,97 | +0,17 ± 0,42 |
+| | Noches | 1,20 ± 0,26 | 1,27 ± 0,29 | +0,07 ± 0,19 |
+| **Reactivo** | Latidos | 352,47 ± 56,50 | 355,10 ± 62,70 | +2,63 ± 21,24 |
+| | Fitness | 11031,37 ± 1256,84 | 11033,63 ± 1248,11 | +2,27 ± 228,00 |
+| | Logros | 10,67 ± 1,23 | 10,67 ± 1,21 | 0,00 ± 0,22 |
+| | Noches | 0,80 ± 0,28 | 0,80 ± 0,28 | 0,00 ± 0,00 |
+| **Sin experiencia** | Latidos | 395,27 ± 55,18 | 404,97 ± 54,26 | +9,70 ± 16,99 |
+| | Fitness | 11741,43 ± 916,52 | 11717,53 ± 911,87 | -23,90 ± 208,90 |
+| | Logros | 11,33 ± 0,89 | 11,30 ± 0,88 | -0,03 ± 0,21 |
+| | Noches | 1,07 ± 0,29 | 1,10 ± 0,28 | +0,03 ± 0,08 |
+
+#### Causas de muerte por grupo (`c3b_completo` vs `c3d_completo`)
+| Grupo | Causa | Vidas Base (`c3b`) | Vidas Nueva (`c3d`) | Diferencia (Δ) |
+|---|---|---|---|---|
+| **Equilibrado** | Hambre | 8 | 5 | **-3** |
+| | Sed | 4 | 5 | +1 |
+| | Zombi | 5 | 6 | +1 |
+| | Esqueleto | 4 | 5 | +1 |
+| | Vive | 9 | 9 | 0 |
+| **Valiente** | Hambre | 6 | 4 | **-2** |
+| | Sed | 5 | 4 | -1 |
+| | Zombi | 11 | 12 | +1 |
+| | Esqueleto | 0 | 1 | +1 |
+| | Vive | 8 | 9 | **+1** |
+| **Reactivo** | Hambre | 2 | 2 | 0 |
+| | Sed | 11 | 10 | -1 |
+| | Zombi | 9 | 10 | +1 |
+| | Esqueleto | 4 | 4 | 0 |
+| | Vive | 4 | 4 | 0 |
+| **Sin experiencia** | Hambre | 3 | 2 | **-1** |
+| | Sed | 6 | 7 | +1 |
+| | Zombi | 10 | 9 | -1 |
+| | Esqueleto | 4 | 4 | 0 |
+| | Vive | 7 | 8 | **+1** |
+| **TOTALES (4 grupos)** | **Hambre** | **19** | **13** | **-6 vidas por hambre (-31,6 %)** |
+| | **Vivas a L600** | **28** | **30** | **+2 vidas vivas** |
+
+#### Logros por tipo (total de vidas sobre las 120 vidas de los 4 grupos)
+| Logro | `ref_c0` | `c3b_completo` | `c3d_completo` | Δ (`c3d` vs `c3b`) |
+|---|---|---|---|---|
+| `eat_cow` | 66 | 74 | **75** | **+1 vida** |
+| `wake_up` | 76 | 89 | **90** | **+1 vida** |
+| `eat_plant` | 0 | 1 | **2** | +1 vida |
+| `collect_drink` | 98 | 90 | **91** | +1 vida |
+| `collect_stone` | 93 | 102 | **104** | +2 vidas |
+| `make_stone_pickaxe` | 13 | 18 | **19** | +1 vida |
+| `place_stone` | 89 | 99 | **100** | +1 vida |
+| `defeat_zombie` | 67 | 75 | **72** | -3 vidas |
+| `place_furnace` | 23 | 28 | **27** | -1 vida |
+| `collect_sapling` | 120 | 120 | **120** | 0 |
+| `collect_wood` | 120 | 120 | **120** | 0 |
+| `place_plant` | 120 | 120 | **120** | 0 |
+| `make_wood_pickaxe` | 112 | 114 | **114** | 0 |
+| `make_wood_sword` | 108 | 107 | **107** | 0 |
+| `place_table` | 117 | 116 | **116** | 0 |
+| `defeat_skeleton` | 50 | 34 | **34** | 0 |
+| `collect_coal` | 47 | 39 | **39** | 0 |
+| `collect_iron` | 1 | 3 | **3** | 0 |
+| `make_stone_sword` | 5 | 5 | **5** | 0 |
+
+---
+
+### 7.4 Subapartado D: ¿Qué mata después? (Arnés largo semillas 11–30, 3000 latidos, DESPUÉS)
+
+- **Script:** [herramientas/diagnostico_c3d_d_e.py](file:///f:/code/IdA/herramientas/diagnostico_c3d_d_e.py) (commit [`294d442`](file:///f:/code/IdA/herramientas/diagnostico_c3d_d_e.py)).
+- **Comando:**
+  ```powershell
+  $t0 = Get-Date; & "C:\Users\diego\AppData\Local\Python\pythoncore-3.15-64\python.exe" herramientas/diagnostico_c3d_d_e.py; $t1 = Get-Date; Write-Host "Tiempo: $(($t1 - $t0).TotalSeconds) s"
+  ```
+- **Tiempo de ejecución (D + E):** **273,53 s** (D: ~85 s, E: ~188 s).
+
+#### Agregación de muertes (N = 20 muertes analizadas)
+- **Por causa:**
+  * **Hambre:** **12** (60,0 %)
+  * **Zombi:** **4** (20,0 %)
+  * **Esqueleto:** **2** (10,0 %)
+  * **Sed:** **2** (10,0 %)
+- **Por día (latido // 290):**
+  * **Día 0:** **5** vidas (semillas 16, 21, 24, 29, 30: fallos en la primera jornada o noche).
+  * **Día 1:** **10** vidas (semillas 12, 13, 18, 20, 22, 23, 25, 26, 27, 28: tras superar la noche 1, agotan sus reservas y mueren al mediodía o tarde del día 2).
+  * **Día 2:** **3** vidas (semillas 11, 15, 17: superan 2 noches).
+  * **Día 3:** **1** vida (semilla 14: supera 3 noches).
+  * **Día 4:** **1** vida (semilla 19: supera 4 noches, muere en L1327).
+- **Ubicación y ciclo lumínico al morir:**
+  * **Dentro vs Fuera:** El **100 %** de las muertes (20/20) ocurrieron **FUERA** del refugio. Cero muertes ocurrieron dentro del refugio sellado.
+  * **Día vs Noche:** **12** muertes de día ($\text{luz} \ge 0,5$), **8** muertes de noche ($\text{luz} < 0,5$).
+
+#### Top 5 situaciones de muerte más repetidas
+| Situación de muerte | Recuento | Descripción contextual |
+|---|---|---|
+| **1. Hambre, Fuera, Día, Ganador=`S2:refugio_nocturno`** | **5 vidas** | Agotamiento de comida a pleno día mientras `refugio_nocturno` busca comida o mina; a -30L la comida ya es 0 y el agua está llena (7–9). |
+| **2. Hambre, Fuera, Día, Ganador=`S1:huir`** | **4 vidas** | Con comida a 0 y salud agonizante (2–4), la proximidad de zombis a mediodía dispara la huida continua hasta morir por inanición. |
+| **3. Esqueleto, Fuera, Noche, Ganador=`S2:refugio_nocturno`** | **2 vidas** | Atrapado al anochecer intentando alcanzar o cerrar el refugio bajo fuego de flechas. |
+| **4. Zombi, Fuera, Noche, Ganador=`S1:huir`** | **2 vidas** | Sorprendido en campo abierto durante la noche tras no sellar o salir prematuramente. |
+| **5. Hambre, Fuera, Noche, Ganador=`desconocida`** | **2 vidas** | Anochecer sin refugio factible; muere de inanición en la penumbra. |
+
+#### Detalle individual de las 20 muertes en DESPUÉS
+| Semilla | Latido muerte | Día | Causa | Fuera / Dentro | Luz al morir | Estado a $L - 30$ (C, A, S) | Estrategia dominante (últimos 20L) |
+|---|---|---|---|---|---|---|---|
+| **11** | 756 | Día 2 | Zombi | Fuera | Noche (0,25) | C=7, A=6, S=7 | `CORE` / `refugio_nocturno` |
+| **12** | 300 | Día 1 | Sed | Fuera | Día (0,88) | C=3, A=0, S=4 | `S1:huir` |
+| **13** | 361 | Día 1 | Hambre | Fuera | Día (1,00) | C=0, A=9, S=2 | `S2:refugio_nocturno` |
+| **14** | 942 | Día 3 | Hambre | Fuera | Día (1,00) | C=0, A=9, S=4 | `S1:huir` |
+| **15** | 623 | Día 2 | Hambre | Fuera | Día (0,98) | C=0, A=9, S=2 | `S2:refugio_nocturno` |
+| **16** | 281 | Día 0 | Sed | Fuera | Día (0,73) | C=2, A=0, S=7 | `S2:refugio_nocturno` |
+| **17** | 659 | Día 2 | Hambre | Fuera | Día (0,99) | C=0, A=8, S=4 | `S1:huir` |
+| **18** | 447 | Día 1 | Esqueleto | Fuera | Noche (0,42) | C=0, A=5, S=8 | `S2:refugio_nocturno` |
+| **19** | 1327 | Día 4 | Hambre | Fuera | Día (0,54) | C=0, A=7, S=2 | `S2:refugio_nocturno` |
+| **20** | 367 | Día 1 | Hambre | Fuera | Día (0,99) | C=0, A=7, S=2 | `S1:huir` |
+| **21** | 276 | Día 0 | Zombi | Fuera | Día (0,65) | C=3, A=7, S=7 | `S1:huir` |
+| **22** | 336 | Día 1 | Hambre | Fuera | Día (0,99) | C=0, A=0, S=4 | `S2:refugio_nocturno` |
+| **23** | 440 | Día 1 | Hambre | Fuera | Noche (0,37) | C=0, A=7, S=5 | `S1:huir` |
+| **24** | 165 | Día 0 | Zombi | Fuera | Noche (0,18) | C=5, A=5, S=5 | `S1:huir` |
+| **25** | 317 | Día 1 | Hambre | Fuera | Día (0,99) | C=0, A=9, S=2 | `S1:huir` |
+| **26** | 491 | Día 1 | Hambre | Fuera | Noche (0,02) | C=0, A=8, S=2 | `desconocida` |
+| **27** | 348 | Día 1 | Hambre | Fuera | Día (1,00) | C=0, A=9, S=2 | `S2:refugio_nocturno` |
+| **28** | 509 | Día 1 | Hambre | Fuera | Noche (0,06) | C=0, A=9, S=2 | `desconocida` |
+| **29** | 183 | Día 0 | Esqueleto | Fuera | Noche (0,09) | C=3, A=2, S=5 | `S2:refugio_nocturno` |
+| **30** | 182 | Día 0 | Zombi | Fuera | Noche (0,02) | C=3, A=3, S=7 | `S1:huir` |
+
+---
+
+### 7.5 Subapartado E: Diagnóstico de dos casos pendientes (Arnés 600, semillas 11–50, DESPUÉS)
+
+#### 1. Salida al amanecer en estado crítico
+- **Criterio evaluado:** Vidas que sellan el día 1, abren la salida al amanecer (`fase == "amanecer"` o `"abastecer"`) y mueren por zombi en los 40 latidos siguientes a abrir.
+- **Resultado:** **0 vidas** (0 / 40 vidas).
+- **Conclusión empírica:** Ninguna vida del conjunto 11–50 murió por ataque inmediato de zombi en los 40 latidos posteriores a la apertura del refugio. La comprobación de riesgo exterior y el margen lumínico al amanecer evitan que el individuo caiga fulminado al salir.
+
+#### 2. Sin roca a la vista en latido 120
+- **Criterio evaluado:** Vidas que en el latido 120 tienen 0 casillas de material rocoso (`"stone"`, `"coal"`) registradas en `refugio.mapa`.
+- **Resultado:** **2 vidas de 40 (5,0 %)**.
+- **Detalle por vida:**
+  * **Semilla 31:**
+    - Posición del jugador en L120: `(19, 31)`.
+    - Distancia Manhattan real en el mundo a la roca más cercana: **5 casillas**.
+    - Distancia Manhattan real en el mundo al agua más cercana: **2 casillas**.
+    - Casillas visitadas hasta L120: **85** casillas (522 casillas observadas en mapa).
+    - Rumbo exploratorio dominante: `(-1, 0)`.
+    - Desenlace: **Sobrevivió los 600 latidos (L=600, causa=None, viva)**. Tras el latido 120 localizó el afloramiento a 5 casillas, excavó, selló y completó la vida con 15 logros.
+  * **Semilla 35:**
+    - Posición del jugador en L120: `(0, 13)` (extremo del bioma).
+    - Distancia Manhattan real en el mundo a la roca más cercana: **25 casillas**.
+    - Distancia Manhattan real en el mundo al agua más cercana: **7 casillas**.
+    - Casillas visitadas hasta L120: **62** casillas (516 casillas observadas en mapa).
+    - Rumbo exploratorio dominante: `(0, 1)`.
+    - Desenlace: **Muerte en L=199 por zombi**. La roca más cercana se generó a 25 casillas de distancia, inalcanzable dentro del presupuesto de luz de la primera mañana.
+
+---
+
+### 7.6 Lista de lo que no se pudo hacer y por qué
+
+1. **Muestra de muertes inmediatas post-apertura en E.1:**  
+   Al evaluar las 40 vidas (semillas 11–50) en la versión DESPUÉS, el recuento de individuos que murieron por zombi en los $\le 40$ latidos inmediatamente posteriores a abrir la salida fue exactamente **0**. Por tanto, no se pudieron tabular valores específicos de `_presion_interna` o `_riesgo_exterior` en casos de muerte inmediata, ya que no se produjo ningún fallecimiento bajo esa condición exacta en la muestra analizada.
+
+
 
