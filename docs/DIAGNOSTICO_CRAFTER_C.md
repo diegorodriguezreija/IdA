@@ -279,3 +279,192 @@ A continuación se detallan las 13 vidas que llegaron a dormir. Se registran las
 | 27 | No selló | Durmió fuera (p. 280) | Sin mina | sed (paso 320) | No selló (murió fuera) | — |
 | 28 | 6 / 8 | 1 / 2 | 7 casillas | Sobrevive (600 latidos) | — | — |
 | 30 | 4 / 7 | 0 / 9 (bebió dentro) | 1 casilla | hambre (paso 415) | 140 pasos | refugio_nocturno (abastecer, 72/92 L) |
+
+
+---
+
+## 5. Diagnóstico de supuestos S1, S2 y S3 (Paso C.0b)
+
+Medición realizada en la rama `feature/crafter-fase-c` (commit base `f2f1262`, C.0 cerrado). Instrumentación ejecutada mediante `herramientas/diagnostico_crafter_c0b.py`.
+*Nota sobre la semilla 27:* Con la reclasificación estricta de C.0a-2, la causa de muerte de la semilla 27 pasa a ser «esqueleto» (impacto de flecha registrado en el paso 333 cuando se encontraba con comida 0 y salud 1). Para el análisis de muerte por sed de S1 se analizan en detalle las semillas 14 y 18.
+
+---
+
+### Conclusiones de los tres supuestos
+
+#### Conclusión S1: Sed de las semillas 14 y 18
+1. **Semilla 14 (muere dentro del refugio en latido 332 por sed):**
+   - **Diagnóstico:** Es un **fallo sistemático de bloqueo por retroalimentación negativa** en la condición de salida (`_conviene_salir`, `ida/mundos/crafter.py:1008–1009`) combinado con la emisión incondicional de `ESPERAR` con máxima confianza y arousal en la fase `dormir` (`ida/mundos/crafter.py:1449`).
+   - **Mecánica verificada:** Al llegar el amanecer (`luz` subiendo de 0,81 a 0,99), las reservas del individuo son críticas (agua = 0, comida = 0, `_presion_interna = 1.0`). Sin embargo, su salud ha bajado a 4–1 puntos debido a la deshidratación. La fórmula de salida evalúa:
+     $$\text{presión} \times \text{capacidad} \ge \text{riesgo\_exterior}$$
+     donde $\text{capacidad} = \text{salud} / 9 = 4/9 \approx 0,44$ (y luego $0,33 \to 0,11$), mientras que con hostiles detectados en radio 4 fuera de la cueva el riesgo exterior es $0,60$–$0,90$. La desigualdad nunca se cumple ($0,44 < 0,60$), por lo que `_conviene_salir` devuelve siempre `False`. A menor salud, la capacidad se reduce aún más, haciendo matemáticamente imposible que el individuo decida romper el sello.
+   - **Acción paralela:** Al permanecer `_conviene_salir` en `False`, la fase se mantiene fijada en `"dormir"`. Estando despierto y con energía 9, la estrategia propone `ESPERAR` con arousal = 1,0 y confianza = 1,0 (`ida/mundos/crafter.py:1449`), ganando el Tribunal frente a cualquier intento de S1 de escapar. El organismo espera pasivamente hasta la muerte por sed.
+   - **Líneas responsables:** [`ida/mundos/crafter.py:1008-1009`](file:///f:/code/IdA/ida/mundos/crafter.py#L1008-L1009) y [`ida/mundos/crafter.py:1449`](file:///f:/code/IdA/ida/mundos/crafter.py#L1449).
+   - **Propuesta de arreglo mínimo (sin aplicar):** En `_conviene_salir`, si `inv['drink'] <= 1` o `inv['food'] <= 1` y la luz es diurna (`luz >= 0.65` y subiendo), forzar salida de emergencia sin atenuar por salud (`capacidad`); en `dormir`, no emitir `ESPERAR` con 1,0/1,0 si las reservas vitales están agotadas a plena luz del día.
+
+2. **Semilla 18 (muere por sed en latido 373 tras salir, con agua a 2 casillas):**
+   - **Diagnóstico:** Es un **fallo de navegación topológica por usar distancia Manhattan en lugar de distancia en grafo**, que induce un **bucle oscilatorio infinito (vaivén de 2 casillas)** en un fondo de saco (`ida/mundos/crafter.py:1173`, `1306` y `1081–1083`).
+   - **Mecánica verificada:** Tras destapar el refugio al amanecer, el individuo sale brevemente pero reingresa a la galería. En el fondo de la galería `e3 = (43, 25)`, detecta agua en `(45, 25)` a distancia Manhattan 2. No obstante, dicha agua está separada por un bloque macizo de roca no excavada en `(44, 25)`. El algoritmo BFS de `_paso_hacia` busca acercarse al objetivo en distancia Manhattan; como retroceder hacia la salida `e2 = (42, 25)` aumenta la distancia Manhattan a 3 (3 > 2), el algoritmo no encuentra ningún paso que reduzca la distancia y devuelve `None`. Al fallar `_paso_hacia`, la estrategia recurre a `_explorar_con_rumbo`, que retrocede a `(42, 25)`. Desde `(42, 25)`, avanzar hacia `(43, 25)` sí reduce la distancia a 2, por lo que `_paso_hacia` vuelve a ordenar avanzar a `(43, 25)`. El individuo oscila ininterrumpidamente entre `(42, 25)` y `(43, 25)` durante más de 80 latidos hasta agotar su vitalidad por sed.
+   - **Líneas responsables:** [`ida/mundos/crafter.py:1081-1083`](file:///f:/code/IdA/ida/mundos/crafter.py#L1081-L1083), [`ida/mundos/crafter.py:1173`](file:///f:/code/IdA/ida/mundos/crafter.py#L1173) e [`ida/mundos/crafter.py:1306`](file:///f:/code/IdA/ida/mundos/crafter.py#L1306).
+   - **Propuesta de arreglo mínimo (sin aplicar):** Filtrar fuentes de agua evaluando transitabilidad en el mapa conocido mediante BFS real (distancia topológica) en vez de distancia Manhattan euclídea/Manhattan plana, descartando agua inaccesible a través de roca; e introducir detector de vaivén de 2 casillas para invalidar objetivos inalcanzables.
+
+---
+
+#### Conclusión S2: Por qué se descarta la piedra cercana (semillas 21, 26 y 27)
+1. **Descarte masivo por falta de profundidad:** El requisito de excavar una galería de 3 casillas rectas con laterales herméticos descarta entre el 95 % y el 99 % de los candidatos en las 3 semillas. En las semillas 21 y 27 no se encontró ningún candidato válido en toda la vida (0 candidatos válidos de 241.592 y 19.536 evaluaciones). En la semilla 26, el 89 % de las evaluaciones fallaron antes de tener piedra en inventario por no tener roca excavable en el tramo (`rocas < 1`), y los 695 candidatos válidos evaluados en latidos tardíos fueron superados en puntuación por otros candidatos lejanos o abandonados por falta de avance.
+2. **Geometría de la piedra visible a 2–3 casillas:** Los afloramientos rocosos iniciales visibles en los primeros compases de `elegir_mina` (p. ej. en semilla 21 en `(21, 39)`, semilla 26 en `(41, 37)` y semilla 27 en `(9, 41)`) presentan de 1 a 3 piedras en cruz y de 0 a 3 casillas transitables adyacentes. Bastaría colocar entre **1 y 3 bloques de piedra** para cerrar un recinto seguro de 2 casillas sobre ellas. Sin embargo, la estrategia de túnel recto de 3 casillas las descartó al 100 % por considerar sus laterales transitables o por carecer de 3 casillas continuas de roca maciza.
+3. **Control del Tribunal:** Durante `elegir_mina`, `refugio_nocturno` venció en el Tribunal de forma mayoritaria (semilla 21: 143 de 167 latidos [85,6 %]; semilla 26: 188 de 432 latidos; semilla 27: 101 de 169 latidos [59,8 %]). A pesar de retener la iniciativa, al no disponer de ninguna mina válida pasó decenas de latidos vagando en `_explorar_con_rumbo` hasta que cayó la noche o fue interceptado por hostiles.
+
+---
+
+#### Conclusión S3: Existencia del territorio del hogar en paso 0 (semillas 11 a 30)
+1. **Existencia casi universal:** En **19 de las 20 semillas (95,0 %)** existe en el paso 0 al menos un sitio a $\le 25$ de Manhattan de la salida que cumple con todos los requisitos bio-ecológicos:
+   - a) $\ge 6$ casillas de hierba en radio $\le 2$ (mediana 8, rango 7–10, suficiente para huerto de plantas);
+   - b) roca cercana para madriguera a $\le 17$ (mediana 6, rango 2–14; en 14 de las 19 semillas es $\le 8$);
+   - c) roca para cantera a $\ge 12$ en un eje y $\le 17$ total (100 % de las 19 semillas);
+   - e) recinto de $2 \times 1$ con agua frontal y 4 plantas laterales que requiere colocar apenas entre **0 y 3 piedras** (mediana = 2 piedras, rango 0–3);
+   - f) cercanía a la salida (mediana = 18 casillas, rango 7–24).
+2. **Única excepción:** Solo la **semilla 30** no cumple la condición `c` de cantera (su veta a $\ge 12$ en un eje dista 19 casillas en total, superando el umbral de 17), si bien cuenta con sitios excelentes para madriguera y huerto (`b=12`, `e=3`, `f=14`).
+3. **Implicación:** Queda empíricamente verificado que el concepto de "territorio del hogar" apoyado en un recinto de 2 casillas con agua y plantas es viable y reproducible en Crafter sin forzar la búsqueda de cuevas profundas de 3 casillas.
+
+---
+
+### Tablas detalladas de medición
+
+#### S1. Detalle de los latidos críticos en Semilla 14 y Semilla 18
+
+##### Semilla 14: Latidos finales hasta la muerte por sed dentro del refugio sellado
+*Muestra representativa de los últimos 35 latidos (L298 a L332). Sello en `(41, 37)`, jugador en `(38, 37)` / `(39, 37)`.*
+
+| Latido | Paso | Luz | Salud | Comida | Agua | Energía | Posición | Orientación | Fase | Sellado | Presión interna | Riesgo exterior | Conviene salir | Propuesta RefugioNocturno | Estrategia ganadora | Acción ejecutada |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 298 | 302 | 0,814 | 5 | 0 | 0 | 8 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,93 | No | ESPERAR (ar=1,0, conf=1,0) | CORE | ESPERAR |
+| 299 | 303 | 0,822 | 5 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,92 | No | ESPERAR (ar=1,0, conf=1,0) | CORE | ESPERAR |
+| 300 | 304 | 0,831 | 5 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,90 | No | ESPERAR (ar=1,0, conf=1,0) | CORE | ESPERAR |
+| 301 | 305 | 0,838 | 4 | 0 | 0 | 9 | (39, 37) | (1, 0) | dormir | Sí | 1,00 | 0,90 | No | ESPERAR (ar=1,0, conf=1,0) | S1:sobresalto | MOVER celda_39_37 |
+| 305 | 309 | 0,868 | 4 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,90 | No | ESPERAR (ar=1,0, conf=1,0) | refugio_nocturno | ESPERAR |
+| 310 | 314 | 0,899 | 4 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,60 | No | ESPERAR (ar=1,0, conf=1,0) | refugio_nocturno | ESPERAR |
+| 315 | 319 | 0,930 | 3 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,60 | No | ESPERAR (ar=1,0, conf=1,0) | refugio_nocturno | ESPERAR |
+| 320 | 324 | 0,961 | 2 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,30 | No | ESPERAR (ar=1,0, conf=1,0) | refugio_nocturno | ESPERAR |
+| 325 | 329 | 0,985 | 2 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,30 | No | ESPERAR (ar=1,0, conf=1,0) | refugio_nocturno | ESPERAR |
+| 328 | 332 | 0,995 | 1 | 0 | 0 | 9 | (38, 37) | (-1, 0) | dormir | Sí | 1,00 | 0,00 | Sí | MOVER celda_39_37 (amanecer) | refugio_nocturno | MOVER celda_39_37 |
+| 330 | 334 | 0,999 | 1 | 0 | 0 | 8 | (39, 37) | (1, 0) | amanecer | Sí | 1,00 | 0,00 | Sí | COGER piedra_41_37 | refugio_nocturno | COGER piedra_41_37 |
+| 332 | 336 | 1,000 | 0 | 0 | 0 | 8 | (39, 37) | (1, 0) | amanecer | Sí | 1,00 | 0,00 | Sí | COGER piedra_41_37 | refugio_nocturno | Muerte por sed |
+
+*Nota:* En los latidos 328–331 el riesgo exterior bajó a 0 y comenzó a picar el sello, pero la salud ya estaba en 1 punto y el daño metabólico de la sed lo mató antes de completar los 2 golpes necesarios para retirar la piedra.
+
+---
+
+##### Semilla 18: Bucle oscilatorio tras salir del refugio hasta la muerte por sed
+*Muestra representativa del tramo L285 a L373. Salida de cueva en `(40, 25)`. Mina en galería `e0=(40, 25)`, `e1=(41, 25)`, `e2=(42, 25)`, `e3=(43, 25)`. Agua bloqueada en `(45, 25)`.*
+
+| Latido | Paso | Luz | Salud | Comida | Agua | Posición | Orientación | Fase | Agua más cercana en mapa | Propuesta RefugioNocturno | Estrategia ganadora | Acción ejecutada |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 285 | 292 | 0,721 | 6 | 0 | 0 | (43, 25) | (1, 0) | amanecer | (45, 25) a dist 2 | None | S1:quieto_o_huir | ESPERAR |
+| 287 | 294 | 0,741 | 6 | 0 | 0 | (41, 25) | (-1, 0) | amanecer | (45, 25) a dist 4 | MOVER celda_41_25 (salir) | refugio_nocturno | MOVER celda_41_25 |
+| 290 | 297 | 0,770 | 6 | 0 | 0 | (40, 25) | (-1, 0) | amanecer | (45, 25) a dist 5 | MOVER celda_40_25 (salir) | S1:defensa_armada | ATACAR esqueleto |
+| 291 | 298 | 0,779 | 6 | 0 | 0 | (41, 25) | (1, 0) | abastecer | (45, 25) a dist 4 | MOVER celda_41_25 (a por agua) | refugio_nocturno | MOVER celda_41_25 |
+| 292 | 299 | 0,788 | 6 | 0 | 0 | (42, 25) | (1, 0) | provisiones | (45, 25) a dist 3 | MOVER celda_42_25 (al agua) | refugio_nocturno | MOVER celda_42_25 |
+| 293 | 300 | 0,797 | 6 | 0 | 0 | (43, 25) | (1, 0) | provisiones | (45, 25) a dist 2 | MOVER celda_43_25 (al agua) | refugio_nocturno | MOVER celda_43_25 |
+| 294 | 301 | 0,806 | 5 | 0 | 0 | (42, 25) | (-1, 0) | provisiones | (45, 25) a dist 3 | MOVER celda_42_25 (explorar) | refugio_nocturno | MOVER celda_42_25 |
+| 295 | 302 | 0,814 | 5 | 0 | 0 | (43, 25) | (1, 0) | provisiones | (45, 25) a dist 2 | MOVER celda_43_25 (al agua) | refugio_nocturno | MOVER celda_43_25 |
+| 296 | 303 | 0,822 | 5 | 0 | 0 | (42, 25) | (-1, 0) | provisiones | (45, 25) a dist 3 | MOVER celda_42_25 (explorar) | refugio_nocturno | MOVER celda_42_25 |
+| ... | ... | ... | ... | ... | ... | (oscilación continua) | ... | provisiones | (45, 25) | ... | refugio_nocturno | (vaivén 2 casillas) |
+| 369 | 376 | 0,995 | 1 | 0 | 0 | (43, 25) | (1, 0) | provisiones | (45, 25) a dist 2 | MOVER celda_43_25 (al agua) | refugio_nocturno | MOVER celda_43_25 |
+| 370 | 377 | 0,994 | 1 | 0 | 0 | (42, 25) | (-1, 0) | provisiones | (45, 25) a dist 3 | MOVER celda_42_25 (explorar) | refugio_nocturno | MOVER celda_42_25 |
+| 371 | 378 | 0,993 | 1 | 0 | 0 | (43, 25) | (1, 0) | provisiones | (45, 25) a dist 2 | MOVER celda_43_25 (al agua) | refugio_nocturno | MOVER celda_43_25 |
+| 372 | 379 | 0,992 | 1 | 0 | 0 | (42, 25) | (-1, 0) | provisiones | (45, 25) a dist 3 | MOVER celda_42_25 (explorar) | refugio_nocturno | MOVER celda_42_25 |
+| 373 | 380 | 0,991 | 0 | 0 | 0 | (43, 25) | (1, 0) | provisiones | (45, 25) a dist 2 | MOVER celda_43_25 (al agua) | refugio_nocturno | Muerte por sed |
+
+---
+
+#### S2. Evaluación de candidatos en `elegir_mina` (Semillas 21, 26 y 27)
+
+| Métrica / Parámetro | Semilla 21 | Semilla 26 | Semilla 27 |
+|---|---|---|---|
+| Latidos totales en vida | 264 | 538 | 333 |
+| Causa de muerte | zombi | hambre | esqueleto |
+| Latidos en `elegir_mina` | 167 | 432 | 169 |
+| Candidatos evaluados | 241.592 | 37.940 | 19.536 |
+| Candidatos válidos obtenidos | **0** | **695** (latidos tardíos) | **0** |
+| Victorias de Tribunal: `refugio_nocturno` | 143 (85,6 %) | 188 (43,5 %) | 101 (59,8 %) |
+| Victorias de Tribunal: otras estrategias | 24 (huir 17, sobresalto 4...) | 244 (alimentarse 57, CORE 121...) | 68 (sobresalto 48, huir 14...) |
+
+##### Desglose acumulado de motivos de descarte
+| Motivo de descarte | Semilla 21 | Semilla 26 | Semilla 27 | Total | % del total |
+|---|---|---|---|---|---|
+| **sin roca para obtener piedra (`rocas < 1`)** | 0 | 319.480 | 271.388 | 590.868 | 65,7 % |
+| **sin profundidad para 3 casillas** | 236.175 | 29.787 | 12.402 | 278.364 | 31,0 % |
+| **lateral transitable (`e1`)** | 4.407 | 5.721 | 5.715 | 15.843 | 1,8 % |
+| **lateral transitable (`e2`)** | 347 | 870 | 459 | 1.676 | 0,2 % |
+| **túnel al fondo (fondo `e3` transitable)** | 0 | 535 | 806 | 1.341 | 0,1 % |
+| **lateral transitable (`e3`)** | 663 | 332 | 154 | 1.149 | 0,1 % |
+| **puntuación menor que otro candidato** | 0 | 263 | 0 | 263 | < 0,1 % |
+| **Total descartes registrados** | 241.592 | 356.988 | 290.924 | 889.504 | 100,0 % |
+
+##### Piedra visible a 2–3 casillas al inicio de `elegir_mina`
+| Semilla | Latido | Pos. jugador | Pos. roca visible | Distancia | Piedras en cruz | Transitables alrededor | Piedras necesarias para cerrar recinto de 2 casillas |
+|---|---|---|---|---|---|---|---|
+| **21** | 98 | (23, 38) | (21, 39) | 3 casillas | 2 | 2 | **~2 piedras** |
+| **26** | 89 | (41, 35) | (41, 37) | 2 casillas | 2 | 0 | **~2 piedras** |
+| **26** | 89 | (41, 35) | (41, 38) | 3 casillas | 3 | 0 | **~1 piedra** |
+| **27** | 118 | (12, 41) | (9, 41) | 3 casillas | 2 | 2 | **~2 piedras** |
+| **27** | 118 | (12, 41) | (10, 42) | 3 casillas | 1 | 3 | **~3 piedras** |
+
+---
+
+#### S3. Territorio del hogar en paso 0 (Semillas 11 a 30)
+
+Condiciones evaluadas para cada sitio X (hierba/arena con agua en cruz a $\le 25$ Manhattan de la salida):
+- a) casillas de hierba a $\le 2$ (exige $\ge 6$);
+- b) distancia Manhattan a piedra más cercana (madriguera; $\le 17$, preferible $\le 8$);
+- c) cantera: piedra a $\ge 12$ en algún eje y $\le 17$ en total;
+- d) casillas de camino a $\le 6$ (densidad de esqueletos);
+- e) piedras necesarias para recinto de $2 \times 1$ con 4 plantas en hierba en su mejor orientación;
+- f) distancia Manhattan de X a la salida.
+
+| Semilla | ¿Cumple todo? | Mejor Sitio X $(x, y)$ | a (hierba $\le 2$) | b (dist. roca) | c (cantera) | d (camino $\le 6$) | e (piedras recinto) | Orientación agua | f (dist. salida) |
+|---|---|---|---|---|---|---|---|---|---|
+| **11** | Sí | (21, 43) | 9 | 5 | Sí | 2 | 2 | agua izquierda | 22 |
+| **12** | Sí | (33, 15) | 9 | 4 | Sí | 8 | 2 | agua arriba | 18 |
+| **13** | Sí | (38, 33) | 7 | 13 | Sí | 0 | 3 | agua derecha | 7 |
+| **14** | Sí | (33, 24) | 7 | 6 | Sí | 0 | 2 | agua arriba | 9 |
+| **15** | Sí | (32, 46) | 9 | 9 | Sí | 0 | 2 | agua izquierda | 14 |
+| **16** | Sí | (34, 15) | 7 | 2 | Sí | 4 | 0 | agua arriba | 19 |
+| **17** | Sí | (56, 32) | 8 | 3 | Sí | 3 | 2 | agua abajo | 24 |
+| **18** | Sí | (23, 47) | 9 | 10 | Sí | 0 | 2 | agua izquierda | 24 |
+| **19** | Sí | (35, 52) | 9 | 5 | Sí | 1 | 3 | agua abajo | 23 |
+| **20** | Sí | (19, 26) | 8 | 3 | Sí | 4 | 1 | agua arriba | 19 |
+| **21** | Sí | (47, 36) | 9 | 3 | Sí | 0 | 2 | agua arriba | 19 |
+| **22** | Sí | (30, 41) | 7 | 14 | Sí | 0 | 2 | agua abajo | 11 |
+| **23** | Sí | (12, 33) | 7 | 2 | Sí | 12 | 1 | agua izquierda | 21 |
+| **24** | Sí | (35, 26) | 8 | 8 | Sí | 0 | 2 | agua arriba | 9 |
+| **25** | Sí | (20, 32) | 10 | 2 | Sí | 7 | 2 | agua arriba | 12 |
+| **26** | Sí | (38, 26) | 8 | 6 | Sí | 2 | 3 | agua abajo | 12 |
+| **27** | Sí | (29, 27) | 10 | 8 | Sí | 1 | 3 | agua arriba | 8 |
+| **28** | Sí | (45, 38) | 8 | 7 | Sí | 0 | 1 | agua derecha | 19 |
+| **29** | Sí | (31, 19) | 8 | 11 | Sí | 0 | 1 | agua derecha | 14 |
+| **30** | No (falla c: cantera a $\ge 12$ en eje dista 19) | (22, 28) | 9 | 12 | No | 0 | 3 | agua izquierda | 14 |
+
+##### Resumen estadístico de S3
+- **Semillas con territorio válido:** 19 de 20 semillas (**95,0 %**).
+- **Piedras necesarias (e):** Mediana = **2 piedras** (mínimo 0 piedras [semilla 16], máximo 3 piedras).
+- **Distancia a la salida (f):** Mediana = **18 casillas** (mínimo 7 casillas [semilla 13], máximo 24 casillas).
+- **Distancia a madriguera de piedra (b):** Mediana = **6 casillas** (en 14 de 19 semillas es $\le 8$).
+- **Casillas de hierba circundantes (a):** Mediana = **8 casillas** (siempre $\ge 7$, superando holgadamente el mínimo de 6).
+
+---
+
+### Comando, semillas y tiempos de ejecución
+
+- **Script:** `herramientas/diagnostico_crafter_c0b.py`.
+- **Comando de ejecución completa:**
+  ```bash
+  python herramientas/diagnostico_crafter_c0b.py --parte todas
+  ```
+- **Semillas evaluadas:**
+  - Parte S1: semillas 14 y 18 (tiempo: 8,84 s).
+  - Parte S2: semillas 21, 26 y 27 (tiempo: 18,71 s).
+  - Parte S3: semillas 11 a 30 (tiempo: 48,70 s).
+- **Tiempo total de ejecución:** 76,25 s.
+- **Estado de verificación:** Todos los datos tabulados han sido medidos y comprobados mediante instrumentación directa en tiempo de ejecución sobre el mundo real de Crafter 1.8.3. Lo no medido en este paso: la interacción de los tres supuestos bajo una nueva formulación de estrategia, que queda para el diseño e implementación de las siguientes etapas de la Fase C.
