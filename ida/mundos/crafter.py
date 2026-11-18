@@ -567,10 +567,12 @@ class RefugioNocturno(Definicion):
         self.dominante: bool = False   # usado solo por el arnés de prueba de la Fase A
         self.vacas: Dict[Pos, int] = {}
         self.inalcanzables: Dict[Pos, int] = {}
+        self.recintos_descartados: Set[Tuple[Pos, Pos]] = set()
 
     def _reiniciar_vida(self) -> None:
         self.vacas.clear()
         self.inalcanzables.clear()
+        self.recintos_descartados.clear()
         self.mapa.clear()
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
@@ -609,9 +611,10 @@ class RefugioNocturno(Definicion):
                 del self.vacas[v]
         if pos is not None:
             self.visitadas.add(pos)
-            for p, m in self.mapa.items():
-                if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
-                    self.rocas_inspeccionadas.add(p)
+            if self._estado_mem.get("mina") is not None or _inventario(ctx).get("stone", 0) >= 3:
+                for p, m in self.mapa.items():
+                    if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
+                        self.rocas_inspeccionadas.add(p)
 
     def _hay_hostil_cerca(self, ctx: Contexto, pos: Pos) -> bool:
         return any(
@@ -658,8 +661,114 @@ class RefugioNocturno(Definicion):
                 return e3, vec3
         return None
 
-    def _evaluar_candidato(self, e0: Pos, d: Pos, pos_actual: Pos, hogar_pos: Optional[Pos]) -> Optional[float]:
-        """Evalúa una mina con acceso ``e0`` y dirección de excavación ``d``. Devuelve su puntuación o None."""
+    def _paredes_recinto(self, mina: Tuple[Pos, Pos]) -> List[Tuple[Pos, Pos]]:
+        """Devuelve las 5 casillas de pared del recinto (fondo primero, luego laterales de e3 y de e2)
+        junto con su vector normal hacia fuera ``(c, (ldx, ldy))``."""
+        e0, (dx, dy) = mina
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        return [
+            ((e3[0] + dx, e3[1] + dy), (dx, dy)),
+            ((e3[0] - dy, e3[1] + dx), (-dy, dx)),
+            ((e3[0] + dy, e3[1] - dx), (dy, -dx)),
+            ((e2[0] - dy, e2[1] + dx), (-dy, dx)),
+            ((e2[0] + dy, e2[1] - dx), (dy, -dx)),
+        ]
+
+    def _paredes_faltantes(self, mina: Optional[Tuple[Pos, Pos]]) -> List[Pos]:
+        """Paredes del recinto que aún son transitables y deben taparse con piedra."""
+        if mina is None:
+            return []
+        return [c for c, _ in self._paredes_recinto(mina) if self.mapa.get(c) in TRANSITABLES_JUGADOR]
+
+    def _plan_mirar(self, pos: Pos, C: Pos, mina: Optional[Tuple[Pos, Pos]] = None) -> Optional[Tuple[Pos, Pos]]:
+        """Devuelve ``(P, A)``: llegar a ``P`` y moverse a ``A`` deja al individuo en ``A`` mirando a ``C``.
+        ``A`` es vecina de ``C`` y transitable; ``P = 2A - C`` es transitable y conocida.
+        Prefiere ``A`` dentro del recinto. ``None`` si no hay ninguna factible."""
+        if mina is None:
+            mina = self._estado_mem.get("mina") or self.mina_recordada
+        interior: Set[Pos] = set()
+        galeria: Set[Pos] = set()
+        e0_ref: Optional[Pos] = None
+        if mina is not None:
+            e0, (dx, dy) = mina
+            e0_ref = e0
+            e1 = (e0[0] + dx, e0[1] + dy)
+            e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+            e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+            interior = {e2, e3}
+            galeria = {e0, e1, e2, e3}
+
+        mat_c = self.mapa.get(C)
+        bloqueada = mat_c is not None and mat_c not in TRANSITABLES_JUGADOR
+        candidatos: List[Tuple[Tuple[int, int, int, int], Pos, Pos]] = []
+        for dx, dy in MOVIMIENTOS:
+            A = (C[0] + dx, C[1] + dy)
+            if self.mapa.get(A) not in TRANSITABLES_JUGADOR:
+                continue
+            if bloqueada:
+                P = A
+            else:
+                P = (2 * A[0] - C[0], 2 * A[1] - C[1])
+                if self.mapa.get(P) not in TRANSITABLES_JUGADOR:
+                    continue
+            if P in self.inalcanzables and self.ultimo_latido - self.inalcanzables[P] < 50:
+                continue
+            en_interior = 0 if A in interior else (1 if A in galeria else 2)
+            ya_en_p = 0 if pos == P else 1
+            dist_p = _dist(pos, P)
+            dist_e0 = _dist(e0_ref, A) if e0_ref is not None else 0
+            candidatos.append(((en_interior, ya_en_p, dist_p, dist_e0), P, A))
+
+        if not candidatos:
+            return None
+        candidatos.sort(key=lambda item: item[0])
+        return candidatos[0][1], candidatos[0][2]
+
+    def _orden_paredes_factible(self, pos: Pos, mina: Tuple[Pos, Pos]) -> List[Pos]:
+        """Devuelve las paredes faltantes en un orden en que todas puedan colocarse con ``_plan_mirar``."""
+        import itertools
+
+        faltan = self._paredes_faltantes(mina)
+        if len(faltan) <= 1:
+            return faltan
+        original = {c: self.mapa.get(c) for c in faltan}
+        try:
+            for perm in itertools.permutations(faltan):
+                for c, mat in original.items():
+                    if mat is not None:
+                        self.mapa[c] = mat
+                pos_sim = pos
+                ok = True
+                for c in perm:
+                    plan = self._plan_mirar(pos_sim, c, mina)
+                    if plan is None:
+                        ok = False
+                        break
+                    pos_sim = plan[1]
+                    self.mapa[c] = "stone"
+                if ok:
+                    return list(perm)
+        finally:
+            for c, mat in original.items():
+                if mat is not None:
+                    self.mapa[c] = mat
+        return faltan
+
+    def _evaluar_recinto(
+        self,
+        e0: Pos,
+        d: Pos,
+        pos_actual: Pos,
+        hogar_pos: Optional[Pos],
+        piedra_inv: float,
+        aguas: Optional[List[Pos]] = None,
+        caminos_mapa: Optional[List[Pos]] = None,
+    ) -> Optional[Tuple[float, int]]:
+        """Evalúa un recinto con acceso ``e0`` y dirección ``d``.
+        Devuelve ``(puntuacion, piedras_a_colocar)`` o ``None`` si no es factible."""
+        if (e0, d) in self.recintos_descartados:
+            return None
         m0 = self.mapa.get(e0)
         if m0 not in TRANSITABLES_JUGADOR and e0 != pos_actual:
             return None
@@ -667,30 +776,44 @@ class RefugioNocturno(Definicion):
         e1 = (e0[0] + dx, e0[1] + dy)
         e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
         e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
-        es_recordada = self.mina_recordada == (e0, d) or (hogar_pos is not None and hogar_pos == e2)
-
-        for idx, ek in enumerate((e1, e2, e3), start=1):
-            mk = self.mapa.get(ek)
-            if mk is None:
+        cavar = 0
+        piedras_cavar = 0
+        for ek in (e1, e2, e3):
+            m = self.mapa.get(ek)
+            if m is None:
                 return None
-            if mk in ROCA_EXCAVABLE:
-                pass
-            elif mk == "path" and (es_recordada or pos_actual in (e0, e1, e2, e3)):
-                pass
+            if m in ROCA_EXCAVABLE:
+                cavar += 1
+                if m == "stone":
+                    piedras_cavar += 1
+            elif m not in TRANSITABLES_JUGADOR:
+                return None
+        max_colocar = min(3, int(piedra_inv) + piedras_cavar - 1)
+        if max_colocar < 0:
+            return None
+
+        paredes = [
+            ((e2[0] - dy, e2[1] + dx), (-dy, dx)),
+            ((e2[0] + dy, e2[1] - dx), (dy, -dx)),
+            ((e3[0] - dy, e3[1] + dx), (-dy, dx)),
+            ((e3[0] + dy, e3[1] - dx), (dy, -dx)),
+            ((e3[0] + dx, e3[1] + dy), (dx, dy)),
+        ]
+        colocar = 0
+        for c, (ldx, ldy) in paredes:
+            m = self.mapa.get(c)
+            if m is None:
+                return None
+            if m in NO_TRANSITABLES_ZOMBI:
+                if m == "water" and any(self.mapa.get((c[0] + k * ldx, c[1] + k * ldy)) == "path" for k in (1, 2)):
+                    return None
+                continue
+            if m in TRANSITABLES_JUGADOR:
+                colocar += 1
+                if colocar > max_colocar:
+                    return None
             else:
                 return None
-            # Condición de buen refugio: las casillas en cruz alrededor del hueco no son transitables para un zombi
-            laterales = [(-dy, dx), (dy, -dx)]
-            if idx == 3:
-                laterales.append((dx, dy))   # fondo de la galería
-            for ldx, ldy in laterales:
-                vec = (ek[0] + ldx, ek[1] + ldy)
-                mv = self.mapa.get(vec)
-                if mv not in NO_TRANSITABLES_ZOMBI:
-                    return None
-                if idx >= 2 and mv == "water":
-                    if any(self.mapa.get((vec[0] + k * ldx, vec[1] + k * ldy)) == "path" for k in (1, 2)):
-                        return None
 
         # Sin lava en un entorno de radio 2 de la galería
         for x in range(min(e0[0], e3[0]) - 2, max(e0[0], e3[0]) + 3):
@@ -698,23 +821,22 @@ class RefugioNocturno(Definicion):
                 if self.mapa.get((x, y)) == "lava":
                     return None
 
-        dist_jugador = _dist(pos_actual, e0)
-        aguas = [p for p, m in self.mapa.items() if m == "water"]
-        dist_agua = min((_dist(e0, a) for a in aguas), default=12)
+        coste_pasos = _dist(pos_actual, e0) + 3 * cavar + 4 * colocar + 4
+        lista_aguas = aguas if aguas is not None else [p for p, m in self.mapa.items() if m == "water"]
+        dist_agua = min((_dist(e0, a) for a in lista_aguas), default=12)
         agua_pared_e2 = any(self.mapa.get((e2[0] + ldx, e2[1] + ldy)) == "water" for ldx, ldy in ((-dy, dx), (dy, -dx)))
         agua_pared_e3 = any(
             self.mapa.get((e3[0] + ldx, e3[1] + ldy)) == "water"
             for ldx, ldy in ((-dy, dx), (dy, -dx), (dx, dy))
         )
-        rocas_a_picar = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-
-        bono_agua_pared = 16.0 if agua_pared_e2 else (12.0 if agua_pared_e3 else 0.0)
-        puntuacion = 100.0 - 3.0 * dist_jugador - 2.0 * dist_agua + bono_agua_pared
+        bono_agua_dentro = 16.0 if agua_pared_e2 else (12.0 if agua_pared_e3 else 0.0)
+        lista_caminos = caminos_mapa if caminos_mapa is not None else [p for p, m in self.mapa.items() if m == "path"]
+        caminos = sum(1 for p in lista_caminos if _dist(p, e2) <= 6 and p not in (e1, e2, e3))
+        es_recordada = self.mina_recordada == (e0, d) or (hogar_pos is not None and hogar_pos == e2)
+        p = 100.0 - 1.0 * coste_pasos - 2.0 * dist_agua + bono_agua_dentro - 1.5 * caminos
         if es_recordada:
-            puntuacion += 25.0
-        # Si aún no tiene piedra en el inventario, necesita que la mina dé al menos 1 piedra al cavar
-        puntuacion += 2.0 * rocas_a_picar
-        return puntuacion
+            p += 25.0
+        return p, colocar
 
     def _buscar_mejor_mina(self, ctx: Contexto, pos: Pos, inv: Dict[str, float]) -> Optional[Tuple[Pos, Pos, float]]:
         hogar_id = ctx.memoria.hogar() if ctx.perfil.hogar else None
@@ -725,20 +847,18 @@ class RefugioNocturno(Definicion):
                 hogar_pos = (int(partes[1]), int(partes[2]))
 
         mejor: Optional[Tuple[Pos, Pos, float]] = None
-        tiene_piedra = inv.get("stone", 0) >= 1
+        piedra_inv = inv.get("stone", 0)
+        aguas = [p for p, m in self.mapa.items() if m == "water"]
+        caminos_mapa = [p for p, m in self.mapa.items() if m == "path"]
         for e0, m0 in list(self.mapa.items()):
+            if _dist(pos, e0) > 20:
+                continue
             if m0 not in TRANSITABLES_JUGADOR and e0 != pos:
                 continue
             for d in MOVIMIENTOS:
-                e1 = (e0[0] + d[0], e0[1] + d[1])
-                e2 = (e0[0] + 2 * d[0], e0[1] + 2 * d[1])
-                e3 = (e0[0] + 3 * d[0], e0[1] + 3 * d[1])
-                rocas = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-                if not tiene_piedra and rocas < 1:
-                    continue
-                s = self._evaluar_candidato(e0, d, pos, hogar_pos)
-                if s is not None and (mejor is None or s > mejor[2]):
-                    mejor = (e0, d, s)
+                res = self._evaluar_recinto(e0, d, pos, hogar_pos, piedra_inv, aguas=aguas, caminos_mapa=caminos_mapa)
+                if res is not None and (mejor is None or res[0] > mejor[2]):
+                    mejor = (e0, d, res[0])
         return mejor
 
     def _en_galeria(self, pos: Pos, mina: Optional[Tuple[Pos, Pos]]) -> bool:
@@ -769,8 +889,9 @@ class RefugioNocturno(Definicion):
             return 0
         dist_acceso = 0 if pos in (e0, e1, e2, e3) else _dist(pos, e0)
         rocas = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-        # Cada roca cuesta hasta 2 pasos (girar + picar) + 1 paso de avanzar; retroceder y tapar cuesta 3 pasos
-        return pasos_herramientas + dist_acceso + rocas * 3 + 4
+        colocar = len(self._paredes_faltantes(mina))
+        # Cada roca cuesta hasta 3 pasos (girar + picar + avanzar); cada pared a tapar unos 4 pasos; retroceder y tapar cuesta 4 pasos
+        return pasos_herramientas + dist_acceso + rocas * 3 + colocar * 4 + 4
 
     def _pasos_luz_restantes(self, luz: float) -> float:
         """Pasos de Crafter estimados que quedan antes de que la luz caiga de 0,5 según la pendiente solar."""
@@ -827,8 +948,13 @@ class RefugioNocturno(Definicion):
             e3_m = (e0[0] + 3 * d[0], e0[1] + 3 * d[1])
             dentro_sellado = pos in (e2_m, e3_m) and self._sellado(mina_actual)
             if not dentro_sellado and not estado.get("saliendo"):
-                val = self._evaluar_candidato(e0, d, pos, hogar_pos)
-                dist_ahora = 0 if self._en_galeria(pos, mina_actual) else _dist(pos, e0)
+                res_eval = self._evaluar_recinto(e0, d, pos, hogar_pos, inv.get("stone", 0))
+                val = res_eval[0] if res_eval is not None else None
+                en_obra = (
+                    estado.get("fase") in ("cavar", "tapar", "cerrarse")
+                    and (self._en_galeria(pos, mina_actual) or _dist(pos, e2_m) <= 3)
+                )
+                dist_ahora = 0 if en_obra else _dist(pos, e0)
                 if val is None:
                     mina_actual = None
                 elif dist_ahora == 0:
@@ -843,7 +969,7 @@ class RefugioNocturno(Definicion):
                         estado["sin_avance"] = 0
                     elif not ejecuto_refugio:
                         estado["mejor_dist"] = dist_ahora
-                    elif estado.get("fase") in ("elegir_mina", "cavar"):
+                    elif estado.get("fase") in ("elegir_mina", "cavar", "tapar"):
                         if dist_ahora < int(estado.get("mejor_dist", 999)):
                             estado["mejor_dist"] = dist_ahora
                             estado["sin_avance"] = 0
@@ -862,7 +988,7 @@ class RefugioNocturno(Definicion):
         estado["mina"] = mina_actual
         pasos_luz = self._pasos_luz_restantes(luz)
         coste = self._coste_restante_pasos(pos, inv, mina_actual)
-        es_noche = luz < 0.5
+        es_noche = luz < 0.5 and not estado.get("manana") and (self.bajando or luz < 0.35)
         margen_cierre = max(12.0, coste * 1.55)
 
         # ¿Hay agua o comida alcanzable para llenar antes de que el margen de cierre obligue a entrar?
@@ -873,13 +999,15 @@ class RefugioNocturno(Definicion):
             sum(1 for k in (1, 2, 3) if self.mapa.get((e0_ref[0] + k * mina_actual[1][0], e0_ref[1] + k * mina_actual[1][1])) in ROCA_EXCAVABLE)
             if mina_actual is not None else 3
         )
+        colocar_pend_ref = len(self._paredes_faltantes(mina_actual)) if mina_actual is not None else 0
+        pasos_obra_ref = rocas_pend_ref * 3 + colocar_pend_ref * 4 + 6
         tiene_agua_dentro = self._agua_accesible_dentro(mina_actual) is not None
         if not tiene_agua_dentro and inv.get("drink", 0) < 9:
             aguas_cerca = [
                 p for p, m in self.mapa.items()
                 if m == "water"
                 and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
-                and (_dist(pos, p) + _dist(p, e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+                and (_dist(pos, p) + _dist(p, e0_ref) + pasos_obra_ref) * 1.55 + 4.0 < pasos_luz
             ]
             hay_agua_viable = bool(aguas_cerca)
         comidas_visibles = [
@@ -889,7 +1017,7 @@ class RefugioNocturno(Definicion):
         if inv.get("food", 0) < 9 and comidas_visibles:
             comidas_cerca = [
                 p for p in comidas_visibles
-                if (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_pend_ref * 3 + 6) * 1.35 < pasos_luz
+                if (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + pasos_obra_ref) * 1.55 + 4.0 < pasos_luz
             ]
             hay_comida_viable = bool(comidas_cerca)
         falta_llenar_antes_de_cerrar = hay_agua_viable or hay_comida_viable
@@ -914,7 +1042,7 @@ class RefugioNocturno(Definicion):
                     return self._guardar_estado(estado)
                 estado["fase"] = "amanecer"
                 return self._guardar_estado(estado)
-            if pos in (e2, e3) and self._sellado(mina_actual):
+            if pos in (e2, e3) and self._sellado(mina_actual) and not self._paredes_faltantes(mina_actual):
                 self.mina_recordada = mina_actual
                 if ctx.con_experiencia and ctx.perfil.hogar:
                     ctx.memoria.recordar_lugar(f"celda_{e2[0]}_{e2[1]}", 1.0)
@@ -928,15 +1056,17 @@ class RefugioNocturno(Definicion):
                 else:
                     estado["fase"] = "dormir"
                 return self._guardar_estado(estado)
-            # Solo cerrarse cuando ya esté lleno o cuando el margen de cierre lo exija
-            if ocaso_proximo and inv.get("stone", 0) >= 1 and not estado.get("saliendo"):
+            # Solo cerrarse cuando no falte ninguna pared ni roca por cavar y el margen de cierre lo exija
+            rocas_gal = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+            paredes_gal = len(self._paredes_faltantes(mina_actual))
+            if ocaso_proximo and inv.get("stone", 0) >= 1 and not estado.get("saliendo") and rocas_gal == 0 and paredes_gal == 0:
                 if pos == e2 and self.mina_recordada == mina_actual and not self._sellado(mina_actual):
                     estado["fase"] = "cerrarse"
                     return self._guardar_estado(estado)
                 if pos == e3:
                     estado["fase"] = "cerrarse"
                     return self._guardar_estado(estado)
-                if pos == e2 and self.mapa.get(e3) == "path" and not self._sellado(mina_actual):
+                if pos == e2 and self.mapa.get(e3) in TRANSITABLES_JUGADOR and not self._sellado(mina_actual):
                     estado["fase"] = "cerrarse"
                     return self._guardar_estado(estado)
 
@@ -957,15 +1087,16 @@ class RefugioNocturno(Definicion):
             return self._guardar_estado(estado)
 
         # 3. Beber y comer hasta llenar (9/9) justo antes de cerrar, o rescate de sed crítica con el mapa recordado
+        en_construccion_tarde = self.bajando and estado.get("fase") in ("cavar", "tapar", "cerrarse")
         sed_critica_mapa = (
             inv.get("drink", 0) <= 3
             and any(m == "water" and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50) for p, m in self.mapa.items())
         )
-        if (falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo):
+        if not en_construccion_tarde and ((falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo)):
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
 
-        # 4. Elegir mina o cavar
+        # 4. Elegir mina, cavar, tapar o cerrarse
         if mina_actual is None:
             estado["fase"] = "elegir_mina"
             return self._guardar_estado(estado)
@@ -975,14 +1106,32 @@ class RefugioNocturno(Definicion):
         e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
         e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
         rocas_pendientes = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+        paredes_pendientes = len(self._paredes_faltantes(mina_actual))
         hora_de_entrar = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
-        if rocas_pendientes == 0 and not ocaso_proximo and falta_llenar_antes_de_cerrar:
+        anticipa_paso = self._anticipa_refugio(luz, pos, inv, mina_actual) or self.dominante
+        if not anticipa_paso and estado.get("fase") not in ("cavar", "tapar", "cerrarse"):
+            estado["fase"] = "elegir_mina"
+            return self._guardar_estado(estado)
+        if rocas_pendientes == 0 and paredes_pendientes == 0 and not ocaso_proximo and falta_llenar_antes_de_cerrar and not en_construccion_tarde:
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
-        if pos in (e0, e1, e2, e3) and (rocas_pendientes > 0 or hora_de_entrar):
-            estado["fase"] = "cavar"
+        if rocas_pendientes > 0:
+            if pos in (e0, e1, e2, e3):
+                estado["fase"] = "cavar"
+            else:
+                estado["fase"] = "elegir_mina"
+        elif paredes_pendientes > 0 and inv.get("stone", 0) >= 1:
+            if pos in (e0, e1, e2, e3) or estado.get("fase") in ("cavar", "tapar") or (hora_de_entrar and _dist(pos, e2) <= 3):
+                estado["fase"] = "tapar"
+            else:
+                estado["fase"] = "elegir_mina"
         else:
-            estado["fase"] = "elegir_mina"
+            if ocaso_proximo and inv.get("stone", 0) >= 1 and (pos in (e0, e1, e2, e3) or estado.get("fase") in ("cavar", "tapar", "cerrarse")):
+                estado["fase"] = "cerrarse"
+            elif pos in (e0, e1, e2, e3) and hora_de_entrar:
+                estado["fase"] = "cavar"
+            else:
+                estado["fase"] = "elegir_mina"
         return self._guardar_estado(estado)
 
     @staticmethod
@@ -1040,9 +1189,9 @@ class RefugioNocturno(Definicion):
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         if not self._anticipa_refugio(luz, pos, inv, mina):
             # Con mucho día por delante: si ya tiene herramientas y no sufre hambre/sed pero aún no ha visto mina,
-            # explorar con rumbo (0,72 supera el 0,60+0,10 de continuidad de alimentarse ocioso, y cede en cuanto halla mina)
+            # explorar con rumbo (0,82 supera el 0,80 de plan_tecnologico, y cede en cuanto halla mina)
             if mina is None and not self._falta_herramienta(inv) and inv.get("food", 0) >= 6 and inv.get("drink", 0) >= 6:
-                return 0.50, 0.72
+                return 0.58, 0.82
             return 0.28, 0.52
         coste = self._coste_restante_pasos(pos, inv, mina)
         pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
@@ -1240,8 +1389,8 @@ class RefugioNocturno(Definicion):
         )
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
-        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "abastecer") and not anticipa and not sed_critica:
-            if not self._falta_herramienta(inv) and mina_est is not None and not self._en_galeria(pos, mina_est):
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "tapar", "cavar", "abastecer") and not anticipa and not sed_critica:
+            if not self._falta_herramienta(inv) and mina_est is not None:
                 return None
 
         ar, conf = self._motivacion(ctx, estado, pos, inv)
@@ -1317,13 +1466,15 @@ class RefugioNocturno(Definicion):
                 )
                 if mina_est is not None else 3
             )
+            colocar_ref = len(self._paredes_faltantes(mina_est)) if mina_est is not None else 0
+            pasos_obra_ref = rocas_ref * 3 + colocar_ref * 4 + 6
             pasos_luz_ahora = self._pasos_luz_restantes(luz)
             if inv.get("drink", 0) < 9:
                 aguas = [
                     p for p, m in self.mapa.items()
                     if m == "water"
                     and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50)
-                    and (not anticipa or (_dist(pos, p) + _dist(p, e0_ref) + rocas_ref * 3 + 6) * 1.35 < pasos_luz_ahora)
+                    and (not anticipa or (_dist(pos, p) + _dist(p, e0_ref) + pasos_obra_ref) * 1.35 < pasos_luz_ahora)
                 ]
                 aguas.sort(key=lambda a: _dist(pos, a) + _dist(a, e0_ref))
                 for agua_pos in aguas:
@@ -1341,7 +1492,7 @@ class RefugioNocturno(Definicion):
                 and (tuple(p.carga["datos"]["pos"]) not in self.inalcanzables or ctx.latido - self.inalcanzables[tuple(p.carga["datos"]["pos"])] >= 50)
                 and (
                     not anticipa
-                    or (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + rocas_ref * 3 + 6) * 1.35
+                    or (_dist(pos, tuple(p.carga["datos"]["pos"])) + _dist(tuple(p.carga["datos"]["pos"]), e0_ref) + pasos_obra_ref) * 1.35
                     < pasos_luz_ahora
                 )
             ]
@@ -1369,24 +1520,32 @@ class RefugioNocturno(Definicion):
                     paso_p = self._paso_hacia(ctx, pos, e0)
                     if paso_p is not None:
                         return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la mina elegida", clase=paso_p.clase)
-                # Ya está en e0: si ya está excavada y aún queda mucho día por delante, no encerrarse todavía
+                # Ya está en e0: si ya está excavada y tapada y aún queda mucho día por delante, no encerrarse todavía
                 e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
                 e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
                 rocas_pend = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
-                if rocas_pend == 0 and not anticipa:
+                paredes_pend = len(self._paredes_faltantes(mina))
+                if rocas_pend == 0 and paredes_pend == 0 and not anticipa:
                     if self.dominante:
                         return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: aguardar ocaso en el acceso")
                     return None
-                fase = "cavar"
+                fase = "cavar" if rocas_pend > 0 else ("tapar" if paredes_pend > 0 else "cerrarse")
             else:
-                # Si se ve alguna piedra aún no inspeccionada de cerca, ir hacia ella para revelar el resto del macizo
+                # Si se ve alguna piedra aún no inspeccionada de cerca, ir hacia ella para revelar el resto del macizo;
+                # si al llegar al lado sigue sin haber recinto factible y tiene menos de 3 piedras, picarla para tener material de cierre/pared
                 rocas = [p for p, m in self.mapa.items() if m == "stone" and p not in self.rocas_inspeccionadas]
                 if rocas:
                     roca_pos = min(rocas, key=lambda r: _dist(pos, r))
-                    paso_p = self._paso_hacia(ctx, pos, roca_pos)
-                    if paso_p is not None:
-                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: inspeccionar veta de roca", clase=paso_p.clase)
-                    self.rocas_inspeccionadas.add(roca_pos)
+                    if _dist(pos, roca_pos) == 1 and inv.get("stone", 0) < 3:
+                        return Propuesta(Verbo.COGER, f"piedra_{roca_pos[0]}_{roca_pos[1]}", ar, conf,
+                                         "refugio: extraer piedra cercana para recinto", clase="piedra")
+                    if _dist(pos, roca_pos) <= 1:
+                        self.rocas_inspeccionadas.add(roca_pos)
+                    else:
+                        paso_p = self._paso_hacia(ctx, pos, roca_pos)
+                        if paso_p is not None:
+                            return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: inspeccionar veta de roca", clase=paso_p.clase)
+                        self.rocas_inspeccionadas.add(roca_pos)
                 return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: explorar en busca de mina")
 
         if fase == "cavar":
@@ -1397,35 +1556,96 @@ class RefugioNocturno(Definicion):
             e1 = (e0[0] + dx, e0[1] + dy)
             e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
             e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
-            secuencia = [e0, e1, e2, e3]
-            if pos not in secuencia:
-                paso_p = self._paso_hacia(ctx, pos, e0)
-                if paso_p is not None:
-                    return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la entrada de la mina", clase=paso_p.clase)
-                return None
-            idx = secuencia.index(pos)
-            if idx < 3:
-                sig = secuencia[idx + 1]
-                msig = self.mapa.get(sig)
-                if msig in ROCA_EXCAVABLE:
-                    clase_r = MATERIALES.get(msig, "piedra")
-                    return Propuesta(Verbo.COGER, f"{clase_r}_{sig[0]}_{sig[1]}", ar, conf,
-                                     f"refugio: cavar casilla {idx + 1}/3", clase=clase_r)
-                # Casilla ya excavada (path): avanzar hacia el fondo
-                return Propuesta(Verbo.MOVER, f"celda_{sig[0]}_{sig[1]}", ar, conf,
-                                 f"refugio: avanzar por galería {idx + 1}/3", clase="suelo")
-            # Ya está en e3: si aún no tiene piedra (mina reutilizada sin piedra en inventario), picar el fondo e3+d si es roca
-            if inv.get("stone", 0) < 1:
-                e4 = (e3[0] + dx, e3[1] + dy)
-                if self.mapa.get(e4) in ROCA_EXCAVABLE:
-                    clase_r = MATERIALES.get(self.mapa[e4], "piedra")
-                    return Propuesta(Verbo.COGER, f"{clase_r}_{e4[0]}_{e4[1]}", ar, conf,
-                                     "refugio: extraer piedra para sellar", clase=clase_r)
-            # Si ya excavó hasta e3 pero aún queda mucho día por delante, no encerrarse todavía
-            if not anticipa:
-                return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", ar, conf,
-                                 "refugio: galería lista, salir hasta el ocaso", clase="suelo")
-            fase = "cerrarse"
+            rocas_pend = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
+            paredes_pend = len(self._paredes_faltantes(mina))
+            if rocas_pend > 0:
+                secuencia = [e0, e1, e2, e3]
+                if pos not in secuencia:
+                    paso_p = self._paso_hacia(ctx, pos, e0)
+                    if paso_p is not None:
+                        return Propuesta(Verbo.MOVER, paso_p.id, ar, conf, "refugio: ir a la entrada de la mina", clase=paso_p.clase)
+                    return None
+                idx = secuencia.index(pos)
+                if idx < 3:
+                    sig = secuencia[idx + 1]
+                    msig = self.mapa.get(sig)
+                    if msig in ROCA_EXCAVABLE:
+                        clase_r = MATERIALES.get(msig, "piedra")
+                        return Propuesta(Verbo.COGER, f"{clase_r}_{sig[0]}_{sig[1]}", ar, conf,
+                                         f"refugio: cavar casilla {idx + 1}/3", clase=clase_r)
+                    # Casilla ya transitable: avanzar hacia el fondo
+                    return Propuesta(Verbo.MOVER, f"celda_{sig[0]}_{sig[1]}", ar, conf,
+                                     f"refugio: avanzar por galería {idx + 1}/3", clase="suelo")
+            if paredes_pend > 0 and inv.get("stone", 0) >= 1:
+                fase = "tapar"
+            else:
+                # Si aún no tiene piedra (mina reutilizada sin piedra en inventario), avanzar a e3 y picar el fondo e3+d si es roca
+                if inv.get("stone", 0) < 1:
+                    secuencia = [e0, e1, e2, e3]
+                    if pos in secuencia and pos != e3:
+                        sig = secuencia[secuencia.index(pos) + 1]
+                        return Propuesta(Verbo.MOVER, f"celda_{sig[0]}_{sig[1]}", ar, conf,
+                                         "refugio: avanzar al fondo para extraer piedra", clase="suelo")
+                    e4 = (e3[0] + dx, e3[1] + dy)
+                    if pos == e3 and self.mapa.get(e4) in ROCA_EXCAVABLE:
+                        clase_r = MATERIALES.get(self.mapa[e4], "piedra")
+                        return Propuesta(Verbo.COGER, f"{clase_r}_{e4[0]}_{e4[1]}", ar, conf,
+                                         "refugio: extraer piedra para sellar", clase=clase_r)
+                # Si ya está lista pero aún queda mucho día por delante, no encerrarse todavía
+                if not anticipa:
+                    if pos == e3:
+                        return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", ar, conf,
+                                         "refugio: galería lista, salir hasta el ocaso", clase="suelo")
+                    return None
+                fase = "cerrarse"
+
+        if fase == "tapar":
+            mina = estado.get("mina")
+            if mina is None:
+                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar mina")
+            faltan = self._orden_paredes_factible(pos, mina)
+            if not faltan:
+                if not anticipa:
+                    return None
+                fase = "cerrarse"
+            else:
+                previa_acc = ctx.onda.ei("Accion").get("Accion")
+                motivo_prev = str(previa_acc.carga.get("motivo", "")) if previa_acc is not None else ""
+                for C in faltan:
+                    if _dist(pos, C) == 1 and cara == (C[0] - pos[0], C[1] - pos[1]):
+                        if motivo_prev == "refugio: tapar pared del recinto":
+                            self.inalcanzables[pos] = ctx.latido
+                            continue
+                        return Propuesta(Verbo.USAR, "place_stone", ar, conf, "refugio: tapar pared del recinto",
+                                         clase="place_stone", datos={"receta": "place_stone"})
+                    plan = self._plan_mirar(pos, C, mina)
+                    while plan is not None:
+                        P, A = plan
+                        if pos == A and cara == (C[0] - A[0], C[1] - A[1]):
+                            return Propuesta(Verbo.USAR, "place_stone", ar, conf, "refugio: tapar pared del recinto",
+                                             clase="place_stone", datos={"receta": "place_stone"})
+                        if pos == P:
+                            if (
+                                motivo_prev == "refugio: orientarse para tapar pared"
+                                and previa_acc is not None
+                                and previa_acc.carga.get("objetivo") == f"celda_{A[0]}_{A[1]}"
+                            ):
+                                self.inalcanzables[P] = ctx.latido
+                                plan = self._plan_mirar(pos, C, mina)
+                                continue
+                            destino_mov = C if P == A else A
+                            return Propuesta(Verbo.MOVER, f"celda_{destino_mov[0]}_{destino_mov[1]}", ar, conf,
+                                             "refugio: orientarse para tapar pared", clase="suelo")
+                        paso_p = self._paso_hacia(ctx, pos, P)
+                        if paso_p is not None:
+                            return Propuesta(Verbo.MOVER, paso_p.id, ar, conf,
+                                             "refugio: ir a posición de orientación para tapar", clase=paso_p.clase)
+                        self.inalcanzables[P] = ctx.latido
+                        plan = self._plan_mirar(pos, C, mina)
+                self.recintos_descartados.add(mina)
+                estado["mina"] = None
+                self._guardar_estado(estado)
+                return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: recinto impracticable, buscar otro")
 
         if fase == "cerrarse":
             mina = estado.get("mina")
@@ -1450,6 +1670,20 @@ class RefugioNocturno(Definicion):
                                      "refugio: reorientar hacia la salida", clase="suelo")
                 return Propuesta(Verbo.USAR, "place_stone", max(ar, 0.95), max(conf, 0.95),
                                  "refugio: tapar la entrada con piedra", clase="place_stone", datos={"receta": "place_stone"})
+            if pos == e1:
+                return Propuesta(Verbo.MOVER, f"celda_{e2[0]}_{e2[1]}", max(ar, 0.9), max(conf, 0.9),
+                                 "refugio: entrar a e2 para cerrar", clase="suelo")
+            if pos == e0:
+                if self.mapa.get(e1) in ROCA_EXCAVABLE:
+                    clase_r = MATERIALES.get(self.mapa[e1], "piedra")
+                    return Propuesta(Verbo.COGER, f"{clase_r}_{e1[0]}_{e1[1]}", max(ar, 0.9), max(conf, 0.9),
+                                     "refugio: abrir entrada para entrar", clase=clase_r)
+                return Propuesta(Verbo.MOVER, f"celda_{e1[0]}_{e1[1]}", max(ar, 0.9), max(conf, 0.9),
+                                 "refugio: entrar a galería para cerrar", clase="suelo")
+            paso_ent = self._paso_hacia(ctx, pos, e2) or self._paso_hacia(ctx, pos, e0)
+            if paso_ent is not None:
+                return Propuesta(Verbo.MOVER, paso_ent.id, max(ar, 0.9), max(conf, 0.9),
+                                 "refugio: entrar al recinto para cerrar", clase=paso_ent.clase)
 
         if fase == "dormir":
             mina = estado.get("mina")

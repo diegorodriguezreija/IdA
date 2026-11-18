@@ -219,4 +219,144 @@ def test_agua_inalcanzable_detras_roca_elige_accesible():
     assert prop.objetivo == "celda_11_10"
 
 
+def test_c1_1_roca_tres_casillas_en_linea():
+    ref = RefugioNocturno()
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "stone",
+        (10, 12): "stone",
+        (10, 13): "stone",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+    }
+    res = ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 0)
+    assert res is not None
+    puntuacion, colocar = res
+    assert colocar == 0
+    assert puntuacion > 0
+
+
+def test_c1_2_lateral_e2_transitable_coloca_una_piedra():
+    from ida.core.arquitectura import Contexto
+    from ida.core.azar import Azar
+    from ida.core.linaje import Arquetipo
+    from ida.core.memoria import Memoria
+    from ida.core.mundo import Perfil
+    from ida.core.onda import Onda, Pieza
+    from ida.core.soma import Soma
+
+    ref = RefugioNocturno()
+    ref.bajando = True
+    ref.luz_previa = 0.4
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "path",
+        (10, 12): "path",
+        (10, 13): "path",
+        (9, 12): "stone",
+        (11, 12): "grass",  # lateral de e2 transitable (falta 1 pared)
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+        (11, 11): "grass",  # A vecina de (11, 12)
+        (11, 10): "grass",  # P = 2A - C
+    }
+    res = ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 2)
+    assert res is not None
+    assert res[1] == 1
+
+    # En A=(11, 11) mirando a C=(11, 12) (orientación (0, 1)), la fase tapar coloca la piedra
+    onda = Onda(20, 100.0, 1e9)
+    onda.percibir("Propiocepcion", Pieza("yo", "Propiocepcion", carga={
+        "ubicacion": "celda_11_11",
+        "inventario": {"drink": 8, "food": 8, "health": 9, "stone": 2, "wood_pickaxe": 1, "wood_sword": 1},
+        "cuerpo": {"pos": (11, 11), "orientacion": (0, 1), "vista": dict(ref.mapa)},
+    }))
+    onda.percibir("Ambiente", Pieza("ambiente", "Ambiente", carga={"luz": 0.4}))
+    ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.USAR})
+    est = Pieza("S2:refugio_nocturno:cobijo", "Estrategia", carga={"paso": {"fase": "tapar", "mina": ((10, 10), (0, 1))}})
+    prop = ref.actuar(ctx, est)
+    assert prop is not None
+    assert prop.verbo == Verbo.USAR
+    assert prop.objetivo == "place_stone"
+
+
+def test_c1_3_recinto_en_hierba_junto_al_agua_orden_plan_mirar():
+    ref = RefugioNocturno()
+    # Recinto en hierba junto al agua al fondo (10, 14), con roca en (9, 12), (9, 13) y 1 roca en e1 (10, 11)
+    # Faltan 2 paredes laterales: (11, 13) y (11, 12); con 3 piedras en inventario (o 0 rocks + 2 paredes con 3 piedras)
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "grass",
+        (10, 12): "grass",
+        (10, 13): "grass",
+        (9, 12): "stone",
+        (9, 13): "stone",
+        (10, 14): "water",
+        (11, 12): "grass",
+        (11, 13): "grass",
+        (11, 11): "grass",
+        (11, 10): "grass",
+        (12, 12): "grass",
+        (13, 12): "grass",
+        (12, 13): "grass",
+        (13, 13): "grass",
+    }
+    mina = ((10, 10), (0, 1))
+    res = ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 3)
+    assert res is not None
+    assert res[1] == 2
+
+    orden = ref._orden_paredes_factible((10, 10), mina)
+    assert len(orden) == 2
+    pos_sim = (10, 10)
+    for pared in orden:
+        plan = ref._plan_mirar(pos_sim, pared, mina)
+        assert plan is not None
+        p_pos, a_pos = plan
+        assert ref.mapa.get(a_pos) == "grass"
+        assert ref.mapa.get(p_pos) == "grass"
+        assert (2 * a_pos[0] - pared[0], 2 * a_pos[1] - pared[1]) == p_pos
+        ref.mapa[pared] = "stone"
+        pos_sim = a_pos
+
+
+def test_c1_4_no_factible_sin_piedra_suficiente():
+    ref = RefugioNocturno()
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "grass",
+        (10, 12): "grass",
+        (10, 13): "grass",
+        (9, 12): "stone",
+        (11, 12): "grass",  # 1 pared a colocar + 1 sello = 2 piedras necesarias
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+    }
+    assert ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 1) is None
+    assert ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 2) is not None
+
+
+def test_c1_5_lava_a_distancia_2_se_rechaza():
+    ref = RefugioNocturno()
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "stone",
+        (10, 12): "stone",
+        (10, 13): "stone",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+        (12, 12): "lava",  # a distancia 2 de e2=(10, 12)
+    }
+    assert ref._evaluar_recinto((10, 10), (0, 1), (10, 10), None, 0) is None
+
+
+
 
