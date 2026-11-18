@@ -10,6 +10,7 @@ Para cada episodio de vaca que entra en el campo visual del individuo:
 
 import argparse
 from collections import Counter
+import json
 import os
 import sys
 import tempfile
@@ -81,6 +82,19 @@ def diagnosticar_semilla_c3c(semilla: int, max_latidos: int = 3000) -> Dict[str,
         if not ganador_est:
             ganador_est = ganador_sistema or "desconocida"
 
+        # Determinar si el jugador está de día y fuera del refugio
+        paso_s2 = (onda.notas.get("estrategias_S2") or {}).get("refugio_nocturno")
+        mina_s2 = paso_s2.get("mina") if isinstance(paso_s2, dict) else None
+        fase_s2 = paso_s2.get("fase") if isinstance(paso_s2, dict) else ""
+        galeria = []
+        if mina_s2 is not None:
+            e0, (dx, dy) = mina_s2
+            galeria = [(e0[0] + k * dx, e0[1] + k * dy) for k in (1, 2, 3)]
+        pos_jugador = (int(p.pos[0]), int(p.pos[1]))
+        esta_dentro = (pos_jugador in galeria) or (fase_s2 == "dormir")
+        es_dia = (luz >= 0.5)
+        es_dia_y_fuera = es_dia and (not esta_dentro)
+
         # 1. Actualizar episodios activos y detectar nuevos
         cows_vistas_ahora = set(vacas_percibidas.keys())
 
@@ -106,6 +120,7 @@ def diagnosticar_semilla_c3c(semilla: int, max_latidos: int = 3000) -> Dict[str,
                     "distancia_inicio": dist_jugador,
                     "luz_inicio": round(luz, 3),
                     "nutritivo_inicio": round(nutritivo, 3),
+                    "es_dia_y_fuera_inicio": es_dia_y_fuera,
                     "comidas_hist": [int(inv.get("food", 0))],
                     "distancias_hist": [dist_jugador],
                     "hp_vaca_inicio": hp_ini,
@@ -218,6 +233,7 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--semillas", type=int, nargs="*", default=list(range(11, 21)))
     p.add_argument("--latidos", type=int, default=3000)
+    p.add_argument("--salida", type=str, default=None, help="fichero JSON donde guardar los episodios")
     args = p.parse_args()
 
     print("=== DIAGNÓSTICO C.3c: EPISODIOS DE VACAS PERCIBIDAS (L >= 300) ===", flush=True)
@@ -309,6 +325,40 @@ def main() -> int:
     if comidos_eps:
         golpes_comidos = [e["golpes_dados"] for e in comidos_eps]
         print(f"  • Golpes dados en vacas comidas: {golpes_comidos}")
+
+    # Desglose separando episodios de día y fuera del refugio del resto (B.2)
+    subgrupos = [
+        ("DE DÍA Y FUERA DEL REFUGIO", [e for e in todos_episodios if e.get("es_dia_y_fuera_inicio", False)]),
+        ("RESTO (NOCHE O DENTRO DEL REFUGIO)", [e for e in todos_episodios if not e.get("es_dia_y_fuera_inicio", False)]),
+    ]
+    print("\n=======================================================")
+    print("DESGLOSE POR ENTORNO (DE DÍA Y FUERA DEL REFUGIO vs RESTO)")
+    print("=======================================================")
+    for nombre_sub, eps_sub in subgrupos:
+        n_sub = len(eps_sub)
+        print(f"\n--- {nombre_sub} (N = {n_sub}) ---")
+        if n_sub == 0:
+            print("  (Sin episodios)")
+            continue
+        c_sub = [e for e in eps_sub if e["desenlace"] == "comida"]
+        p_sub = [e for e in eps_sub if e["desenlace"] == "perdida_de_vista"]
+        i_sub = [e for e in eps_sub if e["desenlace"] == "ignorada"]
+        print(f"  • Comidos:           {len(c_sub):2d} ({100.0 * len(c_sub) / n_sub:.1f} %)")
+        print(f"  • Perdidos de vista: {len(p_sub):2d} ({100.0 * len(p_sub) / n_sub:.1f} %)")
+        print(f"  • Ignorados:         {len(i_sub):2d} ({100.0 * len(i_sub) / n_sub:.1f} %)")
+        cm_c = sum(e["comida_inicio"] for e in c_sub) / len(c_sub) if c_sub else 0.0
+        cm_p = sum(e["comida_inicio"] for e in p_sub) / len(p_sub) if p_sub else 0.0
+        cm_i = sum(e["comida_inicio"] for e in i_sub) / len(i_sub) if i_sub else 0.0
+        print("  Comida media:")
+        print(f"    - Comidos:           {cm_c:.2f}")
+        print(f"    - Perdidos de vista: {cm_p:.2f}")
+        print(f"    - Ignorados:         {cm_i:.2f}")
+
+    if getattr(args, "salida", None):
+        os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)
+        with open(args.salida, "w", encoding="utf-8") as f:
+            json.dump(todos_episodios, f, indent=2)
+        print(f"\nResultados guardados en: {args.salida}")
 
     return 0
 
