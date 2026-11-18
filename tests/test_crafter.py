@@ -367,6 +367,47 @@ def test_c3b_caducidad_visitadas():
     assert ref._es_visitada((6, 6), latido=161) is False  # nunca visitada
 
 
+def test_c3d_forrajeo_oportunista():
+    from types import SimpleNamespace
+    from ida.core.pieza import Pieza
+
+    ref = RefugioNocturno()
+    vaca = Pieza("vaca_1", "Exterocepcion", carga={"clase": "vaca", "datos": {"pos": (10, 12)}, "rasgos": {"nutritivo": 0.5}})
+    suelo = Pieza("celda_10_11", "Exterocepcion", carga={"clase": "suelo", "datos": {"pos": (10, 11)}, "rasgos": {"lugar": 1.0}})
+    ref.mapa[(10, 11)] = "grass"
+    ref.mapa[(10, 12)] = "grass"
+
+    onda = SimpleNamespace(
+        ev=lambda canal: {"Exterocepcion": {"vaca_1": vaca, "celda_10_11": suelo}}.get(canal, {})
+    )
+    ctx = SimpleNamespace(latido=10, onda=onda)
+    pos = (10, 10)
+
+    # Caso 1: vaca a 2, comida 4, luz 1 -> propone ir a por ella (MOVER)
+    prop1 = ref._forrajeo_oportunista(ctx, pos, {"food": 4.0}, luz=1.0)
+    assert prop1 is not None
+    assert prop1.verbo == Verbo.MOVER
+    h = 5.0 / 9.0
+    assert abs(prop1.arousal - (0.55 + 0.35 * h)) < 1e-4
+    assert abs(prop1.confianza - (0.70 + 0.25 * h)) < 1e-4
+
+    # Caso 2: comida 8 -> no la propone
+    prop2 = ref._forrajeo_oportunista(ctx, pos, {"food": 8.0}, luz=1.0)
+    assert prop2 is None
+
+    # Caso 3: vaca adyacente a distancia 1 -> propone COMER
+    vaca_adj = Pieza("vaca_2", "Exterocepcion", carga={"clase": "vaca", "datos": {"pos": (10, 11)}, "rasgos": {"nutritivo": 0.5}})
+    onda_adj = SimpleNamespace(
+        ev=lambda canal: {"Exterocepcion": {"vaca_2": vaca_adj}}.get(canal, {})
+    )
+    ctx_adj = SimpleNamespace(latido=11, onda=onda_adj)
+    prop3 = ref._forrajeo_oportunista(ctx_adj, pos, {"food": 4.0}, luz=1.0)
+    assert prop3 is not None
+    assert prop3.verbo == Verbo.COMER
+    assert prop3.objetivo == "vaca_2"
+
+
+
 
 
 

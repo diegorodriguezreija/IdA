@@ -569,11 +569,13 @@ class RefugioNocturno(Definicion):
         self.vacas: Dict[Pos, int] = {}
         self.inalcanzables: Dict[Pos, int] = {}
         self.recintos_descartados: Set[Tuple[Pos, Pos]] = set()
+        self._vaca_origen: Dict[str, Pos] = {}
 
     def _reiniciar_vida(self) -> None:
         self.vacas.clear()
         self.inalcanzables.clear()
         self.recintos_descartados.clear()
+        self._vaca_origen.clear()
         self.mapa.clear()
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
@@ -1357,6 +1359,82 @@ class RefugioNocturno(Definicion):
                              clase=cerca[0].clase)
         return Propuesta(Verbo.ESPERAR, "", ar, conf, "refugio: esperar a que el hostil salga de la galería")
 
+    def _forrajeo_oportunista(
+        self, ctx: Contexto, pos: Pos, inv: Dict[str, float], luz: float
+    ) -> Optional[Propuesta]:
+        """Si de día el individuo ve una vaca cuando le cabe la comida (<= 5),
+        la persigue o come oportunistamente siempre que no haya hostiles cerca (<= 3)."""
+        if luz < 0.5:
+            return None
+        comida = float(inv.get("food", 0))
+        if comida > 5.0:
+            return None
+
+        exter = list(ctx.onda.ev("Exterocepcion").values())
+        hostiles = [
+            tuple(p.carga["datos"]["pos"])
+            for p in exter
+            if p.clase in ("zombi", "esqueleto") and "pos" in p.carga.get("datos", {})
+        ]
+        if any(_dist(pos, hp) <= 3 for hp in hostiles):
+            return None
+
+        vacas_visibles = [
+            p for p in exter
+            if p.clase == "vaca" and "pos" in p.carga.get("datos", {})
+        ]
+        ids_visibles = {p.id for p in vacas_visibles}
+        self._vaca_origen = {vid: orig for vid, orig in self._vaca_origen.items() if vid in ids_visibles}
+
+        candidatas: List[Tuple[float, Pieza, Pos]] = []
+        for p in vacas_visibles:
+            vpos = (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1]))
+            d = _dist(pos, vpos)
+            if d > 4:
+                continue
+            if vpos in self.inalcanzables and ctx.latido - self.inalcanzables[vpos] < 50:
+                continue
+            if p.id not in self._vaca_origen:
+                self._vaca_origen[p.id] = pos
+            origen = self._vaca_origen[p.id]
+            if _dist(pos, origen) > 6:
+                continue
+            candidatas.append((d, p, vpos))
+
+        if not candidatas:
+            return None
+
+        candidatas.sort(key=lambda item: item[0])
+        _, vaca_elegida, vpos = candidatas[0]
+
+        h = (9.0 - comida) / 9.0
+        ar = acotar(0.55 + 0.35 * h)
+        conf = acotar(0.70 + 0.25 * h)
+
+        if _dist(pos, vpos) == 1:
+            return Propuesta(
+                Verbo.COMER,
+                vaca_elegida.id,
+                ar,
+                conf,
+                "refugio: forrajeo oportunista vaca",
+                clase="vaca",
+            )
+
+        paso_p = self._paso_hacia(ctx, pos, vpos)
+        if paso_p is not None:
+            return Propuesta(
+                Verbo.MOVER,
+                paso_p.id,
+                ar,
+                conf,
+                "refugio: forrajeo oportunista vaca",
+                clase=paso_p.clase,
+            )
+
+        self.inalcanzables[vpos] = ctx.latido
+        return None
+
     def _abastecer(self, ctx: Contexto, pos: Pos, inv: Dict[str, float], ar: float, conf: float) -> Optional[Propuesta]:
         """Mañana fuera del refugio: ir a beber o comer (agua del mapa recordado, comida percibida o vacas
         vistas hace poco), eligiendo el objetivo por cercanía y por el déficit de cada reserva, y apartarse
@@ -1434,6 +1512,9 @@ class RefugioNocturno(Definicion):
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
         if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "tapar", "cavar", "abastecer") and not anticipa and not sed_critica:
             if not self._falta_herramienta(inv) and mina_est is not None:
+                prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
+                if prop_vaca is not None:
+                    return prop_vaca
                 return None
 
         ar, conf = self._motivacion(ctx, estado, pos, inv)
@@ -1458,6 +1539,9 @@ class RefugioNocturno(Definicion):
                                      "refugio: cerrar distancia a esqueleto", clase=paso_esq.clase)
 
         if fase == "abastecer":
+            prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
+            if prop_vaca is not None:
+                return prop_vaca
             return self._abastecer(ctx, pos, inv, ar, conf)
 
         if fase == "madera":
@@ -1501,6 +1585,9 @@ class RefugioNocturno(Definicion):
             return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar sitio para mesa")
 
         if fase == "provisiones":
+            prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
+            if prop_vaca is not None:
+                return prop_vaca
             e0_ref = mina_est[0] if mina_est is not None else pos
             rocas_ref = (
                 sum(
