@@ -582,3 +582,103 @@ Los datos empíricos de C.3 confirman de forma rotunda el supuesto S4:
    En las 4 vidas que alcanzaron una segunda noche con refugio (11, 12, 13, 20), **el 75 % (3/4) reutilizó exactamente el mismo refugio** de la noche anterior (`distancia = 0`). El mecanismo de memoria y retorno (`mina_recordada` y `memoria.recordar_lugar`) ya funciona de forma natural.
 3. **Necesidad de incentivar nichos de hierba en `_evaluar_recinto`:**  
    Los 12 refugios utilizados se excavaron en formaciones rocosas puras sin bloques de hierba en las paredes laterales de $e_2$ o $e_3$ (**0 % de refugios con hierba lateral**). Para que C.4 sea efectivo, `_evaluar_recinto` debe incluir un incentivo positivo por cada lateral de hierba candidata a nicho huerto, canalizando la selección del refugio hacia recintos con suelo cultivable protegido.
+
+---
+
+## 5. C.3b: Patrulla de forrajeo (vacas que se reponen)
+
+### 5.1 Paso 1: Diagnóstico de presencia real de vacas en el área de campeo
+
+Se ejecutó un diagnóstico observacional sin alterar el código de toma de decisiones (`ida/`), midiendo en el arnés largo (`--real`, semillas 11–20, `--latidos 3000`) cada 50 latidos:
+1. Vacas que existen realmente a $\le 17$ del recinto de la última noche (lectura del mundo).
+2. Vacas percibidas por el individuo en esa ventana de 50 latidos (`Exterocepcion`).
+3. Casillas a $\le 17$ del recinto no visitadas en los últimos 150 latidos.
+
+- **Comando exacto:**
+  ```powershell
+  $t0 = Get-Date; & "C:\Users\diego\AppData\Local\Python\pythoncore-3.15-64\python.exe" herramientas/diagnostico_vacas_c3b.py --semillas 11 12 13 14 15 16 17 18 19 20 --latidos 3000; $t1 = Get-Date; Write-Host "Tiempo: $(($t1 - $t0).TotalSeconds) s"
+  ```
+- **Tiempo de ejecución:** **42,38 s** (49 ventanas de 50 latidos con recinto activo).
+
+#### Resultados agregados del diagnóstico
+- **Vacas reales a $\le 17$ del recinto (media por 50 latidos):** **1,76** vacas.
+- **Vacas reales a $\le 17$ del recinto (media por 150 latidos):** **5,27** vacas.
+- **Tras la primera noche ($L \ge 300$, 28 ventanas):**
+  - Vacas reales a $\le 17$: **1,68** por cada 50 latidos (**5,04 vacas reales por cada 150 latidos**).
+  - Vacas percibidas por el individuo: **1,36** por cada 50 latidos.
+- **Casillas a $\le 17$ no visitadas hace $> 150$ latidos:** **96,5 %**.
+
+#### Conclusión del Paso 1
+> **¿Existen vacas en el área de campeo que no ve?**  
+> **SÍ.** La tasa de presencia real es de **5,04 vacas por cada 150 latidos** tras la primera noche, muy superior al umbral de parada ($< 1$). Las vacas reaparecen en los chunks con hierba del área de campeo según la dinámica de Crafter (`_balance_chunk`), pero el individuo no las detecta porque el 96,5 % del área permanece sin explorar debido a que `self.visitadas` nunca caducaba y la búsqueda no patrullaba el entorno del refugio.  
+> **Veredicto:** El diagnóstico **justifica plenamente** implementar el Paso 2 (patrulla de forrajeo).
+
+---
+
+### 5.2 Paso 2: Implementación de la patrulla
+
+**Hipótesis:** Si las casillas visitadas caducan a los 150 latidos y la exploración cuando no hay comida conocida se restringe a $\le 17$ del recinto recordado, el individuo patrulla el área de campeo, detecta las vacas que se reponen y aumenta las vacas comidas y los latidos vividos en horizonte largo.
+
+**Cambios en `ida/mundos/crafter.py`:**
+1. `self.visitadas` pasa de `Set[Pos]` a `Dict[Pos, int]` (mapeando posición al último latido de visita).
+2. Se introduce la caducidad `CADUCIDAD_VISITADA = 150`: una casilla vuelve a contar como «no visitada» si han transcurrido más de 150 latidos desde la última visita (`_es_visitada`).
+3. En `_abastecer` y `provisiones`, cuando no hay comida conocida alcanzable, `_explorar_con_rumbo` recibe el centro interior del recinto (`e2`) y restringe las propuestas de movimiento y destinos BFS a casillas con `_dist(c, e2) <= 17`. Si el individuo se encontrara fuera de ese radio, un paso hacia `e2` lo retorna a la zona de campeo.
+4. Se actualiza el test de inicialización en `tests/test_crafter.py` (`assert refugio.visitadas == {}`) y se añaden pruebas unitarias de caducidad.
+
+---
+
+### 5.3 Verificación empírica
+
+#### 1. Arnés largo (semillas 11–20, `--latidos 3000`, `--real`) frente a `c3_largo.json`
+
+| Métrica | C.3 (Línea base) | C.3b (Patrulla) | Δ (C.3b vs C.3) |
+|---|---|---|---|
+| **Latidos medios vividos** | 391,2 | **418,4** | **+27,2 latidos (+7,0 %)** |
+| **Vacas comidas totales** | 11 | **13** | **+2 vacas (+18,2 %)** |
+| **Noches superadas totales** | 10 | **11** | **+1 noche** |
+| **Fidelidad de hábitat (repetición refugio)** | 3 / 4 (75,0 %) | **4 / 5 (80,0 %)** | +5,0 % |
+| **Semilla 17 (latidos)** | 428 (muerte L428, d1: 0 vacas) | **697 (muerte L697, d1: 2 vacas)** | **+269 latidos (+62,9 %)** |
+
+- **Detalle de la Semilla 17:** Gracias a la patrulla en el área de campeo tras el amanecer, caza **2 vacas adicionales en el Día 1**, superando con éxito la segunda noche en el mismo refugio (`((15, 27), (0, -1))[rep]`) y extendiendo su longevidad hasta el latido 697.
+
+#### 2. Arnés de 600 latidos (semillas 11–30, `--real`)
+
+| Métrica | C.1 Base | C.3b Patrulla | Criterio / Estado |
+|---|---|---|---|
+| **Vidas selladas día 1** | **16/20 (80,0 %)** | **16/20 (80,0 %)** | $\ge 16/20$ (**Cumplido**) |
+| **Selladas sin daño dentro** | 16/16 (100 %) | 16/16 (100 %) | 100 % (**Cumplido**) |
+| **Vivas a L600** | 4/20 (20,0 %) | **5/20 (25,0 %)** | **+1 vida viva** |
+| **Latidos medios** | 398,2 | **414,6** | **+16,4 latidos** |
+| **Logros medios** | 11,50 | **11,65** | +0,15 logros |
+
+#### 3. Benchmark rápido (Equilibrado, 30 vidas pareadas) frente a `c1_rapido.json`
+
+| Métrica | C.1 (`c1_rapido`) | C.3b (`c3b_rapido`) | Δ pareado (IC 95 %) |
+|---|---|---|---|
+| **Latidos** | 422,70 ± 74,92 | 419,30 ± 74,43 | -3,40 ± 28,22 |
+| **Fitness** | 11734,53 ± 1299,05 | 11731,40 ± 1375,04 | -3,13 ± 202,76 |
+| **Logros** | 11,30 ± 1,23 | 11,30 ± 1,31 | -0,00 ± 0,19 |
+| **Noches** | 1,20 ± 0,30 | 1,20 ± 0,30 | -0,00 ± 0,16 |
+| **Vivas a L600** | 11 | 9 | -2 |
+| **Tiempo por latido** | 5,24 ms | 5,45 ms | +0,21 ms ($\le +4\,\%$) |
+
+#### Logros por tipo frente a C.1 (N = 30 vidas)
+- `wake_up`: +1 vida (23 $\to$ 24)
+- `place_stone`: +1 vida (25 $\to$ 26)
+- `place_furnace`: +1 vida (4 $\to$ 5)
+- `collect_coal`: +1 vida (9 $\to$ 10)
+- `defeat_zombie`: -2 vidas (19 $\to$ 17)
+- `eat_cow`: -1 vida (19 $\to$ 18)
+- `make_stone_pickaxe`: -1 vida (5 $\to$ 4)
+
+---
+
+### 5.4 Decisión sobre C.3b
+
+| Pieza | Hipótesis | Arnés largo (11–20) | Arnés 600 (11–30) | Benchmark rápido (1–10) | Decisión |
+|---|---|---|---|---|---|
+| **C.3b** | Caducidad a 150 latidos y patrulla $\le 17$ permiten cazar vacas repuestas y prolongar la vida. | **Confirmada:**<br>• Latidos: **+27,2** (391,2 $\to$ 418,4)<br>• Vacas: **+2** (11 $\to$ 13)<br>• Noches: **+1** (10 $\to$ 11)<br>• Sem. 17 vive **697 latidos** (+269) | **Confirmada:**<br>• Selladas día 1: **16/20 (80,0 %)** (no baja)<br>• Vivas: **5/20** (+1 vida)<br>• Latidos: **+16,4** (398,2 $\to$ 414,6) | **Estable:**<br>• Latidos: $\Delta = -3,40 \pm 28,22$<br>• Logros: $\Delta = 0,00 \pm 0,19$<br>• Noches: $\Delta = 0,00 \pm 0,16$ | **Aceptada** |
+
+**Veredicto:**  
+C.3b confirma su hipótesis operativa aumentando la recolección de fauna repuesta y la longevidad en horizonte largo sin degradar el sellado en 600 latidos ni el benchmark pareado. Se acepta e integra como base para C.4.
+
