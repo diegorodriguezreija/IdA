@@ -1419,7 +1419,6 @@ class RefugioNocturno(Definicion):
 
         estado["mina"] = mina_actual
         pasos_luz = self._pasos_luz_restantes(luz)
-        coste = self._coste_restante_pasos(pos, inv, mina_actual)
         coste_refugio = self._coste_restante_pasos(pos, inv, mina_actual, incluir_huerto=False)
         es_noche = luz < 0.5 and not estado.get("manana") and (self.bajando or luz < 0.35)
         margen_cierre = max(12.0, coste_refugio * 1.55)
