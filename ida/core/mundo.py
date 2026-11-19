@@ -169,6 +169,15 @@ class Mundo(ABC):
         p. ej. ``{"S1": [MiDefensa()]}``. Se añaden al catálogo del componente ``Estrategia``."""
         return {}
 
+    def manual(self) -> Dict[str, Any]:
+        """Hechos declarados del mundo (instrucciones), con su fuente. Por defecto, ninguno.
+
+        Formato: ``{"hechos": [...], "inventario": [...]}``. Cada hecho es una ``proposicion`` (sujeto,
+        relación, veredicto), un ``requisito`` (verbo, objetivo, requiere_inventario, requiere_cerca y,
+        si se sabe, efecto) o una ``nota`` (no se carga). ``inventario``, opcional, son las claves del
+        inventario percibido que cuentan como objetos. Entra en la memoria al nacer, antes de heredar."""
+        return {}
+
     def puntuacion(self) -> Dict[str, Any]:
         """Resultado del mundo para el resumen de la vida (puntos, logros, resultado...)."""
         return {}

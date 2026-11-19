@@ -84,6 +84,7 @@ def ejecutar(
             else:
                 arq = Arquetipo.nuevo(azar_g, linaje=mundo.capitalize())
             memoria = Memoria(m.perfil.memoria)
+            memoria.aplicar_manual(m.manual())       # paso 2: el manual del mundo, antes de heredar
             legado_a_heredar = linaje.legado() or legado_inicial or {}
             heredados = memoria.heredar(legado_a_heredar, m.perfil.mecanismos.tasa_herencia)
             m.reiniciar(azar_g.semilla)

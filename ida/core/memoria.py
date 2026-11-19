@@ -191,6 +191,39 @@ class RecuerdoLugar:
     confianza: float = 1.0
 
 
+@dataclass
+class Requisito:
+    """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
+
+    «Para que ``verbo`` sobre ``objetivo`` tenga efecto hace falta llevar ``requiere_inventario`` y tener
+    cerca ``requiere_cerca``; su efecto en el inventario es ``efecto``». En ``requiere_inventario``,
+    ``None`` es «al menos uno, cantidad desconocida». Las claves de inventario son las que percibe el
+    individuo. Entra del manual del mundo (``fuente`` = «manual», con confianza de autoridad) o se
+    descubre con la experiencia (``fuente`` = «experiencia»); la experiencia mueve cantidades y confianza.
+    """
+
+    verbo: Verbo
+    objetivo: str
+    requiere_inventario: Dict[str, Optional[int]] = field(default_factory=dict)
+    requiere_cerca: Set[str] = field(default_factory=set)
+    efecto: Dict[str, int] = field(default_factory=dict)
+    fuente: str = "manual"
+    confianza: float = 0.8
+    exitos: int = 0
+    fallos: int = 0
+    heredado: bool = False
+
+    def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
+        """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
+        return (all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
+                and self.requiere_cerca <= cerca)
+
+    def a_dict(self) -> Dict[str, Any]:
+        return {"verbo": self.verbo.name, "objetivo": self.objetivo, "requiere_inventario": dict(self.requiere_inventario),
+                "requiere_cerca": sorted(self.requiere_cerca), "efecto": dict(self.efecto), "fuente": self.fuente,
+                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos}
+
+
 def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
@@ -236,6 +269,10 @@ class Memoria:
         # F1: modelo de transiciones (sistema, verbo, clase) -> cambio medio de cada variable, aprendido de lo vivido.
         self.modelo: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         self._modelo_por: Dict[Tuple[str, str], Set[str]] = {}
+        # Paso 2 (fase de generalización): requisitos de las acciones e intentos fallidos (para el planificador).
+        self.requisitos: Dict[Tuple[Verbo, str], Requisito] = {}
+        self.intentos: Dict[Tuple[Verbo, str], List[Dict[str, float]]] = {}
+        self.claves_inventario: Optional[Set[str]] = None   # si el manual las declara, solo esas cuentan como objetos
 
     @property
     def activa(self) -> bool:
@@ -820,10 +857,100 @@ class Memoria:
             "episodios_replay": episodios_replay,
         }
 
+    # --- manual del mundo y requisitos de las acciones (paso 2) ----------------
+    CONFIANZA_MANUAL = 0.8      # c_aut de lo que declara el manual (y confianza inicial de sus requisitos)
+    PESO_MANUAL = 1.0           # w_aut del manual: pesa como una experiencia propia
+    PASO_CONFIANZA_REQUISITO = 0.1
+    MAX_INTENTOS = 50           # intentos fallidos recordados por (verbo, objetivo); se olvidan los más antiguos
+
+    def aplicar_manual(self, manual: Dict[str, Any]) -> int:
+        """Al nacer, antes de heredar: las proposiciones del manual entran como autoridad (``c_aut``), refutables
+        por la experiencia; los requisitos, con fuente «manual». Un requisito repetido (mismo verbo y objetivo)
+        completa al anterior: fija cantidades desconocidas y suma lo que falte. Los hechos de tipo «nota» no se
+        cargan. Con ``inventario``, el manual declara qué claves del inventario percibido son objetos. Devuelve
+        cuántos hechos se cargaron."""
+        if not self.activa or not manual:
+            return 0
+        if manual.get("inventario") is not None:
+            self.claves_inventario = {str(k) for k in manual["inventario"]}
+        n = 0
+        for h in manual.get("hechos", []):
+            tipo = h.get("tipo")
+            if tipo == "proposicion":
+                p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
+                p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
+                n += 1
+            elif tipo == "requisito":
+                clave = (Verbo[h["verbo"]], str(h["objetivo"]))
+                inv = {str(k): (None if v is None else int(v)) for k, v in (h.get("requiere_inventario") or {}).items()}
+                cerca = {str(c) for c in h.get("requiere_cerca") or []}
+                efecto = {str(k): int(v) for k, v in (h.get("efecto") or {}).items()}
+                r = self.requisitos.get(clave)
+                if r is None:
+                    self.requisitos[clave] = Requisito(clave[0], clave[1], inv, cerca, efecto, fuente="manual",
+                                                       confianza=self.CONFIANZA_MANUAL)
+                else:
+                    for k, v in inv.items():
+                        previo = r.requiere_inventario.get(k)
+                        r.requiere_inventario[k] = v if previo is None else (previo if v is None else max(previo, v))
+                    r.requiere_cerca |= cerca
+                    r.efecto.update(efecto)
+                n += 1
+        return n
+
+    def aprender_requisito(
+        self,
+        verbo: Verbo,
+        objetivo: str,
+        inv_antes: Dict[str, float],
+        inv_despues: Dict[str, float],
+        cerca: Set[str],
+        exito: bool,
+    ) -> None:
+        """Tras una acción con objetivo: contrasta el inventario de antes y de después.
+
+        - Hay efecto si la acción tuvo éxito **y** el inventario cambió. Lo consumido fija la cantidad
+          mínima; un requisito que no se conocía se descubre (fuente «experiencia»).
+        - Sin efecto, el intento se recuerda. Si se creía cumplir el requisito, alguna cantidad desconocida
+          es mayor: sube a lo que había + 1, salvo las que ya fijó lo consumido en un éxito.
+        """
+        if not self.activa or not objetivo:
+            return
+        claves = set(inv_antes) | set(inv_despues)
+        if self.claves_inventario is not None:
+            claves &= self.claves_inventario
+        antes = {k: float(inv_antes.get(k, 0.0)) for k in sorted(claves)}
+        delta = {k: int(round(float(inv_despues.get(k, 0.0)) - antes[k])) for k in sorted(claves)}
+        delta = {k: d for k, d in delta.items() if d}
+        clave = (verbo, objetivo)
+        r = self.requisitos.get(clave)
+        if exito and delta:
+            if r is None:
+                r = self.requisitos[clave] = Requisito(verbo, objetivo, {}, set(cerca), fuente="experiencia")
+            r.exitos += 1
+            r.efecto = dict(delta)
+            for k, d in delta.items():
+                if d < 0:
+                    r.requiere_inventario[k] = max(r.requiere_inventario.get(k) or 0, -d)
+            r.confianza = acotar(r.confianza + self.PASO_CONFIANZA_REQUISITO)
+            return
+        lista = self.intentos.setdefault(clave, [])
+        lista.append({k: v for k, v in antes.items() if v})
+        del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
+        if r is not None and r.cumple(antes, cerca):
+            r.fallos += 1
+            for k, n in list(r.requiere_inventario.items()):
+                if r.efecto.get(k, 0) < 0:
+                    continue
+                if n is None or n <= antes.get(k, 0.0):
+                    r.requiere_inventario[k] = int(antes.get(k, 0.0)) + 1
+            r.confianza = acotar(r.confianza - self.PASO_CONFIANZA_REQUISITO)
+
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:
-        """Lo que pasa al linaje: lo demostrado y la memoria colectiva de S1 (recuerdos agregados)."""
-        return {
+        """Lo que pasa al linaje: lo demostrado, la memoria colectiva de S1 (recuerdos agregados) y los
+        requisitos que la experiencia ha visto cumplirse al menos una vez."""
+        legado: Dict[str, Any] = {
             "proposiciones": [
                 {"sujeto": p.sujeto, "relacion": p.relacion.name, "confianza": round(p.confianza, 3)}
                 for p in self.saber.values()
@@ -835,6 +962,10 @@ class Memoria:
                 if r.n >= 2
             ],
         }
+        requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
+        if requisitos:
+            legado["requisitos"] = requisitos
+        return legado
 
     def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
         """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo.
@@ -844,22 +975,39 @@ class Memoria:
             return 0
         proposiciones = list(legado.get("proposiciones", []))
         registros = list(legado.get("registros", []))
+        requisitos = list(legado.get("requisitos", []))
         if tasa < 1.0:
             def parte(xs: List[Dict[str, Any]], clave: str) -> List[Dict[str, Any]]:
                 k = math.ceil(max(0.0, tasa) * len(xs))
                 return sorted(xs, key=lambda d: -float(d[clave]))[:k]
             proposiciones = parte(proposiciones, "confianza")
             registros = parte(registros, "n")
+            requisitos = parte(requisitos, "exitos")
         n = 0
         for d in proposiciones:
+            clave = (d["sujeto"], Relacion[d["relacion"]])
+            existente = self.saber.get(clave)
             p = Proposicion(d["sujeto"], Relacion[d["relacion"]], confianza=float(d["confianza"]) * 0.8)
             p.confirmaciones = Proposicion.CONFIRMACIONES_MINIMAS - 1
             p.heredada = True
-            self.saber[(p.sujeto, p.relacion)] = p
+            if existente is not None and existente.c_aut is not None:   # lo del manual se conserva como autoridad
+                p.c_aut, p.w_aut = existente.c_aut, existente.w_aut
+            self.saber[clave] = p
             n += 1
         for d in registros:
             r = Registro(n=max(1, int(d["n"]) // 2))
             r.suma = float(d["media"]) * r.n
             self.registros[(Verbo[d["verbo"]], d["clase"])] = r
+            n += 1
+        for d in requisitos:   # lo heredado sustituye a lo del manual: la experiencia del linaje lo ha corregido
+            req = Requisito(
+                Verbo[d["verbo"]], str(d["objetivo"]),
+                {str(k): (None if v is None else int(v)) for k, v in d.get("requiere_inventario", {}).items()},
+                {str(c) for c in d.get("requiere_cerca", [])},
+                {str(k): int(v) for k, v in d.get("efecto", {}).items()},
+                fuente=str(d.get("fuente", "experiencia")), confianza=float(d.get("confianza", 0.5)) * 0.8,
+                exitos=max(1, int(d.get("exitos", 1)) // 2), fallos=int(d.get("fallos", 0)) // 2, heredado=True,
+            )
+            self.requisitos[(req.verbo, req.objetivo)] = req
             n += 1
         return n

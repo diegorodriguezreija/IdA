@@ -13,7 +13,7 @@ Orden de un latido:
 """
 
 import time
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
@@ -92,6 +92,7 @@ class Organismo:
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
+        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str]]] = None   # inventario y lo cercano al actuar
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -157,6 +158,7 @@ class Organismo:
         onda.notas["ms_cognicion"] = round(onda.ms_transcurridos(), 2)
 
         # 6. Actuar
+        self._antes_accion = self._situacion_inventario(ctx)   # paso 2: lo que había antes de actuar (requisitos)
         ctx.extra.pop("efecto", None)
         with onda.fase("actuar"):
             self.actuar.ejecutar(ctx)
@@ -211,6 +213,11 @@ class Organismo:
             if clase_obj:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
+        ahora_inv = self._situacion_inventario(ctx)
+        if c["verbo"] in (Verbo.USAR, Verbo.COGER) and self._antes_accion is not None and ahora_inv is not None:
+            objetivo = str(c.get("clase") or c.get("objetivo") or "")
+            self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
+                                            bool(c.get("exito")))
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -219,6 +226,15 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
+
+    @staticmethod
+    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str]]]:
+        """Inventario percibido y clases al alcance (no lugares), si el mundo da inventario. Para los requisitos."""
+        obs = ctx.observacion
+        if obs is None or obs.inventario is None:
+            return None
+        cerca = {e.clase for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9}
+        return dict(obs.inventario), cerca
 
     def _causa_de_muerte(self, onda: Onda) -> str:
         """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada
