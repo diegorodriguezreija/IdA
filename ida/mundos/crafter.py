@@ -1270,7 +1270,7 @@ class RefugioNocturno(Definicion):
             return 0
         if cerrados == 1 and inv.get("sapling", 0) < 1:
             return 0
-        if self._buscar_bolsillo(pos, mina, solo_natural=False) is not None:
+        if self._buscar_bolsillo(pos, mina, solo_natural=True) is not None:
             return 7 if inv.get("sapling", 0) >= 1 else 10
         return 0
 
@@ -2143,11 +2143,15 @@ class RefugioNocturno(Definicion):
 
         # Si aún no está plantada y no lleva retoño, recoger retoño primero antes de gastar piedra
         if not b.get("plantada") and inv.get("sapling", 0) < 1:
+            if prefijo == "refugio":
+                return None
             return self._recoger_retono_huerto(ctx, pos, mina, ar, conf, prefijo)
 
         # Paso 1: Preparar paredes del bolsillo salvo A
         if paredes_faltan:
             if inv.get("stone", 0) < 1:
+                if prefijo == "refugio" and excedente < 1:
+                    return None
                 return self._picar_roca_huerto(
                     ctx, pos, mina, ar, conf, prefijo, permitir_galeria=(excedente >= piedras_nec_bol)
                 )
@@ -2172,6 +2176,8 @@ class RefugioNocturno(Definicion):
                 return None
             # Tener la piedra lista antes de plantar para poder cerrar A de inmediato
             if inv.get("stone", 0) < 1:
+                if prefijo == "refugio" and excedente < 1:
+                    return None
                 return self._picar_roca_huerto(
                     ctx, pos, mina, ar, conf, prefijo, permitir_galeria=(excedente >= 1)
                 )
@@ -2180,6 +2186,8 @@ class RefugioNocturno(Definicion):
         # Paso 3: Cerrar A con 1 piedra
         if self._es_transitable_huerto(A):
             if inv.get("stone", 0) < 1:
+                if prefijo == "refugio" and excedente < 1:
+                    return None
                 return self._picar_roca_huerto(
                     ctx, pos, mina, max(ar, 0.85), max(conf, 0.90), prefijo, permitir_galeria=(excedente >= 1)
                 )
@@ -2354,7 +2362,7 @@ class RefugioNocturno(Definicion):
         """Planta y cierra 1-2 bolsillos naturales a <= 6 de e0 el día 1 antes de sellar."""
         b_activo = next((b for b in self.bolsillos if not b.get("cerrado")), None)
         if b_activo is None:
-            nuevo = self._buscar_bolsillo(pos, mina, solo_natural=False)
+            nuevo = self._buscar_bolsillo(pos, mina, solo_natural=True)
             if nuevo is not None:
                 self.bolsillos.append(nuevo)
                 b_activo = nuevo
