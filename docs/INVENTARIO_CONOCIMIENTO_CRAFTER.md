@@ -102,3 +102,9 @@ Lista de cada constante, umbral o regla de `ida/mundos/crafter.py` que codifica 
 - **Paso 5:** recetas, cantidades, herramientas por material, de dónde sale el retoño, dónde se puede colocar cada cosa.
 - **Paso 6:** daño y alcance de las criaturas, cuándo luchar, atribución de la causa del daño.
 - **Se mantiene (percepción o forma de actuar):** nombres, escala de 9, transitabilidad, proximidad, girar y `do`, éxito de COMER y COGER por el inventario visible.
+
+## 6. Estado tras el paso 5 (rama `feature/planificador`)
+
+- **Borrado:** `PlanTecnologico` entero (sección 4): recetas (`constants.make/place`), `OBJETIVOS`, `RECURSO`, `LOGROS_PLAN`, herramientas por mineral, plantar sobre hierba, retoño de la hierba y dormir de día. La tecnología la persigue `PerseguirMetas` (S3, general) con las metas y los requisitos del manual.
+- **Pendiente para el paso 3:** `RefugioNocturno` sigue usando recetas propias como conducta de refugio: fabricar pico y espada de madera con madera ≥ 1 (líneas 1255-1260 de la tabla 3), colocar la mesa con madera ≥ 2 sobre grass, sand o path (1266-1274), tapar con 1 piedra (1381, 1414) y la madera necesaria de `_madera_faltante` (624-630).
+- **Percepción nueva:** `cuerpo["delante"]` (clase e id de lo que hay en la casilla de delante; se ve). Para los suelos usa `SUELOS` (hierba, arena, camino), que solo nombra lo visible.

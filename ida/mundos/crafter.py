@@ -16,13 +16,11 @@ Traducción al vocabulario común:
   un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. Para
   interactuar con algo adyacente, el mundo primero gira hacia ello y después hace ``do``.
 
-Diferencias con el benchmark oficial: IdA lee el estado simbólico del juego, no los píxeles, y
-el plan tecnológico es un **componente propio de este mundo** escrito a mano (``PlanTecnologico``).
+Diferencias con el benchmark oficial: IdA lee el estado simbólico del juego, no los píxeles.
 
-Componente propio:
-- ``PlanTecnologico`` (S3 · Reaccionar): con las recetas del juego (``crafter.constants``) decide
-  qué fabricar o colocar y hacia qué recurso ir; además aprovecha logros baratos (retoño,
-  plantar, carbón, hierro, diamante). Puntúa por debajo de la supervivencia.
+La tecnología (fabricar, colocar, qué recoger) ya no es conducta del mundo: la persigue la estrategia
+general ``PerseguirMetas`` de S3 (paso 5) a partir de las metas y los requisitos del manual. La
+propiocepción incluye lo que hay delante (``cuerpo["delante"]``), que se ve.
 """
 
 from collections import deque
@@ -34,7 +32,7 @@ import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
-from ida.core.estrategia import ConPropuestas, Definicion, Plan, Propuesta, estado_plan
+from ida.core.estrategia import Definicion, Propuesta
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
@@ -44,6 +42,7 @@ MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carb
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
 PELIGRO_MANUAL = 0.8   # peligro de lo que el manual declara PELIGROSO (paso 2: sin gradaciones, ninguna fuente las da)
 RECURSO_MANUAL = 0.6   # recurso de lo que el manual declara UTIL
+SUELOS = {"grass": "hierba", "sand": "arena", "path": "camino"}   # solo para lo de delante (no son entidades)
 MANUALES = {"estricto": "crafter_manual.json", "ampliado": "crafter_manual_ampliado.json"}
 MOVIMIENTOS = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
 LETRA = {"arbol": "T", "agua": "~", "piedra": "#", "carbon": "c", "hierro": "i", "diamante": "D", "mesa": "M", "horno": "H",
@@ -297,6 +296,21 @@ class MundoCrafter(Mundo):
             return min(1.0, max(0.1, (9 - inv["food"]) / 9 * urgencia_reparacion))
         return 0.0
 
+    def _delante(self) -> Optional[Dict[str, str]]:
+        """Lo que hay en la casilla de delante (se ve): la criatura, si hay una, o el material o el suelo."""
+        w, p = self.env._world, self.jugador
+        x, y = int(p.pos[0] + p.facing[0]), int(p.pos[1] + p.facing[1])
+        if not (0 <= x < w.area[0] and 0 <= y < w.area[1]):
+            return None
+        mat, obj = w[(x, y)]
+        if obj is not None and type(obj).__name__ in OBJETOS:
+            clase = OBJETOS[type(obj).__name__]
+            if obj not in self._ids:
+                self._ids[obj] = f"{clase}_{len(self._ids) + 1}"
+            return {"id": self._ids[obj], "clase": clase}
+        nombre = MATERIALES.get(str(mat)) or SUELOS.get(str(mat))
+        return {"id": f"{nombre}_{x}_{y}", "clase": nombre} if nombre else None
+
     def observar(self) -> Observacion:
         p = self.jugador
         pos = tuple(p.pos)
@@ -334,7 +348,8 @@ class MundoCrafter(Mundo):
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
-                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "vista": self._vista_local()},
+                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "vista": self._vista_local(),
+                                   "delante": self._delante()},
                            ambiente={"luz": float(w.daylight)})
 
     # --- acción --------------------------------------------------------------
@@ -430,7 +445,7 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()], "S3": [PlanTecnologico(self.constantes)]}
+        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -1517,194 +1532,3 @@ class RefugioNocturno(Definicion):
                         return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.95), max(conf, 0.95),
                                          "refugio: salir al exterior", clase=paso_p.clase)
         return None
-
-
-class PlanTecnologico(Plan, ConPropuestas):
-    """Estrategia de S3 propia de Crafter para la intención «progresar» (decisión 11): avanza por el
-    árbol tecnológico del juego. Si puede fabricar o colocar algo útil, lo propone (USAR); si no, va
-    hacia el recurso que le falta o lo recoge si está al lado (COGER). Aprovecha logros baratos al
-    alcance y duerme de día si está cansado. Puntúa por debajo de la supervivencia.
-
-    Solo lee la percepción (regla 3 de AGENTS.md): inventario y orientación por propiocepción,
-    posición por la ubicación percibida, estructuras y terreno por exterocepción, luz por el ambiente.
-    Los logros conseguidos los recuerda él: lo que su plan logró y lo que ha llegado a tener en el
-    inventario. Las recetas (``crafter.constants``) son reglas fijas del mundo, no su estado. Lleva su
-    propio control de fallos, así que no se agota.
-
-    Con el interruptor de plan (bloque F, F2) es un ``Plan``: la cadena son las recetas pendientes en el
-    orden del árbol; un paso se cumple al tenerlo hecho y falla (sorpresa) cuando la receta ha fallado
-    tres veces. Rehacer el plan la deja fuera; si vuelve a fallar, la estrategia se agota.
-    """
-
-    nombre = "plan_tecnologico"
-    impulsos = ("progresar",)
-    prioridad = 10
-    agotable = False
-    OBJETIVOS = ["place_table", "make_wood_pickaxe", "make_wood_sword", "place_stone", "make_stone_pickaxe",
-                 "make_stone_sword", "place_furnace", "make_iron_pickaxe", "make_iron_sword"]
-    RECURSO = {"wood": "arbol", "stone": "piedra", "coal": "carbon", "iron": "hierro"}
-    LOGROS_PLAN = set(OBJETIVOS) | {"collect_diamond", "collect_iron", "collect_coal", "place_plant", "collect_sapling"}
-
-    def __init__(self, constantes: Any):
-        super().__init__()
-        self.constantes = constantes
-        self.fallos: Dict[str, int] = {}
-        self.hecho: Set[str] = set()
-        self.tenido: Set[str] = set()
-
-    def _recordar(self, ctx: Contexto, inv: Dict[str, float]) -> None:
-        """Fallos y logros del plan en el latido anterior, y lo que se ha llegado a tener."""
-        self.tenido |= {k for k, v in inv.items() if v >= 1}
-        previa = ctx.onda.ei("Accion").get("Accion")
-        if previa is None or not str(previa.carga.get("motivo", "")).startswith("plan:"):
-            return
-        if previa.carga.get("exito") is False:
-            obj = previa.carga["objetivo"]
-            self.fallos[obj] = self.fallos.get(obj, 0) + 1
-        elif previa.carga.get("exito"):
-            logro = str(previa.carga["motivo"])[len("plan:"):].strip().split(" ")[0]
-            if logro in self.LOGROS_PLAN:
-                self.hecho.add(logro)
-
-    def _hechos(self, inv: Dict[str, float]) -> Set[str]:
-        hechos = set(self.hecho)
-        hechos |= {r for r in self.OBJETIVOS if r.startswith("make_") and inv.get(r[5:], 0) >= 1}
-        hechos |= {f"collect_{m}" for m in ("coal", "iron", "diamond", "sapling") if m in self.tenido}
-        return hechos
-
-    def _cerca(self, ctx: Contexto, materiales: List[str]) -> bool:
-        pos = _posicion(ctx)
-        if pos is None:
-            return False
-        vistas = list(ctx.onda.ev("Exterocepcion").values())
-        return all(any(p.clase == MATERIALES.get(m, m) and max(abs(p.carga["datos"]["pos"][0] - pos[0]), abs(p.carga["datos"]["pos"][1] - pos[1])) <= 1
-                       for p in vistas if "pos" in p.carga.get("datos", {})) for m in materiales)
-
-    def _falta(self, receta: str) -> Dict[str, int]:
-        tipo, nombre = receta.split("_", 1)
-        info = self.constantes.place[nombre] if tipo == "place" else self.constantes.make[nombre]
-        return info["uses"]
-
-    def _oportunidades(self, ctx: Contexto, inv: Dict[str, float], hecho: Set[str]) -> bool:
-        """Logros baratos al alcance: minerales con el pico adecuado, retoño y plantarlo."""
-        for logro, clase, herramienta in (("collect_diamond", "diamante", "iron_pickaxe"), ("collect_iron", "hierro", "stone_pickaxe"),
-                                          ("collect_coal", "carbon", "wood_pickaxe")):
-            if logro in hecho or inv.get(herramienta, 0) < 1:
-                continue
-            for p in ctx.onda.ev("Exterocepcion").values():
-                if p.clase == clase and p.rasgo("proximidad") >= 0.9 and self.fallos.get(p.id, 0) < 3:
-                    self.proponer(ctx, Verbo.COGER, p.id, 0.55, 0.8, f"plan: {logro}", clase=clase)
-                    return True
-        pos, cara, terreno = _posicion(ctx), _orientacion(ctx), _terreno(ctx)
-        if "place_plant" not in hecho and inv.get("sapling", 0) >= 1 and self.fallos.get("place_plant", 0) < 3 and pos and cara:
-            if terreno.get((pos[0] + cara[0], pos[1] + cara[1])) == "grass":
-                self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
-                return True
-        hostiles = any(p.rasgo("lugar") < 0.5 and p.rasgo("peligro") > 0.0 and p.clase != "lava"
-                       for p in ctx.onda.ev("Exterocepcion").values())
-        umbral_energia = 4 if any(n.nombre == "cobijo" for n in ctx.perfil.necesidades) else 6
-        if inv.get("energy", 9) <= umbral_energia and _luz(ctx) >= 0.5 and not hostiles:
-            # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).
-            self.proponer(ctx, Verbo.DORMIR, "", 0.6, 0.85, "plan: dormir de día para afrontar la noche", clase="")
-            return True
-        if "collect_sapling" not in hecho and inv.get("sapling", 0) == 0 and pos:
-            for dx, dy in MOVIMIENTOS:
-                c = (int(pos[0] + dx), int(pos[1] + dy))
-                cid = f"hierba_{c[0]}_{c[1]}"
-                if terreno.get(c) == "grass" and self.fallos.get(cid, 0) < 6:
-                    self.proponer(ctx, Verbo.COGER, cid, 0.4, 0.7, "plan: collect_sapling", clase="hierba")
-                    return True
-        return False
-
-    def construir(self, ctx: Contexto, estrategia: Pieza) -> Optional[List[Dict[str, Any]]]:
-        hecho = self._hechos(_inventario(ctx))
-        return [{"meta": r} for r in self.OBJETIVOS if r not in hecho and self.fallos.get(r, 0) < 3] or None
-
-    def cumplido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
-        return paso["meta"] in self._hechos(_inventario(ctx))
-
-    def fallido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
-        return self.fallos.get(paso["meta"], 0) >= 3
-
-    def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
-        inv = _inventario(ctx)
-        self._recordar(ctx, inv)
-        hecho = self._hechos(inv)
-        if self._oportunidades(ctx, inv, hecho):
-            return
-        plan = estado_plan(estrategia) if estrategia is not None and ctx.perfil.mecanismos.plan else None
-        orden = [p["meta"] for p in plan["pasos"][int(plan["i"]):]] if plan is not None and not plan["fallido"] else self.OBJETIVOS
-        pendiente: Optional[str] = None
-        for receta in orden:
-            if receta in hecho or self.fallos.get(receta, 0) >= 3:
-                continue
-            usos = self._falta(receta)
-            if all(inv.get(k, 0) >= v for k, v in usos.items()):
-                if receta.startswith("make_"):
-                    cerca = self.constantes.make[receta[5:]]["nearby"]
-                    if not self._cerca(ctx, cerca):
-                        # La mesa o el horno necesarios están lejos: usar el mapa cognitivo (hipocampo) para orientarse
-                        # hacia ellos en vez de congelarse sin candidatos.
-                        if self._ir_hacia_estructura(ctx, cerca[0]):
-                            return
-                        # Si no hay mesa en el mapa y tiene madera de sobra, colocar una mesa nueva
-                        if cerca[0] == "table" and inv.get("wood", 0) >= 2:
-                            self.proponer(ctx, Verbo.USAR, "place_table", 0.52, 0.8,
-                                          "plan: place_table (nueva estación)", clase="place_table", receta="place_table")
-                            return
-                        continue
-                self.proponer(ctx, Verbo.USAR, receta, 0.55, 0.8, f"plan: {receta}", clase=receta, receta=receta)
-                return
-            # Receta sin recursos: anotar lo primero que falta y seguir mirando si una receta posterior ya se
-            # puede hacer (p. ej. el horno con 4 piedras mientras al pico de piedra le falta madera)
-            if pendiente is None:
-                pendiente = next(k for k, v in usos.items() if inv.get(k, 0) < v)
-        if pendiente is not None:
-            self._buscar(ctx, pendiente)
-
-    def _ir_hacia_estructura(self, ctx: Contexto, estructura: str) -> bool:
-        """Orienta el movimiento hacia una estructura del taller (mesa, horno) usando Exterocepcion o el hipocampo del Core."""
-        clase_percibida = MATERIALES.get(estructura, estructura)
-        pos = _posicion(ctx)
-        # 1. ¿Está visible en la escena actual?
-        candidatos = [p for p in ctx.onda.ev("Exterocepcion").values() if p.clase == clase_percibida and p.rasgo("proximidad") >= 0.1]
-        if candidatos and pos is not None:
-            objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
-            destino_pos = objetivo.carga["datos"]["pos"]
-            lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-            mejor = min(lugares, key=lambda lugar: _dist(lugar.carga["datos"]["pos"], destino_pos), default=None)
-            if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
-                self.proponer(ctx, Verbo.MOVER, mejor.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=mejor.clase)
-                return True
-        # 2. Si no está visible, consultar la ruta topológica en la Memoria del individuo
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
-        destino_nodo = ctx.memoria.donde_esta(clase_percibida) if ctx.con_experiencia else None
-        if aqui and destino_nodo and destino_nodo != aqui:
-            salto = ctx.memoria.ruta(aqui, destino_nodo)
-            if salto:
-                lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-                puerta = next((lugar for lugar in lugares if lugar.id == salto), None)
-                if puerta is not None:
-                    self.proponer(ctx, Verbo.MOVER, puerta.id, 0.48, 0.75, f"hipocampo: volver a {estructura}", clase=puerta.clase)
-                    return True
-        return False
-
-    def _buscar(self, ctx: Contexto, recurso: str) -> None:
-        clase = self.RECURSO.get(recurso)
-        if clase is None:
-            return
-        candidatos = [p for p in ctx.onda.ev("Exterocepcion").values() if p.clase == clase and self.fallos.get(p.id, 0) < 3]
-        if not candidatos:
-            return
-        objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
-        if objetivo.rasgo("proximidad") >= 0.9:
-            self.proponer(ctx, Verbo.COGER, objetivo.id, 0.5, 0.75, f"plan: conseguir {recurso}", clase=clase)
-            return
-        destino_pos = objetivo.carga["datos"]["pos"]
-        pos = _posicion(ctx)
-        if pos is None:
-            return
-        lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-        mejor = min(lugares, key=lambda lugar: _dist(lugar.carga["datos"]["pos"], destino_pos), default=None)
-        if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
-            self.proponer(ctx, Verbo.MOVER, mejor.id, 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
