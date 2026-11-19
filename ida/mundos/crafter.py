@@ -577,6 +577,7 @@ class RefugioNocturno(Definicion):
         self._vaca_origen: Dict[str, Pos] = {}
         self.bolsillos: List[Dict[str, Any]] = []
         self.plantas_propias: Set[Pos] = set()
+        self.plantas_vistas: Set[Pos] = set()
         self.intentos_retono_dia1: int = 0
         self.e0_huerto_inspeccionado: Set[Pos] = set()
 
@@ -587,6 +588,7 @@ class RefugioNocturno(Definicion):
         self._vaca_origen.clear()
         self.bolsillos.clear()
         self.plantas_propias.clear()
+        self.plantas_vistas.clear()
         self.intentos_retono_dia1 = 0
         self.e0_huerto_inspeccionado.clear()
         self.mapa.clear()
@@ -628,16 +630,16 @@ class RefugioNocturno(Definicion):
             olvidada = ctx.latido - lat > self.MEMORIA_VACA
             if olvidada or (pos is not None and v not in vistas and _dist(pos, v) <= 1):
                 del self.vacas[v]
-        plantas_vistas = {
+        plantas_en_vista = {
             (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1])): p
             for p in exter_vals
             if p.clase == "planta" and "pos" in p.carga.get("datos", {})
         }
-        for ppos in plantas_vistas:
-            self.plantas_propias.add(ppos)
-        for ppos in list(self.plantas_propias):
-            if pos is not None and _dist(pos, ppos) == 1 and luz >= 0.3 and ppos not in plantas_vistas:
-                self.plantas_propias.discard(ppos)
+        for ppos in plantas_en_vista:
+            self.plantas_vistas.add(ppos)
+        for ppos in list(self.plantas_vistas):
+            if pos is not None and _dist(pos, ppos) == 1 and luz >= 0.3 and ppos not in plantas_en_vista:
+                self.plantas_vistas.discard(ppos)
         ei_fn = getattr(ctx.onda, "ei", None)
         previa = ei_fn("Accion").get("Accion") if ei_fn is not None else None
         exito_prev = previa is not None and previa.carga.get("exito") is True
@@ -647,7 +649,7 @@ class RefugioNocturno(Definicion):
             bpos: Pos = b["pos"]
             bacceso: Pos = b["acceso"]
             prev_cerrado = bool(b.get("cerrado"))
-            if bpos in plantas_vistas or (exito_prev and obj_prev == "place_plant" and pos == bacceso):
+            if bpos in self.plantas_vistas or (exito_prev and obj_prev == "place_plant" and pos == bacceso):
                 if not b.get("plantada"):
                     b["plantada"] = True
                     b["latido_plantacion"] = ctx.latido
@@ -655,7 +657,7 @@ class RefugioNocturno(Definicion):
             if b.get("plantada") and exito_prev and "comer planta" in motivo_prev and pos is not None and _dist(pos, bpos) == 1:
                 b["latido_plantacion"] = ctx.latido
                 b["cosechando"] = False
-            if b.get("plantada") and pos is not None and _dist(pos, bpos) == 1 and luz >= 0.3 and bpos not in plantas_vistas:
+            if b.get("plantada") and pos is not None and _dist(pos, bpos) == 1 and luz >= 0.3 and bpos not in plantas_en_vista:
                 b["plantada"] = False
                 b["cerrado"] = False
                 b["cosechando"] = False
@@ -767,17 +769,17 @@ class RefugioNocturno(Definicion):
             galeria = {e0, e1, e2, e3}
 
         mat_c = self.mapa.get(C)
-        bloqueada = (mat_c is not None and mat_c not in TRANSITABLES_JUGADOR) or (C in self.plantas_propias)
+        bloqueada = (mat_c is not None and mat_c not in TRANSITABLES_JUGADOR) or (C in self.plantas_vistas)
         candidatos: List[Tuple[Tuple[int, int, int, int], Pos, Pos]] = []
         for dx, dy in MOVIMIENTOS:
             A = (C[0] + dx, C[1] + dy)
-            if self.mapa.get(A) not in TRANSITABLES_JUGADOR or A in self.plantas_propias:
+            if self.mapa.get(A) not in TRANSITABLES_JUGADOR or A in self.plantas_vistas:
                 continue
             if bloqueada:
                 P = A
             else:
                 P = (2 * A[0] - C[0], 2 * A[1] - C[1])
-                if self.mapa.get(P) not in TRANSITABLES_JUGADOR or P in self.plantas_propias:
+                if self.mapa.get(P) not in TRANSITABLES_JUGADOR or P in self.plantas_vistas:
                     continue
             if P in self.inalcanzables and self.ultimo_latido - self.inalcanzables[P] < 50:
                 continue
@@ -823,7 +825,7 @@ class RefugioNocturno(Definicion):
         return faltan
 
     def _es_transitable_huerto(self, c: Pos) -> bool:
-        return self.mapa.get(c) in TRANSITABLES_JUGADOR and c not in self.plantas_propias
+        return self.mapa.get(c) in TRANSITABLES_JUGADOR and c not in self.plantas_vistas
 
     def _es_bloqueada_huerto(self, c: Pos) -> bool:
         return self.mapa.get(c) in NO_TRANSITABLES_ZOMBI or c in self.plantas_propias
@@ -859,7 +861,7 @@ class RefugioNocturno(Definicion):
     ) -> Optional[Tuple[float, Pos, List[Pos]]]:
         """Evalúa si ``B`` (casilla de hierba a <= 6 de ``e0``) puede ser un bolsillo cerrado con
         acceso ``A`` y lista ordenada de paredes a tapar. Devuelve ``(puntuacion, A, paredes)``."""
-        if self.mapa.get(B) != "grass" or B in self.plantas_propias:
+        if self.mapa.get(B) != "grass" or B in self.plantas_vistas:
             return None
         e0, (dx, dy) = mina
         if not (1 <= _dist(B, e0) <= 6):
@@ -1709,7 +1711,7 @@ class RefugioNocturno(Definicion):
                 if prof == 0 and sig not in lugares:
                     continue
                 mat = self.mapa.get(sig)
-                if sig != destino and ((mat not in TRANSITABLES_JUGADOR and mat is not None) or sig in self.plantas_propias):
+                if sig != destino and ((mat not in TRANSITABLES_JUGADOR and mat is not None) or sig in self.plantas_vistas):
                     continue
                 visitados.add(sig)
                 salto = primer if primer is not None else sig
@@ -2017,7 +2019,7 @@ class RefugioNocturno(Definicion):
                 _dist(pos, r) == 1
                 or any(
                     self.mapa.get((r[0] + dx, r[1] + dy)) in TRANSITABLES_JUGADOR
-                    and (r[0] + dx, r[1] + dy) not in self.plantas_propias
+                    and (r[0] + dx, r[1] + dy) not in self.plantas_vistas
                     for dx, dy in MOVIMIENTOS
                 )
             )
@@ -2055,7 +2057,7 @@ class RefugioNocturno(Definicion):
             (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1]))
             for p in ctx.onda.ev("Exterocepcion").values()
             if p.clase in ("vaca", "zombi", "esqueleto", "planta") and "pos" in p.carga.get("datos", {})
-        } | self.plantas_propias
+        } | self.plantas_vistas
         hierbas = [
             c for c, m in self.mapa.items()
             if m == "grass" and _dist(c, e0) <= 6 and c not in ocupadas
