@@ -92,7 +92,7 @@ class Organismo:
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
-        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str]]] = None   # inventario y lo cercano al actuar
+        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str]]] = None   # inventario, lo cercano y lo de delante
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -214,10 +214,14 @@ class Organismo:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
         ahora_inv = self._situacion_inventario(ctx)
+        objetivo = str(c.get("clase") or c.get("objetivo") or "")
         if c["verbo"] in (Verbo.USAR, Verbo.COGER) and self._antes_accion is not None and ahora_inv is not None:
-            objetivo = str(c.get("clase") or c.get("objetivo") or "")
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
-                                            bool(c.get("exito")))
+                                            bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2])
+        if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
+            self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
+                                        self._antes_accion[0] if self._antes_accion is not None else None,
+                                        ahora_inv[0] if ahora_inv is not None else None, dict(c.get("delta", {})))
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -228,13 +232,15 @@ class Organismo:
             ctx.onda.notas["aprendizaje"] = ap.textos
 
     @staticmethod
-    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str]]]:
-        """Inventario percibido y clases al alcance (no lugares), si el mundo da inventario. Para los requisitos."""
+    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str]]]:
+        """Inventario percibido, clases al alcance (no lugares) y clase de lo que hay delante (``cuerpo["delante"]``,
+        si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas."""
         obs = ctx.observacion
         if obs is None or obs.inventario is None:
             return None
         cerca = {e.clase for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9}
-        return dict(obs.inventario), cerca
+        delante = (obs.cuerpo or {}).get("delante")
+        return dict(obs.inventario), cerca, (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None)
 
     def _causa_de_muerte(self, onda: Onda) -> str:
         """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada

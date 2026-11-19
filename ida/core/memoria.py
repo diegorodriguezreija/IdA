@@ -212,6 +212,15 @@ class Requisito:
     exitos: int = 0
     fallos: int = 0
     heredado: bool = False
+    aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
+    requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
+    delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
+
+    @property
+    def tasa(self) -> float:
+        """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
+        total = self.exitos + self.fallos
+        return self.exitos / total if total else 1.0
 
     def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
         """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
@@ -221,7 +230,18 @@ class Requisito:
     def a_dict(self) -> Dict[str, Any]:
         return {"verbo": self.verbo.name, "objetivo": self.objetivo, "requiere_inventario": dict(self.requiere_inventario),
                 "requiere_cerca": sorted(self.requiere_cerca), "efecto": dict(self.efecto), "fuente": self.fuente,
-                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos}
+                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos,
+                "aparece": sorted(self.aparece), "requiere_delante": sorted(self.requiere_delante)}
+
+
+@dataclass
+class Meta:
+    """Paso 5 (5.0): una meta declarada por el manual del mundo: hacer ``verbo`` sobre ``objetivo`` con efecto."""
+
+    verbo: Verbo
+    objetivo: str
+    id: str = ""
+    conseguida: bool = False
 
 
 def _signo(x: float, margen: float = 0.25) -> int:
@@ -273,6 +293,11 @@ class Memoria:
         self.requisitos: Dict[Tuple[Verbo, str], Requisito] = {}
         self.intentos: Dict[Tuple[Verbo, str], List[Dict[str, float]]] = {}
         self.claves_inventario: Optional[Set[str]] = None   # si el manual las declara, solo esas cuentan como objetos
+        # Paso 5: metas del manual (se consiguen en cada vida), bloqueo por fallos seguidos y objetos ya tenidos.
+        self.metas: Dict[Tuple[Verbo, str], Meta] = {}
+        self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
+        self._tenidos: Set[str] = set()
+        self._tenidos_iniciado = False
 
     @property
     def activa(self) -> bool:
@@ -862,13 +887,14 @@ class Memoria:
     PESO_MANUAL = 1.0           # w_aut del manual: pesa como una experiencia propia
     PASO_CONFIANZA_REQUISITO = 0.1
     MAX_INTENTOS = 50           # intentos fallidos recordados por (verbo, objetivo); se olvidan los más antiguos
+    FALLOS_BLOQUEO = 3          # paso 5: fallos seguidos sin ningún éxito que bloquean una acción
 
     def aplicar_manual(self, manual: Dict[str, Any]) -> int:
         """Al nacer, antes de heredar: las proposiciones del manual entran como autoridad (``c_aut``), refutables
-        por la experiencia; los requisitos, con fuente «manual». Un requisito repetido (mismo verbo y objetivo)
-        completa al anterior: fija cantidades desconocidas y suma lo que falte. Los hechos de tipo «nota» no se
-        cargan. Con ``inventario``, el manual declara qué claves del inventario percibido son objetos. Devuelve
-        cuántos hechos se cargaron."""
+        por la experiencia; los requisitos, con fuente «manual»; las metas, sin conseguir. Un requisito repetido
+        (mismo verbo y objetivo) completa al anterior: fija cantidades desconocidas y suma lo que falte. Los
+        hechos de tipo «nota» no se cargan. Con ``inventario``, el manual declara qué claves del inventario
+        percibido son objetos. Devuelve cuántos hechos se cargaron."""
         if not self.activa or not manual:
             return 0
         if manual.get("inventario") is not None:
@@ -880,23 +906,42 @@ class Memoria:
                 p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
                 p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
                 n += 1
+            elif tipo == "meta":
+                clave_m = (Verbo[h["verbo"]], str(h.get("objetivo", "")))
+                self.metas.setdefault(clave_m, Meta(clave_m[0], clave_m[1], str(h.get("id", ""))))
+                n += 1
             elif tipo == "requisito":
                 clave = (Verbo[h["verbo"]], str(h["objetivo"]))
                 inv = {str(k): (None if v is None else int(v)) for k, v in (h.get("requiere_inventario") or {}).items()}
                 cerca = {str(c) for c in h.get("requiere_cerca") or []}
                 efecto = {str(k): int(v) for k, v in (h.get("efecto") or {}).items()}
+                aparece = {str(c) for c in h.get("aparece") or []}
                 r = self.requisitos.get(clave)
                 if r is None:
                     self.requisitos[clave] = Requisito(clave[0], clave[1], inv, cerca, efecto, fuente="manual",
-                                                       confianza=self.CONFIANZA_MANUAL)
+                                                       confianza=self.CONFIANZA_MANUAL, aparece=aparece)
                 else:
                     for k, v in inv.items():
                         previo = r.requiere_inventario.get(k)
                         r.requiere_inventario[k] = v if previo is None else (previo if v is None else max(previo, v))
                     r.requiere_cerca |= cerca
                     r.efecto.update(efecto)
+                    r.aparece |= aparece
                 n += 1
         return n
+
+    def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
+        """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
+        if self.claves_inventario is None:
+            return {k: float(v) for k, v in inventario.items()}
+        return {k: float(v) for k, v in inventario.items() if k in self.claves_inventario}
+
+    def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:
+        """Paso 5 (5.2 b): una acción que nunca ha funcionado y ha fallado ``FALLOS_BLOQUEO`` veces seguidas
+        no se vuelve a intentar hasta que el inventario gane un tipo de objeto nuevo. Con algún éxito
+        (efecto probabilístico) no se bloquea."""
+        r = self.requisitos.get((verbo, objetivo))
+        return self.fallos_seguidos.get((verbo, objetivo), 0) >= self.FALLOS_BLOQUEO and (r is None or r.exitos == 0)
 
     def aprender_requisito(
         self,
@@ -906,22 +951,33 @@ class Memoria:
         inv_despues: Dict[str, float],
         cerca: Set[str],
         exito: bool,
+        cerca_despues: Optional[Set[str]] = None,
+        delante: Optional[str] = None,
     ) -> None:
         """Tras una acción con objetivo: contrasta el inventario de antes y de después.
 
-        - Hay efecto si la acción tuvo éxito **y** el inventario cambió. Lo consumido fija la cantidad
-          mínima; un requisito que no se conocía se descubre (fuente «experiencia»).
+        - Hay efecto si la acción tuvo éxito **y** el inventario cambió. Lo consumido fija la cantidad exacta;
+          un requisito que no se conocía se descubre (fuente «experiencia»). Lo que aparece cerca y antes no
+          estaba queda en ``aparece``. Si antes había fallado, lo que hay ahora y faltaba en todos los fallos
+          se induce como requisito (5.2 a) y esos intentos se olvidan.
         - Sin efecto, el intento se recuerda. Si se creía cumplir el requisito, alguna cantidad desconocida
           es mayor: sube a lo que había + 1, salvo las que ya fijó lo consumido en un éxito.
+        - ``delante``: la clase de lo que había delante; las clases donde funcionó forman ``requiere_delante``
+          y aquellas donde solo ha fallado, ``delante_fallido`` (5.2 d).
+        - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
         """
         if not self.activa or not objetivo:
             return
-        claves = set(inv_antes) | set(inv_despues)
-        if self.claves_inventario is not None:
-            claves &= self.claves_inventario
-        antes = {k: float(inv_antes.get(k, 0.0)) for k in sorted(claves)}
-        delta = {k: int(round(float(inv_despues.get(k, 0.0)) - antes[k])) for k in sorted(claves)}
+        antes_obj, despues_obj = self._objetos(inv_antes), self._objetos(inv_despues)
+        claves = sorted(set(antes_obj) | set(despues_obj))
+        antes = {k: antes_obj.get(k, 0.0) for k in claves}
+        delta = {k: int(round(despues_obj.get(k, 0.0) - antes[k])) for k in claves}
         delta = {k: d for k, d in delta.items() if d}
+        nuevos = {k for k, v in despues_obj.items() if v >= 1} - self._tenidos - {k for k, v in antes_obj.items() if v >= 1}
+        if nuevos and self._tenidos_iniciado:
+            self.fallos_seguidos.clear()          # novedad: se vuelve a probar lo bloqueado
+        self._tenidos |= {k for k, v in antes_obj.items() if v >= 1} | nuevos
+        self._tenidos_iniciado = True
         clave = (verbo, objetivo)
         r = self.requisitos.get(clave)
         if exito and delta:
@@ -932,11 +988,25 @@ class Memoria:
             for k, d in delta.items():
                 if d < 0:
                     r.requiere_inventario[k] = -d   # lo consumido es la cantidad exacta (corrige estimaciones por fallos)
+            if cerca_despues is not None:
+                r.aparece |= set(cerca_despues) - set(cerca)
+            if delante:
+                r.requiere_delante.add(delante)
+                r.delante_fallido.discard(delante)
+            fallidos = self.intentos.pop(clave, [])
+            if fallidos:                          # 5.2 a: inducción por diferencia
+                for k, v in antes.items():
+                    if v >= 1 and k not in r.requiere_inventario and all(f.get(k, 0.0) < 1 for f in fallidos):
+                        r.requiere_inventario[k] = 1
+            self.fallos_seguidos.pop(clave, None)
             r.confianza = acotar(r.confianza + self.PASO_CONFIANZA_REQUISITO)
             return
         lista = self.intentos.setdefault(clave, [])
         lista.append({k: v for k, v in antes.items() if v})
         del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
+        self.fallos_seguidos[clave] = self.fallos_seguidos.get(clave, 0) + 1
+        if r is not None and delante and delante not in r.requiere_delante:
+            r.delante_fallido.add(delante)
         if r is not None and r.cumple(antes, cerca):
             r.fallos += 1
             for k, n in list(r.requiere_inventario.items()):
@@ -945,6 +1015,27 @@ class Memoria:
                 if n is None or n <= antes.get(k, 0.0):
                     r.requiere_inventario[k] = int(antes.get(k, 0.0)) + 1
             r.confianza = acotar(r.confianza - self.PASO_CONFIANZA_REQUISITO)
+
+    def registrar_meta(
+        self,
+        verbo: Verbo,
+        objetivo: str,
+        exito: bool,
+        inv_antes: Optional[Dict[str, float]],
+        inv_despues: Optional[Dict[str, float]],
+        delta_vitales: Dict[str, float],
+    ) -> bool:
+        """Paso 5 (5.0): una meta se consigue con el primer ``Efecto`` con éxito de su verbo sobre su objetivo
+        que además cambia algo: el inventario de objetos o alguna constante vital que sube (beber, comer,
+        descansar). Devuelve si se ha conseguido ahora."""
+        meta = self.metas.get((verbo, objetivo))
+        if meta is None or meta.conseguida or not exito:
+            return False
+        cambio_inv = inv_antes is not None and inv_despues is not None and self._objetos(inv_antes) != self._objetos(inv_despues)
+        if cambio_inv or any(float(v) > 0.0 for v in delta_vitales.values()):
+            meta.conseguida = True
+            return True
+        return False
 
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:
