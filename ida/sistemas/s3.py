@@ -25,6 +25,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
+from ida.core.memoria import desplazamiento
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
@@ -503,19 +504,20 @@ def al_alcance_clase(ctx: Contexto, clase: str) -> bool:
     return any(p.clase == clase and al_alcance(p) for p in _cosas(ctx))
 
 
-def distancia_a_clase(ctx: Contexto, clase: str) -> Optional[int]:
-    """Distancia (Manhattan) a la instancia visible más cercana de ``clase``. Con posiciones se calcula; sin
-    ellas, lo que está al alcance cuenta como 1 y lo demás no se sabe (None)."""
+def desplazamientos_a_clase(ctx: Contexto, clase: str) -> List[Tuple[int, int]]:
+    """Desplazamientos ``(|dx|, |dy|)`` ordenados a cada instancia visible de ``clase``. Con posiciones se
+    calculan; sin ellas, lo que está al alcance cuenta como (0, 1) y lo demás no se sabe (se omite)."""
     aqui = _pos_propia(ctx)
-    mejor_d: Optional[int] = None
+    salida: List[Tuple[int, int]] = []
     for p in _cosas(ctx):
         if p.clase != clase:
             continue
         pos = _pos(p)
-        d = _dist(aqui, pos) if aqui is not None and pos is not None else (1 if al_alcance(p) else None)
-        if d is not None and (mejor_d is None or d < mejor_d):
-            mejor_d = d
-    return mejor_d
+        if aqui is not None and pos is not None:
+            salida.append(desplazamiento(pos[0] - aqui[0], pos[1] - aqui[1]))
+        elif al_alcance(p):
+            salida.append((0, 1))
+    return salida
 
 
 @dataclass
@@ -663,8 +665,7 @@ class PerseguirMetas(ConPropuestas):
                       if inv.get(k, 0.0) < (n or 1)}
         faltan_cerca = []
         for c in sorted(r.requiere_cerca if r else ()):
-            d = distancia_a_clase(ctx, c)
-            if d is None or r is None or not r.cerca_basta(c, d):
+            if r is None or not any(r.cerca_basta(c, d) for d in desplazamientos_a_clase(ctx, c)):
                 faltan_cerca.append(c)
         if not faltan_inv and not faltan_cerca:
             return self._ejecutar(ctx, accion, r)

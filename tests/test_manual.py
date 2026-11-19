@@ -114,18 +114,29 @@ def test_requisito_descubierto_por_experiencia():
     assert r.requiere_cerca == set() and r.requiere_inventario == {}
 
 
-def test_radio_de_cercania_aprendido():
+def test_desplazamientos_de_cercania_aprendidos():
+    """La diagonal (1, 1) y dos casillas en línea (0, 2) no se confunden."""
     m = Memoria()
     m.aplicar_manual(MANUAL)                      # make_pico requiere mesa cerca
     r = m.requisitos[(Verbo.USAR, "make_pico")]
-    assert r.cerca_basta("mesa", 2)               # a 2 se prueba antes de caminar
-    m.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": 2})
-    assert not r.cerca_basta("mesa", 2) and r.cerca_basta("mesa", 1)   # falló desde 2: ya no se prueba
-    m2 = Memoria()
-    m2.aplicar_manual(MANUAL)
-    m2.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 0.0, "pico": 1.0}, set(), True, distancias={"mesa": 2})
-    r2 = m2.requisitos[(Verbo.USAR, "make_pico")]
-    assert r2.radio_cerca == {"mesa": 2} and r2.cerca_basta("mesa", 2)
+    assert r.cerca_basta("mesa", (0, 1)) and r.cerca_basta("mesa", (1, 1)) and r.cerca_basta("mesa", (0, 2))   # se prueba
+    assert not r.cerca_basta("mesa", (1, 2))
+    m.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": (0, 2)})
+    assert not r.cerca_basta("mesa", (0, 2))      # en línea falló: ya no se prueba
+    assert r.cerca_basta("mesa", (1, 1))          # la diagonal sigue sin probar
+    m.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 0.0, "pico": 1.0}, set(), True, distancias={"mesa": (1, 1)})
+    assert r.cerca_ok == {"mesa": {(1, 1)}} and r.cerca_fallida == {"mesa": {(0, 2)}}
+
+
+def test_induccion_descarta_fallos_explicados():
+    """Los fallos por no llegar a la cantidad conocida no sirven para buscar otra causa (sin «pico» espurio)."""
+    m = Memoria()
+    m.aplicar_manual({"inventario": ["piedra", "pico"], "hechos": [
+        {"tipo": "requisito", "verbo": "USAR", "objetivo": "place_horno", "requiere_inventario": {"piedra": None}}]})
+    for n in (1.0, 2.0, 3.0):                     # falla con 1, 2 y 3 piedras, sin pico: la cantidad sube a 4
+        m.aprender_requisito(Verbo.USAR, "place_horno", {"piedra": n}, {"piedra": n}, set(), True)
+    m.aprender_requisito(Verbo.USAR, "place_horno", {"piedra": 4.0, "pico": 1.0}, {"pico": 1.0}, set(), True)
+    assert m.requisitos[(Verbo.USAR, "place_horno")].requiere_inventario == {"piedra": 4}
 
 
 def test_delante_solo_cuenta_para_usar():

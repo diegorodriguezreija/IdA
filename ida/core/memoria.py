@@ -192,6 +192,12 @@ class RecuerdoLugar:
 
 
 RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
+Desplazamiento = Tuple[int, int]   # (|dx|, |dy|) ordenados de menor a mayor: (0, 1) al lado, (1, 1) diagonal, (0, 2) a dos en línea
+
+
+def desplazamiento(dx: int, dy: int) -> Desplazamiento:
+    a, b = sorted((abs(int(dx)), abs(int(dy))))
+    return (a, b)
 
 
 @dataclass
@@ -218,15 +224,18 @@ class Requisito:
     aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
     requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
     delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
-    radio_cerca: Dict[str, int] = field(default_factory=dict)          # distancia máxima a la que ha funcionado
-    cerca_fallida: Dict[str, Set[int]] = field(default_factory=dict)   # distancias a las que ha fallado (lo demás, presente)
+    cerca_ok: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)       # desplazamientos desde los que ha funcionado
+    cerca_fallida: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)  # desde los que ha fallado (lo demás, presente)
 
-    def cerca_basta(self, clase: str, distancia: int) -> bool:
-        """Si ``clase`` a ``distancia`` cuenta como cerca: hasta el radio aprendido (1 si no se sabe) o, hasta
-        ``RADIO_PRUEBA``, mientras la acción no haya fallado desde esa distancia (se prueba antes de caminar)."""
-        if distancia <= self.radio_cerca.get(clase, 1):
+    def cerca_basta(self, clase: str, desp: Desplazamiento) -> bool:
+        """Si ``clase`` a ese desplazamiento cuenta como cerca: si ya ha funcionado desde ahí, sí; si ha fallado, no;
+        al lado (0, 1), sí; y hasta ``RADIO_PRUEBA`` casillas se prueba antes de caminar. La diagonal (1, 1) y dos
+        casillas en línea (0, 2) se aprenden por separado."""
+        if desp in self.cerca_ok.get(clase, set()):
             return True
-        return distancia <= RADIO_PRUEBA and distancia not in self.cerca_fallida.get(clase, set())
+        if desp in self.cerca_fallida.get(clase, set()):
+            return False
+        return sum(desp) <= RADIO_PRUEBA
 
     @property
     def tasa(self) -> float:
@@ -968,7 +977,7 @@ class Memoria:
         exito: bool,
         cerca_despues: Optional[Set[str]] = None,
         delante: Optional[str] = None,
-        distancias: Optional[Dict[str, int]] = None,
+        distancias: Optional[Dict[str, Desplazamiento]] = None,
     ) -> None:
         """Tras una acción con objetivo: contrasta el inventario de antes y de después.
 
@@ -983,9 +992,11 @@ class Memoria:
         - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
         - Un requisito descubierto por un primer éxito sin fallos previos solo registra el efecto: los requisitos
           de inventario los añade la inducción por diferencia.
-        - ``distancias`` (clase → distancia, hasta ``RADIO_PRUEBA``): con éxito, el radio de cada requisito de
-          cercanía crece hasta la distancia a la que ha funcionado; con fallo y el inventario cumplido, esa
-          distancia queda anotada como fallida.
+        - ``distancias`` (clase → desplazamiento ``(|dx|, |dy|)`` ordenado, hasta ``RADIO_PRUEBA`` casillas): con
+          éxito, el desplazamiento queda como válido para cada requisito de cercanía; con fallo y el inventario
+          cumplido, como fallido (salvo si ya funcionó desde ahí).
+        - Inducción por diferencia: solo cuentan los fallos que no explica ya un requisito conocido (con el
+          inventario del fallo por debajo de una cantidad conocida o estimada, el fallo ya tiene causa).
         - ``delante`` solo cuenta para USAR (COGER y COMER se orientan hacia su objetivo antes de actuar).
         """
         if not self.activa or not objetivo:
@@ -1018,11 +1029,12 @@ class Memoria:
                 r.aparece |= set(cerca_despues) - set(cerca)
             for c in r.requiere_cerca:
                 if c in distancias:
-                    r.radio_cerca[c] = max(r.radio_cerca.get(c, 1), distancias[c])
+                    r.cerca_ok.setdefault(c, set()).add(distancias[c])
+                    r.cerca_fallida.get(c, set()).discard(distancias[c])
             if delante:
                 r.requiere_delante.add(delante)
                 r.delante_fallido.discard(delante)
-            fallidos = self.intentos.pop(clave, [])
+            fallidos = [f for f in self.intentos.pop(clave, []) if r.cumple_inventario(f)]   # sin causa conocida
             if fallidos:                          # 5.2 a: inducción por diferencia
                 for k, v in antes.items():
                     if v >= 1 and k not in r.requiere_inventario and all(f.get(k, 0.0) < 1 for f in fallidos):
@@ -1037,7 +1049,7 @@ class Memoria:
         if r is not None and r.cumple_inventario(antes):
             for c in r.requiere_cerca:
                 dc = distancias.get(c)
-                if dc is not None and dc > r.radio_cerca.get(c, 1):
+                if dc is not None and sum(dc) > 1 and dc not in r.cerca_ok.get(c, set()):
                     r.cerca_fallida.setdefault(c, set()).add(dc)
         if r is not None and delante and delante not in r.requiere_delante:
             r.delante_fallido.add(delante)

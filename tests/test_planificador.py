@@ -126,13 +126,13 @@ def test_prueba_antes_de_caminar_y_aprende_el_radio():
     ctx = _ctx(m, vista, {}, ubicacion="celda_0_0")
     plan = PerseguirMetas()
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.USAR, "hacer_x")]   # a 2: se prueba
-    m.aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": 2})      # falla desde 2
+    m.aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": (0, 2)})   # falla desde (0, 2)
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]  # ahora camina
 
     m2 = Memoria()
     m2.aplicar_manual(MANUAL_CERCA)
-    m2.aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": 2})   # funciona desde 2
-    assert m2.requisitos[(Verbo.USAR, "hacer_x")].radio_cerca == {"taller": 2}
+    m2.aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)})   # funciona
+    assert m2.requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
 
 
 def test_antibloqueo_aparca_un_destino_que_no_se_acerca():
