@@ -8,7 +8,10 @@ Traducción al vocabulario común:
   esqueletos y plantas. **Aliestesia:** el ``nutritivo`` del agua crece con la sed y el de la
   vaca o la planta madura, con el hambre.
 - Lugares: las casillas vecinas transitables, con ``nutritivo`` (cuánto acercan a lo que el
-  cuerpo necesita), ``peligro`` (lava o criaturas hostiles cerca) y ``novedad``.
+  cuerpo necesita), ``peligro`` (lo peligroso cerca) y ``novedad``.
+- Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
+  ``manual``): lo que declara PELIGROSO tiene ``peligro`` 0,8 y lo que declara UTIL, ``recurso`` 0,6.
+  Sus proposiciones y requisitos entran en la memoria al nacer (``manual()``).
 - Verbos: MOVER, COMER (beber agua, comer vaca o planta), ATACAR, COGER (talar, picar, recoger
   un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. Para
   interactuar con algo adyacente, el mundo primero gira hacia ello y después hace ``do``.
@@ -24,7 +27,10 @@ Componente propio:
 
 from collections import deque
 import collections
+import copy
+import json
 import math
+import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Contexto
@@ -36,7 +42,9 @@ from ida.core.vocabulario import Verbo
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
-HOSTILES = {"zombi": 0.8, "esqueleto": 0.7, "flecha": 0.5, "lava": 1.0}
+PELIGRO_MANUAL = 0.8   # peligro de lo que el manual declara PELIGROSO (paso 2: sin gradaciones, ninguna fuente las da)
+RECURSO_MANUAL = 0.6   # recurso de lo que el manual declara UTIL
+MANUALES = {"estricto": "crafter_manual.json", "ampliado": "crafter_manual_ampliado.json"}
 MOVIMIENTOS = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
 LETRA = {"arbol": "T", "agua": "~", "piedra": "#", "carbon": "c", "hierro": "i", "diamante": "D", "mesa": "M", "horno": "H",
          "lava": "!", "vaca": "v", "zombi": "Z", "esqueleto": "S", "planta": "p", "flecha": "-"}
@@ -82,6 +90,46 @@ def _dist(a: Pos, b: Pos) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
+def cargar_manual(nombre: str = "estricto") -> Dict[str, Any]:
+    """Manual declarativo de Crafter (paso 2): ``"estricto"`` (artículo y README) o ``"ampliado"`` (además,
+    hechos del código de Crafter). El ampliado carga primero todos los hechos del estricto.
+
+    Los JSON usan los nombres del adaptador («madera», «pico_madera»); las claves de inventario de los
+    requisitos se traducen aquí a las del inventario percibido (``wood``, ``wood_pickaxe``), que es lo que
+    el individuo compara. ``inventario`` declara qué claves percibidas son objetos (no salud ni comida)."""
+    if nombre not in MANUALES:
+        raise ValueError(f"Manual de Crafter desconocido: {nombre!r} (opciones: {', '.join(MANUALES)})")
+    carpeta = os.path.dirname(os.path.abspath(__file__))
+
+    def leer(fichero: str) -> Dict[str, Any]:
+        with open(os.path.join(carpeta, fichero), encoding="utf-8") as f:
+            return dict(json.load(f))
+
+    datos = leer(MANUALES[nombre])
+    hechos = list(datos["hechos"])
+    if datos.get("base"):
+        hechos = list(leer(str(datos["base"]))["hechos"]) + hechos
+    percibido = {v: k for k, v in INVENTARIO.items()}
+
+    def traducir(d: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+        return {percibido.get(k, k): v for k, v in (d or {}).items()}
+
+    cargados = []
+    for h in hechos:
+        h = dict(h)
+        if h.get("tipo") == "requisito":
+            h["requiere_inventario"] = traducir(h.get("requiere_inventario"))
+            h["efecto"] = traducir(h.get("efecto"))
+        cargados.append(h)
+    return {"nombre": nombre, "fuentes": datos.get("fuentes", {}), "hechos": cargados, "inventario": sorted(INVENTARIO)}
+
+
+def _sujetos(manual: Dict[str, Any], relacion: str) -> Set[str]:
+    """Clases que el manual afirma con esa relación."""
+    return {str(h["sujeto"]) for h in manual.get("hechos", [])
+            if h.get("tipo") == "proposicion" and h.get("relacion") == relacion and h.get("veredicto", "afirma") == "afirma"}
+
+
 class MundoCrafter(Mundo):
     nombre = "crafter"
     perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
@@ -91,11 +139,15 @@ class MundoCrafter(Mundo):
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",))
 
-    def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000, **_):
+    def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
+                 manual: str = "estricto", **_):
         import crafter                     # dependencia solo de este mundo
         from crafter import constants
         self._crafter = crafter
         self.constantes = constants
+        self._manual = cargar_manual(str(manual))
+        self.peligrosos = _sujetos(self._manual, "PELIGROSO")
+        self.utiles = _sujetos(self._manual, "UTIL")
         self.acciones = {nombre: i for i, nombre in enumerate(constants.actions)}
         self.radio = int(radio)
         self.modo_vista = str(vista)
@@ -223,8 +275,17 @@ class MundoCrafter(Mundo):
                     cosas.append((self._ids[obj], clase, (x, y), obj))
         return cosas
 
+    def manual(self) -> Dict[str, Any]:
+        """El manual elegido con la opción ``manual`` (``"estricto"`` por defecto o ``"ampliado"``)."""
+        return copy.deepcopy(self._manual)
+
     def _deseo(self, clase: str, obj: Any) -> float:
-        """Aliestesia: lo que vale cada cosa para el cuerpo depende de lo que le falta."""
+        """Aliestesia: lo que vale cada cosa para el cuerpo depende de lo que le falta.
+
+        DEUDA (paso 0 de la fase de generalización): esto es el adaptador pensando por el individuo. Decide
+        qué apetece (agua según la sed, vaca o planta madura según el hambre) y aplica la regla de
+        regeneración (×1,3 con salud < 7). Pasa a la base cuando hambre y sed sean dos necesidades con su
+        intensidad. El paso 2 no lo toca: qué nutre ya está en el manual (P01-P03), pero aún no se usa aquí."""
         inv = self.jugador.inventory
         salud = self.jugador.health
         # Homeostasis de reparación: si la salud está mermada, comer/beber es aún más prioritario
@@ -240,19 +301,19 @@ class MundoCrafter(Mundo):
         p = self.jugador
         pos = tuple(p.pos)
         cosas = self._cosas()
-        cosas.sort(key=lambda c: (c[1] not in HOSTILES, _dist(pos, c[2])))
+        cosas.sort(key=lambda c: (c[1] not in self.peligrosos, _dist(pos, c[2])))
         entidades: List[Entidad] = []
         for cid, clase, cpos, obj in cosas[:14]:
             d = _dist(pos, cpos)
             entidades.append(Entidad(cid, clase, {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
                 "nutritivo": self._deseo(clase, obj),
-                "peligro": HOSTILES.get(clase, 0.0),
-                "recurso": 0.6 if clase in ("arbol", "piedra", "carbon", "hierro", "diamante") else 0.0,
+                "peligro": PELIGRO_MANUAL if clase in self.peligrosos else 0.0,
+                "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }, {"pos": cpos}))
         deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) > 0.1]
-        hostiles = [c for c in cosas if c[1] in HOSTILES]
+        hostiles = [c for c in cosas if c[1] in self.peligrosos]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():
             c = (pos[0] + dx, pos[1] + dy)
@@ -261,7 +322,7 @@ class MundoCrafter(Mundo):
             mat, obj = w[c]
             if mat not in self.constantes.walkable or obj is not None:
                 continue
-            peligro = max([HOSTILES[h[1]] * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
+            peligro = max([PELIGRO_MANUAL * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
             nutritivo = 0.0
             for (_, _, dpos, _), valor in deseables:
                 if _dist(c, dpos) < _dist(pos, dpos):
@@ -350,7 +411,7 @@ class MundoCrafter(Mundo):
         delta = {k: round(v, 2) for k, v in delta.items() if v}
         causa = None
         if delta.get("vitalidad", 0) < 0:
-            cerca = [c for c in self._cosas() if c[1] in HOSTILES and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
+            cerca = [c for c in self._cosas() if c[1] in self.peligrosos and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
             if cerca:
                 causa = cerca[0][1]
         ganados = [INVENTARIO.get(k, k) for k in inv if inv[k] > antes.get(k, 0) and k not in ("health", "food", "drink", "energy")]
@@ -1539,7 +1600,8 @@ class PlanTecnologico(Plan, ConPropuestas):
             if terreno.get((pos[0] + cara[0], pos[1] + cara[1])) == "grass":
                 self.proponer(ctx, Verbo.USAR, "place_plant", 0.5, 0.8, "plan: place_plant", clase="place_plant", receta="place_plant")
                 return True
-        hostiles = any(p.clase in HOSTILES and p.clase != "lava" for p in ctx.onda.ev("Exterocepcion").values())
+        hostiles = any(p.rasgo("lugar") < 0.5 and p.rasgo("peligro") > 0.0 and p.clase != "lava"
+                       for p in ctx.onda.ev("Exterocepcion").values())
         umbral_energia = 4 if any(n.nombre == "cobijo" for n in ctx.perfil.necesidades) else 6
         if inv.get("energy", 9) <= umbral_energia and _luz(ctx) >= 0.5 and not hostiles:
             # Dormir de día, sin hostiles a la vista, para no llegar agotado a la noche (y lograr wake_up).

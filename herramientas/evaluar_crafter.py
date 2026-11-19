@@ -90,6 +90,7 @@ def evaluar(
     longitud_episodio: int = 10000,
     sin_estrategias_propias: bool = False,
     sin_herencia: bool = False,
+    manual: str = "estricto",
     quiet: bool = False,
 ) -> Dict[str, Any]:
     import crafter.constants
@@ -102,7 +103,7 @@ def evaluar(
         clase_crafter.estrategias_propias = lambda self: {}
 
     temp_dir = tempfile.mkdtemp(prefix="ida_eval_crafter_")
-    m = clase_crafter(vista=vista, longitud=longitud_episodio)
+    m = clase_crafter(vista=vista, longitud=longitud_episodio, manual=manual)
 
     azar = Azar(semilla_base)
     linaje = Linaje(os.path.join(temp_dir, "linaje.json"))
@@ -130,6 +131,7 @@ def evaluar(
                 legado_a_heredar = linaje.legado() or {}
 
             memoria = Memoria(m.perfil.memoria)
+            memoria.aplicar_manual(m.manual())       # paso 2: el manual del mundo, antes de heredar (también sin herencia)
             if legado_a_heredar:
                 memoria.heredar(legado_a_heredar, m.perfil.mecanismos.tasa_herencia)
 
@@ -227,6 +229,7 @@ def evaluar(
         "vista": vista,
         "sin_estrategias_propias": sin_estrategias_propias,
         "sin_herencia": sin_herencia,
+        "manual": manual,
     }
 
 
@@ -264,6 +267,8 @@ def main() -> int:
     parser.add_argument("--longitud", type=int, default=10000, help="Límite de pasos por episodio (oficial = 10000)")
     parser.add_argument("--sin-estrategias-propias", action="store_true", help="Evalúa el suelo (sin estrategias propias de Crafter)")
     parser.add_argument("--sin-herencia", action="store_true", help="Cada episodio empieza sin legado (sin herencia entre vidas)")
+    parser.add_argument("--manual", type=str, default="estricto", choices=["estricto", "ampliado"],
+                        help="Manual declarativo de Crafter (paso 2)")
     parser.add_argument("--salida", type=str, default=None, help="Ruta de archivo JSON donde guardar el resultado")
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
     args = parser.parse_args()
@@ -276,6 +281,7 @@ def main() -> int:
         longitud_episodio=args.longitud,
         sin_estrategias_propias=args.sin_estrategias_propias,
         sin_herencia=args.sin_herencia,
+        manual=args.manual,
         quiet=args.quiet,
     )
     imprimir_informe(res)
