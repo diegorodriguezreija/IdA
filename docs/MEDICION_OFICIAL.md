@@ -63,7 +63,7 @@ python herramientas/invariancia.py --mundos ajedrez
   - `ajedrez`: OK
   - `crafter`: Falla únicamente en el campo `amplitud` (amplitud consumida por la Onda difiere en 1 unidad: 35 $\to$ 36 en s1 latido 15; 45 $\to$ 46 en s2 latido 5; 21 $\to$ 22 en s3 latido 1).
   - Todas las decisiones (`verbo`, `objetivo`), constantes vitales y puntuaciones finales coinciden de forma exacta.
-- **Estado en `main`:** El fallo con código 1 ya ocurría en `main` antes de realizar ningún cambio en esta rama.
+- **Estado en `main`:** El fallo con código 1 ya ocurría en `main` antes de realizar ningún cambio en esta rama. La referencia se regeneró en el commit `766e6d3` y desde entonces `invariancia.py` da OK en los cuatro mundos.
 
 ---
 
@@ -133,4 +133,4 @@ Línea base registrada sobre `main` (4 grupos: Equilibrado, Valiente, Reactivo, 
 |---|---|---|---|---|---|---|---|
 | **`minimo`** | 40 / 40 (100 %) | 160 | 96 (60,0 %) | 319,9 / 400,0 | 688,99 / 772,50 | lobo: 39, desgaste: 18, hambre: 7 | 1,36 ms/latido |
 | **`archivos`** | 40 / 40 (100 %) | 160 | 79 (49,4 %) | 303,7 / 393,5 | 1.457,80 / 1.750,00 | hambre: 42, desgaste: 27, depredador: 12 | 1,82 ms/latido |
-| **`ajedrez`** | — | — | — | — | — | Invariancia: **OK** | 5,5 s |
+| **`ajedrez`** | — | — | — | — | — | Invariancia: **OK** | — |

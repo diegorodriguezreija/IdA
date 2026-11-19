@@ -134,7 +134,7 @@ def generar_seccion_6(f_minimo: Dict[str, Any], f_archivos: Dict[str, Any]) -> s
             f"| **`{mundo_nombre}`** | {n_celdas} / {n_celdas} (100 %) | {total_vidas} | {vivas} ({vivas_pct_str} %) | "
             f"{lat_med_str} / {lat_mdn_str} | {fit_med_str} / {fit_mdn_str} | {muertes_str} | {ms_latido_str} ms/latido |"
         )
-    lineas.append("| **`ajedrez`** | — | — | — | — | — | Invariancia: **OK** | 5,5 s |")
+    lineas.append("| **`ajedrez`** | — | — | — | — | — | Invariancia: **OK** | — |")
     return "\n".join(lineas)
 
 

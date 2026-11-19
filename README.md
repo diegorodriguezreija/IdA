@@ -26,7 +26,7 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 138 tests
+python -m pytest -q                       # 155 tests
 python -m ida                             # antesala interactiva en http://127.0.0.1:8000
 ```
 
@@ -81,7 +81,7 @@ El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada 
 
 ## Calidad
 
-`ruff` y `mypy` en verde, 138 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
+`ruff` y `mypy` en verde, 155 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
 
 ## Laboratorio IdA
 

@@ -26,7 +26,7 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 138 tests
+python -m pytest -q                       # 155 tests
 python -m ida                             # interactive launcher at http://127.0.0.1:8000
 ```
 
@@ -71,7 +71,7 @@ Figures, method and limits (Spanish): [`doc-repositorio/05_METRICAS_E_HITOS.md`]
 
 ## Engineering
 
-Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 138 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 155 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
 
 ## IdA Laboratory
 
