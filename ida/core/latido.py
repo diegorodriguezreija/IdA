@@ -19,7 +19,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expecta
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
-from ida.core.memoria import Memoria
+from ida.core.memoria import RADIO_PRUEBA, Memoria
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -92,7 +92,7 @@ class Organismo:
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
-        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str]]] = None   # inventario, lo cercano y lo de delante
+        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, int]]] = None   # inventario, cerca, delante, distancias
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -217,7 +217,8 @@ class Organismo:
         objetivo = str(c.get("clase") or c.get("objetivo") or "")
         if c["verbo"] in (Verbo.USAR, Verbo.COGER) and self._antes_accion is not None and ahora_inv is not None:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
-                                            bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2])
+                                            bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
+                                            distancias=self._antes_accion[3])
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
                                         self._antes_accion[0] if self._antes_accion is not None else None,
@@ -232,7 +233,7 @@ class Organismo:
             ctx.onda.notas["aprendizaje"] = ap.textos
 
     @staticmethod
-    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str]]]:
+    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, int]]]:
         """Inventario percibido, clases al alcance (no lugares) y clase de lo que hay delante (``cuerpo["delante"]``,
         si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas."""
         obs = ctx.observacion
@@ -240,7 +241,30 @@ class Organismo:
             return None
         cerca = {e.clase for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9}
         delante = (obs.cuerpo or {}).get("delante")
-        return dict(obs.inventario), cerca, (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None)
+        return (dict(obs.inventario), cerca, (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
+                Organismo._distancias(obs))
+
+    @staticmethod
+    def _distancias(obs: Any) -> Dict[str, int]:
+        """Distancia (Manhattan, en casillas) a la instancia más cercana de cada clase, hasta ``RADIO_PRUEBA``.
+        Con posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) se calcula; sin ellas, lo que está al
+        alcance (proximidad ≥ 0,9) cuenta como distancia 1."""
+        partes = str(obs.ubicacion).rsplit("_", 2)
+        aqui = (int(partes[1]), int(partes[2])) if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]) else None
+        dist: Dict[str, int] = {}
+        for e in obs.entidades:
+            if e.rasgos.get("lugar", 0.0) >= 0.5:
+                continue
+            pos = e.datos.get("pos")
+            if aqui is not None and isinstance(pos, (list, tuple)) and len(pos) == 2:
+                d = abs(int(pos[0]) - aqui[0]) + abs(int(pos[1]) - aqui[1])
+            elif e.rasgos.get("proximidad", 0.0) >= 0.9:
+                d = 1
+            else:
+                continue
+            if d <= RADIO_PRUEBA and d < dist.get(e.clase, RADIO_PRUEBA + 1):
+                dist[e.clase] = d
+        return dist
 
     def _causa_de_muerte(self, onda: Onda) -> str:
         """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada

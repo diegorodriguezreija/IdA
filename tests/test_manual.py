@@ -104,9 +104,34 @@ def test_solo_cuentan_las_claves_de_objetos_del_manual():
 
 def test_requisito_descubierto_por_experiencia():
     m = Memoria()
-    m.aprender_requisito(Verbo.COGER, "piedra", {"pico": 1.0}, {"pico": 1.0, "piedra": 1.0}, {"piedra"}, True)
+    """Un éxito aislado (sin fallos previos) solo registra el efecto: ni la mesa que había cerca ni lo que
+    se llevaba pasan a ser requisitos."""
+    m = Memoria()
+    m.aprender_requisito(Verbo.COGER, "piedra", {"pico": 1.0, "madera": 2.0}, {"pico": 1.0, "madera": 1.0, "piedra": 1.0},
+                         {"piedra", "mesa"}, True)
     r = m.requisitos[(Verbo.COGER, "piedra")]
-    assert r.fuente == "experiencia" and r.efecto == {"piedra": 1} and r.requiere_cerca == {"piedra"}
+    assert r.fuente == "experiencia" and r.efecto == {"madera": -1, "piedra": 1}
+    assert r.requiere_cerca == set() and r.requiere_inventario == {}
+
+
+def test_radio_de_cercania_aprendido():
+    m = Memoria()
+    m.aplicar_manual(MANUAL)                      # make_pico requiere mesa cerca
+    r = m.requisitos[(Verbo.USAR, "make_pico")]
+    assert r.cerca_basta("mesa", 2)               # a 2 se prueba antes de caminar
+    m.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": 2})
+    assert not r.cerca_basta("mesa", 2) and r.cerca_basta("mesa", 1)   # falló desde 2: ya no se prueba
+    m2 = Memoria()
+    m2.aplicar_manual(MANUAL)
+    m2.aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 0.0, "pico": 1.0}, set(), True, distancias={"mesa": 2})
+    r2 = m2.requisitos[(Verbo.USAR, "make_pico")]
+    assert r2.radio_cerca == {"mesa": 2} and r2.cerca_basta("mesa", 2)
+
+
+def test_delante_solo_cuenta_para_usar():
+    m = Memoria()
+    m.aprender_requisito(Verbo.COGER, "piedra", {}, {"piedra": 1.0}, set(), True, delante="hierba")
+    assert m.requisitos[(Verbo.COGER, "piedra")].requiere_delante == set()
 
 
 def test_legado_solo_con_exitos_y_herencia():

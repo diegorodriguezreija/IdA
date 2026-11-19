@@ -191,6 +191,9 @@ class RecuerdoLugar:
     confianza: float = 1.0
 
 
+RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
+
+
 @dataclass
 class Requisito:
     """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
@@ -215,12 +218,24 @@ class Requisito:
     aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
     requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
     delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
+    radio_cerca: Dict[str, int] = field(default_factory=dict)          # distancia máxima a la que ha funcionado
+    cerca_fallida: Dict[str, Set[int]] = field(default_factory=dict)   # distancias a las que ha fallado (lo demás, presente)
+
+    def cerca_basta(self, clase: str, distancia: int) -> bool:
+        """Si ``clase`` a ``distancia`` cuenta como cerca: hasta el radio aprendido (1 si no se sabe) o, hasta
+        ``RADIO_PRUEBA``, mientras la acción no haya fallado desde esa distancia (se prueba antes de caminar)."""
+        if distancia <= self.radio_cerca.get(clase, 1):
+            return True
+        return distancia <= RADIO_PRUEBA and distancia not in self.cerca_fallida.get(clase, set())
 
     @property
     def tasa(self) -> float:
         """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
         total = self.exitos + self.fallos
         return self.exitos / total if total else 1.0
+
+    def cumple_inventario(self, inventario: Dict[str, float]) -> bool:
+        return all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
 
     def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
         """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
@@ -953,6 +968,7 @@ class Memoria:
         exito: bool,
         cerca_despues: Optional[Set[str]] = None,
         delante: Optional[str] = None,
+        distancias: Optional[Dict[str, int]] = None,
     ) -> None:
         """Tras una acción con objetivo: contrasta el inventario de antes y de después.
 
@@ -965,9 +981,18 @@ class Memoria:
         - ``delante``: la clase de lo que había delante; las clases donde funcionó forman ``requiere_delante``
           y aquellas donde solo ha fallado, ``delante_fallido`` (5.2 d).
         - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
+        - Un requisito descubierto por un primer éxito sin fallos previos solo registra el efecto: los requisitos
+          de inventario los añade la inducción por diferencia.
+        - ``distancias`` (clase → distancia, hasta ``RADIO_PRUEBA``): con éxito, el radio de cada requisito de
+          cercanía crece hasta la distancia a la que ha funcionado; con fallo y el inventario cumplido, esa
+          distancia queda anotada como fallida.
+        - ``delante`` solo cuenta para USAR (COGER y COMER se orientan hacia su objetivo antes de actuar).
         """
         if not self.activa or not objetivo:
             return
+        if verbo != Verbo.USAR:
+            delante = None
+        distancias = distancias or {}
         antes_obj, despues_obj = self._objetos(inv_antes), self._objetos(inv_despues)
         claves = sorted(set(antes_obj) | set(despues_obj))
         antes = {k: antes_obj.get(k, 0.0) for k in claves}
@@ -981,15 +1006,19 @@ class Memoria:
         clave = (verbo, objetivo)
         r = self.requisitos.get(clave)
         if exito and delta:
+            nuevo = r is None
             if r is None:
-                r = self.requisitos[clave] = Requisito(verbo, objetivo, {}, set(cerca), fuente="experiencia")
+                r = self.requisitos[clave] = Requisito(verbo, objetivo, {}, set(), fuente="experiencia")
             r.exitos += 1
             r.efecto = dict(delta)
             for k, d in delta.items():
-                if d < 0:
+                if d < 0 and not nuevo:
                     r.requiere_inventario[k] = -d   # lo consumido es la cantidad exacta (corrige estimaciones por fallos)
             if cerca_despues is not None:
                 r.aparece |= set(cerca_despues) - set(cerca)
+            for c in r.requiere_cerca:
+                if c in distancias:
+                    r.radio_cerca[c] = max(r.radio_cerca.get(c, 1), distancias[c])
             if delante:
                 r.requiere_delante.add(delante)
                 r.delante_fallido.discard(delante)
@@ -1005,6 +1034,11 @@ class Memoria:
         lista.append({k: v for k, v in antes.items() if v})
         del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
         self.fallos_seguidos[clave] = self.fallos_seguidos.get(clave, 0) + 1
+        if r is not None and r.cumple_inventario(antes):
+            for c in r.requiere_cerca:
+                dc = distancias.get(c)
+                if dc is not None and dc > r.radio_cerca.get(c, 1):
+                    r.cerca_fallida.setdefault(c, set()).add(dc)
         if r is not None and delante and delante not in r.requiere_delante:
             r.delante_fallido.add(delante)
         if r is not None and r.cumple(antes, cerca):
