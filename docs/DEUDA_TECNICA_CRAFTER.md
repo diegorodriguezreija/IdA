@@ -44,6 +44,11 @@ Lista de asuntos detectados durante el encargo C (`docs/ENCARGO_CRAFTER_C.md`) q
 
 Son pocos casos; solo si siguen pesando tras C.4.
 
+## 7. Herramientas de diagnóstico
+
+- **Qué pasa:** hay varios scripts de diagnóstico parecidos (`diagnostico_crafter_c0b.py`, `diagnostico_vacas_c3b.py`, `diagnostico_vacas_c3c.py`, `diagnostico_c3d_d_e.py`) y el arnés ha crecido.
+- **Propuesta:** unificar en el arnés un registro por latido reutilizable (fase, ganador del Tribunal, vitales, posición) y que los diagnósticos sean consultas sobre ese registro.
+
 ## 8. Rediseño del huerto (C.4 descartada)
 
 - **Qué pasó:** C.4 (huecos cerrados junto al refugio, rama `wip/c4-argon`) activó la regla de parada: selladas el día 1, 29/40; mediana del arnés largo, 401,5 frente a 417 (`INFORME_C.md`, apartado 8). Cuando el huerto llega a funcionar, alarga mucho la vida (semillas 11 y 20: 1040 y 1168 latidos), pero el diseño falla por tres motivos:
@@ -57,7 +62,3 @@ Son pocos casos; solo si siguen pesando tras C.4.
   - medir primero con una sola planta.
 - **Aprovechable de la rama WIP:** el arreglo de salida en `amanecer` (no quedarse atascado en la galería; semilla 17) y la separación entre plantas vistas como obstáculo y plantas propias como pared. Cada uno, con su propia medición.
 
-## 9. Herramientas de diagnóstico
-
-- **Qué pasa:** hay varios scripts de diagnóstico parecidos (`diagnostico_crafter_c0b.py`, `diagnostico_vacas_c3b.py`, `diagnostico_vacas_c3c.py`, `diagnostico_c3d_d_e.py`) y el arnés ha crecido.
-- **Propuesta:** unificar en el arnés un registro por latido reutilizable (fase, ganador del Tribunal, vitales, posición) y que los diagnósticos sean consultas sobre ese registro.
