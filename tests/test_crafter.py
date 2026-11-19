@@ -6,7 +6,7 @@ pytest.importorskip("crafter")
 
 from ida.core.vocabulario import RASGOS, Verbo  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
-from ida.mundos.crafter import MundoCrafter, RefugioNocturno  # noqa: E402
+from ida.mundos.crafter import MundoCrafter, PlanAsentarse, RefugioNocturno  # noqa: E402
 
 
 @pytest.fixture
@@ -405,6 +405,290 @@ def test_c3d_forrajeo_oportunista():
     assert prop3 is not None
     assert prop3.verbo == Verbo.COMER
     assert prop3.objetivo == "vaca_2"
+
+
+def test_c4_1_bolsillo_tres_paredes_ciclo_completo():
+    """8.5 Test 1: Bolsillo con 3 paredes naturales: el ciclo completo (plantar, cerrar,
+    cosechar y volver a cerrar) es factible con _plan_mirar."""
+    from types import SimpleNamespace
+    from ida.core.pieza import Pieza
+
+    ref = RefugioNocturno()
+    mina = ((10, 10), (0, 1))
+    # Recinto en (10, 10..13)
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "stone",
+        (10, 12): "stone",
+        (10, 13): "stone",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+        # Bolsillo natural B = (8, 10) a dist 2 de e0=(10, 10), con 3 paredes naturales y acceso A = (8, 11)
+        (8, 10): "grass",
+        (7, 10): "stone",
+        (8, 9): "water",
+        (9, 10): "stone",
+        (8, 11): "grass",
+        (8, 12): "grass",
+        (7, 11): "grass",
+        (6, 11): "grass",
+        (9, 11): "grass",
+        (10, 9): "grass",
+    }
+    bol = ref._buscar_bolsillo((10, 10), mina, solo_natural=True)
+    assert bol is not None
+    assert bol["pos"] == (8, 10)
+    assert bol["acceso"] == (8, 11)
+    assert bol["paredes"] == []
+    ref.bolsillos.append(bol)
+
+    def _ctx_en(lat: int, extra_ext: dict | None = None):
+        ext = {
+            f"celda_{c[0]}_{c[1]}": Pieza(
+                f"celda_{c[0]}_{c[1]}", "Exterocepcion",
+                carga={"clase": "suelo", "datos": {"pos": c, "terreno": m}, "rasgos": {"lugar": 1.0, "peligro": 0.0}},
+            )
+            for c, m in ref.mapa.items() if m in ("grass", "path", "sand") and c not in ref.plantas_propias
+        }
+        if extra_ext:
+            ext.update(extra_ext)
+        onda = SimpleNamespace(
+            ev=lambda canal: {"Exterocepcion": ext}.get(canal, {}),
+            ei=lambda canal: {},
+        )
+        return SimpleNamespace(latido=lat, onda=onda)
+
+    inv = {"food": 5.0, "drink": 8.0, "stone": 2.0, "sapling": 1.0, "wood_pickaxe": 1.0, "wood_sword": 1.0}
+    # 1. Plantar: desde P=(8, 12) entra a A=(8, 11) mirando a B=(8, 10) y hace place_plant
+    prop_mov = ref._avanzar_bolsillo(_ctx_en(50), (8, 12), (0, 1), inv, bol, mina, 0.7, 0.85, "refugio")
+    assert prop_mov is not None and prop_mov.verbo == Verbo.MOVER and prop_mov.objetivo == "celda_8_11"
+    prop_pl = ref._avanzar_bolsillo(_ctx_en(51), (8, 11), (0, -1), inv, bol, mina, 0.7, 0.85, "refugio")
+    assert prop_pl is not None and prop_pl.verbo == Verbo.USAR and prop_pl.objetivo == "place_plant"
+    bol["plantada"] = True
+    bol["latido_plantacion"] = 51
+    ref.plantas_propias.add((8, 10))
+
+    # 2. Cerrar A=(8, 11) con _plan_mirar sin pisar B=(8, 10)
+    plan_c = ref._plan_mirar((8, 11), (8, 11), mina)
+    assert plan_c is not None
+    P_c, A_c = plan_c
+    assert P_c != (8, 10) and A_c != (8, 10)
+    cara_c = (8 - A_c[0], 11 - A_c[1])
+    prop_st = ref._avanzar_bolsillo(_ctx_en(53), A_c, cara_c, inv, bol, mina, 0.7, 0.85, "refugio")
+    assert prop_st is not None and prop_st.verbo == Verbo.USAR and prop_st.objetivo == "place_stone"
+    ref.mapa[(8, 11)] = "stone"
+    bol["cerrado"] = True
+
+    # 3. Cosechar: planta madura en B=(8, 10) -> picar piedra de A=(8, 11), entrar a A y COMER
+    planta_madura = Pieza(
+        "planta_1", "Exterocepcion",
+        carga={"clase": "planta", "datos": {"pos": (8, 10)}, "rasgos": {"nutritivo": 0.8, "proximidad": 0.8}},
+    )
+    ctx_cos1 = _ctx_en(360, {"planta_1": planta_madura})
+    prop_abrir = ref._actuar_cosecha_o_recierre(ctx_cos1, (8, 12), (0, -1), inv, mina, "refugio")
+    assert prop_abrir is not None and prop_abrir.verbo == Verbo.COGER and prop_abrir.objetivo == "piedra_8_11"
+    ref.mapa[(8, 11)] = "path"
+    bol["cerrado"] = False
+
+    ctx_cos2 = _ctx_en(361, {"planta_1": planta_madura})
+    prop_entrar = ref._actuar_cosecha_o_recierre(ctx_cos2, (8, 12), (0, -1), inv, mina, "refugio")
+    assert prop_entrar is not None and prop_entrar.verbo == Verbo.MOVER and prop_entrar.objetivo == "celda_8_11"
+
+    ctx_cos3 = _ctx_en(362, {"planta_1": planta_madura})
+    prop_comer = ref._actuar_cosecha_o_recierre(ctx_cos3, (8, 11), (0, -1), inv, mina, "refugio")
+    assert prop_comer is not None and prop_comer.verbo == Verbo.COMER and prop_comer.objetivo == "planta_1"
+
+    # 4. Volver a cerrar A=(8, 11) tras comer la planta (nutritivo vuelve a 0.0)
+    planta_inmadura = Pieza(
+        "planta_1", "Exterocepcion",
+        carga={"clase": "planta", "datos": {"pos": (8, 10)}, "rasgos": {"nutritivo": 0.0, "proximidad": 1.0}},
+    )
+    ctx_rec = _ctx_en(364, {"planta_1": planta_inmadura})
+    prop_rec = ref._actuar_cosecha_o_recierre(ctx_rec, A_c, cara_c, inv, mina, "refugio")
+    assert prop_rec is not None and prop_rec.verbo == Verbo.USAR and prop_rec.objetivo == "place_stone"
+
+
+def test_c4_2_fila_tres_plantas_junto_al_agua():
+    """8.5 Test 2: Fila de 3 plantas junto al agua: orden factible con _plan_mirar."""
+    ref = RefugioNocturno()
+    mina = ((10, 14), (0, 1))
+    ref.mapa = {
+        (10, 14): "grass",
+        (10, 15): "stone",
+        (10, 16): "stone",
+        (10, 17): "stone",
+        (9, 16): "stone",
+        (11, 16): "stone",
+        (9, 17): "stone",
+        (11, 17): "stone",
+        (10, 18): "stone",
+    }
+    # Agua en y=9, fila de hierba en y=10 (x=10..12), extremos en (9,10) y (13,10), accesos en y=11, P en y=12..13
+    for x in range(8, 15):
+        ref.mapa[(x, 9)] = "water"
+        for y in range(10, 14):
+            ref.mapa[(x, y)] = "grass"
+
+    fila = ref._planificar_fila_bolsillos((10, 13), mina, n_plantas=3)
+    assert fila is not None and len(fila) == 3
+    pos_sim = (10, 13)
+    for item in fila:
+        for w in item["paredes"]:
+            plan_w = ref._plan_mirar(pos_sim, w, mina)
+            assert plan_w is not None
+            pos_sim = plan_w[1]
+            ref.mapa[w] = "stone"
+        b_i, a_i = item["pos"], item["acceso"]
+        p_i = (2 * a_i[0] - b_i[0], 2 * a_i[1] - b_i[1])
+        assert ref._es_transitable_huerto(p_i) and ref._es_transitable_huerto(a_i)
+        ref.plantas_propias.add(b_i)
+        plan_a = ref._plan_mirar(a_i, a_i, mina)
+        assert plan_a is not None
+        pos_sim = plan_a[1]
+        ref.mapa[a_i] = "stone"
+
+    # Al terminar, las 3 plantas tienen sus 4 vecinos en cruz bloqueados (agua, piedra u otra planta de la fila)
+    for item in fila:
+        bx, by = item["pos"]
+        for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+            assert ref._es_bloqueada_huerto((bx + dx, by + dy))
+
+
+def test_c4_3_sin_piedra_pica_roca_antes_de_bolsillo():
+    """8.5 Test 3: Sin piedra: el plan pica roca antes de preparar el bolsillo."""
+    from types import SimpleNamespace
+    from ida.core.pieza import Pieza
+
+    ref = RefugioNocturno()
+    mina = ((10, 10), (0, 1))
+    ref.mina_recordada = mina
+    ref.paso_oscuro = True
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "path",
+        (10, 12): "path",
+        (10, 13): "path",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+        # Bolsillo natural en (8, 10)
+        (8, 10): "grass",
+        (7, 10): "stone",
+        (8, 9): "water",
+        (9, 10): "stone",
+        (8, 11): "grass",
+        (8, 12): "grass",
+        (9, 11): "grass",
+        # Roca suelta para picar en (11, 10) adyacente a (10, 10)
+        (11, 10): "stone",
+    }
+    plan_s3 = PlanAsentarse(ref)
+    yo = Pieza(
+        "yo", "Propiocepcion",
+        carga={
+            "ubicacion": "celda_10_10",
+            "inventario": {"food": 7.0, "drink": 7.0, "stone": 0.0, "sapling": 1.0, "wood_pickaxe": 1.0, "wood_sword": 1.0},
+            "cuerpo": {"orientacion": (1, 0), "vista": dict(ref.mapa)},
+        },
+    )
+    amb = Pieza("ambiente", "Ambiente", carga={"luz": 0.92})
+    piedra_pz = Pieza("piedra_11_10", "Exterocepcion", carga={"clase": "piedra", "datos": {"pos": (11, 10)}, "rasgos": {"proximidad": 1.0}})
+    suelo_pz = Pieza("celda_9_11", "Exterocepcion", carga={"clase": "suelo", "datos": {"pos": (9, 11), "terreno": "grass"}, "rasgos": {"lugar": 1.0}})
+    onda = SimpleNamespace(
+        ev=lambda canal: {
+            "Propiocepcion": {"yo": yo},
+            "Ambiente": {"ambiente": amb},
+            "Exterocepcion": {"piedra_11_10": piedra_pz, "celda_9_11": suelo_pz},
+        }.get(canal, {}),
+        ei=lambda canal: {},
+    )
+    propuestas = []
+    plan_s3.proponer = lambda _ctx, verbo, obj, ar, conf, motivo, **kw: propuestas.append((verbo, obj, motivo))  # type: ignore[method-assign]
+    ctx = SimpleNamespace(
+        latido=340,
+        onda=onda,
+        perfil=SimpleNamespace(hogar=True, mecanismos=SimpleNamespace(plan=False)),
+        memoria=SimpleNamespace(hogar=lambda: None),
+        con_experiencia=True,
+    )
+    assert plan_s3.elegible(ctx, "asentarse", 0.8) is True
+    plan_s3.decidir(ctx)
+    assert len(propuestas) == 1
+    verbo, obj, _motivo = propuestas[0]
+    assert verbo == Verbo.COGER
+    assert obj == "piedra_11_10"
+
+
+def test_c4_4_presupuesto_luz_dia1():
+    """Test de presupuesto (8.0): el bolsillo del día 1 suma sus pasos a _coste_restante_pasos,
+    y sin margen de luz no se planta el día 1 (el refugio manda)."""
+    from types import SimpleNamespace
+    from ida.core.pieza import Pieza
+
+    ref = RefugioNocturno()
+    mina = ((10, 10), (0, 1))
+    ref.mapa = {
+        (10, 10): "grass",
+        (10, 11): "stone",
+        (10, 12): "stone",
+        (10, 13): "stone",
+        (9, 12): "stone",
+        (11, 12): "stone",
+        (9, 13): "stone",
+        (11, 13): "stone",
+        (10, 14): "stone",
+        # Bolsillo natural en (8, 10)
+        (8, 10): "grass",
+        (7, 10): "stone",
+        (8, 9): "water",
+        (9, 10): "stone",
+        (8, 11): "grass",
+        (8, 12): "grass",
+        (7, 11): "grass",
+        (6, 11): "grass",
+        (9, 11): "grass",
+        (10, 9): "grass",
+    }
+    inv = {"food": 7.0, "drink": 7.0, "stone": 2.0, "sapling": 1.0, "wood_pickaxe": 1.0, "wood_sword": 1.0}
+    coste_sin = ref._coste_restante_pasos((10, 10), inv, mina, incluir_huerto=False)
+    coste_con = ref._coste_restante_pasos((10, 10), inv, mina, incluir_huerto=True)
+    assert coste_con > coste_sin
+
+    def _paso_con_luz(lat: int, luz_val: float, bajando_val: bool):
+        ref.bajando = bajando_val
+        ref.luz_previa = luz_val + (0.01 if bajando_val else -0.01)
+        yo = Pieza(
+            "yo", "Propiocepcion",
+            carga={"ubicacion": "celda_10_10", "inventario": dict(inv), "cuerpo": {"orientacion": (0, 1), "vista": dict(ref.mapa)}},
+        )
+        amb = Pieza("ambiente", "Ambiente", carga={"luz": luz_val})
+        onda = SimpleNamespace(
+            ev=lambda canal: {"Propiocepcion": {"yo": yo}, "Ambiente": {"ambiente": amb}, "Exterocepcion": {}}.get(canal, {}),
+            ei=lambda canal: {},
+        )
+        ctx = SimpleNamespace(
+            latido=lat, onda=onda,
+            perfil=SimpleNamespace(hogar=True),
+            memoria=SimpleNamespace(hogar=lambda: None),
+            con_experiencia=True,
+        )
+        est_pz = Pieza("est", "Estrategia", carga={"paso": {"fase": "elegir_mina", "mina": mina, "mejor_dist": 0, "sin_avance": 0, "saliendo": False}})
+        return ref.paso(ctx, est_pz)
+
+    # Con margen de luz (luz=0.85, mañana) -> entra en fase 'huerto'
+    estado_con_margen = _paso_con_luz(60, 0.85, False)
+    assert estado_con_margen["fase"] == "huerto"
+
+    # Sin margen de luz (luz=0.52, bajando al ocaso) -> no planta el día 1, va a 'cavar' el refugio
+    estado_sin_margen = _paso_con_luz(165, 0.52, True)
+    assert estado_sin_margen["fase"] != "huerto"
+    assert estado_sin_margen["fase"] == "cavar"
+
 
 
 

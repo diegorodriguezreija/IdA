@@ -89,7 +89,7 @@ class MundoCrafter(Mundo):
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
-                    intenciones=("progresar",))
+                    intenciones=("progresar", "asentarse"))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
         import crafter                     # dependencia solo de este mundo
@@ -380,7 +380,12 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()], "S3": [PlanTecnologico(self.constantes)]}
+        refugio = RefugioNocturno()
+        return {
+            "S1": [DefensaArmada(), CerrarDistancia()],
+            "S2": [refugio],
+            "S3": [PlanTecnologico(self.constantes, refugio), PlanAsentarse(refugio)],
+        }
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -570,12 +575,20 @@ class RefugioNocturno(Definicion):
         self.inalcanzables: Dict[Pos, int] = {}
         self.recintos_descartados: Set[Tuple[Pos, Pos]] = set()
         self._vaca_origen: Dict[str, Pos] = {}
+        self.bolsillos: List[Dict[str, Any]] = []
+        self.plantas_propias: Set[Pos] = set()
+        self.intentos_retono_dia1: int = 0
+        self.e0_huerto_inspeccionado: Set[Pos] = set()
 
     def _reiniciar_vida(self) -> None:
         self.vacas.clear()
         self.inalcanzables.clear()
         self.recintos_descartados.clear()
         self._vaca_origen.clear()
+        self.bolsillos.clear()
+        self.plantas_propias.clear()
+        self.intentos_retono_dia1 = 0
+        self.e0_huerto_inspeccionado.clear()
         self.mapa.clear()
         self.visitadas.clear()
         self.rocas_inspeccionadas.clear()
@@ -591,6 +604,8 @@ class RefugioNocturno(Definicion):
     def _actualizar_memoria(self, ctx: Contexto) -> None:
         if ctx.latido == 1 or ctx.latido < self.ultimo_latido:
             self._reiniciar_vida()
+        elif ctx.latido == self.ultimo_latido:
+            return
         self.ultimo_latido = ctx.latido
         luz = _luz(ctx)
         if luz > self.luz_previa + 1e-4:
@@ -604,7 +619,8 @@ class RefugioNocturno(Definicion):
         if vista:
             self.mapa.update(vista)
         pos = _posicion(ctx)
-        vistas = {tuple(p.carga["datos"]["pos"]) for p in ctx.onda.ev("Exterocepcion").values()
+        exter_vals = list(ctx.onda.ev("Exterocepcion").values())
+        vistas = {tuple(p.carga["datos"]["pos"]) for p in exter_vals
                   if p.clase == "vaca" and "pos" in p.carga.get("datos", {})}
         for v in vistas:
             self.vacas[v] = ctx.latido
@@ -612,8 +628,51 @@ class RefugioNocturno(Definicion):
             olvidada = ctx.latido - lat > self.MEMORIA_VACA
             if olvidada or (pos is not None and v not in vistas and _dist(pos, v) <= 1):
                 del self.vacas[v]
+        plantas_vistas = {
+            (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1])): p
+            for p in exter_vals
+            if p.clase == "planta" and "pos" in p.carga.get("datos", {})
+        }
+        for ppos in plantas_vistas:
+            self.plantas_propias.add(ppos)
+        for ppos in list(self.plantas_propias):
+            if pos is not None and _dist(pos, ppos) == 1 and luz >= 0.3 and ppos not in plantas_vistas:
+                self.plantas_propias.discard(ppos)
+        ei_fn = getattr(ctx.onda, "ei", None)
+        previa = ei_fn("Accion").get("Accion") if ei_fn is not None else None
+        exito_prev = previa is not None and previa.carga.get("exito") is True
+        motivo_prev = str(previa.carga.get("motivo", "")) if previa is not None else ""
+        obj_prev = str(previa.carga.get("objetivo", "")) if previa is not None else ""
+        for b in self.bolsillos:
+            bpos: Pos = b["pos"]
+            bacceso: Pos = b["acceso"]
+            prev_cerrado = bool(b.get("cerrado"))
+            if bpos in plantas_vistas or (exito_prev and obj_prev == "place_plant" and pos == bacceso):
+                if not b.get("plantada"):
+                    b["plantada"] = True
+                    b["latido_plantacion"] = ctx.latido
+                self.plantas_propias.add(bpos)
+            if b.get("plantada") and exito_prev and "comer planta" in motivo_prev and pos is not None and _dist(pos, bpos) == 1:
+                b["latido_plantacion"] = ctx.latido
+                b["cosechando"] = False
+            if b.get("plantada") and pos is not None and _dist(pos, bpos) == 1 and luz >= 0.3 and bpos not in plantas_vistas:
+                b["plantada"] = False
+                b["cerrado"] = False
+                b["cosechando"] = False
+                self.plantas_propias.discard(bpos)
+            acceso_cerrado = self.mapa.get(bacceso) == "stone"
+            paredes_ok = all(
+                self.mapa.get(w) in NO_TRANSITABLES_ZOMBI or w in self.plantas_propias
+                for w in b.get("paredes", [])
+            )
+            b["cerrado"] = bool(b.get("plantada") and acceso_cerrado and paredes_ok)
+            if b["cerrado"] and not prev_cerrado:
+                b["cosechando"] = False
         if pos is not None:
             self.visitadas[pos] = ctx.latido
+            mina_mem = self._estado_mem.get("mina") or self.mina_recordada
+            if mina_mem is not None and _dist(pos, mina_mem[0]) <= 2:
+                self.e0_huerto_inspeccionado.add(mina_mem[0])
             if self._estado_mem.get("mina") is not None or _inventario(ctx).get("stone", 0) >= 3:
                 for p, m in self.mapa.items():
                     if m == "stone" and max(abs(pos[0] - p[0]), abs(pos[1] - p[1])) <= 2:
@@ -708,17 +767,17 @@ class RefugioNocturno(Definicion):
             galeria = {e0, e1, e2, e3}
 
         mat_c = self.mapa.get(C)
-        bloqueada = mat_c is not None and mat_c not in TRANSITABLES_JUGADOR
+        bloqueada = (mat_c is not None and mat_c not in TRANSITABLES_JUGADOR) or (C in self.plantas_propias)
         candidatos: List[Tuple[Tuple[int, int, int, int], Pos, Pos]] = []
         for dx, dy in MOVIMIENTOS:
             A = (C[0] + dx, C[1] + dy)
-            if self.mapa.get(A) not in TRANSITABLES_JUGADOR:
+            if self.mapa.get(A) not in TRANSITABLES_JUGADOR or A in self.plantas_propias:
                 continue
             if bloqueada:
                 P = A
             else:
                 P = (2 * A[0] - C[0], 2 * A[1] - C[1])
-                if self.mapa.get(P) not in TRANSITABLES_JUGADOR:
+                if self.mapa.get(P) not in TRANSITABLES_JUGADOR or P in self.plantas_propias:
                     continue
             if P in self.inalcanzables and self.ultimo_latido - self.inalcanzables[P] < 50:
                 continue
@@ -762,6 +821,308 @@ class RefugioNocturno(Definicion):
                 if mat is not None:
                     self.mapa[c] = mat
         return faltan
+
+    def _es_transitable_huerto(self, c: Pos) -> bool:
+        return self.mapa.get(c) in TRANSITABLES_JUGADOR and c not in self.plantas_propias
+
+    def _es_bloqueada_huerto(self, c: Pos) -> bool:
+        return self.mapa.get(c) in NO_TRANSITABLES_ZOMBI or c in self.plantas_propias
+
+    def _rocas_protegidas(self, mina: Optional[Tuple[Pos, Pos]] = None) -> Set[Pos]:
+        """Casillas cuya piedra no debe picarse porque forman parte del recinto o de un bolsillo."""
+        prot: Set[Pos] = set()
+        for m_ref in (mina, self._estado_mem.get("mina"), self.mina_recordada):
+            if m_ref is not None:
+                e0, (dx, dy) = m_ref
+                e1 = (e0[0] + dx, e0[1] + dy)
+                prot.add(e1)
+                prot.add((e1[0] - dy, e1[1] + dx))
+                prot.add((e1[0] + dy, e1[1] - dx))
+                for c, _ in self._paredes_recinto(m_ref):
+                    prot.add(c)
+        for b in self.bolsillos:
+            bpos: Pos = b["pos"]
+            prot.add(bpos)
+            prot.add(b["acceso"])
+            for w in b.get("paredes", []):
+                prot.add(w)
+            for vx, vy in MOVIMIENTOS:
+                prot.add((bpos[0] + vx, bpos[1] + vy))
+        return prot
+
+    def _evaluar_bolsillo(
+        self,
+        B: Pos,
+        pos_actual: Pos,
+        mina: Tuple[Pos, Pos],
+        solo_natural: bool = False,
+    ) -> Optional[Tuple[float, Pos, List[Pos]]]:
+        """Evalúa si ``B`` (casilla de hierba a <= 6 de ``e0``) puede ser un bolsillo cerrado con
+        acceso ``A`` y lista ordenada de paredes a tapar. Devuelve ``(puntuacion, A, paredes)``."""
+        if self.mapa.get(B) != "grass" or B in self.plantas_propias:
+            return None
+        e0, (dx, dy) = mina
+        if not (1 <= _dist(B, e0) <= 6):
+            return None
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        paredes_rec = {c for c, _ in self._paredes_recinto(mina)}
+        prohibidas = {e0, e1, e2, e3} | paredes_rec
+        for b_ex in self.bolsillos:
+            b_pos_ex: Pos = b_ex["pos"]
+            a_pos_ex: Pos = b_ex["acceso"]
+            prohibidas.add(b_pos_ex)
+            prohibidas.add(a_pos_ex)
+            prohibidas.add((2 * a_pos_ex[0] - b_pos_ex[0], 2 * a_pos_ex[1] - b_pos_ex[1]))
+            for w_ex in b_ex.get("paredes", []):
+                prohibidas.add(w_ex)
+        if B in prohibidas:
+            return None
+
+        vecinos = [(B[0] + vx, B[1] + vy) for vx, vy in MOVIMIENTOS]
+        if any(self.mapa.get(v) is None or self.mapa.get(v) == "lava" for v in vecinos):
+            return None
+
+        bloqueados = [v for v in vecinos if self._es_bloqueada_huerto(v)]
+        libres = [v for v in vecinos if self._es_transitable_huerto(v)]
+        if len(bloqueados) + len(libres) != 4 or not libres:
+            return None
+        if solo_natural and len(bloqueados) < 3:
+            return None
+        if len(bloqueados) < 2:
+            return None
+
+        import itertools
+
+        mejor: Optional[Tuple[float, Pos, List[Pos]]] = None
+        for A in libres:
+            if A in prohibidas:
+                continue
+            paredes_raw = [v for v in libres if v != A]
+            if any(w in prohibidas for w in paredes_raw):
+                continue
+            P_plantar = (2 * A[0] - B[0], 2 * A[1] - B[1])
+            if not self._es_transitable_huerto(P_plantar) or P_plantar in paredes_raw:
+                continue
+
+            orden_paredes: Optional[List[Pos]] = None
+            orig_mapa = {c: self.mapa.get(c) for c in paredes_raw + [A]}
+            tenia_planta = B in self.plantas_propias
+            try:
+                for perm in itertools.permutations(paredes_raw):
+                    for c in paredes_raw + [A]:
+                        m_val = orig_mapa[c]
+                        if m_val is not None:
+                            self.mapa[c] = m_val
+                    self.plantas_propias.discard(B)
+                    pos_sim = pos_actual
+                    ok = True
+                    for w in perm:
+                        plan_w = self._plan_mirar(pos_sim, w, mina)
+                        if plan_w is None:
+                            ok = False
+                            break
+                        pos_sim = plan_w[1]
+                        self.mapa[w] = "stone"
+                    if not ok:
+                        continue
+                    if not self._es_transitable_huerto(P_plantar) or not self._es_transitable_huerto(A):
+                        continue
+                    self.plantas_propias.add(B)
+                    plan_cerrar = self._plan_mirar(A, A, mina)
+                    if plan_cerrar is None:
+                        continue
+                    self.mapa[A] = "stone"
+                    if any(
+                        self._plan_mirar(b_ex["acceso"], b_ex["acceso"], mina) is None
+                        for b_ex in self.bolsillos
+                    ):
+                        continue
+                    if e0 != pos_actual and not any(
+                        self._es_transitable_huerto((e0[0] + vx, e0[1] + vy))
+                        for vx, vy in MOVIMIENTOS
+                        if (e0[0] + vx, e0[1] + vy) not in (e1, e2, e3)
+                    ):
+                        continue
+                    orden_paredes = list(perm)
+                    break
+            finally:
+                for c, m_orig in orig_mapa.items():
+                    if m_orig is not None:
+                        self.mapa[c] = m_orig
+                if tenia_planta:
+                    self.plantas_propias.add(B)
+                else:
+                    self.plantas_propias.discard(B)
+
+            if orden_paredes is None:
+                continue
+
+            junto_agua = 1.0 if any(self.mapa.get(v) == "water" for v in vecinos) else 0.0
+            junto_planta = 1.0 if any(v in self.plantas_propias for v in vecinos) else 0.0
+            punt = (
+                30.0 * len(bloqueados)
+                + 8.0 * junto_agua
+                + 6.0 * junto_planta
+                - 1.5 * _dist(B, e0)
+                - 0.5 * _dist(pos_actual, A)
+            )
+            if mejor is None or punt > mejor[0]:
+                mejor = (punt, A, orden_paredes)
+
+        return mejor
+
+    def _buscar_bolsillo(
+        self,
+        pos_actual: Pos,
+        mina: Tuple[Pos, Pos],
+        solo_natural: bool = False,
+    ) -> Optional[Dict[str, Any]]:
+        """Busca en ``self.mapa`` el mejor bolsillo candidato a <= 6 de ``e0``."""
+        e0 = mina[0]
+        mejor_punt = -1e9
+        mejor_bol: Optional[Dict[str, Any]] = None
+        for c, m in list(self.mapa.items()):
+            if m != "grass" or not (1 <= _dist(c, e0) <= 6):
+                continue
+            res = self._evaluar_bolsillo(c, pos_actual, mina, solo_natural=solo_natural)
+            if res is not None and res[0] > mejor_punt:
+                mejor_punt = res[0]
+                mejor_bol = {
+                    "pos": c,
+                    "acceso": res[1],
+                    "paredes": res[2],
+                    "plantada": False,
+                    "cerrado": False,
+                    "cosechando": False,
+                    "latido_plantacion": 0,
+                }
+        return mejor_bol
+
+    def _planificar_fila_bolsillos(
+        self,
+        pos_actual: Pos,
+        mina: Tuple[Pos, Pos],
+        n_plantas: int = 3,
+    ) -> Optional[List[Dict[str, Any]]]:
+        """Planifica una fila de ``n_plantas`` bolsillos contiguos junto al agua o pared natural,
+        donde cada planta hace de pared lateral de la siguiente, comprobando que todo el orden
+        de preparación, plantación y cierre es factible con ``_plan_mirar``."""
+        e0, (dx, dy) = mina
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        prohibidas = {e0, e1, e2, e3} | {c for c, _ in self._paredes_recinto(mina)}
+        for b_ex in self.bolsillos:
+            b_pos_ex: Pos = b_ex["pos"]
+            a_pos_ex: Pos = b_ex["acceso"]
+            prohibidas.add(b_pos_ex)
+            prohibidas.add(a_pos_ex)
+            prohibidas.add((2 * a_pos_ex[0] - b_pos_ex[0], 2 * a_pos_ex[1] - b_pos_ex[1]))
+            for w_ex in b_ex.get("paredes", []):
+                prohibidas.add(w_ex)
+
+        mejor_coste = 999
+        mejor_fila: Optional[List[Dict[str, Any]]] = None
+        for b0, m0 in list(self.mapa.items()):
+            if m0 != "grass" or _dist(b0, e0) > 6:
+                continue
+            for fx, fy in ((1, 0), (0, 1), (-1, 0), (0, -1)):
+                bs = [(b0[0] + i * fx, b0[1] + i * fy) for i in range(n_plantas)]
+                if any(
+                    self.mapa.get(b) != "grass"
+                    or b in self.plantas_propias
+                    or b in prohibidas
+                    or not (1 <= _dist(b, e0) <= 6)
+                    for b in bs
+                ):
+                    continue
+                for nx, ny in ((-fy, fx), (fy, -fx)):
+                    fondo = [(b[0] + nx, b[1] + ny) for b in bs]
+                    if not all(self._es_bloqueada_huerto(f) for f in fondo):
+                        continue
+                    accesos = [(b[0] - nx, b[1] - ny) for b in bs]
+                    ps = [(b[0] - 2 * nx, b[1] - 2 * ny) for b in bs]
+                    if any(
+                        not self._es_transitable_huerto(a)
+                        or a in prohibidas
+                        or not self._es_transitable_huerto(p)
+                        for a, p in zip(accesos, ps, strict=False)
+                    ):
+                        continue
+                    e_ini = (bs[0][0] - fx, bs[0][1] - fy)
+                    e_fin = (bs[-1][0] + fx, bs[-1][1] + fy)
+                    if self.mapa.get(e_ini) is None or self.mapa.get(e_fin) is None:
+                        continue
+                    if self.mapa.get(e_ini) == "lava" or self.mapa.get(e_fin) == "lava":
+                        continue
+                    p_ini = [] if self._es_bloqueada_huerto(e_ini) else ([e_ini] if self._es_transitable_huerto(e_ini) and e_ini not in prohibidas else None)
+                    p_fin = [] if self._es_bloqueada_huerto(e_fin) else ([e_fin] if self._es_transitable_huerto(e_fin) and e_fin not in prohibidas else None)
+                    if p_ini is None or p_fin is None:
+                        continue
+
+                    candidata: List[Dict[str, Any]] = []
+                    for i in range(n_plantas):
+                        paredes_i: List[Pos] = []
+                        if i == 0 and p_ini:
+                            paredes_i.extend(p_ini)
+                        if i == n_plantas - 1 and p_fin:
+                            paredes_i.extend(p_fin)
+                        candidata.append({
+                            "pos": bs[i],
+                            "acceso": accesos[i],
+                            "paredes": paredes_i,
+                            "plantada": False,
+                            "cerrado": False,
+                            "cosechando": False,
+                            "latido_plantacion": 0,
+                        })
+
+                    # Simular ejecución secuencial con _plan_mirar
+                    mod_casillas = list(accesos) + list(p_ini) + list(p_fin)
+                    orig_m = {c: self.mapa.get(c) for c in mod_casillas}
+                    orig_pl = set(self.plantas_propias)
+                    ok = True
+                    try:
+                        pos_sim = pos_actual
+                        for item in candidata:
+                            for w in item["paredes"]:
+                                pw = self._plan_mirar(pos_sim, w, mina)
+                                if pw is None:
+                                    ok = False
+                                    break
+                                pos_sim = pw[1]
+                                self.mapa[w] = "stone"
+                            if not ok:
+                                break
+                            a_i = item["acceso"]
+                            b_i = item["pos"]
+                            p_i = (2 * a_i[0] - b_i[0], 2 * a_i[1] - b_i[1])
+                            if not self._es_transitable_huerto(p_i) or not self._es_transitable_huerto(a_i):
+                                ok = False
+                                break
+                            self.plantas_propias.add(b_i)
+                            pc = self._plan_mirar(a_i, a_i, mina)
+                            if pc is None:
+                                ok = False
+                                break
+                            pos_sim = pc[1]
+                            self.mapa[a_i] = "stone"
+                    finally:
+                        for c, m_v in orig_m.items():
+                            if m_v is not None:
+                                self.mapa[c] = m_v
+                        self.plantas_propias = orig_pl
+
+                    if ok:
+                        piedras_tot = n_plantas + len(p_ini) + len(p_fin)
+                        agua_cnt = sum(1 for f in fondo if self.mapa.get(f) == "water")
+                        coste_ord = piedras_tot * 10 - agua_cnt * 5 + _dist(bs[0], e0)
+                        if coste_ord < mejor_coste:
+                            mejor_coste = coste_ord
+                            mejor_fila = candidata
+        return mejor_fila
 
     def _evaluar_recinto(
         self,
@@ -882,9 +1243,46 @@ class RefugioNocturno(Definicion):
         e1 = (e0[0] + dx, e0[1] + dy)
         return self.mapa.get(e1) == "stone"
 
-    def _coste_restante_pasos(self, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> int:
+    def _excedente_piedra_refugio(self, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> int:
+        """Piedras que sobran por encima de las necesarias para tapar paredes y sellar el refugio."""
+        if mina is None:
+            return int(inv.get("stone", 0)) - 1
+        e0, (dx, dy) = mina
+        e1 = (e0[0] + dx, e0[1] + dy)
+        e2 = (e0[0] + 2 * dx, e0[1] + 2 * dy)
+        e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
+        piedras_cavar = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) == "stone")
+        paredes_faltan = len(self._paredes_faltantes(mina))
+        sello_falta = 0 if self._sellado(mina) else 1
+        return int(inv.get("stone", 0)) + piedras_cavar - (paredes_faltan + sello_falta)
+
+    def _pasos_huerto_dia1(self, pos: Pos, inv: Dict[str, float], mina: Optional[Tuple[Pos, Pos]]) -> int:
+        """Pasos estimados del bolsillo del día 1 antes de sellar (≈ 6-8 por planta)."""
+        if mina is None or self.paso_oscuro or self.mina_recordada is not None or self._falta_herramienta(inv):
+            return 0
+        en_curso = next((b for b in self.bolsillos if not b.get("cerrado")), None)
+        if en_curso is not None:
+            if en_curso.get("plantada"):
+                return 4
+            return 7 if inv.get("sapling", 0) >= 1 else 10
+        cerrados = sum(1 for b in self.bolsillos if b.get("cerrado"))
+        if cerrados >= 2:
+            return 0
+        if cerrados == 1 and inv.get("sapling", 0) < 1:
+            return 0
+        if self._buscar_bolsillo(pos, mina, solo_natural=False) is not None:
+            return 7 if inv.get("sapling", 0) >= 1 else 10
+        return 0
+
+    def _coste_restante_pasos(
+        self,
+        pos: Pos,
+        inv: Dict[str, float],
+        mina: Optional[Tuple[Pos, Pos]],
+        incluir_huerto: bool = True,
+    ) -> int:
         """Estimación de pasos de Crafter necesarios para quedar encerrado desde el estado actual
-        (contando 2 pasos por interacción de giro + acción)."""
+        (contando 2 pasos por interacción de giro + acción, y los pasos del bolsillo del día 1)."""
         madera_falta = self._madera_faltante(inv)
         pasos_herramientas = madera_falta * 4 + (4 if self._falta_herramienta(inv) else 0)
         if mina is None:
@@ -899,7 +1297,37 @@ class RefugioNocturno(Definicion):
         rocas = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
         colocar = len(self._paredes_faltantes(mina))
         # Cada roca cuesta hasta 3 pasos (girar + picar + avanzar); cada pared a tapar unos 4 pasos; retroceder y tapar cuesta 4 pasos
-        return pasos_herramientas + dist_acceso + rocas * 3 + colocar * 4 + 4
+        coste_base = pasos_herramientas + dist_acceso + rocas * 3 + colocar * 4 + 4
+        if incluir_huerto:
+            coste_base += self._pasos_huerto_dia1(pos, inv, mina)
+        return coste_base
+
+    def _puede_plantar_dia1(
+        self,
+        pos: Pos,
+        inv: Dict[str, float],
+        luz: float,
+        mina: Optional[Tuple[Pos, Pos]],
+    ) -> bool:
+        """El día 1 solo se planta mientras el presupuesto de luz cubra el refugio más el bolsillo."""
+        if mina is None or luz < 0.5 or self.paso_oscuro or self.mina_recordada is not None or self._falta_herramienta(inv):
+            return False
+        en_curso = next((b for b in self.bolsillos if not b.get("cerrado")), None)
+        if en_curso is None or not en_curso.get("plantada"):
+            if inv.get("sapling", 0) < 1 and (inv.get("drink", 0) <= 4 or inv.get("food", 0) <= 4):
+                return False
+        pasos_huerto = self._pasos_huerto_dia1(pos, inv, mina)
+        if pasos_huerto == 0:
+            return False
+        coste_ref = self._coste_restante_pasos(pos, inv, mina, incluir_huerto=False)
+        if not self.bajando:
+            return True
+        pasos_luz = self._pasos_luz_restantes(luz)
+        if en_curso is not None and (
+            en_curso.get("plantada") or (inv.get("sapling", 0) >= 1 and inv.get("stone", 0) >= 1)
+        ):
+            return pasos_luz > max(12.0, coste_ref * 1.35 + pasos_huerto)
+        return pasos_luz > max(18.0, coste_ref * 1.45 + pasos_huerto)
 
     def _pasos_luz_restantes(self, luz: float) -> float:
         """Pasos de Crafter estimados que quedan antes de que la luz caiga de 0,5 según la pendiente solar."""
@@ -996,8 +1424,9 @@ class RefugioNocturno(Definicion):
         estado["mina"] = mina_actual
         pasos_luz = self._pasos_luz_restantes(luz)
         coste = self._coste_restante_pasos(pos, inv, mina_actual)
+        coste_refugio = self._coste_restante_pasos(pos, inv, mina_actual, incluir_huerto=False)
         es_noche = luz < 0.5 and not estado.get("manana") and (self.bajando or luz < 0.35)
-        margen_cierre = max(12.0, coste * 1.55)
+        margen_cierre = max(12.0, coste_refugio * 1.55)
 
         # ¿Hay agua o comida alcanzable para llenar antes de que el margen de cierre obligue a entrar?
         hay_agua_viable = False
@@ -1030,7 +1459,7 @@ class RefugioNocturno(Definicion):
             hay_comida_viable = bool(comidas_cerca)
         falta_llenar_antes_de_cerrar = hay_agua_viable or hay_comida_viable
         ocaso_proximo = es_noche or (self.bajando and pasos_luz <= margen_cierre) or (
-            self.bajando and pasos_luz <= max(28.0, coste * 1.8) and not falta_llenar_antes_de_cerrar
+            self.bajando and pasos_luz <= max(28.0, coste_refugio * 1.8) and not falta_llenar_antes_de_cerrar
         )
 
         # 1. ¿Está ya dentro de la galería (e1, e2 o e3)?
@@ -1100,6 +1529,43 @@ class RefugioNocturno(Definicion):
             inv.get("drink", 0) <= 3
             and any(m == "water" and (p not in self.inalcanzables or ctx.latido - self.inalcanzables[p] >= 50) for p, m in self.mapa.items())
         )
+        # 2b. Plantar bolsillo natural el día 1 antes de sellar, solo mientras el presupuesto de luz lo permita
+        bolsillo_en_obra = any(
+            not b.get("cerrado")
+            and (b.get("plantada") or any(self.mapa.get(w) == "stone" for w in b.get("paredes", [])))
+            for b in self.bolsillos
+        )
+        necesita_abastecer_antes = (
+            not bolsillo_en_obra
+            and falta_llenar_antes_de_cerrar
+            and (inv.get("drink", 0) < 6 or inv.get("food", 0) < 5)
+            and pasos_luz > margen_cierre
+        )
+        if (
+            not en_construccion_tarde
+            and not sed_critica_mapa
+            and not es_noche
+            and pasos_luz > margen_cierre
+            and not necesita_abastecer_antes
+            and mina_actual is not None
+        ):
+            listo_para_huerto = (
+                bolsillo_en_obra
+                or inv.get("sapling", 0) >= 1
+                or inv.get("stone", 0) >= 1
+                or self.bajando
+                or _dist(pos, mina_actual[0]) <= 4
+            )
+            if listo_para_huerto and self._puede_plantar_dia1(pos, inv, luz, mina_actual):
+                estado["fase"] = "huerto"
+                return self._guardar_estado(estado)
+            self.bolsillos = [
+                b for b in self.bolsillos
+                if b.get("plantada")
+                or b.get("cerrado")
+                or any(self.mapa.get(w) == "stone" for w in b.get("paredes", []))
+            ]
+
         if not en_construccion_tarde and ((falta_llenar_antes_de_cerrar and pasos_luz > margen_cierre) or (sed_critica_mapa and not ocaso_proximo)):
             estado["fase"] = "provisiones"
             return self._guardar_estado(estado)
@@ -1115,7 +1581,7 @@ class RefugioNocturno(Definicion):
         e3 = (e0[0] + 3 * dx, e0[1] + 3 * dy)
         rocas_pendientes = sum(1 for ek in (e1, e2, e3) if self.mapa.get(ek) in ROCA_EXCAVABLE)
         paredes_pendientes = len(self._paredes_faltantes(mina_actual))
-        hora_de_entrar = es_noche or (self.bajando and pasos_luz <= max(28.0, coste * 1.8))
+        hora_de_entrar = es_noche or (self.bajando and pasos_luz <= max(28.0, coste_refugio * 1.8))
         anticipa_paso = self._anticipa_refugio(luz, pos, inv, mina_actual) or self.dominante
         if not anticipa_paso and estado.get("fase") not in ("cavar", "tapar", "cerrarse"):
             estado["fase"] = "elegir_mina"
@@ -1178,7 +1644,10 @@ class RefugioNocturno(Definicion):
             return True
         if not self.bajando:
             return False
-        coste = self._coste_restante_pasos(pos, inv, mina)
+        en_huerto = self._estado_mem.get("fase") == "huerto" or any(
+            not b.get("cerrado") and b.get("plantada") for b in self.bolsillos
+        )
+        coste = self._coste_restante_pasos(pos, inv, mina, incluir_huerto=en_huerto)
         falta_prov = max(0, 9 - int(inv.get("drink", 9))) + max(0, 9 - int(inv.get("food", 9)))
         pasos_prov = min(14.0, falta_prov * 2.5) if mina is not None else 0.0
         pasos_luz = self._pasos_luz_restantes(luz)
@@ -1195,13 +1664,17 @@ class RefugioNocturno(Definicion):
             return 0.92, 0.92
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
+        if estado.get("fase") == "huerto":
+            if inv.get("sapling", 0) >= 1 or any(b.get("plantada") and not b.get("cerrado") for b in self.bolsillos):
+                return 0.86, 0.92
+            return 0.74, 0.88
         if not self._anticipa_refugio(luz, pos, inv, mina):
             # Con mucho día por delante: si ya tiene herramientas y no sufre hambre/sed pero aún no ha visto mina,
             # explorar con rumbo (0,82 supera el 0,80 de plan_tecnologico, y cede en cuanto halla mina)
             if mina is None and not self._falta_herramienta(inv) and inv.get("food", 0) >= 6 and inv.get("drink", 0) >= 6:
                 return 0.58, 0.82
             return 0.28, 0.52
-        coste = self._coste_restante_pasos(pos, inv, mina)
+        coste = self._coste_restante_pasos(pos, inv, mina, incluir_huerto=False)
         pasos_luz = max(1.0, self._pasos_luz_restantes(luz))
         ratio = acotar(coste / pasos_luz)
         oscuridad = acotar(1.0 - luz)
@@ -1212,6 +1685,8 @@ class RefugioNocturno(Definicion):
 
     def _paso_hacia(self, ctx: Contexto, origen: Pos, destino: Pos) -> Optional[Pieza]:
         """Elige la casilla vecina transitable (lugar en Exterocepcion) que acerca a ``destino`` por BFS en ``self.mapa``."""
+        if origen == destino:
+            return None
         lugares = {
             tuple(p.carga["datos"]["pos"]): p
             for p in ctx.onda.ev("Exterocepcion").values()
@@ -1240,7 +1715,7 @@ class RefugioNocturno(Definicion):
                 if prof == 0 and sig not in lugares:
                     continue
                 mat = self.mapa.get(sig)
-                if sig != destino and mat not in TRANSITABLES_JUGADOR and mat is not None:
+                if sig != destino and ((mat not in TRANSITABLES_JUGADOR and mat is not None) or sig in self.plantas_propias):
                     continue
                 visitados.add(sig)
                 salto = primer if primer is not None else sig
@@ -1435,6 +1910,470 @@ class RefugioNocturno(Definicion):
         self.inalcanzables[vpos] = ctx.latido
         return None
 
+    def _colocar_piedra_en(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        cara: Pos,
+        C: Pos,
+        mina: Optional[Tuple[Pos, Pos]],
+        ar: float,
+        conf: float,
+        motivo: str,
+    ) -> Optional[Propuesta]:
+        """Orienta al individuo hacia la casilla libre ``C`` usando ``_plan_mirar`` y coloca piedra en ella."""
+        previa_acc = ctx.onda.ei("Accion").get("Accion")
+        motivo_prev = str(previa_acc.carga.get("motivo", "")) if previa_acc is not None else ""
+        if _dist(pos, C) == 1 and cara == (C[0] - pos[0], C[1] - pos[1]):
+            if motivo_prev == motivo and previa_acc is not None and previa_acc.carga.get("exito") is False:
+                self.inalcanzables[pos] = ctx.latido
+            else:
+                return Propuesta(
+                    Verbo.USAR, "place_stone", ar, conf, motivo,
+                    clase="place_stone", datos={"receta": "place_stone"},
+                )
+        descartados_p: Set[Pos] = set()
+        plan = self._plan_mirar(pos, C, mina)
+        while plan is not None:
+            P, A = plan
+            if P in descartados_p:
+                break
+            if pos == A and cara == (C[0] - A[0], C[1] - A[1]):
+                return Propuesta(
+                    Verbo.USAR, "place_stone", ar, conf, motivo,
+                    clase="place_stone", datos={"receta": "place_stone"},
+                )
+            if pos == P:
+                destino_mov = C if P == A else A
+                return Propuesta(
+                    Verbo.MOVER, f"celda_{destino_mov[0]}_{destino_mov[1]}", ar, conf,
+                    f"{motivo}: orientar", clase="suelo",
+                )
+            paso_p = self._paso_hacia(ctx, pos, P)
+            if paso_p is not None:
+                return Propuesta(
+                    Verbo.MOVER, paso_p.id, ar, conf,
+                    f"{motivo}: ir a P", clase=paso_p.clase,
+                )
+            descartados_p.add(P)
+            self.inalcanzables[P] = ctx.latido
+            plan = self._plan_mirar(pos, C, mina)
+            if plan is None:
+                self.inalcanzables.pop(P, None)
+        return None
+
+    def _plantar_en_bolsillo(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        cara: Pos,
+        B: Pos,
+        A: Pos,
+        ar: float,
+        conf: float,
+        motivo: str,
+    ) -> Optional[Propuesta]:
+        """Llega al acceso ``A`` viniendo de ``P = 2A - B`` para quedar mirando a ``B`` y ejecuta ``place_plant``."""
+        if pos == A and cara == (B[0] - A[0], B[1] - A[1]):
+            return Propuesta(
+                Verbo.USAR, "place_plant", ar, conf, motivo,
+                clase="place_plant", datos={"receta": "place_plant"},
+            )
+        P = (2 * A[0] - B[0], 2 * A[1] - B[1])
+        if pos == P:
+            return Propuesta(
+                Verbo.MOVER, f"celda_{A[0]}_{A[1]}", ar, conf,
+                f"{motivo}: entrar a acceso mirando bolsillo", clase="suelo",
+            )
+        paso_p = self._paso_hacia(ctx, pos, P)
+        if paso_p is not None:
+            return Propuesta(
+                Verbo.MOVER, paso_p.id, ar, conf,
+                f"{motivo}: ir a P de bolsillo", clase=paso_p.clase,
+            )
+        return None
+
+    def _picar_roca_huerto(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        mina: Optional[Tuple[Pos, Pos]],
+        ar: float,
+        conf: float,
+        prefijo: str,
+        permitir_galeria: bool = False,
+    ) -> Optional[Propuesta]:
+        """Pica la roca conocida más cercana que no sea pared del recinto ni de un bolsillo."""
+        prot = self._rocas_protegidas(mina)
+        if mina is not None:
+            e0, (dx, dy) = mina
+            galeria = [(e0[0] + k * dx, e0[1] + k * dy) for k in (1, 2, 3)]
+            if permitir_galeria:
+                for ek in galeria:
+                    if self.mapa.get(ek) == "stone":
+                        prot.discard(ek)
+            else:
+                for ek in galeria:
+                    prot.add(ek)
+        rocas = [
+            r for r, m in self.mapa.items()
+            if m == "stone" and r not in prot
+            and (r not in self.inalcanzables or ctx.latido - self.inalcanzables[r] >= 25)
+            and (
+                _dist(pos, r) == 1
+                or any(
+                    self.mapa.get((r[0] + dx, r[1] + dy)) in TRANSITABLES_JUGADOR
+                    and (r[0] + dx, r[1] + dy) not in self.plantas_propias
+                    for dx, dy in MOVIMIENTOS
+                )
+            )
+        ]
+        if not rocas:
+            return None
+        rocas.sort(key=lambda r: _dist(pos, r))
+        for r_obj in rocas[:4]:
+            if _dist(pos, r_obj) == 1:
+                return Propuesta(
+                    Verbo.COGER, f"piedra_{r_obj[0]}_{r_obj[1]}", ar, conf,
+                    f"{prefijo}: picar piedra para huerto", clase="piedra",
+                )
+            paso_p = self._paso_hacia(ctx, pos, r_obj)
+            if paso_p is not None:
+                return Propuesta(
+                    Verbo.MOVER, paso_p.id, ar, conf,
+                    f"{prefijo}: ir a piedra para huerto", clase=paso_p.clase,
+                )
+            self.inalcanzables[r_obj] = ctx.latido
+        return None
+
+    def _recoger_retono_huerto(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        mina: Tuple[Pos, Pos],
+        ar: float,
+        conf: float,
+        prefijo: str,
+    ) -> Optional[Propuesta]:
+        """Recoge un retoño de una casilla de hierba a <= 6 del recinto."""
+        e0 = mina[0]
+        ocupadas = {
+            (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1]))
+            for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase in ("vaca", "zombi", "esqueleto", "planta") and "pos" in p.carga.get("datos", {})
+        } | self.plantas_propias
+        hierbas = [
+            c for c, m in self.mapa.items()
+            if m == "grass" and _dist(c, e0) <= 6 and c not in ocupadas
+            and (c not in self.inalcanzables or ctx.latido - self.inalcanzables[c] >= 30)
+        ]
+        if not hierbas:
+            return None
+        hierbas_set = set(hierbas)
+        cara = _orientacion(ctx) or (0, 1)
+        frente = (pos[0] + cara[0], pos[1] + cara[1])
+        # 1. Si ya mira hacia una casilla de hierba válida, interactuar sin moverse (1 paso de Crafter)
+        if frente in hierbas_set:
+            if prefijo == "refugio":
+                self.intentos_retono_dia1 += 1
+            return Propuesta(
+                Verbo.COGER, f"hierba_{frente[0]}_{frente[1]}", ar, conf,
+                f"{prefijo}: recoger retoño para huerto", clase="hierba",
+            )
+        # 2. Si al avanzar a una hierba adyacente A queda otra hierba G = 2A - pos enfrente,
+        #    _interactuar avanza a A y ejecuta 'do' sobre G en el mismo latido
+        ady = [c for c in hierbas if _dist(pos, c) == 1]
+        ady_con_hierba_detras = [
+            a for a in ady if (2 * a[0] - pos[0], 2 * a[1] - pos[1]) in hierbas_set
+        ]
+        if ady_con_hierba_detras:
+            ady_con_hierba_detras.sort()
+            elegida = ady_con_hierba_detras[0]
+            if prefijo == "refugio":
+                self.intentos_retono_dia1 += 1
+            return Propuesta(
+                Verbo.COGER, f"hierba_{elegida[0]}_{elegida[1]}", ar, conf,
+                f"{prefijo}: recoger retoño para huerto", clase="hierba",
+            )
+        # 3. Orientarse hacia una hierba G usando un par transitable (P -> A) con G = 2A - P
+        pares: List[Tuple[int, Pos, Pos]] = []
+        for g in hierbas:
+            for dx, dy in MOVIMIENTOS:
+                a_pos = (g[0] - dx, g[1] - dy)
+                p_pos = (g[0] - 2 * dx, g[1] - 2 * dy)
+                if self._es_transitable_huerto(a_pos) and self._es_transitable_huerto(p_pos):
+                    d_p = 0 if pos == p_pos else _dist(pos, p_pos) + 1
+                    pares.append((d_p, p_pos, a_pos))
+        pares.sort(key=lambda item: (item[0], item[1], item[2]))
+        for _, p_pos, a_pos in pares[:6]:
+            if pos == p_pos:
+                return Propuesta(
+                    Verbo.MOVER, f"celda_{a_pos[0]}_{a_pos[1]}", ar, conf,
+                    f"{prefijo}: orientarse hacia hierba para retoño", clase="suelo",
+                )
+            paso_p = self._paso_hacia(ctx, pos, p_pos)
+            if paso_p is not None:
+                return Propuesta(
+                    Verbo.MOVER, paso_p.id, ar, conf,
+                    f"{prefijo}: acercarse a hierba para retoño", clase=paso_p.clase,
+                )
+        for h_pos in sorted((c for c in hierbas if c != pos), key=lambda c: _dist(pos, c))[:4]:
+            paso_p = self._paso_hacia(ctx, pos, h_pos)
+            if paso_p is not None:
+                return Propuesta(
+                    Verbo.MOVER, paso_p.id, ar, conf,
+                    f"{prefijo}: acercarse a hierba para retoño", clase=paso_p.clase,
+                )
+            self.inalcanzables[h_pos] = ctx.latido
+        return None
+
+    def _avanzar_bolsillo(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        cara: Pos,
+        inv: Dict[str, float],
+        b: Dict[str, Any],
+        mina: Tuple[Pos, Pos],
+        ar: float,
+        conf: float,
+        prefijo: str,
+    ) -> Optional[Propuesta]:
+        """Ejecuta los pasos 1 (preparar paredes), 2 (plantar en B desde A) y 3 (cerrar A con piedra) de un bolsillo."""
+        B: Pos = b["pos"]
+        A: Pos = b["acceso"]
+        paredes: List[Pos] = b.get("paredes", [])
+        paredes_faltan = [w for w in paredes if self._es_transitable_huerto(w)]
+        piedras_nec_bol = len(paredes_faltan) + (0 if self.mapa.get(A) == "stone" else 1)
+        excedente = self._excedente_piedra_refugio(inv, mina)
+
+        # Si aún no está plantada y no lleva retoño, recoger retoño primero antes de gastar piedra
+        if not b.get("plantada") and inv.get("sapling", 0) < 1:
+            return self._recoger_retono_huerto(ctx, pos, mina, ar, conf, prefijo)
+
+        # Paso 1: Preparar paredes del bolsillo salvo A
+        if paredes_faltan:
+            if inv.get("stone", 0) < 1:
+                return self._picar_roca_huerto(
+                    ctx, pos, mina, ar, conf, prefijo, permitir_galeria=(excedente >= piedras_nec_bol)
+                )
+            return self._colocar_piedra_en(
+                ctx, pos, cara, paredes_faltan[0], mina, ar, conf, f"{prefijo}: preparar pared bolsillo"
+            )
+
+        # Paso 2: Plantar en B desde A
+        if not b.get("plantada"):
+            if self.mapa.get(A) == "stone":
+                if _dist(pos, A) == 1:
+                    return Propuesta(
+                        Verbo.COGER, f"piedra_{A[0]}_{A[1]}", ar, conf,
+                        f"{prefijo}: abrir acceso bolsillo", clase="piedra",
+                    )
+                paso_a = self._paso_hacia(ctx, pos, A)
+                if paso_a is not None:
+                    return Propuesta(
+                        Verbo.MOVER, paso_a.id, ar, conf,
+                        f"{prefijo}: ir a acceso bolsillo", clase=paso_a.clase,
+                    )
+                return None
+            # Tener la piedra lista antes de plantar para poder cerrar A de inmediato
+            if inv.get("stone", 0) < 1:
+                return self._picar_roca_huerto(
+                    ctx, pos, mina, ar, conf, prefijo, permitir_galeria=(excedente >= 1)
+                )
+            return self._plantar_en_bolsillo(ctx, pos, cara, B, A, ar, conf, f"{prefijo}: plantar en bolsillo")
+
+        # Paso 3: Cerrar A con 1 piedra
+        if self._es_transitable_huerto(A):
+            if inv.get("stone", 0) < 1:
+                return self._picar_roca_huerto(
+                    ctx, pos, mina, max(ar, 0.85), max(conf, 0.90), prefijo, permitir_galeria=(excedente >= 1)
+                )
+            return self._colocar_piedra_en(
+                ctx, pos, cara, A, mina, max(ar, 0.85), max(conf, 0.90), f"{prefijo}: cerrar bolsillo con piedra"
+            )
+        b["cerrado"] = True
+        return None
+
+    def _bolsillo_para_cosechar_o_cerrar(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        inv: Dict[str, float],
+    ) -> Optional[Tuple[str, Dict[str, Any], Optional[Pieza]]]:
+        """Devuelve ``(modo, bolsillo, pieza_planta)`` con ``modo`` en ``('recerrar', 'cosechar')``."""
+        exter_vals = list(ctx.onda.ev("Exterocepcion").values())
+        plantas_ext = {
+            (int(p.carga["datos"]["pos"][0]), int(p.carga["datos"]["pos"][1])): p
+            for p in exter_vals
+            if p.clase == "planta" and "pos" in p.carga.get("datos", {})
+        }
+        comida = inv.get("food", 9.0)
+        for b in self.bolsillos:
+            if not b.get("plantada"):
+                continue
+            bpos: Pos = b["pos"]
+            bacceso: Pos = b["acceso"]
+            pz = plantas_ext.get(bpos)
+            madura_vista = pz is not None and pz.rasgo("nutritivo") > 0.05
+            inmadura_vista = pz is not None and pz.rasgo("nutritivo") <= 0.05
+            if b.get("cosechando"):
+                if not inmadura_vista and comida <= 8:
+                    return ("cosechar", b, pz)
+                b["cosechando"] = False
+            if self._es_transitable_huerto(bacceso):
+                if madura_vista and comida <= 8:
+                    b["cosechando"] = True
+                    return ("cosechar", b, pz)
+                return ("recerrar", b, pz)
+
+        if comida > 7:
+            return None
+        luz = _luz(ctx)
+        mina_ref = self._estado_mem.get("mina") or self.mina_recordada
+        coste_ref = self._coste_restante_pasos(pos, inv, mina_ref, incluir_huerto=False)
+        pasos_luz = self._pasos_luz_restantes(luz)
+        candidatos_cos: List[Tuple[int, Dict[str, Any], Optional[Pieza]]] = []
+        for b in self.bolsillos:
+            if not b.get("plantada"):
+                continue
+            bpos = b["pos"]
+            bacceso = b["acceso"]
+            if self.bajando and pasos_luz <= max(18.0, coste_ref * 1.55 + _dist(pos, bacceso) + 8.0):
+                continue
+            pz = plantas_ext.get(bpos)
+            madura_vista = pz is not None and pz.rasgo("nutritivo") > 0.05
+            inmadura_vista = pz is not None and pz.rasgo("nutritivo") <= 0.05
+            edad = ctx.latido - int(b.get("latido_plantacion", 0))
+            if edad >= 300 and inmadura_vista:
+                b["latido_plantacion"] = max(int(b.get("latido_plantacion", 0)), ctx.latido - 280)
+                continue
+            madura_esperada = edad >= 300 and not inmadura_vista
+            if madura_vista or (madura_esperada and comida <= 7):
+                candidatos_cos.append((_dist(pos, bacceso), b, pz))
+        if candidatos_cos:
+            candidatos_cos.sort(key=lambda item: item[0])
+            _, mejor_b, mejor_pz = candidatos_cos[0]
+            return ("cosechar", mejor_b, mejor_pz)
+        return None
+
+    def _hay_cosecha_o_recierre(self, ctx: Contexto, pos: Pos, inv: Dict[str, float]) -> bool:
+        return self._bolsillo_para_cosechar_o_cerrar(ctx, pos, inv) is not None
+
+    def _actuar_cosecha_o_recierre(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        cara: Pos,
+        inv: Dict[str, float],
+        mina: Optional[Tuple[Pos, Pos]],
+        prefijo: str = "refugio",
+    ) -> Optional[Propuesta]:
+        """Ejecuta el ciclo de cosecha (picar piedra de A, entrar en A y COMER planta en B, salir y
+        volver a colocar piedra en A) con motivación continua según hambre y madurez."""
+        sel = self._bolsillo_para_cosechar_o_cerrar(ctx, pos, inv)
+        if sel is None:
+            return None
+        modo, b, pz = sel
+        B: Pos = b["pos"]
+        A: Pos = b["acceso"]
+        hambre = acotar((9.0 - inv.get("food", 9.0)) / 9.0)
+        edad = max(0, ctx.latido - int(b.get("latido_plantacion", 0)))
+        madurez = 1.0 if (pz is not None and pz.rasgo("nutritivo") > 0.05) else acotar(edad / 300.0)
+        empuje = 0.6 * hambre + 0.4 * madurez
+        ar = acotar(0.68 + 0.30 * empuje)
+        conf = acotar(0.84 + 0.14 * empuje)
+
+        if modo == "recerrar":
+            if inv.get("stone", 0) < 1:
+                return self._picar_roca_huerto(
+                    ctx, pos, mina, max(ar, 0.85), max(conf, 0.90), prefijo,
+                    permitir_galeria=(self._excedente_piedra_refugio(inv, mina) >= 1),
+                )
+            return self._colocar_piedra_en(
+                ctx, pos, cara, A, mina, max(ar, 0.88), max(conf, 0.92), f"{prefijo}: recerrar bolsillo"
+            )
+
+        madura_vista = pz is not None and pz.rasgo("nutritivo") > 0.05
+        inmadura_vista = pz is not None and pz.rasgo("nutritivo") <= 0.05
+        if inmadura_vista:
+            b["cosechando"] = False
+            b["latido_plantacion"] = max(int(b.get("latido_plantacion", 0)), ctx.latido - 280)
+            if self._es_transitable_huerto(A) and inv.get("stone", 0) >= 1:
+                return self._colocar_piedra_en(
+                    ctx, pos, cara, A, mina, max(ar, 0.88), max(conf, 0.92), f"{prefijo}: recerrar bolsillo"
+                )
+            return None
+
+        b["cosechando"] = True
+        if self.mapa.get(A) == "stone":
+            if _dist(pos, A) == 1:
+                return Propuesta(
+                    Verbo.COGER, f"piedra_{A[0]}_{A[1]}", max(ar, 0.90), max(conf, 0.94),
+                    f"{prefijo}: abrir bolsillo para cosechar", clase="piedra",
+                )
+            P = (2 * A[0] - B[0], 2 * A[1] - B[1])
+            paso_p = (self._paso_hacia(ctx, pos, P) if self._es_transitable_huerto(P) else None) or self._paso_hacia(ctx, pos, A)
+            if paso_p is not None:
+                return Propuesta(
+                    Verbo.MOVER, paso_p.id, max(ar, 0.86), max(conf, 0.90),
+                    f"{prefijo}: acercarse a bolsillo para abrir", clase=paso_p.clase,
+                )
+            return None
+
+        if pos == A or _dist(pos, B) == 1:
+            if madura_vista and pz is not None:
+                return Propuesta(
+                    Verbo.COMER, pz.id, max(ar, 0.94), max(conf, 0.96),
+                    f"{prefijo}: comer planta madura", clase="planta",
+                )
+            b["cosechando"] = False
+            if inv.get("stone", 0) >= 1:
+                return self._colocar_piedra_en(
+                    ctx, pos, cara, A, mina, max(ar, 0.88), max(conf, 0.92), f"{prefijo}: recerrar bolsillo tras cosecha"
+                )
+            return None
+
+        paso_a = self._paso_hacia(ctx, pos, A)
+        if paso_a is not None:
+            return Propuesta(
+                Verbo.MOVER, paso_a.id, max(ar, 0.90), max(conf, 0.94),
+                f"{prefijo}: entrar a acceso para comer planta", clase=paso_a.clase,
+            )
+        b["cosechando"] = False
+        if inv.get("stone", 0) >= 1:
+            return self._colocar_piedra_en(
+                ctx, pos, cara, A, mina, max(ar, 0.88), max(conf, 0.92), f"{prefijo}: recerrar bolsillo tras cosecha"
+            )
+        return None
+
+    def _actuar_huerto_dia1(
+        self,
+        ctx: Contexto,
+        pos: Pos,
+        cara: Pos,
+        inv: Dict[str, float],
+        mina: Tuple[Pos, Pos],
+        ar: float,
+        conf: float,
+    ) -> Optional[Propuesta]:
+        """Planta y cierra 1-2 bolsillos naturales a <= 6 de e0 el día 1 antes de sellar."""
+        b_activo = next((b for b in self.bolsillos if not b.get("cerrado")), None)
+        if b_activo is None:
+            nuevo = self._buscar_bolsillo(pos, mina, solo_natural=False)
+            if nuevo is not None:
+                self.bolsillos.append(nuevo)
+                b_activo = nuevo
+            else:
+                return None
+        prop = self._avanzar_bolsillo(ctx, pos, cara, inv, b_activo, mina, ar, conf, "refugio")
+        if prop is None and not b_activo.get("plantada"):
+            # Si el bolsillo elegido resultó inalcanzable, descartarlo
+            self.inalcanzables[b_activo["pos"]] = ctx.latido
+            if b_activo in self.bolsillos:
+                self.bolsillos.remove(b_activo)
+        return prop
+
     def _abastecer(self, ctx: Contexto, pos: Pos, inv: Dict[str, float], ar: float, conf: float) -> Optional[Propuesta]:
         """Mañana fuera del refugio: ir a beber o comer (agua del mapa recordado, comida percibida o vacas
         vistas hace poco), eligiendo el objetivo por cercanía y por el déficit de cada reserva, y apartarse
@@ -1452,9 +2391,12 @@ class RefugioNocturno(Definicion):
                     objetivos.append((_dist(pos, a) - 3.0 * deficit_agua, a, f"agua_{a[0]}_{a[1]}", "agua"))
         if deficit_comida > 0:
             vistas: Set[Pos] = set()
+            bolsillos_cerrados_pos = {b["pos"] for b in self.bolsillos if self.mapa.get(b["acceso"]) == "stone"}
             for p in exter:
                 if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05:
                     cp = tuple(p.carga["datos"]["pos"])
+                    if cp in bolsillos_cerrados_pos:
+                        continue
                     if cp in self.inalcanzables and ctx.latido - self.inalcanzables[cp] < 50:
                         continue
                     vistas.add(cp)
@@ -1510,8 +2452,12 @@ class RefugioNocturno(Definicion):
         )
 
         # Con mucho día por delante, si ya tiene herramientas, mina localizada y sin sed crítica, dejar vía libre a alimentarse y plan_tecnologico
-        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "tapar", "cavar", "abastecer") and not anticipa and not sed_critica:
+        if not self.dominante and fase not in ("dormir", "amanecer", "cerrarse", "tapar", "cavar", "abastecer", "huerto") and not anticipa and not sed_critica:
             if not self._falta_herramienta(inv) and mina_est is not None:
+                if luz >= 0.5:
+                    prop_cos = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est, prefijo="refugio")
+                    if prop_cos is not None:
+                        return prop_cos
                 prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
                 if prop_vaca is not None:
                     return prop_vaca
@@ -1532,13 +2478,17 @@ class RefugioNocturno(Definicion):
                                  f"refugio: despejar {hostil.clase}", clase=hostil.clase)
             esq = next((p for p in ctx.onda.ev("Exterocepcion").values()
                         if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9 and "pos" in p.carga.get("datos", {})), None)
-            if esq is not None and _salud(ctx) >= 5 and fase not in ("abastecer", "amanecer"):
+            if esq is not None and _salud(ctx) >= 5 and fase not in ("abastecer", "amanecer", "huerto", "tapar"):
                 paso_esq = self._paso_hacia(ctx, pos, (int(esq.carga["datos"]["pos"][0]), int(esq.carga["datos"]["pos"][1])))
                 if paso_esq is not None:
                     return Propuesta(Verbo.MOVER, paso_esq.id, max(ar, 0.92), max(conf, 0.92),
                                      "refugio: cerrar distancia a esqueleto", clase=paso_esq.clase)
 
         if fase == "abastecer":
+            if luz >= 0.45:
+                prop_cos = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est or self.mina_recordada, prefijo="refugio")
+                if prop_cos is not None:
+                    return prop_cos
             prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
             if prop_vaca is not None:
                 return prop_vaca
@@ -1584,7 +2534,25 @@ class RefugioNocturno(Definicion):
                                          "refugio: orientarse para colocar mesa", clase="suelo")
             return self._explorar_con_rumbo(ctx, pos, ar, conf, "refugio: buscar sitio para mesa")
 
+        if fase == "huerto":
+            if luz >= 0.5:
+                prop_cos = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est, prefijo="refugio")
+                if prop_cos is not None:
+                    return prop_cos
+            prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
+            if prop_vaca is not None:
+                return prop_vaca
+            if mina_est is not None:
+                prop_h = self._actuar_huerto_dia1(ctx, pos, cara, inv, mina_est, ar, conf)
+                if prop_h is not None:
+                    return prop_h
+            fase = "provisiones"
+
         if fase == "provisiones":
+            if luz >= 0.5 and inv.get("drink", 0) >= 5:
+                prop_cos = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est or self.mina_recordada, prefijo="refugio")
+                if prop_cos is not None:
+                    return prop_cos
             prop_vaca = self._forrajeo_oportunista(ctx, pos, inv, luz)
             if prop_vaca is not None:
                 return prop_vaca
@@ -1616,9 +2584,11 @@ class RefugioNocturno(Definicion):
                         return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.88), max(conf, 0.88),
                                          "refugio: ir al agua antes de cerrar", clase=paso_p.clase)
                     self.inalcanzables[agua_pos] = ctx.latido
+            bolsillos_cerrados_pos = {b["pos"] for b in self.bolsillos if self.mapa.get(b["acceso"]) == "stone"}
             comidas = [
                 p for p in ctx.onda.ev("Exterocepcion").values()
                 if p.clase in ("vaca", "planta") and p.rasgo("nutritivo") > 0.05 and "pos" in p.carga.get("datos", {})
+                and tuple(p.carga["datos"]["pos"]) not in bolsillos_cerrados_pos
                 and (tuple(p.carga["datos"]["pos"]) not in self.inalcanzables or ctx.latido - self.inalcanzables[tuple(p.carga["datos"]["pos"])] >= 50)
                 and (
                     not anticipa
@@ -1648,7 +2618,17 @@ class RefugioNocturno(Definicion):
                     ctx, pos, ar, conf, "refugio: buscar agua o comida", centro_max=centro_ref, radio_max=17
                 )
 
+        # Si un bolsillo plantado quedó con el acceso abierto tras cosechar, recerrarlo con piedra antes de ir a la mina
+        if luz >= 0.35 and any(b.get("plantada") and self._es_transitable_huerto(b["acceso"]) for b in self.bolsillos):
+            prop_rec = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est or self.mina_recordada, prefijo="refugio")
+            if prop_rec is not None:
+                return prop_rec
+
         if fase in ("elegir_mina", "provisiones"):
+            if luz >= 0.5 and inv.get("drink", 0) >= 5:
+                prop_cos = self._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina_est or self.mina_recordada, prefijo="refugio")
+                if prop_cos is not None:
+                    return prop_cos
             mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
             if mina is not None:
                 e0, (dx, dy) = mina
@@ -1863,6 +2843,14 @@ class RefugioNocturno(Definicion):
                     if paso_p is not None:
                         return Propuesta(Verbo.MOVER, paso_p.id, max(ar, 0.95), max(conf, 0.95),
                                          "refugio: salir al exterior", clase=paso_p.clase)
+                    if pos == e2 and self.mapa.get(e1) in TRANSITABLES_JUGADOR:
+                        return Propuesta(Verbo.MOVER, f"celda_{e1[0]}_{e1[1]}", max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: salir al exterior", clase="suelo")
+                    if pos == e1 and self.mapa.get(e0) in TRANSITABLES_JUGADOR:
+                        return Propuesta(Verbo.MOVER, f"celda_{e0[0]}_{e0[1]}", max(ar, 0.95), max(conf, 0.95),
+                                         "refugio: salir al exterior", clase="suelo")
+                    return Propuesta(Verbo.ESPERAR, "", max(ar, 0.95), max(conf, 0.95),
+                                     "refugio: aguardar para salir")
         return None
 
 
@@ -1892,9 +2880,10 @@ class PlanTecnologico(Plan, ConPropuestas):
     RECURSO = {"wood": "arbol", "stone": "piedra", "coal": "carbon", "iron": "hierro"}
     LOGROS_PLAN = set(OBJETIVOS) | {"collect_diamond", "collect_iron", "collect_coal", "place_plant", "collect_sapling"}
 
-    def __init__(self, constantes: Any):
+    def __init__(self, constantes: Any, refugio: Optional[RefugioNocturno] = None):
         super().__init__()
         self.constantes = constantes
+        self.refugio = refugio
         self.fallos: Dict[str, int] = {}
         self.hecho: Set[str] = set()
         self.tenido: Set[str] = set()
@@ -1902,7 +2891,8 @@ class PlanTecnologico(Plan, ConPropuestas):
     def _recordar(self, ctx: Contexto, inv: Dict[str, float]) -> None:
         """Fallos y logros del plan en el latido anterior, y lo que se ha llegado a tener."""
         self.tenido |= {k for k, v in inv.items() if v >= 1}
-        previa = ctx.onda.ei("Accion").get("Accion")
+        ei_fn = getattr(ctx.onda, "ei", None)
+        previa = ei_fn("Accion").get("Accion") if ei_fn is not None else None
         if previa is None or not str(previa.carga.get("motivo", "")).startswith("plan:"):
             return
         if previa.carga.get("exito") is False:
@@ -2039,7 +3029,13 @@ class PlanTecnologico(Plan, ConPropuestas):
         clase = self.RECURSO.get(recurso)
         if clase is None:
             return
-        candidatos = [p for p in ctx.onda.ev("Exterocepcion").values() if p.clase == clase and self.fallos.get(p.id, 0) < 3]
+        protegidas = self.refugio._rocas_protegidas() if self.refugio is not None else set()
+        candidatos = [
+            p for p in ctx.onda.ev("Exterocepcion").values()
+            if p.clase == clase
+            and self.fallos.get(p.id, 0) < 3
+            and tuple(p.carga.get("datos", {}).get("pos", (-1, -1))) not in protegidas
+        ]
         if not candidatos:
             return
         objetivo = max(candidatos, key=lambda p: p.rasgo("proximidad"))
@@ -2054,3 +3050,154 @@ class PlanTecnologico(Plan, ConPropuestas):
         mejor = min(lugares, key=lambda lugar: _dist(lugar.carga["datos"]["pos"], destino_pos), default=None)
         if mejor is not None and _dist(mejor.carga["datos"]["pos"], destino_pos) < _dist(pos, destino_pos):
             self.proponer(ctx, Verbo.MOVER, mejor.id, 0.45, 0.7, f"plan: ir a por {recurso}", clase=mejor.clase)
+
+
+class PlanAsentarse(Plan, ConPropuestas):
+    """Estrategia de S3 propia de Crafter para la intención «asentarse» (sección 8.3):
+    mantiene y amplía un huerto de hasta 4 plantas en bolsillos cerrados a <= 6 del recinto
+    recordado, y ejecuta el ciclo de cosecha cuando las plantas maduran."""
+
+    nombre = "asentarse"
+    impulsos = ("asentarse",)
+    prioridad = 15
+    agotable = False
+    OBJETIVO_PLANTAS = 4
+
+    def __init__(self, refugio: RefugioNocturno) -> None:
+        super().__init__()
+        self.refugio = refugio
+
+    def _recinto_recordado(self, ctx: Contexto) -> Optional[Tuple[Pos, Pos]]:
+        if self.refugio.mina_recordada is not None:
+            return self.refugio.mina_recordada
+        if self.refugio.paso_oscuro and self.refugio._estado_mem.get("mina") is not None:
+            mina_m: Tuple[Pos, Pos] = self.refugio._estado_mem["mina"]
+            return mina_m
+        return None
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        self.refugio._actualizar_memoria(ctx)
+        if self.refugio._estado_mem.get("fase") in ("dormir", "amanecer", "cerrarse", "tapar", "cavar"):
+            return False
+        pos = _posicion(ctx)
+        if pos is None:
+            return False
+        mina = self._recinto_recordado(ctx)
+        if mina is None:
+            return False
+        luz = _luz(ctx)
+        inv = _inventario(ctx)
+        if luz >= 0.5 and self.refugio._hay_cosecha_o_recierre(ctx, pos, inv):
+            return True
+        if self.refugio._anticipa_refugio(luz, pos, inv, mina):
+            return False
+        if luz <= 0.83 or inv.get("food", 0) < 5 or inv.get("drink", 0) < 5:
+            return False
+        cerrados = sum(1 for b in self.refugio.bolsillos if b.get("cerrado"))
+        return cerrados < self.OBJETIVO_PLANTAS
+
+    def construir(self, ctx: Contexto, estrategia: Pieza) -> Optional[List[Dict[str, Any]]]:
+        cerrados = sum(1 for b in self.refugio.bolsillos if b.get("cerrado"))
+        if cerrados < self.OBJETIVO_PLANTAS:
+            return [{"meta": f"planta_{i + 1}"} for i in range(cerrados, self.OBJETIVO_PLANTAS)]
+        return [{"meta": "cosechar"}]
+
+    def cumplido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        meta = str(paso.get("meta", ""))
+        if meta.startswith("planta_"):
+            n = int(meta.split("_")[1])
+            return sum(1 for b in self.refugio.bolsillos if b.get("cerrado")) >= n
+        return False
+
+    def fallido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
+        return False
+
+    def _emitir(self, ctx: Contexto, prop: Propuesta) -> None:
+        datos = prop.datos or {}
+        self.proponer(
+            ctx, prop.verbo, prop.objetivo, prop.arousal, prop.confianza,
+            prop.motivo, clase=prop.clase, **datos,
+        )
+
+    def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
+        self.refugio._actualizar_memoria(ctx)
+        if self.refugio._estado_mem.get("fase") in ("dormir", "amanecer", "cerrarse", "tapar", "cavar"):
+            return
+        pos = _posicion(ctx)
+        cara = _orientacion(ctx) or (0, 1)
+        inv = _inventario(ctx)
+        luz = _luz(ctx)
+        mina = self._recinto_recordado(ctx)
+        if pos is None or mina is None:
+            return
+
+        # 1. Cosechar (o recerrar bolsillo abierto) siempre que haya luz
+        if luz >= 0.5:
+            prop_cos = self.refugio._actuar_cosecha_o_recierre(ctx, pos, cara, inv, mina, prefijo="asentarse")
+            if prop_cos is not None:
+                self._emitir(ctx, prop_cos)
+                return
+
+        if self.refugio._anticipa_refugio(luz, pos, inv, mina):
+            return
+        if luz <= 0.83 or inv.get("food", 0) < 5 or inv.get("drink", 0) < 5:
+            return
+
+        cerrados = sum(1 for b in self.refugio.bolsillos if b.get("cerrado"))
+        if cerrados >= self.OBJETIVO_PLANTAS:
+            return
+
+        # Seleccionar el bolsillo objetivo primero para proteger sus paredes antes de picar roca
+        b_activo = next((b for b in self.refugio.bolsillos if not b.get("cerrado")), None)
+        if b_activo is None:
+            nuevo = self.refugio._buscar_bolsillo(pos, mina, solo_natural=False)
+            if nuevo is None and self.OBJETIVO_PLANTAS - cerrados >= 2:
+                fila = self.refugio._planificar_fila_bolsillos(
+                    pos, mina, n_plantas=min(3, self.OBJETIVO_PLANTAS - cerrados)
+                )
+                if fila:
+                    self.refugio.bolsillos.extend(fila)
+                    b_activo = fila[0]
+            elif nuevo is not None:
+                self.refugio.bolsillos.append(nuevo)
+                b_activo = nuevo
+
+        # 2. Retoño: si faltan plantas y no lleva retoño -> COGER hierba a <= 6 del recinto
+        if (b_activo is None or not b_activo.get("plantada")) and inv.get("sapling", 0) < 1:
+            prop_ret = self.refugio._recoger_retono_huerto(ctx, pos, mina, 0.68, 0.86, "asentarse")
+            if prop_ret is not None:
+                self._emitir(ctx, prop_ret)
+                return
+
+        # 3. Piedra: si lleva menos de 2 -> picar la roca conocida más cercana que no sea pared
+        piedras_nec = (
+            len([w for w in b_activo.get("paredes", []) if self.refugio._es_transitable_huerto(w)])
+            + (0 if self.refugio.mapa.get(b_activo["acceso"]) == "stone" else 1)
+            if b_activo is not None else 2
+        )
+        if inv.get("stone", 0) < max(1, piedras_nec) or (
+            inv.get("stone", 0) < 2
+            and any(
+                m == "stone" and _dist(pos, r) <= 5 and r not in self.refugio._rocas_protegidas(mina)
+                for r, m in self.refugio.mapa.items()
+            )
+        ):
+            prop_piedra = self.refugio._picar_roca_huerto(
+                ctx, pos, mina, 0.68, 0.86, "asentarse", permitir_galeria=False
+            )
+            if prop_piedra is not None:
+                self._emitir(ctx, prop_piedra)
+                return
+
+        # 4. Bolsillo: completar los pasos 1-3 de 8.2
+        if b_activo is not None:
+            prop_bol = self.refugio._avanzar_bolsillo(
+                ctx, pos, cara, inv, b_activo, mina, 0.72, 0.88, "asentarse"
+            )
+            if prop_bol is not None:
+                self._emitir(ctx, prop_bol)
+                return
+            if not b_activo.get("plantada"):
+                self.refugio.inalcanzables[b_activo["pos"]] = ctx.latido
+                if b_activo in self.refugio.bolsillos:
+                    self.refugio.bolsillos.remove(b_activo)
