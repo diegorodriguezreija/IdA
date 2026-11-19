@@ -1,71 +1,63 @@
-# Deuda técnica de Crafter
+# Deuda técnica de Crafter (pendiente tras el encargo C)
 
-Registro de compromisos de diseño, limitaciones heurísticas y puntos pendientes acumulados en la adaptación de Crafter (`ida/mundos/crafter.py`), identificados durante las fases de diagnóstico y los encargos C.0 a C.4.
-
----
-
-## 1. Vaivén episódico en campo abierto (arbitraje S1 vs S2)
-- **Fichero / Contexto:** [`ida/mundos/crafter.py`](file:///f:/code/IdA/ida/mundos/crafter.py), [`ida/sistemas/s1.py`](file:///f:/code/IdA/ida/sistemas/s1.py), [`docs/INFORME_C.md:345`](file:///f:/code/IdA/docs/INFORME_C.md#L345).
-- **Descripción:** En campo abierto, 12 de las 20 vidas del arnés (semillas 11–30) presentan episodios de vaivén (> 20 latidos consecutivos alternando entre 2 casillas transitables).
-- **Causa:** Conflicto de arbitraje en el Tribunal entre reflejos defensivos de Sistema 1 (`huir`, `sobresalto`) y metas utilitarias de Sistema 2 (`alimentarse`, `refugio_nocturno`). Al huir de un hostil, el individuo da un paso atrás; al salir del radio de amenaza inmediata, la meta de hambre o aprovisionamiento recupera el control y ordena avanzar de nuevo hacia el recurso, cayendo en oscilaciones hasta el agotamiento de vitales o la intercepción por monstruos.
-- **Pendiente:** Mecanismo de inercia o histéresis espacial en la retirada y resolución de colisiones en campo abierto sin atajos cableados.
+Lista de asuntos detectados durante el encargo C (`docs/ENCARGO_CRAFTER_C.md`) que **no** se abordan en él, para tratarlos cuando termine. Cada punto lleva dónde se vio y una propuesta de partida, sin compromiso de diseño.
 
 ---
 
-## 2. Detección y alcance de recursos inalcanzables tras paredes macizas
-- **Fichero / Contexto:** [`ida/mundos/crafter.py:1120-1170`](file:///f:/code/IdA/ida/mundos/crafter.py#L1120-L1170) (`_paso_hacia`, `self.inalcanzables`).
-- **Descripción:** La búsqueda heurística de aproximación hacia recursos detectados (agua, hierba, plantas) evalúa la distancia Manhattan hacia la casilla objetivo. Cuando el recurso está separado por una pared continua de roca maciza (como en la semilla 18 en `e3 = (43, 25)` con agua en `(45, 25)`), retroceder para rodear aumenta la distancia Manhattan, por lo que el algoritmo se bloquea o cae en bucles locales.
-- **Mitigación actual:** En C.0c-2 se introdujo un enfriamiento de 50 latidos para destinos inalcanzables en el refugio.
-- **Pendiente:** Navegación topológica mediante el hipocampo del Core (`ctx.memoria.ruta`) para cualquier recurso fuera de línea visual directa, evitando la aproximación por Manhattan pura en entornos rocosos.
+## 1. `RefugioNocturno` hace casi todo
 
----
+- **Qué pasa:** es una estrategia de S2 para el impulso «cobijo». Pero hoy también reúne madera y herramientas, bebe y come antes de sellar, se abastece por la mañana, patrulla (C.3b) y caza vacas (C.3d). Lo ha ido absorbiendo porque guarda la memoria del mapa y de las vacas.
+- **Por qué importa:**
+  - Se aleja de los tres sistemas: comer y beber son de S1, y aquí se resuelven dentro de S2, puenteando a `alimentarse`.
+  - El fichero crece mucho y cada sesión de un modelo cuesta más.
+- **Propuesta, como refactorización medida que no cambie la conducta** (arnés y benchmark iguales dentro del ruido):
+  - un mapa cognitivo compartido del mundo (lo percibido y recordado: materiales, vacas, agua, recintos), legible por varios componentes;
+  - el forrajeo y el abastecimiento en un componente propio de S1;
+  - la madera y las herramientas, en `PlanTecnologico`;
+  - `RefugioNocturno`, limitado a elegir, construir, ocupar y abrir el refugio.
 
-## 3. Firmeza del reposo nocturno frente a reflejos externos
-- **Fichero / Contexto:** [`ida/mundos/crafter.py:1435-1445`](file:///f:/code/IdA/ida/mundos/crafter.py#L1435-L1445) (`RefugioNocturno.paso`, fase `dormir`).
-- **Descripción:** Cuando el individuo duerme dentro de un recinto sellado con piedra, los zombis o esqueletos que deambulan por el exterior a distancia $\le 3$ generan percepciones sensoriales de peligro que activan `S1:sobresalto`. Si `ESPERAR` en la fase `dormir` no retiene la máxima prioridad (`arousal = 1,0`, `confianza = 1,0`), los sobresaltos de S1 despiertan o agitan al individuo, impidiendo la recuperación somática completa de energía y consumiendo vitales inútilmente toda la noche (semilla 11 en C.0c-1).
-- **Mitigación actual:** C.0c-fix fijó `ESPERAR` en 1,0/1,0 durante `dormir`.
-- **Pendiente:** Atenuación somática y sensorial del arousal durante el sueño biológico profundo en el Core/Soma, de forma que un individuo seguro en cobijo no reaccione a estímulos tenues al otro lado de barreras infranqueables.
+## 2. La intensidad del impulso no llega al Tribunal (base)
 
----
+- **Qué pasa:** en calma, el Tribunal decide casi solo por la confianza. Las estrategias propias de Crafter lo compensan fijando su arousal y su confianza según la urgencia: `_motivacion` en `RefugioNocturno`, la urgencia de C.0c-1 y el hueco gástrico de C.3d. Es un apaño declarado.
+- **Propuesta:** decidir en la base cómo modula la intensidad del impulso (déficit de S1) la puntuación, y si S2 (valor y emoción) interviene. Después, retirar los apaños del mundo y medir.
 
-## 4. Rigidez geométrica en la evaluación de recintos y madrigueras
-- **Fichero / Contexto:** [`ida/mundos/crafter.py:1010-1080`](file:///f:/code/IdA/ida/mundos/crafter.py#L1010-L1080) (`_evaluar_recinto`, `_buscar_mejor_mina`).
-- **Descripción:** El diseño inicial exigía galerías rectas de 3 casillas con laterales herméticos, descartando entre el 95 % y el 99 % de los afloramientos de piedra en el paso 0 (semillas 21, 26 y 27). Aunque C.1 flexibilizó el recinto a 2 casillas (`e0`, `e1`) y añadió la fase `tapar`, la búsqueda sigue basada en plantillas direccionales discretas (4 orientaciones cardinales) que no reconocen cavidades naturales en L o nichos irregulares cerrables con un solo bloque.
-- **Pendiente:** Detección topológica de componentes conexos y cuellos de botella en el mapa local mediante análisis de grafos, en lugar de plantillas rígidas de coordenadas relativas.
+## 3. Vaivén en campo abierto
 
----
+- **Qué pasa:** en 12 de 20 vidas (semillas 11–30) el individuo va y viene más de 20 latidos entre 2 casillas, sobre todo al alternar `huir`, `sobresalto` y `alimentarse` (`INFORME_C.md`, 2.11). El arreglo de C.0c-2 solo resolvió el caso de chocar contra la roca.
+- **Propuesta:** un diagnóstico de qué estrategias alternan y con qué puntuaciones. Probablemente es cosa del Tribunal (continuidad o histéresis), así que se cruza con el punto 2.
 
-## 5. Abastecimiento forzado previo al sellado y riesgo al anochecer
-- **Fichero / Contexto:** [`ida/mundos/crafter.py:1360-1410`](file:///f:/code/IdA/ida/mundos/crafter.py#L1360-L1410) (`RefugioNocturno._abastecer`, fase `provisiones`).
-- **Descripción:** El intento en C.2 de forzar la acumulación de reservas de comida ($\ge 6$) antes de permitir el sellado provocó retrasos letales: individuos con mina localizada retrasaron la entrada para cazar vacas lejanas, siendo sorprendidos por la noche al aire libre sin margen de luz (semilla 20, muerte en L168 en C.2 frente a supervivencia hasta el final en C.1).
-- **Mitigación actual:** C.2 fue revertida, manteniendo el sellado prioritario en cuanto el margen de luz lo exige.
-- **Pendiente:** Regulación homeostática continua de la ingesta durante todo el día para llegar al atardecer naturalmente saciado, sin forzar fases exclusivas de aprovisionamiento de última hora.
+## 4. Grupo Reactivo: muertes por sed
 
----
+- **Qué pasa:** en los benchmarks completos (`c3b_completo`, `c3d_completo`), Reactivo tiene 10–11 de 30 muertes por sed, frente a 4–7 en los demás grupos, y es el único que no mejora en latidos frente a `ref_c0` (−23,9 ± 97,7).
+- **Propuesta:** diagnosticar qué hace distinto ese perfil con el agua (¿no usa `RefugioNocturno` igual? ¿no llega a `provisiones`?).
 
-## 6. Dispersión fuera del área de campeo y forrajeo diurno
-- **Fichero / Contexto:** [`ida/mundos/crafter.py:1260-1320`](file:///f:/code/IdA/ida/mundos/crafter.py#L1260-L1320) (`_explorar_con_rumbo`, radio $\le 17$).
-- **Descripción:** Cuando el individuo sale del refugio al amanecer, la tendencia a explorar rumbos abiertos lo aleja progresivamente del refugio inicial. Al superar la distancia de 17 casillas, las plantas sembradas o las fuentes seguras de agua quedan fuera del radio de simulación/atención y se pierde la inversión de hábitat.
-- **Mitigación actual:** C.3 acotó la exploración a un radio de Manhattan $\le 17$ respecto al recinto recordado y C.3d introdujo forrajeo oportunista de vacas en el camino diurno.
-- **Pendiente:** Concepto de área de campeo (*home range*) integrado en el hipocampo del Core, con gradientes de familiaridad y fidelidad al sitio de anidación.
+## 5. Piezas mantenidas provisionalmente
 
----
+- **C.3b (patrulla, visitadas que caducan) y C.3d (caza oportunista):** no confirmaron del todo su hipótesis. Su efecto es pequeño, en la dirección buena en evaluación, y no significativo.
+- **Propuesta:** reevaluarlas cuando C.4 esté cerrado. Si no aportan nada medible junto al huerto, retirarlas para simplificar.
 
-## 7. Acoplamiento sensorial y accesos directos al entorno (`env._world`)
-- **Fichero / Contexto:** [`ida/mundos/crafter.py`](file:///f:/code/IdA/ida/mundos/crafter.py) (`_transitable`, `_cobijo`, `observar`, `vista`, `PlanTecnologico`).
-- **Descripción:** En diversos puntos auxiliares de Crafter aún subsisten consultas directas a arrays internos del simulador o comprobaciones que trascienden la percepción visual estricta del individuo (deuda técnica arrastrada desde la Fase 5, registrada en commit `5eebee8`).
-- **Pendiente:** Encapsulación estricta en el sensor del mundo, garantizando que el individuo solo razone a partir de piezas depositadas en la Onda (`Exterocepcion`, `Propiocepcion`, `Soma`) conforme a la Regla 3 de `AGENTS.md`.
+## 6. Casos residuales del primer día
 
----
+- **Sin roca a la vista** (2 de 40 vidas; semilla 35, roca a 25 casillas).
+- **Candidatos lejanos que desvían de una roca cercana** (semilla 16 en C.1).
+- **Flechas al anochecer antes de cerrar** (2 de 20 en el arnés largo).
 
-## 8. Rediseño del huerto
-- **Fichero / Contexto:** [`ida/mundos/crafter.py`](file:///f:/code/IdA/ida/mundos/crafter.py) (antigua rama `huerto` en `RefugioNocturno`), [`docs/MEDICION_WIP_C4.md`](file:///f:/code/IdA/docs/MEDICION_WIP_C4.md), [`docs/INFORME_C.md`](file:///f:/code/IdA/docs/INFORME_C.md) (apartado 8).
-- **Lecciones aprendidas de C.4:**
-  1. Plantar el día 1 compite frontalmente con el sellado nocturno por escasez de tiempo y recursos (redujo el sellado de 32 a 25/29 vidas).
-  2. Abrir una pared exterior para cosechar expone el cultivo: si un hostil aparece durante la recolección, el Sistema 1 aborta el recierre para huir y la celda queda permanentemente transitable como `path`, permitiendo que monstruos posteriores destruyan la plantación (como en la semilla 11 en L821).
-  3. Acoplar la lógica de cultivo dentro de la máquina de estados de `RefugioNocturno` sobrecarga el componente y deteriora la conducta global incluso en las vidas donde no se llega a plantar.
-- **Líneas del rediseño:**
-  - **Nichos orientados al interior:** El hueco del cultivo debe abrirse hacia el interior del refugio o la madriguera, protegido por la envoltura exterior de roca natural o colocada, de modo que nunca exista una celda transitable conectada al exterior del bioma.
-  - **Cosecha sin apertura exterior:** El individuo debe poder interactuar y cosechar (`eat_plant` / `collect`) directamente desde el espacio seguro interno sin necesidad de minar ni reponer bloques de cierre.
-  - **Plantación a partir del día 2:** El día 1 se consagra exclusivamente a la supervivencia básica (herramientas, refugio, agua y sellado nocturno). La agricultura se inicia en los días sucesivos, una vez asegurado el cobijo estable y con excedente de retoños y tiempo diurno.
-  - **Componente separado:** Desacoplar la agricultura de `RefugioNocturno`. Debe estructurarse como un componente propio independiente (p. ej. `Horticultura` o meta de S3), preservando la simplicidad y robustez de la máquina de estados del refugio.
+Son pocos casos; solo si siguen pesando tras C.4.
+
+## 8. Rediseño del huerto (C.4 descartada)
+
+- **Qué pasó:** C.4 (huecos cerrados junto al refugio, rama `wip/c4-argon`) activó la regla de parada: selladas el día 1, 29/40; mediana del arnés largo, 401,5 frente a 417 (`INFORME_C.md`, apartado 8). Cuando el huerto llega a funcionar, alarga mucho la vida (semillas 11 y 20: 1040 y 1168 latidos), pero el diseño falla por tres motivos:
+  - plantar el día 1 compite con sellar;
+  - abrir el hueco para cosechar lo deja expuesto si una huida interrumpe el cierre (semilla 11, L724–L821);
+  - el código añadido a `RefugioNocturno` (~1200 líneas) empeora la conducta aunque casi no se use.
+- **Propuesta para un encargo futuro:**
+  - plantas en nichos que den al **interior** del refugio, que se comen desde dentro sin abrir nada;
+  - plantar a partir del **día 2**;
+  - un **componente separado y pequeño**, después de la refactorización del punto 1;
+  - medir primero con una sola planta.
+- **Aprovechable de la rama WIP:** el arreglo de salida en `amanecer` (no quedarse atascado en la galería; semilla 17) y la separación entre plantas vistas como obstáculo y plantas propias como pared. Cada uno, con su propia medición.
+
+## 9. Herramientas de diagnóstico
+
+- **Qué pasa:** hay varios scripts de diagnóstico parecidos (`diagnostico_crafter_c0b.py`, `diagnostico_vacas_c3b.py`, `diagnostico_vacas_c3c.py`, `diagnostico_c3d_d_e.py`) y el arnés ha crecido.
+- **Propuesta:** unificar en el arnés un registro por latido reutilizable (fase, ganador del Tribunal, vitales, posición) y que los diagnósticos sean consultas sobre ese registro.

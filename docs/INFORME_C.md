@@ -1291,11 +1291,13 @@ A continuación se tabulan las mediciones empíricas requeridas por la sección 
 
 | Pieza | Nombre / Mecanismo | Commit clave | Estado | Justificación empírica / Cifras clave |
 |---|---|---|:---:|---|
+| **C.0 / C.0a-2** | Atribución de causas de muerte durante la vida sin sesgo de proximidad | `e31027c`, `f2f1262` | **Aceptada** | Falsos positivos de esqueleto sin flecha pasan de 11 a 0 en semillas 11–30, reclasificando correctamente a sed y hambre. |
 | **C.0c-fix** | Corrección de fallos de S1 (desellar por vitales, destinos inalcanzables en mina, quietud en dormir) | `2ffb684` | **Aceptada** | Elimina al 100 % las muertes dentro del refugio sellado (11/11 salen). Semilla 11 duerme toda la noche inmóvil y sobrevive hasta L473. Benchmark Equilibrado: +26,17 latidos, +626,60 fitness. |
 | **C.1** | Recinto flexible (2 casillas, orientación `_plan_mirar`, fase `tapar`) | `e0b5c7f` | **Aceptada** | Selladas día 1 suben de 11 a 16/20 en semillas 11–30 (+25,0 pp) y de 12 a 16/20 en semillas no vistas 31–50 (+20,0 pp). Vivas en benchmark rápido Equilibrado suben de 6 a 11/30. |
 | **C.2** | Reservas antes de sellar con vacas recordadas (`food < 7`) | `4011bef` | **Revertida** (`1afe8f6`) | Retroceso en validación de semillas 31–50: selladas día 1 caen de 16 a 14/20; vivas caen de 4 a 3/20; muertes hambre + sed se mantienen en 10/20. Muerte prematura de semilla 20 en L168. |
-| **C.3** | Línea base de horizonte largo y área de campeo ($\le 17$) | `153c1ce` | **Provisional** | Arnés largo (semillas 11–30): media de 410,7 latidos, mediana de 409,0. Fidelidad al refugio del 75 % y permanencia a radio $< 18$ en el 77,8 % de los días. |
-| **C.3d** | Forrajeo oportunista diurno en `RefugioNocturno` | `d00d010` / `ca5205f` | **Aceptada** (HEAD) | Suben las vivas en los 4 grupos a 30/120 (+9 vidas, +42,9 %). Selladas día 1 se consolidan en 16/20 (80 %) en semillas 31–50. Arnés largo (11–30): media sube a 454,1 (+43,4 latidos) y récord de vida a 1002 latidos (semilla 20). |
+| **C.3** | Línea base de horizonte largo (solo medición) | `153c1ce` | **Provisional** | Arnés largo (semillas 11–20 y 11–30): media de 410,7 latidos, mediana de 409,0. Fidelidad al refugio del 75 % y permanencia a radio $< 18$ en el 88,9 % de los días en semillas 11–20 (77,8 % en semillas 11–30). |
+| **C.3b** | Patrulla con `visitadas` que caducan a 150 latidos y área $\le 17$ | `6d09465` | **Provisional** | Hipótesis no confirmada: ganancia concentrada casi íntegramente en la semilla 17 (+269 latidos); en benchmark rápido Equilibrado el efecto es neutro (vivas 11 → 9, `eat_cow` 19 → 18). Se mantiene provisionalmente por acotar el área a $\le 17$. |
+| **C.3d** | Forrajeo oportunista diurno en `RefugioNocturno` | `d00d010` / `ca5205f` | **Provisional** | Hipótesis confirmada a medias: el % de vacas comidas de día sube (de 50 % a 65 %), pero las vacas comidas en total apenas cambian (19 vs 18 en arnés largo). Las muertes por hambre bajan en el benchmark (19 a 13 en 120 vidas), pero no en el arnés largo (11 vs 11). Vivas totales en benchmark suben a 30/120 (pero en Reactivo bajan de 7 a 4). |
 | **C.4** | Huerto en bolsillos cerrados contiguos al refugio | `c39cb4a` (`wip/c4-argon`) | **Rechazada** (Aparcada) | Activa ambas reglas de parada: selladas día 1 caen a 25/40 (inicial) y 29/40 (ajustado) [< 30/40]; mediana en arnés largo cae a 352,0 y 401,5 [< 417,0]. Destrucción de cultivo por apertura exterior en semilla 11 (L821). Rama aparcada sin merge. |
 
 ---
@@ -1307,16 +1309,43 @@ A continuación se tabulan las mediciones empíricas requeridas por la sección 
    - Semillas no vistas (31–50): de **11 / 20 (55,0 %)** en `ref_c0` a **16 / 20 (80,0 %)** en C.3d (+25,0 pp).
    - Ausencia de daño nocturno dentro del refugio: **100 %** de las vidas selladas pasan la noche ilesas.
 2. **Supervivencia global en el benchmark completo (4 grupos, 120 vidas a L600):**
-   - Vidas vivas al final: pasan de **21 / 120 (17,5 %)** en `ref_c0` a **30 / 120 (25,0 %)** en C.3d (+9 vidas vivas).
+   - Vidas vivas al final: pasan de **21 / 120 (17,5 %)** en `ref_c0` a **30 / 120 (25,0 %)** en C.3d (+9 vidas vivas). Por grupos: Equilibrado sube de 6 a 9, Valiente sube de 3 a 9, Sin experiencia sube de 5 a 8, pero **en Reactivo bajan de 7 a 4**.
    - Vidas con logro `wake_up`: aumentan de **76 / 120 (63,3 %)** a **90 / 120 (75,0 %)** (+14 vidas).
 3. **Horizonte de vida extendido (arnés largo, semillas 11–30, 3000 latidos):**
    - Media de latidos vividos: de **410,7** en C.3 a **454,1** en C.3d (+43,4 latidos).
    - Mediana: de **409,0** a **417,0** latidos.
    - Máximo de supervivencia: pasa de **753** latidos (semilla 21 en C.3) a **1002** latidos (semilla 20 en C.3d).
+   - Días a distancia $< 18$ del refugio previo: **77,8 %** en las semillas 11–30 (frente al 88,9 % en las semillas 11–20 de C.3).
 4. **Pureza estricta del framework base:**
    - Commits que modificaron `ida/core/` o `ida/sistemas/` en toda la Fase C: **0**.
    - `git diff --stat main...HEAD -- ida/core ida/sistemas`: completamente vacío.
-   - Batería de pruebas: 171 tests en verde, 0 fallos de linter y tipado estático verificado.
+   - Batería de pruebas: **167 tests en verde** en esta rama (los 171 correspondían a la rama `wip/c4-argon`), 0 fallos de linter y tipado estático verificado.
+
+---
+
+### 9.3 Veredicto frente al criterio de la sección 10
+
+Evaluación sistemática frente a los cuatro criterios formales de éxito establecidos en la sección 10 de [`docs/ENCARGO_CRAFTER_C.md`](docs/ENCARGO_CRAFTER_C.md):
+
+1. **Criterio 1 (Principal: días vividos en arnés largo y latidos en ≥ 2 grupos del benchmark): No se cumple.**  
+   - En el benchmark de 600 latidos frente a `ref_c0`, la subida de latidos es estadísticamente significativa **solo en el grupo Valiente** (+73,60 ± 66,17); en Equilibrado (+39,00 ± 75,07) y Sin experiencia (+27,03 ± 72,52) el intervalo incluye el cero, y en Reactivo descienden (-21,30 ± 103,94).  
+   - En el arnés largo (semillas 11–30 a 3000 latidos), la media sube +43,40 y la mediana sube +8,00 latidos, sin prueba de significación estadística.
+2. **Criterio 2 (Salvaguarda: límite inferior del IC 95 % de Δ logros ≥ −1,0 en todos los grupos): Se cumple.**  
+   - Equilibrado: +0,37 ± 0,95 (límite inferior: -0,58).  
+   - Valiente: +0,47 ± 0,79 (límite inferior: -0,32).  
+   - Reactivo: +0,10 ± 1,10 (límite inferior: **-1,00**).  
+   - Sin experiencia: +0,17 ± 0,61 (límite inferior: -0,44).  
+   Todos los grupos cumplen la salvaguarda de no degradar logros por debajo de -1,00.
+3. **Criterio 3 (Ningún grupo empeora de forma significativa en latidos ni en fitness): Se cumple.**  
+   - Ningún grupo presenta un descenso con significación estadística al 95 %: en Reactivo los latidos varían en -21,30 ± 103,94 (a la baja, pero con un intervalo amplio que incluye ampliamente el cero) y su fitness sube en +79,27 ± 1183,89.
+4. **Criterio 4 (Cada pieza confirma su hipótesis): Parcial.**  
+   - **Confirmadas:** C.0 / C.0a-2 (atribución limpia), C.0c-fix (cero muertes en refugio, quietud nocturna) y C.1 (sellado diurno al 80 % validado).  
+   - **Parciales / no confirmadas del todo:** C.3b (ganancia concentrada en semilla 17, neutro en benchmark) y C.3d (sube el % de vacas diurnas pero no el total absoluto de vacas comidas; hambre baja en benchmark pero no en arnés largo).  
+   - **Descartadas / revertidas:** C.2 (revertida) y C.4 (rechazada por parada).
+
+**Conclusión:**  
+El encargo C queda **cumplido en parte**. Se gana el sellado del día 1 (del 55 % al 80 %, validado en 31–50) y la supervivencia a 600 latidos; el hambre sigue limitando la vida larga (huerto: punto 8 de [`docs/DEUDA_TECNICA_CRAFTER.md`](docs/DEUDA_TECNICA_CRAFTER.md)).
+
 
 
 
