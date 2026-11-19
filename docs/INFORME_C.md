@@ -1283,6 +1283,42 @@ A continuación se tabulan las mediciones empíricas requeridas por la sección 
 | **Latidos medios** | 334,7 | 420,0 | **+85,3 latidos** |
 | **Causas de muerte** | Sed: 6<br>Zombi: 6<br>Hambre: 4<br>Esqueleto: 2 | Hambre: 6<br>Zombi: 5<br>Sed: 3<br>Esqueleto: 1 | Sed: -3<br>Zombi: -1<br>Hambre: +2<br>Esqueleto: -1 |
 
+---
+
+### 9.2 Resumen del encargo C
+
+#### Tabla de estado pieza a pieza
+
+| Pieza | Nombre / Mecanismo | Commit clave | Estado | Justificación empírica / Cifras clave |
+|---|---|---|:---:|---|
+| **C.0c-fix** | Corrección de fallos de S1 (desellar por vitales, destinos inalcanzables en mina, quietud en dormir) | `2ffb684` | **Aceptada** | Elimina al 100 % las muertes dentro del refugio sellado (11/11 salen). Semilla 11 duerme toda la noche inmóvil y sobrevive hasta L473. Benchmark Equilibrado: +26,17 latidos, +626,60 fitness. |
+| **C.1** | Recinto flexible (2 casillas, orientación `_plan_mirar`, fase `tapar`) | `e0b5c7f` | **Aceptada** | Selladas día 1 suben de 11 a 16/20 en semillas 11–30 (+25,0 pp) y de 12 a 16/20 en semillas no vistas 31–50 (+20,0 pp). Vivas en benchmark rápido Equilibrado suben de 6 a 11/30. |
+| **C.2** | Reservas antes de sellar con vacas recordadas (`food < 7`) | `4011bef` | **Revertida** (`1afe8f6`) | Retroceso en validación de semillas 31–50: selladas día 1 caen de 16 a 14/20; vivas caen de 4 a 3/20; muertes hambre + sed se mantienen en 10/20. Muerte prematura de semilla 20 en L168. |
+| **C.3** | Línea base de horizonte largo y área de campeo ($\le 17$) | `153c1ce` | **Provisional** | Arnés largo (semillas 11–30): media de 410,7 latidos, mediana de 409,0. Fidelidad al refugio del 75 % y permanencia a radio $< 18$ en el 77,8 % de los días. |
+| **C.3d** | Forrajeo oportunista diurno en `RefugioNocturno` | `d00d010` / `ca5205f` | **Aceptada** (HEAD) | Suben las vivas en los 4 grupos a 30/120 (+9 vidas, +42,9 %). Selladas día 1 se consolidan en 16/20 (80 %) en semillas 31–50. Arnés largo (11–30): media sube a 454,1 (+43,4 latidos) y récord de vida a 1002 latidos (semilla 20). |
+| **C.4** | Huerto en bolsillos cerrados contiguos al refugio | `c39cb4a` (`wip/c4-argon`) | **Rechazada** (Aparcada) | Activa ambas reglas de parada: selladas día 1 caen a 25/40 (inicial) y 29/40 (ajustado) [< 30/40]; mediana en arnés largo cae a 352,0 y 401,5 [< 417,0]. Destrucción de cultivo por apertura exterior en semilla 11 (L821). Rama aparcada sin merge. |
+
+---
+
+#### Cifras finales del encargo
+
+1. **Sellado nocturno del día 1:**
+   - Semillas de diseño (11–30): de **11 / 20 (55,0 %)** en la base a **16 / 20 (80,0 %)** en C.1 y C.3d.
+   - Semillas no vistas (31–50): de **11 / 20 (55,0 %)** en `ref_c0` a **16 / 20 (80,0 %)** en C.3d (+25,0 pp).
+   - Ausencia de daño nocturno dentro del refugio: **100 %** de las vidas selladas pasan la noche ilesas.
+2. **Supervivencia global en el benchmark completo (4 grupos, 120 vidas a L600):**
+   - Vidas vivas al final: pasan de **21 / 120 (17,5 %)** en `ref_c0` a **30 / 120 (25,0 %)** en C.3d (+9 vidas vivas).
+   - Vidas con logro `wake_up`: aumentan de **76 / 120 (63,3 %)** a **90 / 120 (75,0 %)** (+14 vidas).
+3. **Horizonte de vida extendido (arnés largo, semillas 11–30, 3000 latidos):**
+   - Media de latidos vividos: de **410,7** en C.3 a **454,1** en C.3d (+43,4 latidos).
+   - Mediana: de **409,0** a **417,0** latidos.
+   - Máximo de supervivencia: pasa de **753** latidos (semilla 21 en C.3) a **1002** latidos (semilla 20 en C.3d).
+4. **Pureza estricta del framework base:**
+   - Commits que modificaron `ida/core/` o `ida/sistemas/` en toda la Fase C: **0**.
+   - `git diff --stat main...HEAD -- ida/core ida/sistemas`: completamente vacío.
+   - Batería de pruebas: 171 tests en verde, 0 fallos de linter y tipado estático verificado.
+
+
 
 
 
