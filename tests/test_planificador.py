@@ -27,16 +27,17 @@ class _Onda:
         return self.canales.get(canal, {})
 
 
-def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0) -> Pieza:
-    return Pieza(id=id_, tipo="Exterocepcion", carga={"clase": clase, "rasgos": {"proximidad": proximidad, "lugar": lugar}, "datos": {}})
+def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0, pos: Optional[tuple] = None) -> Pieza:
+    return Pieza(id=id_, tipo="Exterocepcion", carga={"clase": clase, "rasgos": {"proximidad": proximidad, "lugar": lugar},
+                                                       "datos": {"pos": pos} if pos else {}})
 
 
 def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float], delante: Optional[Dict[str, str]] = None,
-         latido: int = 1) -> Any:
+         latido: int = 1, ubicacion: str = "aqui") -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion="aqui"), verbos=set(Verbo))
+                           observacion=SimpleNamespace(ubicacion=ubicacion), verbos=set(Verbo))
 
 
 def test_planificador_encadena_hacia_atras():
@@ -112,3 +113,37 @@ def test_exploracion_de_efectos_prueba_lo_de_delante():
     ctx = _ctx(m, [], {}, delante={"id": "d_1_2", "clase": "d"}, latido=5)
     propuestas = PerseguirMetas().actuar(ctx, None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.COGER, "d_1_2")]
+
+
+MANUAL_CERCA = {"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_x"},
+                           {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_x", "requiere_cerca": ["taller"]}]}
+
+
+def test_prueba_antes_de_caminar_y_aprende_el_radio():
+    m = Memoria()
+    m.aplicar_manual(MANUAL_CERCA)
+    vista = [_entidad("taller_2_0", "taller", 0.78, pos=(2, 0)), _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
+    ctx = _ctx(m, vista, {}, ubicacion="celda_0_0")
+    plan = PerseguirMetas()
+    assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.USAR, "hacer_x")]   # a 2: se prueba
+    m.aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": 2})      # falla desde 2
+    assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]  # ahora camina
+
+    m2 = Memoria()
+    m2.aplicar_manual(MANUAL_CERCA)
+    m2.aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": 2})   # funciona desde 2
+    assert m2.requisitos[(Verbo.USAR, "hacer_x")].radio_cerca == {"taller": 2}
+
+
+def test_antibloqueo_aparca_un_destino_que_no_se_acerca():
+    m = Memoria()
+    m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "c"}]})
+    vista = [_entidad("c_3_0", "c", 0.6, pos=(3, 0)), _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
+    plan = PerseguirMetas()
+    for latido in range(1, 10):     # 1 propuesta inicial + 8 sin acercarse (la posición no cambia)
+        ctx = _ctx(m, vista, {}, ubicacion="celda_0_0", latido=latido)
+        assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]
+    ctx = _ctx(m, vista, {}, ubicacion="celda_0_0", latido=11)
+    assert plan.actuar(ctx, None) == []                                   # aparcado
+    ctx = _ctx(m, vista, {}, ubicacion="celda_0_0", latido=9 + PerseguirMetas.APARCAR + 1)
+    assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]   # vuelve a intentarlo

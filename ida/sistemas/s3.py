@@ -503,6 +503,21 @@ def al_alcance_clase(ctx: Contexto, clase: str) -> bool:
     return any(p.clase == clase and al_alcance(p) for p in _cosas(ctx))
 
 
+def distancia_a_clase(ctx: Contexto, clase: str) -> Optional[int]:
+    """Distancia (Manhattan) a la instancia visible más cercana de ``clase``. Con posiciones se calcula; sin
+    ellas, lo que está al alcance cuenta como 1 y lo demás no se sabe (None)."""
+    aqui = _pos_propia(ctx)
+    mejor_d: Optional[int] = None
+    for p in _cosas(ctx):
+        if p.clase != clase:
+            continue
+        pos = _pos(p)
+        d = _dist(aqui, pos) if aqui is not None and pos is not None else (1 if al_alcance(p) else None)
+        if d is not None and (mejor_d is None or d < mejor_d):
+            mejor_d = d
+    return mejor_d
+
+
 @dataclass
 class Paso:
     """La primera acción ejecutable de una cadena de requisitos, con su coste estimado."""
@@ -514,17 +529,20 @@ class Paso:
     confianza: float
     motivo: List[str]
     datos: Dict[str, Any] = field(default_factory=dict)
+    destino: str = ""                  # adónde lleva un MOVER (instancia o lugar recordado)
+    distancia: Optional[int] = None    # distancia a ese destino al proponerlo, si se sabe
 
 
 COSTE_RECORDADO = 15.0     # ir adonde se recuerda algo que no se ve
 COSTE_POR_PROXIMIDAD = 10.0
 
 
-def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5) -> Optional[Paso]:
+def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
     """Un paso hacia la instancia visible más cercana de ``clase`` o, si no se ve, hacia donde se recuerda
     (``memoria.donde_esta`` y ``memoria.ruta``). General: con posiciones (``datos["pos"]``) elige el lugar
-    vecino que más acorta la distancia; sin ellas, solo la ruta topológica de la memoria."""
-    visibles = [p for p in _cosas(ctx) if p.clase == clase]
+    vecino que más acorta la distancia; sin ellas, solo la ruta topológica de la memoria. ``excluir``: destinos
+    aparcados (instancias o lugares) que no se eligen."""
+    visibles = [p for p in _cosas(ctx) if p.clase == clase and p.id not in excluir]
     sitios = [lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5]
     if visibles:
         objetivo = max(visibles, key=lambda p: p.rasgo("proximidad"))
@@ -537,14 +555,17 @@ def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5) -> Opti
                 lp, lugar = min(candidatos, key=lambda c: _dist(c[0], destino))
                 if _dist(lp, destino) < _dist(aqui, destino):
                     coste = COSTE_POR_PROXIMIDAD * (1.0 - objetivo.rasgo("proximidad"))
-                    return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"])
+                    return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"],
+                                destino=objetivo.id, distancia=_dist(aqui, destino))
     ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
     destino_nodo = ctx.memoria.donde_esta(clase) if ctx.con_experiencia else None
-    if ubicacion and destino_nodo and destino_nodo != ubicacion:
+    if ubicacion and destino_nodo and destino_nodo != ubicacion and destino_nodo not in excluir:
         salto = ctx.memoria.ruta(ubicacion, destino_nodo)
         puerta = next((lugar for lugar in sitios if lugar.id == salto), None)
         if puerta is not None:
-            return Paso(Verbo.MOVER, puerta.id, puerta.clase, COSTE_RECORDADO, confianza, [f"volver a {clase} (recordado)"])
+            camino = ctx.memoria.camino(ubicacion, destino_nodo)
+            return Paso(Verbo.MOVER, puerta.id, puerta.clase, COSTE_RECORDADO, confianza, [f"volver a {clase} (recordado)"],
+                        destino=destino_nodo, distancia=len(camino) - 1 if camino else None)
     return None
 
 
@@ -578,6 +599,36 @@ class PerseguirMetas(ConPropuestas):
     AROUSAL = 0.5
     CADA_EXPLORACION = 5          # latidos entre pruebas de efectos
     VERBOS_PLAN = (Verbo.USAR, Verbo.COGER, Verbo.COMER)
+    SIN_ACERCARSE = 8             # propuestas seguidas de MOVER al mismo destino sin que baje la distancia...
+    APARCAR = 30                  # ...que lo dejan aparcado durante estos latidos
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._aparcados: Dict[str, int] = {}          # destino -> latido hasta el que no se elige
+        self._seguimiento: Tuple[str, Optional[int], int] = ("", None, 0)   # destino, mejor distancia, propuestas sin bajar
+
+    def _excluir(self, ctx: Contexto) -> frozenset:
+        return frozenset(d for d, hasta in self._aparcados.items() if ctx.latido < hasta)
+
+    def _vigilar(self, ctx: Contexto, paso: Paso) -> None:
+        """Antibloqueo general: si las últimas ``SIN_ACERCARSE`` propuestas fueron MOVER hacia el mismo destino y la
+        distancia no ha bajado, ese destino queda aparcado ``APARCAR`` latidos."""
+        if paso.verbo != Verbo.MOVER or not paso.destino:
+            self._seguimiento = ("", None, 0)
+            return
+        destino, mejor_d, n = self._seguimiento
+        if destino != paso.destino:
+            self._seguimiento = (paso.destino, paso.distancia, 0)
+            return
+        if paso.distancia is not None and (mejor_d is None or paso.distancia < mejor_d):
+            self._seguimiento = (destino, paso.distancia, 0)
+            return
+        n += 1
+        if n >= self.SIN_ACERCARSE:
+            self._aparcados[destino] = ctx.latido + self.APARCAR
+            self._seguimiento = ("", None, 0)
+        else:
+            self._seguimiento = (destino, mejor_d, n)
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
         return bool(ctx.con_experiencia) and any(not m.conseguida and m.verbo in self.VERBOS_PLAN
@@ -594,6 +645,7 @@ class PerseguirMetas(ConPropuestas):
             if paso is not None and (mejor_paso is None or paso.coste < mejor_paso.coste):
                 mejor_paso, meta_mejor = paso, meta.objetivo
         if mejor_paso is not None:
+            self._vigilar(ctx, mejor_paso)
             motivo = "metas: " + meta_mejor + "".join(f" ← {m}" for m in mejor_paso.motivo)
             self.proponer(ctx, mejor_paso.verbo, mejor_paso.objetivo, self.AROUSAL, mejor_paso.confianza, motivo,
                           clase=mejor_paso.clase, **mejor_paso.datos)
@@ -609,7 +661,11 @@ class PerseguirMetas(ConPropuestas):
         r = mem.requisitos.get(accion)
         faltan_inv = {k: (n or 1) - inv.get(k, 0.0) for k, n in (r.requiere_inventario if r else {}).items()
                       if inv.get(k, 0.0) < (n or 1)}
-        faltan_cerca = [c for c in sorted(r.requiere_cerca if r else ()) if not al_alcance_clase(ctx, c)]
+        faltan_cerca = []
+        for c in sorted(r.requiere_cerca if r else ()):
+            d = distancia_a_clase(ctx, c)
+            if d is None or r is None or not r.cerca_basta(c, d):
+                faltan_cerca.append(c)
         if not faltan_inv and not faltan_cerca:
             return self._ejecutar(ctx, accion, r)
         # Cada carencia necesita su propio plan; si alguna no lo tiene, la acción no es alcanzable. Se ejecuta
@@ -633,7 +689,7 @@ class PerseguirMetas(ConPropuestas):
             planes.append(p)
         for clase in faltan_cerca:
             colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
-            opciones = [acercarse_a_clase(ctx, clase, r.confianza if r else 0.5)]
+            opciones = [acercarse_a_clase(ctx, clase, r.confianza if r else 0.5, self._excluir(ctx))]
             opciones += [self._resolver(ctx, k, inv, visitado, prof + 1) for k in colocadoras]
             p = mejor_de(opciones, f"falta cerca {clase}")
             if p is None:
@@ -664,7 +720,7 @@ class PerseguirMetas(ConPropuestas):
         if cerca:
             p = max(cerca, key=lambda q: q.rasgo("proximidad"))
             return Paso(verbo, p.id, objetivo, penal, confianza, [texto])
-        ir = acercarse_a_clase(ctx, objetivo, confianza)
+        ir = acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx))
         if ir is not None:
             ir.coste += penal
             ir.motivo.insert(0, texto)
