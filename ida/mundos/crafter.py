@@ -1309,24 +1309,18 @@ class RefugioNocturno(Definicion):
         luz: float,
         mina: Optional[Tuple[Pos, Pos]],
     ) -> bool:
-        """El día 1 solo se planta mientras el presupuesto de luz cubra el refugio más el bolsillo."""
+        """El día 1 solo se planta de forma oportunista mientras el presupuesto de luz cubra el refugio más el bolsillo."""
         if mina is None or luz < 0.5 or self.paso_oscuro or self.mina_recordada is not None or self._falta_herramienta(inv):
             return False
-        en_curso = next((b for b in self.bolsillos if not b.get("cerrado")), None)
-        if en_curso is None or not en_curso.get("plantada"):
-            if inv.get("sapling", 0) < 1 and (inv.get("drink", 0) <= 4 or inv.get("food", 0) <= 4):
-                return False
+        if inv.get("sapling", 0) < 1:
+            return False
+        if inv.get("stone", 0) < 1 and self._excedente_piedra_refugio(inv, mina) < 1:
+            return False
         pasos_huerto = self._pasos_huerto_dia1(pos, inv, mina)
         if pasos_huerto == 0:
             return False
         coste_ref = self._coste_restante_pasos(pos, inv, mina, incluir_huerto=False)
-        if not self.bajando:
-            return True
         pasos_luz = self._pasos_luz_restantes(luz)
-        if en_curso is not None and (
-            en_curso.get("plantada") or (inv.get("sapling", 0) >= 1 and inv.get("stone", 0) >= 1)
-        ):
-            return pasos_luz > max(12.0, coste_ref * 1.35 + pasos_huerto)
         return pasos_luz > max(18.0, coste_ref * 1.45 + pasos_huerto)
 
     def _pasos_luz_restantes(self, luz: float) -> float:
