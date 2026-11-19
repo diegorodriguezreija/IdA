@@ -38,7 +38,7 @@ Notas:
 
 Lo que IdA puede aportar y casi ningún agente de la tabla tiene a la vez:
 
-1. **Cero entrenamiento** (o un linaje declarado dentro del presupuesto): la primera vida ya juega razonablemente.
+1. **Cero entrenamiento** (o un linaje declarado dentro del presupuesto): cada vida juega desde que nace, sin legado (Score **sin herencia**).
 2. **Conducta explicable:** cada acción sale de una propuesta con verbo, objetivo, motivo, arousal y confianza, y de un Tribunal cuya decisión se puede leer.
 3. **Generalidad:** la misma base juega en mínimo, archivos, ajedrez y Crafter, y debería resistir perturbaciones del mundo.
 4. **Sin modelo de lenguaje:** SPRING razona con GPT-4; IdA razona con una arquitectura de unos pocos miles de líneas.
@@ -73,6 +73,28 @@ Los pilares no son reglas del ranking. Son **lo que IdA se exige para que la com
 | 3. Perturbación | La conducta resiste cambios del mundo que no se le han enseñado | Batería de perturbaciones (sección 7.3): IdA general pierde menos que el script de C.3d |
 | 4. Protocolo honesto | Evaluación con el protocolo oficial, semillas nuevas y todo declarado | Comando de evaluación único y reproducible (paso −1); semillas de evaluación fijadas antes y nunca usadas para ajustar |
 
+### 3.3 Dos líneas, declaradas por separado
+
+| Línea | Qué es | Estado | Para qué sirve |
+|---|---|---|---|
+| **IdA con conocimiento procedimental de Crafter** | `main` tal como está: la base más las estrategias escritas para Crafter | **Congelada.** Medida en el paso −1: 19,2 % sin herencia y 20,3 % con linaje (protocolo oficial abreviado) | Resultado presentable ya, declarado como arquitectura general **con estrategias específicas del dominio**. No se invierte más en ella: cada mejora ahí es trabajo que luego hay que borrar |
+| **IdA general** | La base con los cuatro pilares completos; Crafter solo como adaptador y manual | Es esta fase | La línea de investigación: la que dice algo nuevo |
+
+La **distancia entre las dos líneas** es la medida del progreso de la fase: cada paso debería acercar la general a la procedimental.
+
+### 3.4 Qué se flexibiliza y qué no
+
+**No se flexibiliza:**
+- **El pilar 4 (protocolo honesto).** Sin él, ninguna cifra es comparable con nada.
+- **La vista de 9×7.** Ganar 2 filas no compensa tener que dar explicaciones.
+- **Las semillas reservadas para la evaluación** y el **presupuesto de 1M de pasos**.
+- **El pilar 1 en la línea general.** Una conducta escrita para Crafter convierte a IdA en un *bot* de Crafter: su puntuación mediría lo que sabe el programador, no lo que vale la arquitectura.
+
+**Sí se flexibiliza, siempre que se declare:**
+- **Pautas innatas generales en la base.** Por ejemplo «buscar paredes cuando baja la luz», «volver a donde hubo comida» o «proteger lo que tiene valor». Son instintos con base biológica, valen para cualquier mundo y no son guiones de Crafter. Es donde más margen hay. La prueba: la pauta se formula sin ningún nombre de Crafter, y en los otros mundos o tiene sentido o no se activa.
+- **Un manual ampliado como segunda cifra** (sección 5). El manual estricto (el artículo y el README) da la cifra principal; uno ampliado, con hechos sacados del código de Crafter, da una segunda cifra declarada que mide cuánto pesa el conocimiento.
+- **Una regla de traslado en dos tiempos** (sección 6).
+
 ## 4. Qué hay que cambiar para que la comparación sea justa
 
 Revisado sobre el código (`ida/mundos/crafter.py`) y el de Crafter 1.8.3.
@@ -100,7 +122,7 @@ Revisado sobre el código (`ida/mundos/crafter.py`) y el de Crafter 1.8.3.
 | **Entrada simbólica** (identidades de objetos, materiales por casilla, luz como número) en lugar de píxeles | Es la «liga simbólica»: SPRING también recibía la escena descrita en texto. Toda la información es visible en la imagen | «IdA recibe una descripción simbólica de la vista local oficial (9×7), sin estado oculto» |
 | **Coordenadas absolutas** de la casilla propia | Se pueden obtener por integración de trayecto (las acciones son deterministas y se ve si el movimiento tuvo efecto). Es una capacidad biológica conocida | Declararlo. Opcional: expresarlas relativas a la casilla de nacimiento |
 | **Noche:** IdA reduce el radio a 2 con luz < 0,3 | Es más restrictivo que el oficial (que solo añade ruido y oscurece la imagen) | Declararlo como restricción propia |
-| **Linaje:** las vidas heredan proposiciones y registros | Es aprendizaje dentro del presupuesto, como el de un agente de RL | Publicar dos cifras: **primera vida** (cero entrenamiento) y **linaje completo** (1M de pasos) |
+| **Linaje:** las vidas heredan proposiciones y registros | Es aprendizaje dentro del presupuesto, como el de un agente de RL | Publicar dos cifras: **sin herencia** (cada episodio, un IdA sin legado: cero entrenamiento) y **con linaje** (1M de pasos) |
 | **Perfil:** IdA tiene caracteres (Equilibrado, Valiente…) | Es un hiperparámetro | Se fija **uno** antes de evaluar (propuesta: Equilibrado) y se declara |
 
 ## 5. El manual declarativo y su regla de procedencia
@@ -119,9 +141,13 @@ IdA necesita saber qué hay en el mundo: qué se come, qué hace daño, qué se 
 
 Cada hecho del manual llevará una referencia a la frase del artículo o del README de la que sale. Si no se encuentra la frase, el hecho no entra.
 
+**Manual ampliado (opcional, segunda cifra).** Puede añadir hechos sacados del código de Crafter (la columna de la derecha), cada uno con su referencia a `objects.py`, `env.py` o `data.yaml`. Nunca sustituye al estricto: la cifra principal es siempre la del manual estricto, y la ampliada se publica al lado, etiquetada.
+
 ## 6. Ideas de diseño que guían la fase
 
-- **Regla de traslado:** cada paso añade a la base y borra del mundo; **nunca conviven las dos versiones**. Si la versión de la base no alcanza a la del mundo, se mide, se acepta la pérdida o se mejora la base; no se deja la del mundo «por si acaso».
+- **Regla de traslado, en dos tiempos:** cada paso añade a la base y borra del mundo.
+  - *Durante* el paso, las dos versiones pueden convivir tras un interruptor para medirlas una contra otra.
+  - El paso **no se cierra hasta borrar la versión del mundo**. Si la de la base no la alcanza, se mide, se acepta la pérdida o se mejora la base; la del mundo nunca se queda «por si acaso».
 - **«Proteger X»:** refugio, huerto y defensa son el mismo impulso general aplicado a cosas distintas (a uno mismo, a una planta, a un recurso). La base biológica es la querencia por paredes y grietas. Formulación, corregida con lo aprendido en C.1:
   - X tiene **accesos** (casillas por las que puede llegar un peligro);
   - las acciones válidas son **cerrar un acceso** (colocar material) **o crear espacio protegido** (cavar en roca, donde las paredes ya existen; así nacieron la mayoría de los refugios de C.1);
@@ -133,16 +159,32 @@ Cada hecho del manual llevará una referencia a la frase del artículo o del REA
 
 ### 7.1 Expectativa de puntuación (escrita para no frustrarse a mitad de fase)
 
-- El script actual (C.3d, todo escrito a mano) ronda el 23 % **con nuestro protocolo** (600 latidos, cuatro perfiles), que no es el oficial. Con el protocolo oficial puede dar otra cifra; el paso −1 la mide.
-- Una versión general **caerá** respecto al script. Es razonable esperar un **10–15 % durante bastante tiempo**. Superar a DreamerV2 (10 %) sin entrenamiento ya sería un resultado defendible.
+Medido en el paso −1 (`MEDICION_OFICIAL.md`; protocolo oficial abreviado: 100 000 pasos, semilla base 31, vista 9×7, Equilibrado):
+
+| Condición | Crafter Score (IC 95 %) |
+|---|---|
+| Suelo: `main` sin estrategias propias | 1,46 % [1,38; 1,52] (el agente aleatorio de la literatura saca 1,6 %) |
+| `main` con linaje | 20,26 % [18,45; 21,69] |
+| `main` sin herencia | 19,18 % [17,74; 20,46] |
+| C.3d con linaje | 20,58 % [18,91; 21,88] |
+
+- **Casi toda la puntuación actual viene de la conducta escrita para Crafter**: la base sola está al nivel del azar. La fase parte, en la práctica, de cero.
+- Una versión general **caerá** respecto al script. Llegar a **superar a DreamerV2 (10 %) sin entrenamiento** es un objetivo ambicioso y sería un resultado defendible; entre el 5 y el 10 % ya demostraría que la base aprende a jugar sin guion.
+- La herencia aporta poco (19,2 % frente a 20,3 %, con intervalos solapados): la cifra principal que se publique puede ser la **sin herencia** (cero entrenamiento).
+
+**Dónde está el margen.** La media geométrica premia más pasar un logro de 0 a 1 % que subir uno que ya está al 60 %, porque `ln(1 + s)` crece mucho al principio. Con `main`:
+- `eat_plant` está al 1,5 % aunque `place_plant` está al 98 %;
+- `collect_iron` está al 1 %, y los cinco logros de hierro y diamante, al 0 %.
+
+Sobrevivir más solo sube la puntuación si da tiempo a estos logros: C.3d vive algo más que `main` (398 pasos por episodio frente a 379), pero muere el doble de hambre y su Score es prácticamente igual.
 
 ### 7.2 Criterios de aceptación de la fase
 
 1. **Pilar 1:** `estrategias_propias()` de Crafter devuelve `{}` y el test de frontera pasa.
-2. **Pilar 4:** evaluación oficial con semillas nuevas, primera vida y linaje, todo declarado (sección 4).
+2. **Pilar 4:** evaluación oficial con semillas nuevas, Score sin herencia y con linaje, todo declarado (sección 4).
 3. **Pilar 3:** en la batería de perturbaciones, IdA general conserva una fracción mayor de su puntuación que C.3d.
 4. **Generalidad:** el benchmark de mínimo, archivos y ajedrez no empeora de forma significativa (pareado por semilla, N = 10, IC 95 %).
-5. **Puntuación:** por encima del suelo medido en el paso −1, de forma significativa. Superar a DreamerV2 es objetivo deseable, no requisito.
+5. **Puntuación:** por encima del suelo medido en el paso −1 (1,46 %) de forma significativa. Superar a DreamerV2 (10 %) es objetivo deseable, no requisito.
 
 ### 7.3 Batería de perturbaciones (borrador; se cierra en el paso −1)
 
@@ -160,7 +202,11 @@ Cambios que se aplican **al mundo desde el arnés** (parámetros o parches de Cr
 
 # Parte II — El plan
 
-Reparto de trabajo (el que funcionó en C.1): **yo escribo el diseño y el pseudocódigo de cada paso; Argon solo implementa; Flash mide.** Cada paso se cierra con su medición y su veredicto antes de empezar el siguiente.
+Reparto de trabajo (el que funcionó en C.1): **yo escribo el diseño y el pseudocódigo de cada paso; el modelo de implementación (Opus 5.5 o Argon, según cuota) solo implementa; Flash mide.** Donde el plan dice «Argon», vale cualquiera de los dos. Cada paso se cierra con su medición y su veredicto antes de empezar el siguiente.
+
+**Orden de ejecución:** −1 → 2 → 0 → 1 → 3 → 4 → 5 → 6 → 7. El manual (paso 2) se adelanta porque es barato y su «suelo con manual» dice pronto cuánto aporta el conocimiento por sí solo, lo que afina la expectativa de todo lo demás.
+
+**Regla para las mediciones:** toda cifra que se reporte sale de un fichero de salida que existe (JSON o log), con su ruta citada. Nunca se escriben resultados antes de que termine el proceso.
 
 **Los otros mundos son parte de la fase, no un control al final.** La base que se construye es la de todos los mundos, así que cada paso que toque `ida/core` o `ida/sistemas` se mide también en mínimo, archivos y ajedrez:
 
@@ -183,7 +229,9 @@ Semillas: ajuste 11–30, validación 31–50, benchmark 1–10 (como hasta ahor
 
 **Decisión (Diego, 19/11/2026):** se parte de `main`. De las ramas (`feature/crafter-fase-c`, `wip/c4-argon`, bloques E y F) solo se toma lo que sirva como inspiración, conocimiento o código reutilizable, y siempre pasando por la regla de traslado.
 
-## Paso −1. Medir antes de construir (Flash)
+## Paso −1. Medir antes de construir (Flash) — HECHO
+
+**Resultado** (`docs/MEDICION_OFICIAL.md`, rama `feature/evaluacion-oficial`): evaluación reproducible con semilla; suelo 1,46 %, `main` 20,26 % con linaje y 19,18 % sin herencia, C.3d 20,58 %; `ref_generalizacion` guardada. La «Score de la primera vida» se sustituyó por la Score **sin herencia** (`--sin-herencia`), porque con una semilla base la primera vida es un solo episodio.
 
 **Objetivo:** tener el comando de evaluación oficial y las dos cifras que acotan la fase.
 
@@ -193,7 +241,7 @@ Semillas: ajuste 11–30, validación 31–50, benchmark 1–10 (como hasta ahor
 2. **Comando** `herramientas/evaluar_crafter.py`:
    - un perfil, una semilla base, episodios sucesivos hasta 1M de pasos (opción `--pasos` para versiones abreviadas);
    - linaje continuo: una muerte pasa a la siguiente vida con su legado; un episodio que llega a 10 000 pasos también abre vida nueva, con legado pero sin causa de muerte;
-   - salida: tasa de éxito de cada logro, Crafter Score, la misma puntuación limitada a la primera vida de cada semilla, pasos y episodios, causas de muerte y tiempo por paso;
+   - salida: tasa de éxito de cada logro, Crafter Score, la misma puntuación sin herencia (`--sin-herencia`), pasos y episodios, causas de muerte y tiempo por paso;
    - IC 95 % de la Score por remuestreo de episodios.
 3. **Mediciones**, con la vista oficial y el perfil Equilibrado:
 
@@ -231,7 +279,9 @@ El bloque E se midió como **no útil** (`VEREDICTO_E_F.md`): ninguna decisión 
 
 - Formato del manual: hechos con referencia a su fuente (sección 5), cargados como proposiciones con confianza de autoridad (`c_aut`), que la experiencia puede confirmar o refutar.
 - Sustituye los hechos de Crafter hoy repartidos por `crafter.py` (`constantes`, recetas dentro de `PlanTecnologico`).
-- **Criterio:** auditoría de procedencia (cada hecho con su frase) y medición abreviada sin pérdida significativa.
+- **Se ejecuta el segundo, justo después del paso −1.**
+- **Medición nueva, el «suelo con manual»:** la base con el manual y sin estrategias propias (`--sin-estrategias-propias`). Junto con el suelo sin manual (1,46 %), dice cuánto aporta el conocimiento por sí solo y cuánto depende de que la base sepa encadenar acciones.
+- **Criterio:** auditoría de procedencia (cada hecho con su frase) y medición abreviada de `main` con el manual sin pérdida significativa.
 
 ## Paso 3. «Proteger X» en la base: el refugio (diseño: yo; implementa: Argon)
 
@@ -265,20 +315,20 @@ El bloque E se midió como **no útil** (`VEREDICTO_E_F.md`): ninguna decisión 
 - Protocolo oficial completo sobre las semillas reservadas 1000–1009: 1M de pasos por semilla, vista 9 × 7, perfil Equilibrado.
 - Batería de perturbaciones (sección 7.3) para IdA general y para C.3d.
 - Benchmark completo de mínimo, archivos y ajedrez.
-- Informe con: Score del linaje y de la primera vida (con IC), tasas por logro, comparación con la tabla 2.1, resultado de las perturbaciones y la lista de declaraciones de la sección 4.3.
+- Informe con: Score con linaje y sin herencia (con IC), para el manual estricto y, si se hizo, para el ampliado; tasas por logro, comparación con la tabla 2.1, resultado de las perturbaciones y la lista de declaraciones de la sección 4.3.
 
 ## Resumen del plan
 
-| Paso | Qué | Quién | Toca la base | Borra del mundo |
-|---|---|---|---|---|
-| −1 | Protocolo oficial, suelo y techo | Flash | No | — |
-| 0 | Intensidad del impulso en el Tribunal | Yo (diseño) + Argon | Sí (Tribunal) | Apaños de urgencia |
-| 1 | Mapa cognitivo compartido | Yo + Argon | Sí (memoria) | Registros propios de las estrategias |
-| 2 | Manual declarativo | Yo + Flash/Argon | Mínimo | `constantes` y recetas |
-| 3 | Proteger X: refugio | Yo + Argon | Sí (S1) | `RefugioNocturno` |
-| 4 | Proteger X: forrajeo y huerto | Yo + Argon | Sí (S1/S2) | — |
-| 5 | Tecnología desde el manual | Yo + Argon | Sí (S3) | `PlanTecnologico` |
-| 6 | Defensa general | Yo + Argon | Sí (S1) | `DefensaArmada`, `CerrarDistancia` |
-| 7 | Evaluación final | Flash | No | — |
+| Orden | Paso | Qué | Quién | Toca la base | Borra del mundo |
+|---|---|---|---|---|---|
+| 1.º | −1 | Protocolo oficial, suelo y techo (**hecho**) | Flash | No | — |
+| 2.º | 2 | Manual declarativo y suelo con manual | Yo + Flash/Argon | Mínimo | `constantes` y recetas |
+| 3.º | 0 | Intensidad del impulso en el Tribunal | Yo (diseño) + Argon | Sí (Tribunal) | Apaños de urgencia |
+| 4.º | 1 | Mapa cognitivo compartido | Yo + Argon | Sí (memoria) | Registros propios de las estrategias |
+| 5.º | 3 | Proteger X: refugio | Yo + Argon | Sí (S1) | `RefugioNocturno` |
+| 6.º | 4 | Proteger X: forrajeo y huerto | Yo + Argon | Sí (S1/S2) | — |
+| 7.º | 5 | Tecnología desde el manual | Yo + Argon | Sí (S3) | `PlanTecnologico` |
+| 8.º | 6 | Defensa general | Yo + Argon | Sí (S1) | `DefensaArmada`, `CerrarDistancia` |
+| 9.º | 7 | Evaluación final | Flash | No | — |
 
 Reglas que siguen vigentes: nunca hacer push sin permiso; no hacer pruebas visuales mientras corre un benchmark; benchmarks rápidos antes que completos; cada cambio confirma su hipótesis con medición.
