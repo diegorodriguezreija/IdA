@@ -8,7 +8,7 @@
 
 This is a short English summary. The full documentation, and the code itself, are in Spanish, starting with [README.md](README.md).
 
-IdA is a **framework**: a generic core, inspired by how living beings solve the problem of staying alive, to which worlds plug in as adapters. It is made to **run and watch** its individuals live. It does not compete with other agents or chase the best score; that question is studied separately, in the [IdA Laboratory](#ida-laboratory).
+IdA is a **framework**: a generic core, inspired by how living beings solve the problem of staying alive, to which worlds plug in as adapters. It is made to **run and watch** its individuals live; that is its main purpose, not chasing high scores. But comparing also matters: when a world has a public evaluation protocol, IdA measures itself against it and publishes the result, so its figures can be placed alongside those of other agents. The underlying question, whether the organic design **outperforms** a traditional design and under what conditions, is studied separately, in the [IdA Laboratory](#ida-laboratory).
 
 Every IdA individual has a **body** that wears out (vital constants, stress, pleasure and valence) and a **heartbeat**. On each beat the core senses the world (interoception, proprioception, **exteroception** and ambient conditions) and creates a **Wave** (*Onda*) with a frequency (the deadline; past it, a guillotine cuts thinking), an amplitude (how many pieces fit in attention) and a power (how much arousal can be granted or changed), set by a pacemaker. Three systems work on it in order: S1 (survival), S2 (value) and S3 (truth). Each one interprets (image and **objects**; the value of each subject; propositions, logic and **beliefs**), feels its **impulses** (bodily needs and safety, exploration, intentions such as knowing), chooses **strategies** with phases, progress and exhaustion, and turns them into **actions**. A **Tribunal** picks one according to the state of the body, with a small bonus for continuing the current strategy. Each component only produces and changes pieces of its own type. What the individual lives through is remembered, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
 
@@ -26,7 +26,7 @@ cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
 pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 138 tests
+python -m pytest -q                       # 155 tests
 python -m ida                             # interactive launcher at http://127.0.0.1:8000
 ```
 
@@ -35,6 +35,8 @@ Running `python -m ida` without arguments launches an **interactive web launcher
 Or, with nothing installed: `docker compose up --build`.
 
 > **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
+
+Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia` ([method](docs/MEDICION_OFICIAL.md)).
 
 ## What's inside
 
@@ -51,16 +53,25 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
 
 ## Milestones
 
-- The same core runs unchanged in five very different worlds.
-- Reproducible with a seed in the minimal, file, Crafter and chess worlds.
-- By improving only each world's own code: Snake goes from about 232 to 916 points on average at the hardest level (best 1,605); toxic bites in the file world drop from 7.2 to 2.2 per life; in Crafter, with spatial memory (hippocampus) and armed defense, it reaches 9.30 ± 1.09 achievements per life (95% CI, 10 independent lineages × 3 generations, Balanced profile; [protocol](docs/BENCHMARK_PERFILES_MUNDOS.md)), not the previously published 10.9, which was measured with a lineage shared across seeds (see [CHANGELOG](CHANGELOG.md)); in chess it wins 7 of 8 games against the 1-ply bot and 3 of 8 against the 2-ply bot.
-- Negative results are published too: it loses against the 3-ply bot, and in Crafter mass nocturnal attacks remain the vital boundary.
+- **Crafter: 19.2% Crafter Score without any training.** Measured with the official protocol: episodes of up to 10,000 steps, 9×7 local view, and geometric mean of success rates across the 22 achievements. The measurement covers 278 episodes, each in a new world and with a newborn individual, without legacy (95% CI: 17.7–20.5%). With lineage between lives it rises to 20.3%. For reference, in the original Crafter paper, DreamerV2 achieves 10.0% and PPO 4.6% after training on 1M steps; random play scores 1.6%. IdA does not train: it plays from birth, and every decision can be inspected (which system proposed it, why, and why it won in the Tribunal). [Method and data (Spanish)](docs/MEDICION_OFICIAL.md).
+- **Where this number comes from, plainly.** It includes strategies written for Crafter (night shelter, defense, and technological plan) on top of the generic core. Without them, the core scores 1.46%, at the level of random play. This is why it is not presented as a like-for-like comparison with agents that learn from pixels, and it remains below SPRING (27.3%, GPT-4 reading the Crafter paper) and current top agents. The ongoing phase moves these capabilities into the core to evaluate IdA without world-specific behavior.
+- **The same core runs in five very different worlds**, and an AST test ensures it learns vocabulary from none of them.
+- **Improving only each world's own code:**
+  - Snake goes from about 232 to 916 points on average at python level (record: 1,605).
+  - In the file world, toxic bites drop from 7.2 to 2.2 per life.
+  - In chess it wins 7 of 8 games against the 1-ply bot and 3 of 8 against the 2-ply bot.
+- **The guillotine is cooperative and reliable:** with a 0 ms deadline, cognition is cut and the Tribunal still decides.
+- **Reproducible with a seed** in the minimal, file, Crafter, and chess worlds.
+- **What doesn't work is published too:**
+  - Against the 3-ply chess bot, it loses.
+  - In Crafter, episodes last little more than one in-game day (about 360 steps on average; a day is 300), ending by zombies, skeletons, hunger and thirst.
+  - The five iron and diamond achievements remain at 0%, and eating a plant at 0.4%, even though it plants almost every episode.
 
-Figures, method and limits (Spanish): [doc-repositorio/05_METRICAS_E_HITOS.md](doc-repositorio/05_METRICAS_E_HITOS.md).
+Figures, method and limits (Spanish): [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). The previous Crafter metric (achievements per life: 9.30 ± 1.09) and its history remain there.
 
 ## Engineering
 
-Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 138 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 155 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
 
 ## IdA Laboratory
 
@@ -68,7 +79,7 @@ This repository is the framework: it is for running IdA and watching its individ
 
 ## Honesty
 
-A personal prototype, not a study: few lives per measurement. Biological names are inspiration, not equivalence. Much of the code was written with AI agents under the author's direction and review.
+A personal prototype, not a study. Most measurements use few lives and few seeds. The Crafter evaluation follows the official protocol, but with 100,000 steps (278 episodes) instead of the full 1 million. Because each episode starts without legacy, the score does not depend on the total budget duration; nevertheless, the full evaluation with held-out seeds will be published at the end of the generalization phase. Biological names are inspiration, not equivalence. Figures are published as they came out, also when bad. Much of the code was written with AI agents under the author's direction and review.
 
 ## License
 

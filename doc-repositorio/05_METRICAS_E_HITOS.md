@@ -90,6 +90,43 @@ La versión optimizada con el latido antiguo de 100 ms dio una media de 90 en 5 
 
 ## Crafter
 
+### Crafter Score (protocolo oficial)
+
+Evaluación con el protocolo oficial de Crafter: episodios de hasta 10 000 pasos, vista local oficial 9×7 en forma simbólica y media geométrica de las tasas de éxito de los 22 logros (presupuesto de 100 000 pasos). [Método y datos completos](../docs/MEDICION_OFICIAL.md).
+
+```powershell
+python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia
+```
+
+| Condición | Score Crafter (IC 95 %) | Episodios | Pasos / episodio | Rendimiento (ms/paso) | Tiempo total (s) |
+|---|---|---|---|---|---|
+| **Suelo (`main` sin estrategias)** | **1,46 %** [1,38, 1,52] % | 401 | 249,4 | 13,79 ms | 1.379,2 s |
+| **Techo `main` (con linaje)** | **20,26 %** [18,45, 21,69] % | 264 | 378,8 | 11,65 ms | 1.165,1 s |
+| **`main` sin herencia** | **19,18 %** [17,74, 20,46] % | 278 | 359,7 | 12,06 ms | 1.205,8 s |
+| **Techo C.3d (`feature/crafter-fase-c`)** | **20,58 %** [18,91, 21,88] % | 251 | 398,4 | 9,92 ms | 992,0 s |
+
+#### Referencias
+
+| Agente | Crafter Score | Entrenamiento | Nota |
+|---|---|---|---|
+| Humanos expertos | 50,5 ± 6,8 % | — | Hafner (2021) |
+| SPRING (GPT-4) | 27,3 % | Ninguno (LLM preentrenado) | Wu et al. (2023); lee el artículo de Crafter |
+| DreamerV2 | 10,0 ± 1,2 % | 1M de pasos | Hafner (2021) |
+| PPO | 4,6 ± 0,3 % | 1M de pasos | Hafner (2021) |
+| Aleatorio | 1,6 % | — | Hafner (2021) |
+
+> **Resultados recientes de la literatura:** Un agente de RL con modelo del mundo obtiene alrededor de un 28 % con 1M de pasos en Craftax-classic, una reimplementación no idéntica (arXiv 2502.01591), y EMERALD llega al 58,1 % con 10M de pasos (arXiv 2507.04075).
+
+#### Declaraciones del protocolo (sección 4.3 de `docs/FASE_GENERALIZACION_CRAFTER.md`)
+
+- **Entrada simbólica:** IdA recibe una descripción simbólica de la vista local oficial (9×7), sin estado oculto. Toda la información es visible en la imagen.
+- **Coordenadas absolutas:** IdA recibe del adaptador las coordenadas de su casilla. Un agente sin ellas podría obtenerlas por integración de trayecto (las acciones son deterministas y se observa si el movimiento tuvo efecto).
+- **Noche:** IdA reduce el radio a 2 con luz < 0,3 (restricción propia, más estricta que la oficial, que solo añade ruido y oscurece la imagen).
+- **Linaje:** Las vidas heredan proposiciones y registros. Se publican dos cifras: sin herencia (recién nacido sin legado, cero entrenamiento) y con linaje completo.
+- **Perfil:** Se fija el perfil Equilibrado para la evaluación.
+
+### Protocolos anteriores (logros por vida e historia)
+
 **Cambios del mundo (adaptación biológica y supervivencia):**
 - **Mapa cognitivo (hipocampo)**: si el individuo explora lejos para minar y reúne los materiales de una receta, navega de vuelta al taller (mesa, horno) en vez de quedar inmóvil en la oscuridad. En la versión medida aquí (11/11/2026) el mapa era propio del mundo (`self.hitos` en el adaptador de Crafter). Desde el PR #4 está en el Core: `PlanTecnologico` consulta la memoria del individuo con `ctx.memoria.donde_esta(clase)` y `ctx.memoria.ruta(origen, destino)` (`ida/core/memoria.py:404` y `:436`; uso en `ida/mundos/crafter.py:508-510`), y con `--sin-experiencia` no la consulta.
 - **Defensa armada activa (`DefensaCrafter` en S1)**: asimetría lucha/huida biológica. Con espada y salud $\ge 40\%$, el combate activo defensivo supera al reflejo pasivo de huida en esquinas (urgencia 0.96/0.88), abatiendo hostiles inmediatos y cerrando distancia contra esqueletos que disparan a 2-3 casillas.

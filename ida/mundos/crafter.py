@@ -3,7 +3,7 @@
 Traducción al vocabulario común:
 - Cuerpo: el juego marca salud, comida, bebida y energía (``vitales_propios``). La alimentación
   del soma es el mínimo entre comida y bebida.
-- Entidades del entorno cercano (radio 4, como la vista oficial de 9×9; radio 2 de noche):
+- Entidades del entorno cercano (radio 4, como la vista oficial de 9×7; radio 2 de noche):
   árboles, agua, piedra, carbón, hierro, diamante, mesa, horno, lava, hierba, vacas, zombis,
   esqueletos y plantas. **Aliestesia:** el ``nutritivo`` del agua crece con la sed y el de la
   vaca o la planta madura, con el hambre.
@@ -91,13 +91,15 @@ class MundoCrafter(Mundo):
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",))
 
-    def __init__(self, radio: Any = 4, ventana: Any = 0, **_):
+    def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000, **_):
         import crafter                     # dependencia solo de este mundo
         from crafter import constants
         self._crafter = crafter
         self.constantes = constants
         self.acciones = {nombre: i for i, nombre in enumerate(constants.actions)}
         self.radio = int(radio)
+        self.modo_vista = str(vista)
+        self.longitud = int(longitud)
         self.ventana = str(ventana) in ("1", "si", "sí", "true")
         self.env: Any = None
         self.visitas: Dict[Pos, int] = {}
@@ -108,8 +110,9 @@ class MundoCrafter(Mundo):
         self._photo: Any = None
 
     # --- ciclo de vida -------------------------------------------------------
-    def reiniciar(self, semilla: Optional[int]) -> None:
-        self.env = self._crafter.Env(seed=semilla, length=100000)
+    def reiniciar(self, semilla: Optional[int], longitud: Optional[int] = None) -> None:
+        long_ep = self.longitud if longitud is None else int(longitud)
+        self.env = self._crafter.Env(seed=semilla, length=long_ep)
         mundo = self.env._world
         reset_original = mundo.reset
 
@@ -177,13 +180,24 @@ class MundoCrafter(Mundo):
                 "cobijo": max(2.0, float(w.daylight) * 100)}
 
     # --- percepción ----------------------------------------------------------
+    def _limites_vista(self) -> Tuple[int, int]:
+        w = self.env._world
+        if self.modo_vista == "oficial":
+            rx, ry = 4, 3
+        else:
+            rx = ry = self.radio
+        if w.daylight < 0.3:
+            rx = max(2, rx // 2)
+            ry = max(2, ry // 2)
+        return rx, ry
+
     def _vista_local(self) -> Dict[Pos, str]:
         """Rejilla cruda (coordenada -> material) de todas las casillas dentro del radio de visión actual."""
         w, (px, py) = self.env._world, self.jugador.pos
-        radio = self.radio if w.daylight >= 0.3 else max(2, self.radio // 2)
+        rx, ry = self._limites_vista()
         vista: Dict[Pos, str] = {}
-        for x in range(px - radio, px + radio + 1):
-            for y in range(py - radio, py + radio + 1):
+        for x in range(px - rx, px + rx + 1):
+            for y in range(py - ry, py + ry + 1):
                 if 0 <= x < w.area[0] and 0 <= y < w.area[1]:
                     mat, _ = w[(int(x), int(y))]
                     if mat is not None:
@@ -193,10 +207,10 @@ class MundoCrafter(Mundo):
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:
         """(id, clase, posición, objeto) de lo que hay en el radio de visión."""
         w, (px, py) = self.env._world, self.jugador.pos
-        radio = self.radio if w.daylight >= 0.3 else max(2, self.radio // 2)
+        rx, ry = self._limites_vista()
         cosas = []
-        for x in range(px - radio, px + radio + 1):
-            for y in range(py - radio, py + radio + 1):
+        for x in range(px - rx, px + rx + 1):
+            for y in range(py - ry, py + ry + 1):
                 if not (0 <= x < w.area[0] and 0 <= y < w.area[1]) or (x, y) == (px, py):
                     continue
                 mat, obj = w[(x, y)]
@@ -364,8 +378,9 @@ class MundoCrafter(Mundo):
         pos = tuple(self.jugador.pos)
         mapa = {cpos: LETRA.get(clase, "?") for _, clase, cpos, _ in self._cosas()}
         filas = []
-        for y in range(pos[1] - self.radio, pos[1] + self.radio + 1):
-            filas.append("".join("@" if (x, y) == pos else mapa.get((x, y), ".") for x in range(pos[0] - self.radio, pos[0] + self.radio + 1)))
+        rx, ry = self._limites_vista()
+        for y in range(pos[1] - ry, pos[1] + ry + 1):
+            filas.append("".join("@" if (x, y) == pos else mapa.get((x, y), ".") for x in range(pos[0] - rx, pos[0] + rx + 1)))
         inv = {k: v for k, v in self.jugador.inventory.items() if v}
         return "\n".join(filas) + f"\nluz {self.env._world.daylight:.2f} · {inv}\nlogros ({len(self.logros())}/{LOGROS}): {', '.join(self.logros())}"
 
