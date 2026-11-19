@@ -1082,5 +1082,95 @@ Implementado en `tests/test_crafter.py` (`test_c3d_forrajeo_oportunista`):
 1. **Muestra de muertes inmediatas post-apertura en E.1:**  
    Al evaluar las 40 vidas (semillas 11–50) en la versión DESPUÉS, el recuento de individuos que murieron por zombi en los $\le 40$ latidos inmediatamente posteriores a abrir la salida fue exactamente **0**. Por tanto, no se pudieron tabular valores específicos de `_presion_interna` o `_riesgo_exterior` en casos de muerte inmediata, ya que no se produjo ningún fallecimiento bajo esa condición exacta en la muestra analizada.
 
+---
+
+## 8. C.4: Resultado negativo (huerto en bolsillos cerrados)
+
+La pieza C.4 planteó cultivar en bolsillos cerrados de 1 celda contiguos al refugio, protegidos por piedra exterior y abiertos únicamente para la cosecha cuando la planta estuviera madura. El desarrollo de C.4 fue evaluado en la rama `wip/c4-argon` en dos variantes sucesivas: la versión inicial dejada por el modelo anterior (WIP C.4, commit `c39cb4a`) y la versión tras cuatro ajustes de poda y restricción de presupuesto (C.4 Ajustado, commits `fecf4e0` a `2c93d47`), descritas en detalle en [`docs/MEDICION_WIP_C4.md`](docs/MEDICION_WIP_C4.md).
+
+### 8.1 Cifras (WIP y Ajustado frente a C.3d)
+
+#### Arnés de 600 latidos (semillas 11–50, 40 vidas, `--real`)
+- **Comandos:**
+  * Referencia C.3d: `datos/benchmarks/arnes_600_despues.json`
+  * WIP C.4: `datos/benchmarks/c4_wip_600.json`
+  * C.4 Ajustado: `datos/benchmarks/c4_ajustado_600.json`
+
+| Métrica | Referencia C.3d | WIP C.4 inicial | C.4 Ajustado | Δ (Ajustado vs C.3d) |
+|---|---|---|---|---|
+| **Vidas selladas día 1** | **32 / 40 (80,0 %)** | 25 / 40 (62,5 %) | **29 / 40 (72,5 %)** | **-3 vidas (-7,5 pp)** |
+| **Selladas con luz ≥ 0,5** | 19 / 40 (47,5 %) | 13 / 40 (32,5 %) | 18 / 40 (45,0 %) | -1 vida (-2,5 pp) |
+| **Selladas sin daño dentro** | 32 / 32 (100,0 %) | 25 / 25 (100,0 %) | 29 / 29 (100,0 %) | = 0 (100 %) |
+| **Vidas con `wake_up`** | 33 / 40 (82,5 %) | 24 / 40 (60,0 %) | 30 / 40 (75,0 %) | -3 vidas (-7,5 pp) |
+| **Vivas al final (L600)** | **10 / 40 (25,0 %)** | 7 / 40 (17,5 %) | **7 / 40 (17,5 %)** | **-3 vidas (-7,5 pp)** |
+| **Latidos medios** | **418,9** | 354,5 | **384,1** | **-34,8 latidos** |
+| **Logros medios** | 11,70 | 10,90 | 11,38 | -0,32 logros |
+| **Muertes por causa** | Zombi: 12<br>Hambre: 12<br>Sed: 4<br>Esqueleto: 2 | Zombi: 15<br>Hambre: 8<br>Sed: 5<br>Esqueleto: 5 | Zombi: 13<br>Hambre: 11<br>Sed: 4<br>Esqueleto: 5 | Zombi: +1<br>Hambre: -1<br>Sed: = 0<br>Esqueleto: +3 |
+
+#### Arnés largo (semillas 11–30, `--latidos 3000`, `--real`)
+- **Comandos:**
+  * Referencia C.3d: `datos/benchmarks/arnes_largo_despues.json`
+  * WIP C.4: `datos/benchmarks/c4_medicion_largo.json`
+  * C.4 Ajustado: `datos/benchmarks/c4_ajustado_largo.json`
+
+| Métrica | Referencia C.3d | WIP C.4 inicial | C.4 Ajustado | Δ (Ajustado vs C.3d) |
+|---|---|---|---|---|
+| **Latidos vividos (media)** | **454,10** | 394,50 | **427,90** | **-26,20 latidos** |
+| **Latidos vividos (mediana)** | **417,00** | 352,00 | **401,50** | **-15,50 latidos** |
+| **Máximo de latidos** | 1002 (sem. 20) | 1040 (sem. 11) | 1168 (sem. 20) | +166 latidos |
+| **Muertes en día 0 (`dia == 0`)** | 4 / 20 | 7 / 20 | 5 / 20 | +1 muerte |
+| **Muertes en día 1 (`dia == 1`)** | 12 / 20 | 10 / 20 | 13 / 20 | +1 muerte |
+| **Muertes por hambre totales** | 11 / 20 | 7 / 20 | 10 / 20 | -1 muerte |
+| **Vidas con plantas en bolsillo** | 0 / 20 | 3 / 20 | 1 / 20 (semilla 20) | +1 vida |
+| **Plantas colocadas en bolsillos** | 0 | 4 | 1 | +1 planta |
+| **Plantas comidas totales** | 0 | 4 | 2 (1 silvestre, 1 bolsillo) | +2 plantas |
+| **Plantas destruidas en bolsillos** | 0 | 2 (semilla 11) | 0 | = 0 |
+
+---
+
+### 8.2 Regla de parada
+
+La sección 8 del encargo definió criterios explícitos de parada y descarte:
+1. **Selladas en día 1:** Si las vidas selladas el día 1 en el arnés de 600 latidos (semillas 11–50) caían por debajo de 30 / 40.  
+   - En WIP C.4: **25 / 40**.  
+   - En C.4 Ajustado: **29 / 40**.  
+   Ambos valores quedan por debajo del umbral de 30 / 40 (frente a 32 / 40 en la referencia C.3d).
+2. **Mediana del arnés largo:** Si la mediana de latidos en el arnés largo (semillas 11–30) caía por debajo de la referencia C.3d (417,00).  
+   - En WIP C.4: **352,00** (-65,00 latidos).  
+   - En C.4 Ajustado: **401,50** (-15,50 latidos).  
+   Ambas versiones quedan por debajo de 417,00.
+
+Al activarse ambas condiciones de parada sin revertir el retroceso frente a C.3d, se detuvo el desarrollo de C.4 y la rama `wip/c4-argon` quedó aparcada sin fusionar.
+
+---
+
+### 8.3 Diagnóstico de la semilla 11 (destrucción de plantas en L821)
+
+En la semilla 11 del código WIP C.4 inicial, el individuo logró colocar dos plantas en sendos bolsillos cerrados contiguos al refugio: $P_1 = (34, 39)$ y $P_2 = (33, 38)$. Ambas plantas maduraron y aportaron 3 cosechas (`eat_plant`), permitiendo sobrevivir hasta L1040. Sin embargo, en el latido 821 un zombi alcanzó los bolsillos y destruyó ambas plantas.
+
+La inspección forense del estado del mapa y la secuencia de latidos reveló:
+1. **Topología de las casillas en cruz:**
+   - La planta $P_1$ en $(34, 39)$ tenía por vecinos: `(34, 40)` (roca), `(34, 38)` (roca), `(35, 39)` (diamante) y `(33, 39)`.
+   - La planta $P_2$ en $(33, 38)$ tenía por vecinos: `(33, 37)` (árbol), `(34, 38)` (roca), `(32, 38)` (roca) y `(33, 39)`.
+   - Ambas plantas compartían la misma celda de acceso en cruz: **$(33, 39)$**.
+2. **Cronología de la apertura y el fallo de recierre:**
+   - $(33, 39)$ estuvo sellada con piedra desde el día 1 (L100 a L723).
+   - En **L724**, el individuo picó la piedra (`COGER piedra_33_39`, con motivo `"refugio: abrir bolsillo para cosechar"`). En L726 comió la planta madura.
+   - A partir de L727, intentó recerrar el hueco (`"refugio: recerrar bolsillo: ir a P"`), pero la proximidad de un esqueleto disparó de forma reiterada reflejos de supervivencia (`S1:huir:seguridad` y `S1:sobresalto:seguridad`) entre L727 y L750. La huida alejó al individuo e interrumpió indefinidamente la colocación de la piedra de cierre.
+   - Como resultado, la casilla $(33, 39)$ permaneció como **`path` transitable y desprotegida desde L724**.
+   - En **L820**, un zombi entró en $(33, 39)$, y en **L821** alcanzó la adyacencia de ambas plantas, destruyéndolas en el mismo latido.
+
+---
+
+### 8.4 Aprendizajes
+
+1. **Plantar el día 1 compite directamente con sellar el refugio:**  
+   La búsqueda y reserva de materiales (retoño de árbol, piedra adicional de cierre) y los pasos requeridos para desplazarse al bolsillo y plantar consumen el escaso presupuesto de luz diurno. En la versión inicial de C.4, 7 vidas adicionales murieron en día 0 por desatender el sellado a tiempo. Incluso al restringirlo a plantación oportunista estricta (C.4 Ajustado), el desvío atencional redujo el sellado de 32 a 29 vidas.
+2. **Abrir el hueco exterior para cosechar expone el huerto ante huidas reactivas:**  
+   La dinámica de picar una pared externa para acceder a la cosecha crea una vulnerabilidad crítica: si un monstruo aparece mientras el hueco está abierto, el Sistema 1 toma el control (`huir` / `sobresalto`) y aborta la secuencia de recierre de S2. La celda de acceso queda permanentemente abierta como camino transitable, permitiendo que monstruos posteriores alcancen y aniquilen el cultivo (como ocurrió en la semilla 11).
+3. **El código del huerto empeora la conducta global incluso cuando casi no se usa:**  
+   En la versión ajustada, solo 1 de las 20 vidas del arnés largo llegó a colocar una planta en bolsillo (semilla 20). A pesar de que en las 19 vidas restantes la rama de huerto nunca llegó a ejecutar una acción de cultivo, la latencia y la complejidad introducida en el cálculo de distancias, presupuestos y estados en `RefugioNocturno` redujeron la mediana de supervivencia de 417 a 401,5 latidos y aumentaron las muertes prematuras en día 0 y 1. La interferencia en la máquina de estados de un componente ya sobrecargado deteriora la toma de decisiones general.
+
+
 
 
