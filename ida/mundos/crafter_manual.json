@@ -5,99 +5,640 @@
     "readme": "danijar/crafter, README"
   },
   "hechos": [
-    {"id": "P01", "tipo": "proposicion", "sujeto": "agua", "relacion": "NUTRITIVO", "veredicto": "afirma",
-     "cita": "restored by drinking from a lake", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "P02", "tipo": "proposicion", "sujeto": "vaca", "relacion": "NUTRITIVO", "veredicto": "afirma",
-     "cita": "Cows move randomly and offer a food source.", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "P03", "tipo": "proposicion", "sujeto": "planta", "relacion": "NUTRITIVO", "veredicto": "afirma",
-     "cita": "chasing cows or growing fruits to eat", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "P04", "tipo": "proposicion", "sujeto": "zombi", "relacion": "PELIGROSO", "veredicto": "afirma",
-     "cita": "when attacked by a zombie or skeleton", "lugar": "artículo, 3.2 (Termination)"},
-    {"id": "P05", "tipo": "proposicion", "sujeto": "esqueleto", "relacion": "PELIGROSO", "veredicto": "afirma",
-     "cita": "when attacked by a zombie or skeleton", "lugar": "artículo, 3.2 (Termination)"},
-    {"id": "P06", "tipo": "proposicion", "sujeto": "flecha", "relacion": "PELIGROSO", "veredicto": "afirma",
-     "cita": "shoot arrows at the player", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "P07", "tipo": "proposicion", "sujeto": "lava", "relacion": "PELIGROSO", "veredicto": "afirma",
-     "cita": "or when falling into lava", "lugar": "artículo, 3.2 (Termination)"},
-    {"id": "P08", "tipo": "proposicion", "sujeto": "arbol", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "saplings, wood, stone, coal, iron, and diamonds", "lugar": "artículo, 3.1 (Resources and crafting); árbol = fuente de madera (figura E.1, «Tree»)"},
-    {"id": "P09", "tipo": "proposicion", "sujeto": "piedra", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "saplings, wood, stone, coal, iron, and diamonds", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "P10", "tipo": "proposicion", "sujeto": "carbon", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "saplings, wood, stone, coal, iron, and diamonds", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "P11", "tipo": "proposicion", "sujeto": "hierro", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "saplings, wood, stone, coal, iron, and diamonds", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "P12", "tipo": "proposicion", "sujeto": "diamante", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "saplings, wood, stone, coal, iron, and diamonds", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "P13", "tipo": "proposicion", "sujeto": "mesa", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "Standing nearby a table enables the player to craft", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "P14", "tipo": "proposicion", "sujeto": "horno", "relacion": "UTIL", "veredicto": "afirma",
-     "cita": "Crafting a furnace from stone enables crafting iron pickaxes", "lugar": "artículo, 3.1 (Resources and crafting)"},
-
-    {"id": "R01", "tipo": "requisito", "verbo": "USAR", "objetivo": "place_stone",
-     "requiere_inventario": {"piedra": null}, "requiere_cerca": [],
-     "cita": "Stone in inventory.", "lugar": "artículo, tabla F.1 (Place Stone)"},
-    {"id": "R02", "tipo": "requisito", "verbo": "USAR", "objetivo": "place_table",
-     "requiere_inventario": {"madera": null}, "requiere_cerca": [],
-     "cita": "Wood in inventory.", "lugar": "artículo, tabla F.1 (Place Table)"},
-    {"id": "R03", "tipo": "requisito", "verbo": "USAR", "objetivo": "place_furnace",
-     "requiere_inventario": {"piedra": null}, "requiere_cerca": [],
-     "cita": "Stone in inventory.", "lugar": "artículo, tabla F.1 (Place Furnace)"},
-    {"id": "R04", "tipo": "requisito", "verbo": "USAR", "objetivo": "place_plant",
-     "requiere_inventario": {"retoño": null}, "requiere_cerca": [],
-     "cita": "Sapling in inventory.", "lugar": "artículo, tabla F.1 (Place Plant)"},
-    {"id": "R05", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_wood_pickaxe",
-     "requiere_inventario": {"madera": null}, "requiere_cerca": ["mesa"],
-     "cita": "Nearby table; wood in inventory.", "lugar": "artículo, tabla F.1 (Make Wood Pickaxe)"},
-    {"id": "R06", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_stone_pickaxe",
-     "requiere_inventario": {"madera": null, "piedra": null}, "requiere_cerca": ["mesa"],
-     "cita": "Nearby table; wood, stone in inventory.", "lugar": "artículo, tabla F.1 (Make Stone Pickaxe)"},
-    {"id": "R07", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_iron_pickaxe",
-     "requiere_inventario": {"madera": null, "carbon": null, "hierro": null}, "requiere_cerca": ["mesa", "horno"],
-     "cita": "Nearby table, furnace; wood, coal, iron an inventory.", "lugar": "artículo, tabla F.1 (Make Iron Pickaxe; «an» es errata del original)"},
-    {"id": "R08", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_wood_sword",
-     "requiere_inventario": {"madera": null}, "requiere_cerca": ["mesa"],
-     "cita": "Nearby table; wood in inventory.", "lugar": "artículo, tabla F.1 (Make Wood Sword)"},
-    {"id": "R09", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_stone_sword",
-     "requiere_inventario": {"madera": null, "piedra": null}, "requiere_cerca": ["mesa"],
-     "cita": "Nearby table; wood, stone in inventory.", "lugar": "artículo, tabla F.1 (Make Stone Sword)"},
-    {"id": "R10", "tipo": "requisito", "verbo": "USAR", "objetivo": "make_iron_sword",
-     "requiere_inventario": {"madera": null, "carbon": null, "hierro": null}, "requiere_cerca": ["mesa", "horno"],
-     "cita": "Nearby table, furnace; wood, coal, iron in inventory.", "lugar": "artículo, tabla F.1 (Make Iron Sword)"},
-    {"id": "R11", "tipo": "requisito", "verbo": "COGER", "objetivo": "diamante",
-     "requiere_inventario": {"pico_hierro": null}, "requiere_cerca": [],
-     "cita": "Collecting a diamond requires an iron pickaxe", "lugar": "artículo, 3.4 (Exploration)"},
-    {"id": "R12", "tipo": "requisito", "verbo": "COGER", "objetivo": "piedra",
-     "requiere_inventario": {"pico_madera": null}, "requiere_cerca": [],
-     "cita": "collecting stone, which requires building a wood pickaxe", "lugar": "artículo, 3.4 (Exploration)"},
-
-    {"id": "N01", "tipo": "nota", "texto": "comida, bebida y descanso bajan con el tiempo",
-     "cita": "The levels for food, water, and rest decrease over time", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "N02", "tipo": "nota", "texto": "se pierde salud cuando una de las tres llega a cero",
-     "cita": "Once one of the three levels reaches zero", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "N03", "tipo": "nota", "texto": "la salud se regenera sin hambre, sed ni sueño",
-     "cita": "Health points regenerate over time when the player is not hungry", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "N04", "tipo": "nota", "texto": "dormir donde no llegan los monstruos",
-     "cita": "sleeping in places where monsters cannot attack", "lugar": "artículo, 3.1 (Health and survival)"},
-    {"id": "N05", "tipo": "nota", "texto": "de noche la vista se reduce y aparecen más zombis",
-     "cita": "a larger number of zombies is spawned", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "N06", "tipo": "nota", "texto": "de noche hace falta un refugio, como una cueva",
-     "cita": "without securing a shelter, such as a cave", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "N07", "tipo": "nota", "texto": "los esqueletos viven en cuevas",
-     "cita": "Skeletons live in caves", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "N08", "tipo": "nota", "texto": "zombis y vacas viven en la pradera",
-     "cita": "Zombies and cows live in grasslands", "lugar": "artículo, 3.1 (Creatures and night)"},
-    {"id": "N09", "tipo": "nota", "texto": "dormir requiere energía por debajo del máximo",
-     "cita": "Energy level is below maximum.", "lugar": "artículo, tabla F.1 (Sleep)"},
-    {"id": "N10", "tipo": "nota", "texto": "las plantas se cosechan cientos de pasos después",
-     "cita": "can be harvested many hundred time steps later", "lugar": "artículo, 3.4 (Credit assignment)"},
-    {"id": "N11", "tipo": "nota", "texto": "muchos recursos piden herramientas",
-     "cita": "Many of the resources require tools", "lugar": "artículo, 3.1 (Resources and crafting)"},
-    {"id": "N12", "tipo": "nota", "texto": "una acción sin sus requisitos no tiene efecto",
-     "cita": "Actions whose requirements are not satisfied have no effect.", "lugar": "artículo, tabla F.1 (pie)"},
-    {"id": "N13", "tipo": "nota", "texto": "el episodio termina a los 10 000 pasos",
-     "cita": "reaching the time limit of 10,000 steps", "lugar": "artículo, 3.2 (Termination)"},
-    {"id": "N14", "tipo": "nota", "texto": "la misma tecla recoge, bebe y golpea",
-     "cita": "Collect material, drink from lake, hit creature", "lugar": "README, Keyboard mapping"}
-  ]
+    {
+      "id": "P01",
+      "tipo": "proposicion",
+      "sujeto": "agua",
+      "relacion": "NUTRITIVO",
+      "veredicto": "afirma",
+      "cita": "restored by drinking from a lake",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "P02",
+      "tipo": "proposicion",
+      "sujeto": "vaca",
+      "relacion": "NUTRITIVO",
+      "veredicto": "afirma",
+      "cita": "Cows move randomly and offer a food source.",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "P03",
+      "tipo": "proposicion",
+      "sujeto": "planta",
+      "relacion": "NUTRITIVO",
+      "veredicto": "afirma",
+      "cita": "chasing cows or growing fruits to eat",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "P04",
+      "tipo": "proposicion",
+      "sujeto": "zombi",
+      "relacion": "PELIGROSO",
+      "veredicto": "afirma",
+      "cita": "when attacked by a zombie or skeleton",
+      "lugar": "artículo, 3.2 (Termination)"
+    },
+    {
+      "id": "P05",
+      "tipo": "proposicion",
+      "sujeto": "esqueleto",
+      "relacion": "PELIGROSO",
+      "veredicto": "afirma",
+      "cita": "when attacked by a zombie or skeleton",
+      "lugar": "artículo, 3.2 (Termination)"
+    },
+    {
+      "id": "P06",
+      "tipo": "proposicion",
+      "sujeto": "flecha",
+      "relacion": "PELIGROSO",
+      "veredicto": "afirma",
+      "cita": "shoot arrows at the player",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "P07",
+      "tipo": "proposicion",
+      "sujeto": "lava",
+      "relacion": "PELIGROSO",
+      "veredicto": "afirma",
+      "cita": "or when falling into lava",
+      "lugar": "artículo, 3.2 (Termination)"
+    },
+    {
+      "id": "P08",
+      "tipo": "proposicion",
+      "sujeto": "arbol",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "saplings, wood, stone, coal, iron, and diamonds",
+      "lugar": "artículo, 3.1 (Resources and crafting); árbol = fuente de madera (figura E.1, «Tree»)"
+    },
+    {
+      "id": "P09",
+      "tipo": "proposicion",
+      "sujeto": "piedra",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "saplings, wood, stone, coal, iron, and diamonds",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "P10",
+      "tipo": "proposicion",
+      "sujeto": "carbon",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "saplings, wood, stone, coal, iron, and diamonds",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "P11",
+      "tipo": "proposicion",
+      "sujeto": "hierro",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "saplings, wood, stone, coal, iron, and diamonds",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "P12",
+      "tipo": "proposicion",
+      "sujeto": "diamante",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "saplings, wood, stone, coal, iron, and diamonds",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "P13",
+      "tipo": "proposicion",
+      "sujeto": "mesa",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "Standing nearby a table enables the player to craft",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "P14",
+      "tipo": "proposicion",
+      "sujeto": "horno",
+      "relacion": "UTIL",
+      "veredicto": "afirma",
+      "cita": "Crafting a furnace from stone enables crafting iron pickaxes",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "R01",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "place_stone",
+      "requiere_inventario": {
+        "piedra": null
+      },
+      "requiere_cerca": [],
+      "cita": "Stone in inventory.",
+      "lugar": "artículo, tabla F.1 (Place Stone)",
+      "aparece": [
+        "piedra"
+      ],
+      "cita_efecto": "Place Stone"
+    },
+    {
+      "id": "R02",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "place_table",
+      "requiere_inventario": {
+        "madera": null
+      },
+      "requiere_cerca": [],
+      "cita": "Wood in inventory.",
+      "lugar": "artículo, tabla F.1 (Place Table)",
+      "aparece": [
+        "mesa"
+      ],
+      "cita_efecto": "Place Table"
+    },
+    {
+      "id": "R03",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "place_furnace",
+      "requiere_inventario": {
+        "piedra": null
+      },
+      "requiere_cerca": [],
+      "cita": "Stone in inventory.",
+      "lugar": "artículo, tabla F.1 (Place Furnace)",
+      "aparece": [
+        "horno"
+      ],
+      "cita_efecto": "Place Furnace"
+    },
+    {
+      "id": "R04",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "place_plant",
+      "requiere_inventario": {
+        "retoño": null
+      },
+      "requiere_cerca": [],
+      "cita": "Sapling in inventory.",
+      "lugar": "artículo, tabla F.1 (Place Plant)",
+      "aparece": [
+        "planta"
+      ],
+      "cita_efecto": "Place Plant"
+    },
+    {
+      "id": "R05",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_wood_pickaxe",
+      "requiere_inventario": {
+        "madera": null
+      },
+      "requiere_cerca": [
+        "mesa"
+      ],
+      "cita": "Nearby table; wood in inventory.",
+      "lugar": "artículo, tabla F.1 (Make Wood Pickaxe)",
+      "efecto": {
+        "pico_madera": 1
+      },
+      "cita_efecto": "Make Wood Pickaxe"
+    },
+    {
+      "id": "R06",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_stone_pickaxe",
+      "requiere_inventario": {
+        "madera": null,
+        "piedra": null
+      },
+      "requiere_cerca": [
+        "mesa"
+      ],
+      "cita": "Nearby table; wood, stone in inventory.",
+      "lugar": "artículo, tabla F.1 (Make Stone Pickaxe)",
+      "efecto": {
+        "pico_piedra": 1
+      },
+      "cita_efecto": "Make Stone Pickaxe"
+    },
+    {
+      "id": "R07",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_iron_pickaxe",
+      "requiere_inventario": {
+        "madera": null,
+        "carbon": null,
+        "hierro": null
+      },
+      "requiere_cerca": [
+        "mesa",
+        "horno"
+      ],
+      "cita": "Nearby table, furnace; wood, coal, iron an inventory.",
+      "lugar": "artículo, tabla F.1 (Make Iron Pickaxe; «an» es errata del original)",
+      "efecto": {
+        "pico_hierro": 1
+      },
+      "cita_efecto": "Make Iron Pickaxe"
+    },
+    {
+      "id": "R08",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_wood_sword",
+      "requiere_inventario": {
+        "madera": null
+      },
+      "requiere_cerca": [
+        "mesa"
+      ],
+      "cita": "Nearby table; wood in inventory.",
+      "lugar": "artículo, tabla F.1 (Make Wood Sword)",
+      "efecto": {
+        "espada_madera": 1
+      },
+      "cita_efecto": "Make Wood Sword"
+    },
+    {
+      "id": "R09",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_stone_sword",
+      "requiere_inventario": {
+        "madera": null,
+        "piedra": null
+      },
+      "requiere_cerca": [
+        "mesa"
+      ],
+      "cita": "Nearby table; wood, stone in inventory.",
+      "lugar": "artículo, tabla F.1 (Make Stone Sword)",
+      "efecto": {
+        "espada_piedra": 1
+      },
+      "cita_efecto": "Make Stone Sword"
+    },
+    {
+      "id": "R10",
+      "tipo": "requisito",
+      "verbo": "USAR",
+      "objetivo": "make_iron_sword",
+      "requiere_inventario": {
+        "madera": null,
+        "carbon": null,
+        "hierro": null
+      },
+      "requiere_cerca": [
+        "mesa",
+        "horno"
+      ],
+      "cita": "Nearby table, furnace; wood, coal, iron in inventory.",
+      "lugar": "artículo, tabla F.1 (Make Iron Sword)",
+      "efecto": {
+        "espada_hierro": 1
+      },
+      "cita_efecto": "Make Iron Sword"
+    },
+    {
+      "id": "R11",
+      "tipo": "requisito",
+      "verbo": "COGER",
+      "objetivo": "diamante",
+      "requiere_inventario": {
+        "pico_hierro": null
+      },
+      "requiere_cerca": [],
+      "cita": "Collecting a diamond requires an iron pickaxe",
+      "lugar": "artículo, 3.4 (Exploration)",
+      "efecto": {
+        "diamante": 1
+      },
+      "cita_efecto": "Collect Diamond"
+    },
+    {
+      "id": "R12",
+      "tipo": "requisito",
+      "verbo": "COGER",
+      "objetivo": "piedra",
+      "requiere_inventario": {
+        "pico_madera": null
+      },
+      "requiere_cerca": [],
+      "cita": "collecting stone, which requires building a wood pickaxe",
+      "lugar": "artículo, 3.4 (Exploration)",
+      "efecto": {
+        "piedra": 1
+      },
+      "cita_efecto": "Collect Stone"
+    },
+    {
+      "id": "M01",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "carbon",
+      "logro": "collect_coal",
+      "cita": "Collect Coal",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M02",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "diamante",
+      "logro": "collect_diamond",
+      "cita": "Collect Diamond",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M03",
+      "tipo": "meta",
+      "verbo": "COMER",
+      "objetivo": "agua",
+      "logro": "collect_drink",
+      "cita": "Collect Drink",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M04",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "hierro",
+      "logro": "collect_iron",
+      "cita": "Collect Iron",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M05",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "hierba",
+      "logro": "collect_sapling",
+      "cita": "Collect Sapling",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M06",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "piedra",
+      "logro": "collect_stone",
+      "cita": "Collect Stone",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M07",
+      "tipo": "meta",
+      "verbo": "COGER",
+      "objetivo": "arbol",
+      "logro": "collect_wood",
+      "cita": "Collect Wood",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M08",
+      "tipo": "meta",
+      "verbo": "ATACAR",
+      "objetivo": "esqueleto",
+      "logro": "defeat_skeleton",
+      "cita": "Defeat Skeleton",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M09",
+      "tipo": "meta",
+      "verbo": "ATACAR",
+      "objetivo": "zombi",
+      "logro": "defeat_zombie",
+      "cita": "Defeat Zombie",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M10",
+      "tipo": "meta",
+      "verbo": "COMER",
+      "objetivo": "vaca",
+      "logro": "eat_cow",
+      "cita": "Eat Cow",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M11",
+      "tipo": "meta",
+      "verbo": "COMER",
+      "objetivo": "planta",
+      "logro": "eat_plant",
+      "cita": "Eat Plant",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M12",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_iron_pickaxe",
+      "logro": "make_iron_pickaxe",
+      "cita": "Make Iron Pickaxe",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M13",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_iron_sword",
+      "logro": "make_iron_sword",
+      "cita": "Make Iron Sword",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M14",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_stone_pickaxe",
+      "logro": "make_stone_pickaxe",
+      "cita": "Make Stone Pickaxe",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M15",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_stone_sword",
+      "logro": "make_stone_sword",
+      "cita": "Make Stone Sword",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M16",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_wood_pickaxe",
+      "logro": "make_wood_pickaxe",
+      "cita": "Make Wood Pickaxe",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M17",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "make_wood_sword",
+      "logro": "make_wood_sword",
+      "cita": "Make Wood Sword",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M18",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "place_furnace",
+      "logro": "place_furnace",
+      "cita": "Place Furnace",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M19",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "place_plant",
+      "logro": "place_plant",
+      "cita": "Place Plant",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M20",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "place_stone",
+      "logro": "place_stone",
+      "cita": "Place Stone",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M21",
+      "tipo": "meta",
+      "verbo": "USAR",
+      "objetivo": "place_table",
+      "logro": "place_table",
+      "cita": "Place Table",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "M22",
+      "tipo": "meta",
+      "verbo": "DORMIR",
+      "objetivo": "",
+      "logro": "wake_up",
+      "cita": "Wake Up",
+      "lugar": "artículo, figura 4"
+    },
+    {
+      "id": "N01",
+      "tipo": "nota",
+      "texto": "comida, bebida y descanso bajan con el tiempo",
+      "cita": "The levels for food, water, and rest decrease over time",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "N02",
+      "tipo": "nota",
+      "texto": "se pierde salud cuando una de las tres llega a cero",
+      "cita": "Once one of the three levels reaches zero",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "N03",
+      "tipo": "nota",
+      "texto": "la salud se regenera sin hambre, sed ni sueño",
+      "cita": "Health points regenerate over time when the player is not hungry",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "N04",
+      "tipo": "nota",
+      "texto": "dormir donde no llegan los monstruos",
+      "cita": "sleeping in places where monsters cannot attack",
+      "lugar": "artículo, 3.1 (Health and survival)"
+    },
+    {
+      "id": "N05",
+      "tipo": "nota",
+      "texto": "de noche la vista se reduce y aparecen más zombis",
+      "cita": "a larger number of zombies is spawned",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "N06",
+      "tipo": "nota",
+      "texto": "de noche hace falta un refugio, como una cueva",
+      "cita": "without securing a shelter, such as a cave",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "N07",
+      "tipo": "nota",
+      "texto": "los esqueletos viven en cuevas",
+      "cita": "Skeletons live in caves",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "N08",
+      "tipo": "nota",
+      "texto": "zombis y vacas viven en la pradera",
+      "cita": "Zombies and cows live in grasslands",
+      "lugar": "artículo, 3.1 (Creatures and night)"
+    },
+    {
+      "id": "N09",
+      "tipo": "nota",
+      "texto": "dormir requiere energía por debajo del máximo",
+      "cita": "Energy level is below maximum.",
+      "lugar": "artículo, tabla F.1 (Sleep)"
+    },
+    {
+      "id": "N10",
+      "tipo": "nota",
+      "texto": "las plantas se cosechan cientos de pasos después",
+      "cita": "can be harvested many hundred time steps later",
+      "lugar": "artículo, 3.4 (Credit assignment)"
+    },
+    {
+      "id": "N11",
+      "tipo": "nota",
+      "texto": "muchos recursos piden herramientas",
+      "cita": "Many of the resources require tools",
+      "lugar": "artículo, 3.1 (Resources and crafting)"
+    },
+    {
+      "id": "N12",
+      "tipo": "nota",
+      "texto": "una acción sin sus requisitos no tiene efecto",
+      "cita": "Actions whose requirements are not satisfied have no effect.",
+      "lugar": "artículo, tabla F.1 (pie)"
+    },
+    {
+      "id": "N13",
+      "tipo": "nota",
+      "texto": "el episodio termina a los 10 000 pasos",
+      "cita": "reaching the time limit of 10,000 steps",
+      "lugar": "artículo, 3.2 (Termination)"
+    },
+    {
+      "id": "N14",
+      "tipo": "nota",
+      "texto": "la misma tecla recoge, bebe y golpea",
+      "cita": "Collect material, drink from lake, hit creature",
+      "lugar": "README, Keyboard mapping"
+    }
+  ],
+  "nota_metas": "Correspondencia logro -> (verbo, objetivo) del encargo del paso 5 (5.0). collect_wood -> árbol y collect_sapling -> hierba son interpretaciones del adaptador (el artículo nombra el recurso, no la casilla)."
 }

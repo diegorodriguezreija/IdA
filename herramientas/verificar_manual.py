@@ -49,6 +49,8 @@ def verificar_estricto(hechos: List[Dict[str, Any]], articulo: str, readme: str)
         donde = readme if str(h.get("lugar", "")).startswith("README") else articulo
         if cita not in donde:
             faltan.append(f"{h['id']}: no aparece «{h['cita']}» ({h.get('lugar', '')})")
+        if h.get("cita_efecto") and normalizar(h["cita_efecto"]) not in articulo:
+            faltan.append(f"{h['id']}: no aparece la cita del efecto «{h['cita_efecto']}»")
     return faltan
 
 
