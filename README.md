@@ -53,7 +53,7 @@ Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_cr
 ## Lo conseguido
 
 - **Crafter: 19,2 % de Crafter Score sin ningún entrenamiento.** Medido con el protocolo oficial: episodios de hasta 10 000 pasos, vista local de 9×7 y media geométrica de las tasas de éxito de los 22 logros. La medición abarca 278 episodios, cada uno en un mundo nuevo y con un individuo recién nacido, sin legado (IC 95 %: 17,7–20,5 %). Con linaje entre vidas sube a 20,3 %. Como referencia, en el artículo original de Crafter, DreamerV2 obtiene 10,0 % y PPO 4,6 % tras entrenar con 1M de pasos; el azar saca 1,6 %. IdA no entrena: juega desde que nace, y cada decisión se puede leer (qué sistema la propuso, con qué motivo y por qué ganó en el Tribunal). [Método y datos](docs/MEDICION_OFICIAL.md).
-- **De dónde sale esa cifra, sin adornos.** Incluye estrategias escritas para Crafter (refugio nocturno, defensa y plan tecnológico) sobre el núcleo genérico. Sin ellas, el núcleo saca 1,46 %, al nivel del azar. Por eso no se presenta como comparación de igual a igual con agentes que aprenden desde píxeles, y queda por debajo de SPRING (27,3 %, GPT-4 leyendo el artículo de Crafter) y de los mejores agentes actuales. La fase en curso traslada esas capacidades al núcleo para medir IdA sin conducta específica del mundo.
+- **De dónde sale esa cifra, sin adornos.** Incluye estrategias escritas para Crafter (refugio nocturno, defensa y plan tecnológico) sobre el núcleo genérico. Por eso no se presenta como comparación de igual a igual con agentes que aprenden desde píxeles, y queda por debajo de SPRING (27,3 %, GPT-4 leyendo el artículo de Crafter) y de los mejores agentes actuales. La fase en curso traslada esas capacidades al núcleo para medir IdA sin conducta específica del mundo.
 - **El mismo núcleo vive en cinco mundos** muy distintos, y un test con AST vigila que no aprenda palabras de ninguno.
 - **Optimizando solo el código de cada mundo:**
   - Snake pasa de unos 232 a 916 puntos de media en nivel pitón (récord: 1605).
@@ -64,7 +64,8 @@ Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_cr
 - **Lo que no funciona, también publicado:**
   - Contra el rival de ajedrez de 3 ply pierde.
   - En Crafter, los episodios duran poco más de un día de juego (unos 360 pasos de media; un día son 300), y terminan por zombis, esqueletos, hambre y sed.
-  - Los cinco logros de hierro y diamante siguen al 0 %, y comer una planta, al 0,4 %, aunque la planta casi siempre.
+  - Los cinco logros de hierro y diamante siguen al 0 %, y comer una planta, al 0,4 %, aunque la planta casi siempre. 
+  - Sin las estrategias escritas para Crafter (refugio nocturno, defensa y plan tecnológico), el núcleo saca 1,46 %, al nivel del azar
 
 Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). La métrica anterior de Crafter (logros por vida: 9,30 ± 1,09) y su historia siguen allí.
 
