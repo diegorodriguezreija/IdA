@@ -69,6 +69,15 @@ def test_fallo_creyendo_que_bastaba_sube_la_cantidad():
     assert m.intentos[(Verbo.USAR, "place_table")] == [{"madera": 1.0}]
 
 
+def test_exito_corrige_la_estimacion_por_fallos():
+    m = Memoria()
+    m.aplicar_manual(MANUAL)
+    m.aprender_requisito(Verbo.USAR, "place_table", {"madera": 2.0}, {"madera": 2.0}, set(), True)   # fallo: sube a 3
+    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 3
+    m.aprender_requisito(Verbo.USAR, "place_table", {"madera": 3.0}, {"madera": 1.0}, set(), True)   # consume 2
+    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 2
+
+
 def test_fallo_sin_cumplir_lo_creido_no_toca_cantidades():
     m = Memoria()
     m.aplicar_manual(MANUAL)

@@ -931,7 +931,7 @@ class Memoria:
             r.efecto = dict(delta)
             for k, d in delta.items():
                 if d < 0:
-                    r.requiere_inventario[k] = max(r.requiere_inventario.get(k) or 0, -d)
+                    r.requiere_inventario[k] = -d   # lo consumido es la cantidad exacta (corrige estimaciones por fallos)
             r.confianza = acotar(r.confianza + self.PASO_CONFIANZA_REQUISITO)
             return
         lista = self.intentos.setdefault(clave, [])
