@@ -612,28 +612,36 @@ class PerseguirMetas(ConPropuestas):
         faltan_cerca = [c for c in sorted(r.requiere_cerca if r else ()) if not al_alcance_clase(ctx, c)]
         if not faltan_inv and not faltan_cerca:
             return self._ejecutar(ctx, accion, r)
-        mejor_paso: Optional[Paso] = None
+        # Cada carencia necesita su propio plan; si alguna no lo tiene, la acción no es alcanzable. Se ejecuta
+        # primero la carencia más barata y el coste es la suma de todas.
+        planes: List[Paso] = []
 
-        def quedarse(p: Optional[Paso], texto: str) -> None:
-            nonlocal mejor_paso
-            if p is not None:
-                p.coste += 1.0
-                p.motivo.insert(0, texto)
-                if mejor_paso is None or p.coste < mejor_paso.coste:
-                    mejor_paso = p
+        def mejor_de(opciones: List[Optional[Paso]], texto: str) -> Optional[Paso]:
+            validas = [p for p in opciones if p is not None]
+            if not validas:
+                return None
+            p = min(validas, key=lambda q: q.coste)
+            p.coste += 1.0
+            p.motivo.insert(0, texto)
+            return p
 
         for item in sorted(faltan_inv):
-            for productora in sorted((k for k, q in mem.requisitos.items() if q.efecto.get(item, 0) > 0),
-                                     key=lambda k: (k[0].value, k[1])):
-                quedarse(self._resolver(ctx, productora, inv, visitado, prof + 1), f"falta {item}")
+            productoras = sorted((k for k, q in mem.requisitos.items() if q.efecto.get(item, 0) > 0), key=lambda k: (k[0].value, k[1]))
+            p = mejor_de([self._resolver(ctx, k, inv, visitado, prof + 1) for k in productoras], f"falta {item}")
+            if p is None:
+                return None
+            planes.append(p)
         for clase in faltan_cerca:
-            ir = acercarse_a_clase(ctx, clase, r.confianza if r else 0.5)
-            if ir is not None:
-                quedarse(ir, f"falta cerca {clase}")
-            for colocadora in sorted((k for k, q in mem.requisitos.items() if clase in q.aparece),
-                                     key=lambda k: (k[0].value, k[1])):
-                quedarse(self._resolver(ctx, colocadora, inv, visitado, prof + 1), f"falta cerca {clase}")
-        return mejor_paso
+            colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
+            opciones = [acercarse_a_clase(ctx, clase, r.confianza if r else 0.5)]
+            opciones += [self._resolver(ctx, k, inv, visitado, prof + 1) for k in colocadoras]
+            p = mejor_de(opciones, f"falta cerca {clase}")
+            if p is None:
+                return None
+            planes.append(p)
+        primero = min(planes, key=lambda q: q.coste)
+        primero.coste = sum(q.coste for q in planes)
+        return primero
 
     def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
         verbo, objetivo = accion
