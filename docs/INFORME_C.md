@@ -1171,6 +1171,119 @@ La inspección forense del estado del mapa y la secuencia de latidos reveló:
 3. **El código del huerto empeora la conducta global incluso cuando casi no se usa:**  
    En la versión ajustada, solo 1 de las 20 vidas del arnés largo llegó a colocar una planta en bolsillo (semilla 20). A pesar de que en las 19 vidas restantes la rama de huerto nunca llegó a ejecutar una acción de cultivo, la latencia y la complejidad introducida en el cálculo de distancias, presupuestos y estados en `RefugioNocturno` redujeron la mediana de supervivencia de 417 a 401,5 latidos y aumentaron las muertes prematuras en día 0 y 1. La interferencia en la máquina de estados de un componente ya sobrecargado deteriora la toma de decisiones general.
 
+---
+
+## 9. Evaluación final y resumen del encargo C
+
+### 9.1 Evaluación frente al criterio de la sección 10 del encargo (sin veredictos)
+
+A continuación se tabulan las mediciones empíricas requeridas por la sección 10 del encargo sobre el estado final congelado de la base (`feature/crafter-fase-c` en C.3d, commit `ca5205f` / HEAD) frente a sus referencias precedentes.
+
+#### a) Benchmark completo de los 4 grupos: `ref_c0.json` vs `c3d_completo.json`
+- **Comando:** `python herramientas/benchmark.py comparar datos/benchmarks/ref_c0.json datos/benchmarks/c3d_completo.json`
+- **Configuración:** $N = 10$ linajes independientes (semillas 1–10), 3 generaciones de 600 latidos por linaje (30 vidas por grupo, 120 vidas totales), IC 95 % con $t(0,975; 9) = 2,262$.
+
+##### Métricas principales por grupo
+| Grupo | Métrica | Base (`ref_c0`) | Nueva (`c3d_completo`) | Δ pareado |
+|---|---|---|---|---|
+| **Equilibrado** | latidos | 370,10 ± 66,57 | 409,10 ± 72,03 | +39,00 ± 75,07 |
+| **Equilibrado** | fitness | 11315,50 ± 1407,01 | 11721,47 ± 1420,73 | +405,97 ± 994,21 |
+| **Equilibrado** | logros | 10,93 ± 1,36 | 11,30 ± 1,37 | +0,37 ± 0,95 |
+| **Equilibrado** | noches | 0,90 ± 0,28 | 1,13 ± 0,30 | +0,23 ± 0,34 |
+| **Valiente** | latidos | 354,83 ± 73,56 | 428,43 ± 61,44 | +73,60 ± 66,17 |
+| **Valiente** | fitness | 11900,17 ± 1419,04 | 12441,50 ± 1005,44 | +541,33 ± 844,30 |
+| **Valiente** | logros | 11,53 ± 1,36 | 12,00 ± 0,97 | +0,47 ± 0,79 |
+| **Valiente** | noches | 0,87 ± 0,30 | 1,27 ± 0,29 | +0,40 ± 0,27 |
+| **Reactivo** | latidos | 376,40 ± 76,51 | 355,10 ± 62,70 | -21,30 ± 103,94 |
+| **Reactivo** | fitness | 10954,37 ± 1256,43 | 11033,63 ± 1248,11 | +79,27 ± 1183,89 |
+| **Reactivo** | logros | 10,57 ± 1,20 | 10,67 ± 1,21 | +0,10 ± 1,10 |
+| **Reactivo** | noches | 0,93 ± 0,35 | 0,80 ± 0,28 | -0,13 ± 0,45 |
+| **Sin experiencia** | latidos | 377,93 ± 47,78 | 404,97 ± 54,26 | +27,03 ± 72,52 |
+| **Sin experiencia** | fitness | 11523,07 ± 885,18 | 11717,53 ± 911,87 | +194,47 ± 642,91 |
+| **Sin experiencia** | logros | 11,13 ± 0,86 | 11,30 ± 0,88 | +0,17 ± 0,61 |
+| **Sin experiencia** | noches | 1,00 ± 0,19 | 1,10 ± 0,28 | +0,10 ± 0,39 |
+
+##### Muertes por causa (30 vidas por grupo)
+| Grupo | Causa de muerte | Vidas base (`ref_c0`) | Vidas nueva (`c3d_completo`) | Δ vidas |
+|---|---|---|---|---|
+| **Equilibrado** | esqueleto | 2 | 5 | +3 |
+| **Equilibrado** | hambre | 6 | 5 | -1 |
+| **Equilibrado** | sed | 6 | 5 | -1 |
+| **Equilibrado** | vive (L600) | 6 | 9 | +3 |
+| **Equilibrado** | zombi | 10 | 6 | -4 |
+| **Valiente** | esqueleto | 8 | 1 | -7 |
+| **Valiente** | hambre | 4 | 4 | = 0 |
+| **Valiente** | sed | 5 | 4 | -1 |
+| **Valiente** | vive (L600) | 3 | 9 | +6 |
+| **Valiente** | zombi | 10 | 12 | +2 |
+| **Reactivo** | esqueleto | 3 | 4 | +1 |
+| **Reactivo** | hambre | 2 | 2 | = 0 |
+| **Reactivo** | sed | 9 | 10 | +1 |
+| **Reactivo** | vive (L600) | 7 | 4 | -3 |
+| **Reactivo** | zombi | 9 | 10 | +1 |
+| **Sin experiencia** | esqueleto | 3 | 4 | +1 |
+| **Sin experiencia** | hambre | 7 | 2 | -5 |
+| **Sin experiencia** | sed | 7 | 7 | = 0 |
+| **Sin experiencia** | vive (L600) | 5 | 8 | +3 |
+| **Sin experiencia** | zombi | 8 | 9 | +1 |
+
+##### Logros por tipo (total en 120 vidas acumuladas de los 4 grupos)
+| Logro | Vidas base (`ref_c0`) | Vidas nueva (`c3d_completo`) | Δ vidas |
+|---|---|---|---|
+| `wake_up` | 76 | 90 | +14 |
+| `place_stone` | 89 | 100 | +11 |
+| `collect_stone` | 93 | 104 | +11 |
+| `eat_cow` | 66 | 75 | +9 |
+| `make_stone_pickaxe` | 13 | 19 | +6 |
+| `defeat_zombie` | 67 | 72 | +5 |
+| `place_furnace` | 23 | 27 | +4 |
+| `eat_plant` | 0 | 2 | +2 |
+| `collect_iron` | 1 | 3 | +2 |
+| `make_wood_pickaxe` | 112 | 114 | +2 |
+| `collect_sapling` | 120 | 120 | = 0 |
+| `collect_wood` | 120 | 120 | = 0 |
+| `make_stone_sword` | 5 | 5 | = 0 |
+| `place_plant` | 120 | 120 | = 0 |
+| `make_wood_sword` | 108 | 107 | -1 |
+| `place_table` | 117 | 116 | -1 |
+| `collect_drink` | 98 | 91 | -7 |
+| `collect_coal` | 47 | 39 | -8 |
+| `defeat_skeleton` | 50 | 34 | -16 |
+
+---
+
+#### b) Arnés largo (semillas 11–30, `--latidos 3000`, `--real`): C.3 vs C.3d
+- **Comandos:**
+  * C.3 (commit `153c1ce` ejecutado mediante `git worktree`): `datos/benchmarks/c3_largo_11_30.json`
+  * C.3d (commit `ca5205f`): `datos/benchmarks/arnes_largo_despues.json`
+
+| Métrica | C.3 (commit `153c1ce`) | C.3d (commit `ca5205f`) | Diferencia (Δ) |
+|---|---|---|---|
+| **Latidos vividos (media)** | 410,70 | 454,10 | +43,40 latidos |
+| **Latidos vividos (mediana)** | 409,00 | 417,00 | +8,00 latidos |
+| **Máximo de latidos** | 753 (semilla 21) | 1002 (semilla 20) | +249 latidos |
+| **Vivas al final (L3000)** | 0 / 20 | 0 / 20 | = 0 |
+| **Muertes totales día 0 (`dia == 0`)** | 4 / 20 (4 zombi) | 3 / 20 (3 zombi) | -1 muerte |
+| **Muertes totales día 1 (`dia == 1`)** | 12 / 20 (7 hambre, 4 zombi, 1 esqueleto) | 12 / 20 (6 hambre, 4 zombi, 1 esqueleto, 1 sed) | = 0 |
+| **Muertes totales día 2 (`dia == 2`)** | 4 / 20 (4 hambre) | 4 / 20 (4 hambre) | = 0 |
+| **Muertes totales día 3 (`dia == 3`)** | 0 / 20 | 1 / 20 (1 hambre) | +1 muerte |
+| **Total muertes por causa** | Hambre: 11<br>Zombi: 8<br>Esqueleto: 1 | Hambre: 11<br>Zombi: 7<br>Esqueleto: 1<br>Sed: 1 | Hambre: = 0<br>Zombi: -1<br>Esqueleto: = 0<br>Sed: +1 |
+
+---
+
+#### c) Arnés de 600 latidos en semillas no vistas (semillas 31–50, `--real`): C.3d vs `ref_c0`
+- **Comandos:**
+  * `ref_c0` (commit `f2f1262` ejecutado mediante `git worktree`): salida del arnés en stdout
+  * C.3d (commit `ca5205f`): filtro de semillas 31–50 en `datos/benchmarks/arnes_600_despues.json`
+
+| Métrica (semillas 31–50, N = 20) | `ref_c0` (commit `f2f1262`) | C.3d (commit `ca5205f`) | Diferencia (Δ) |
+|---|---|---|---|
+| **Vidas selladas el día 1** | 11 / 20 (55,0 %) | 16 / 20 (80,0 %) | **+5 vidas (+25,0 pp)** |
+| **Vivas al final (L600)** | 2 / 20 (10,0 %) | 5 / 20 (25,0 %) | **+3 vidas (+15,0 pp)** |
+| **Latidos medios** | 334,7 | 420,0 | **+85,3 latidos** |
+| **Causas de muerte** | Sed: 6<br>Zombi: 6<br>Hambre: 4<br>Esqueleto: 2 | Hambre: 6<br>Zombi: 5<br>Sed: 3<br>Esqueleto: 1 | Sed: -3<br>Zombi: -1<br>Hambre: +2<br>Esqueleto: -1 |
+
+
 
 
 
