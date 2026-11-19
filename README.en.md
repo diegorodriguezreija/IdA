@@ -64,7 +64,7 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
 - **Reproducible with a seed** in the minimal, file, Crafter, and chess worlds.
 - **What doesn't work is published too:**
   - Against the 3-ply chess bot, it loses.
-  - In Crafter, most episodes end on the first or second night (around 360 steps on average), due to zombies, skeletons, hunger, and thirst.
+  - In Crafter, episodes last little more than one in-game day (about 360 steps on average; a day is 300), ending by zombies, skeletons, hunger and thirst.
   - The five iron and diamond achievements remain at 0%, and eating a plant at 0.4%, even though it plants almost every episode.
 
 Figures, method and limits (Spanish): [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). The previous Crafter metric (achievements per life: 9.30 ± 1.09) and its history remain there.

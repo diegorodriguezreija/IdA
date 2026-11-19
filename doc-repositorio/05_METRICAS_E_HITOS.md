@@ -110,7 +110,7 @@ python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista ofici
 | Agente | Crafter Score | Entrenamiento | Nota |
 |---|---|---|---|
 | Humanos expertos | 50,5 ± 6,8 % | — | Hafner (2021) |
-| SPRING (GPT-4) | 27,3 % | Ninguno (LLM preentrenado) | Lee el artículo de Crafter |
+| SPRING (GPT-4) | 27,3 % | Ninguno (LLM preentrenado) | Wu et al. (2023); lee el artículo de Crafter |
 | DreamerV2 | 10,0 ± 1,2 % | 1M de pasos | Hafner (2021) |
 | PPO | 4,6 ± 0,3 % | 1M de pasos | Hafner (2021) |
 | Aleatorio | 1,6 % | — | Hafner (2021) |
@@ -120,7 +120,7 @@ python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista ofici
 #### Declaraciones del protocolo (sección 4.3 de `docs/FASE_GENERALIZACION_CRAFTER.md`)
 
 - **Entrada simbólica:** IdA recibe una descripción simbólica de la vista local oficial (9×7), sin estado oculto. Toda la información es visible en la imagen.
-- **Coordenadas absolutas:** Coordenadas de la casilla propia obtenibles por integración de trayecto (las acciones son deterministas y se observa si el movimiento tuvo efecto).
+- **Coordenadas absolutas:** IdA recibe del adaptador las coordenadas de su casilla. Un agente sin ellas podría obtenerlas por integración de trayecto (las acciones son deterministas y se observa si el movimiento tuvo efecto).
 - **Noche:** IdA reduce el radio a 2 con luz < 0,3 (restricción propia, más estricta que la oficial, que solo añade ruido y oscurece la imagen).
 - **Linaje:** Las vidas heredan proposiciones y registros. Se publican dos cifras: sin herencia (recién nacido sin legado, cero entrenamiento) y con linaje completo.
 - **Perfil:** Se fija el perfil Equilibrado para la evaluación.

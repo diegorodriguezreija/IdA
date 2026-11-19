@@ -63,7 +63,7 @@ Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_cr
 - **Repetible con semilla** en el mundo mínimo, el de archivos, Crafter y el ajedrez.
 - **Lo que no funciona, también publicado:**
   - Contra el rival de ajedrez de 3 ply pierde.
-  - En Crafter, la mayoría de los episodios acaban en la primera o la segunda noche (unos 360 pasos de media), por zombis, esqueletos, hambre y sed.
+  - En Crafter, los episodios duran poco más de un día de juego (unos 360 pasos de media; un día son 300), y terminan por zombis, esqueletos, hambre y sed.
   - Los cinco logros de hierro y diamante siguen al 0 %, y comer una planta, al 0,4 %, aunque la planta casi siempre.
 
 Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). La métrica anterior de Crafter (logros por vida: 9,30 ± 1,09) y su historia siguen allí.
