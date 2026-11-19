@@ -2,7 +2,7 @@
 
 Fase de generalización (`docs/FASE_GENERALIZACION_CRAFTER.md`, «Paso 0»). Fecha: 19/11/2026. Base: `feature/planificador` (5738e45). **Propuesta: no hay nada implementado.**
 
-Las cifras de este documento salen de diagnósticos de una vida por condición. Sirven para orientar el diseño, no son mediciones. Scripts (fuera del repositorio): `diag_intensidad.py` y `diag_tribunal.py` en el scratchpad de la sesión. Si se aprueba la propuesta, se pueden pasar a `herramientas/`.
+Las cifras de este documento salen de diagnósticos de una vida por condición. Sirven para orientar el diseño, no son mediciones. Scripts: `herramientas/diagnostico_intensidad.py` (tabla de inversiones, sobre 5738e45) y `herramientas/diagnostico_tribunal.py` (propuestas de `PerseguirMetas`, sobre 76f5642).
 
 ---
 
@@ -61,7 +61,7 @@ estrés   = 0,7 · estrés + 0,3 · urgencia
 Lectura:
 - **«progresar» no es una necesidad.** Es una intención con intensidad fija 0,5. Sin ella, las inversiones de Crafter con estrategias son 23 (7,1 %): 19 de cobijo contra seguridad, 3 del Core contra seguridad y 1 de seguridad contra cobijo.
 - **Las 57 restantes son `RefugioNocturno` ganando con cobijo a 0,03-0,2.** Ocurren desde el latido 1, con estrés de 0,001 a 0,035, en la fase de «ir a por madera». Decide su confianza inflada (0,86 + 0,12 · empuje), no una necesidad. Es la deuda 2 de `DEUDA_TECNICA_CRAFTER.md`.
-- **Desde el lado de `PerseguirMetas`** (diagnóstico del paso 5, mismas vidas):
+- **Desde el lado de `PerseguirMetas`** (diagnóstico del paso 5, sobre 76f5642; no son las mismas vidas que la tabla, porque 5738e45 cambió la conducta: con 5738e45 y la semilla 31, en el suelo gana el 55,1 %):
   - con estrategias gana el 9,1 % de sus propuestas. Pierde el 76 % de las veces contra el refugio (total medio 0,865 frente a 0,549) y en el 57 % de los latidos ni siquiera entra entre los 8 mejores;
   - en el suelo gana el 53 %.
 - **Ejemplo de aliestesia en la base** (Crafter, suelo, latidos 188-190): el impulso que propone «comer agua» es **hambre**, con intensidad 0,65. Hambre y sed comparten estrategia (`Alimentarse`, rasgo `nutritivo`). Lo que decide que el agua apetezca es el `_deseo` del adaptador.
