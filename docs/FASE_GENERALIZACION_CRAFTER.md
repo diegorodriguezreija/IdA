@@ -62,6 +62,27 @@ Crafter tiene pocas reglas formales, y conviene no atribuirle más:
 - **Puntuación:** para cada uno de los 22 logros, la tasa de éxito `s_i` (en %) es la fracción de episodios en que se consiguió al menos una vez, sobre **todos** los episodios dentro del presupuesto. La Crafter Score es `S = exp(media_i(ln(1 + s_i))) − 1`.
 - **Observación oficial:** una imagen de 64×64 con una vista local de 9×7 casillas más 2 filas de inventario (`env.py:42-44`; 16 objetos de inventario en filas de 9). La recompensa es opcional y no forma parte de la puntuación.
 
+**Las tablas de clasificación del README de Crafter** dividen a los agentes en tres categorías:
+- **Reinforcement Learning** y **Unsupervised Agents**, con un presupuesto de interacción de 1M de pasos;
+- **External Knowledge**, «definida de forma más amplia».
+
+La tercera tiene dos columnas obligatorias:
+- **Uses:** qué conocimiento externo usa el agente. Por ejemplo, SPRING declara «LLM, scene description, Crafter paper».
+- **Interaction:** cuántos pasos de interacción usa (SPRING, 0).
+
+**IdA va en External Knowledge.** Y esas dos columnas son exactamente la declaración que nos exige el pilar 4:
+- **Línea procedimental:** Uses = «scene description, hand-written Crafter strategies»; Interaction = 0 sin herencia.
+- **Línea general:** Uses = «scene description, Crafter paper».
+
+El README invita a añadir agentes mediante una *pull request*.
+
+Como referencia, en esa categoría están:
+- humanos, 50,5 %;
+- SPRING, 27,3 %;
+- Achievement Distillation, 21,8 %, que usa la estructura de recompensas y 1M de pasos.
+
+En RL, el mejor de la tabla es Curious Replay, con un 19,4 %. La tabla no recoge los trabajos más recientes.
+
 ### 3.2 Los cuatro pilares son un estándar propio
 
 Los pilares no son reglas del ranking. Son **lo que IdA se exige para que la comparación sea justa** y para que el resultado diga algo sobre IdA y no sobre su programador. Así deben presentarse en cualquier publicación.
@@ -204,7 +225,11 @@ Cambios que se aplican **al mundo desde el arnés** (parámetros o parches de Cr
 
 Reparto de trabajo (el que funcionó en C.1): **yo escribo el diseño y el pseudocódigo de cada paso; el modelo de implementación (Opus 5.5 o Argon, según cuota) solo implementa; Flash mide.** Donde el plan dice «Argon», vale cualquiera de los dos. Cada paso se cierra con su medición y su veredicto antes de empezar el siguiente.
 
-**Orden de ejecución:** −1 → 2 → 0 → 1 → 3 → 4 → 5 → 6 → 7. El manual (paso 2) se adelanta porque es barato y su «suelo con manual» dice pronto cuánto aporta el conocimiento por sí solo, lo que afina la expectativa de todo lo demás.
+**Orden de ejecución:** −1 → 2 → 5 → 0 → 1 → 3 → 4 → 6 → 7.
+- El manual (paso 2) va primero porque los demás pasos lo usan.
+- **El paso 5 se adelanta** (revisión del 19/11): el adaptador ya daba peligro y nutrición, así que el manual solo no cambiará el suelo; lo que lo cambia es que la base sepa usar los requisitos. El suelo no fabrica nada (0 % en todos los logros de fabricación), y ahí está el mayor margen de la línea general.
+
+**Línea procedimental congelada:** antes de empezar el paso 2 se etiqueta el `main` actual como `crafter-procedimental-v1`. A partir de ahí, `main` irá perdiendo estrategias del mundo, y la cifra de 19,2 % se reproduce desde la etiqueta.
 
 **Regla para las mediciones:** toda cifra que se reporte sale de un fichero de salida que existe (JSON o log), con su ruta citada. Nunca se escriben resultados antes de que termine el proceso.
 
@@ -266,6 +291,7 @@ Semillas: ajuste 11–30, validación 31–50, benchmark 1–10 (como hasta ahor
 - **Criterio de aceptación:**
   - mínimo, archivos y ajedrez: benchmark completo no peor de forma significativa (pareado, N = 10, IC 95 %) e `invariancia.py` donde la conducta no deba cambiar;
   - Crafter: la medición abreviada no empeora; y al menos un apaño de urgencia del mundo se puede borrar (p. ej. la urgencia por salud de C.0c) sin pérdida.
+- **Incluye la aliestesia** (traída del paso 2): Crafter declara hoy una sola necesidad, `alimentacion = min(comida, bebida)`, y es el adaptador (`_deseo`) el que decide si apetece el agua o la vaca. Se separa en dos necesidades (hambre y sed), cada una con su intensidad, y la elección pasa a la base.
 
 ## Paso 1. Memoria espacial que alguien use (diseño: yo; implementa: Argon)
 
@@ -277,11 +303,13 @@ El bloque E se midió como **no útil** (`VEREDICTO_E_F.md`): ninguna decisión 
 
 ## Paso 2. Manual declarativo (diseño: yo; implementa: Flash o Argon según tamaño)
 
-- Formato del manual: hechos con referencia a su fuente (sección 5), cargados como proposiciones con confianza de autoridad (`c_aut`), que la experiencia puede confirmar o refutar.
-- Sustituye los hechos de Crafter hoy repartidos por `crafter.py` (`constantes`, recetas dentro de `PlanTecnologico`).
-- **Se ejecuta el segundo, justo después del paso −1.**
-- **Medición nueva, el «suelo con manual»:** la base con el manual y sin estrategias propias (`--sin-estrategias-propias`). Junto con el suelo sin manual (1,46 %), dice cuánto aporta el conocimiento por sí solo y cuánto depende de que la base sepa encadenar acciones.
-- **Criterio:** auditoría de procedencia (cada hecho con su frase) y medición abreviada de `main` con el manual sin pérdida significativa.
+Encargo detallado: `docs/ENCARGO_PASO2_MANUAL.md`.
+
+- Manual estricto (artículo y README) y ampliado (más el código de Crafter), con cita literal de cada hecho.
+- **Núcleo:** una forma general de conocimiento nueva, los **requisitos de una acción** (precondiciones de inventario y de cercanía, y efecto aprendido), además de las proposiciones con `c_aut`. Hoy la memoria solo sabe `nutre`, `hace daño` y `sirve`, y una receta no cabe ahí.
+- **Adaptador:** `HOSTILES` y la lista de recursos salen del manual. Con el manual estricto, la lava deja de ser peligrosa de entrada.
+- Las recetas de `PlanTecnologico` **no** se tocan: se van con él en el paso 5. La aliestesia del adaptador pasa al paso 0.
+- **Criterio:** citas verificadas, invariancia en los otros mundos, y `main` con el manual ampliado sin pérdida significativa.
 
 ## Paso 3. «Proteger X» en la base: el refugio (diseño: yo; implementa: Argon)
 
@@ -301,7 +329,10 @@ El bloque E se midió como **no útil** (`VEREDICTO_E_F.md`): ninguna decisión 
 
 ## Paso 5. Tecnología desde el manual (diseño: yo; implementa: Argon)
 
-- `PlanTecnologico` se sustituye por un plan general de S3 que deriva la cadena de recetas del manual (lo que falta para lo siguiente que se puede fabricar), con el tipo `Plan` de F2 si aporta, y solo si aporta.
+- **Se ejecuta justo después del paso 2.**
+- `PlanTecnologico` se sustituye por un plan general de S3 que encadena **requisitos** (paso 2) hacia atrás: para lo siguiente que se puede conseguir, qué falta y cómo se obtiene. Usa el tipo `Plan` de F2 solo si aporta.
+- Aprende lo que el manual estricto no dice (qué herramienta pide cada material, cuántas unidades, de dónde sale el retoño) a partir de los intentos fallidos y los éxitos que guarda la memoria.
+- Es general: sirve para cualquier mundo con acciones que tienen precondiciones.
 - **Criterio:** tasas de éxito de los logros tecnológicos no peores de forma significativa; perturbación «receta cambiada» superada sin tocar código.
 
 ## Paso 6. Defensa general (diseño: yo; implementa: Argon)
@@ -322,12 +353,12 @@ El bloque E se midió como **no útil** (`VEREDICTO_E_F.md`): ninguna decisión 
 | Orden | Paso | Qué | Quién | Toca la base | Borra del mundo |
 |---|---|---|---|---|---|
 | 1.º | −1 | Protocolo oficial, suelo y techo (**hecho**) | Flash | No | — |
-| 2.º | 2 | Manual declarativo y suelo con manual | Yo + Flash/Argon | Mínimo | `constantes` y recetas |
-| 3.º | 0 | Intensidad del impulso en el Tribunal | Yo (diseño) + Argon | Sí (Tribunal) | Apaños de urgencia |
-| 4.º | 1 | Mapa cognitivo compartido | Yo + Argon | Sí (memoria) | Registros propios de las estrategias |
-| 5.º | 3 | Proteger X: refugio | Yo + Argon | Sí (S1) | `RefugioNocturno` |
-| 6.º | 4 | Proteger X: forrajeo y huerto | Yo + Argon | Sí (S1/S2) | — |
-| 7.º | 5 | Tecnología desde el manual | Yo + Argon | Sí (S3) | `PlanTecnologico` |
+| 2.º | 2 | Manual declarativo y requisitos | Yo + Flash/Opus | Sí (memoria) | `HOSTILES` y lista de recursos |
+| 3.º | 5 | Planificador general sobre requisitos | Yo + Opus | Sí (S3) | `PlanTecnologico` y sus recetas |
+| 4.º | 0 | Intensidad del impulso en el Tribunal; hambre y sed | Yo (diseño) + Opus | Sí (Tribunal) | Apaños de urgencia y aliestesia |
+| 5.º | 1 | Mapa cognitivo compartido | Yo + Opus | Sí (memoria) | Registros propios de las estrategias |
+| 6.º | 3 | Proteger X: refugio | Yo + Opus | Sí (S1) | `RefugioNocturno` |
+| 7.º | 4 | Proteger X: forrajeo y huerto | Yo + Opus | Sí (S1/S2) | — |
 | 8.º | 6 | Defensa general | Yo + Argon | Sí (S1) | `DefensaArmada`, `CerrarDistancia` |
 | 9.º | 7 | Evaluación final | Flash | No | — |
 
