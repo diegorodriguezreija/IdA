@@ -86,7 +86,8 @@ def _suma(a: Pos, b: Pos) -> Pos:
 
 
 def _vecinas(p: Pos) -> List[Pos]:
-    return [_suma(p, d) for d in DIRECCIONES]
+    x, y = p
+    return [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
 
 
 def _manhattan(a: Pos, b: Pos) -> int:
@@ -117,6 +118,14 @@ class Modelo:
         self.interactuar = mem.modelo_cuerpo("interactuar", True)
         self.cerradores = self._cerradores()
         self._cavables: Dict[str, Optional[Dict[str, float]]] = {}
+        self._libre: Dict[Optional[str], bool] = {}
+        self._acceso: Dict[Optional[str], bool] = {}
+        self._cerrable: Dict[Optional[str], bool] = {}
+        self._unidades: Dict[FrozenSet[Pos], int] = {}
+        relevantes = {k for r in mem.requisitos.values() for k in r.requiere_inventario} | {k for c in self.cerradores for k, _ in c.requiere}
+        # Lo que determina un plan local, además del sitio y el inicio (clave de la caché de planes de ``Recinto``).
+        self.firma = (mem.version_mapa, frozenset(peligros), tuple(sorted((k, inv.get(k, 0.0)) for k in relevantes)),
+                      self.mover_libre, self.mover_bloqueado, self.interactuar)
         # Clases no transitables cuyo resultado al cogerlas se ha observado, y cuántas quedaron transitables (inducción).
         observadas = {a for (v, _), t in self.mem.transformaciones.items() if v == Verbo.COGER for (a, _d) in t
                       if self.mem.transitable(a) is False}
@@ -124,15 +133,23 @@ class Modelo:
         self._abre_alguna = bool(abren)
         self.induccion = (len(abren) + 1.0) / (len(observadas) + 2.0)    # regla de sucesión de Laplace
 
-    # Casillas
+    # Casillas (lo que depende solo de la clase se calcula una vez por clase y modelo: coste de cálculo)
     def libre(self, p: Pos) -> bool:
-        return self.mem.transitable(self.casillas.get(p)) is True and p not in self.peligros
+        clase = self.casillas.get(p)
+        v = self._libre.get(clase)
+        if v is None:
+            v = self._libre[clase] = self.mem.transitable(clase) is True
+        return v and p not in self.peligros
 
     def conocida(self, p: Pos) -> bool:
         return p in self.casillas
 
     def acceso(self, p: Pos) -> bool:
-        return self.mem.transitable_peligro(self.casillas.get(p))
+        clase = self.casillas.get(p)
+        v = self._acceso.get(clase)
+        if v is None:
+            v = self._acceso[clase] = self.mem.transitable_peligro(clase)
+        return v
 
     def rinde(self, p: Pos) -> Optional[Dict[str, float]]:
         """Si la casilla se puede cavar ahora, lo que da al inventario (``{}`` si nada); None si no se puede."""
@@ -202,6 +219,12 @@ class Modelo:
 
     def unidades(self, cavadas: Iterable[Pos] = ()) -> int:
         """Cierres posibles con el inventario de ahora más lo que den las casillas ``cavadas``."""
+        clave = frozenset(cavadas)
+        if clave not in self._unidades:
+            self._unidades[clave] = self._contar_unidades(clave)
+        return self._unidades[clave]
+
+    def _contar_unidades(self, cavadas: FrozenSet[Pos]) -> int:
         extra: Dict[str, float] = {}
         for p in cavadas:
             for k, n in (self.rinde(p) or {}).items():
@@ -210,7 +233,10 @@ class Modelo:
 
     def cerrable(self, p: Pos) -> bool:
         clase = self.casillas.get(p)
-        return any(clase not in c.no_sirve for c in self.cerradores)
+        v = self._cerrable.get(clase)
+        if v is None:
+            v = self._cerrable[clase] = any(clase not in c.no_sirve for c in self.cerradores)
+        return v
 
     def cerrador_para(self, p: Pos) -> Optional[Cerrador]:
         clase = self.casillas.get(p)
@@ -303,8 +329,9 @@ def planificar(modelo: Modelo, pos: Pos, cara: Optional[Pos], interior: Tuple[Po
     orienta = modelo.interactuar[1] if modelo.interactuar is not None else False
 
     def sucesores(e: EstadoPlan) -> Iterable[Tuple[Accion, EstadoPlan]]:
+        x, y = e.pos
         for d in DIRECCIONES:
-            t = _suma(e.pos, d)
+            t = (x + d[0], y + d[1])
             if t not in ventana:
                 continue
             pasable = t in e.cavadas or (modelo.libre(t) and t not in e.cerradas)
@@ -397,6 +424,11 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
         celdas |= {v for p in list(celdas) for v in _vecinas(p) if modelo.rinde(v) is not None}
     sitios: List[Sitio] = []
     vistos: Set[Tuple[Pos, ...]] = set()
+    vecinas_acceso: Dict[Pos, Optional[FrozenSet[Pos]]] = {}     # por casilla: sus vecinas que son acceso (None: alguna desconocida)
+    no_cerrables: Set[Pos] = set()
+    for p in celdas:
+        vecinas_acceso[p] = accesos_de(modelo, (p,))
+        no_cerrables |= {v for v in vecinas_acceso[p] or () if not modelo.cerrable(v)}
     for a in sorted(celdas):
         for forma in ((a,), (a, _suma(a, (1, 0))), (a, _suma(a, (0, 1)))):
             interior = tuple(sorted(forma))
@@ -408,8 +440,11 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
                 continue
             if any(_manhattan(p, q) <= 1 for p in interior for q in modelo.peligros):
                 continue         # un peligro dentro o junto al sitio
-            accesos = accesos_de(modelo, interior)
-            if accesos is None or not all(modelo.cerrable(p) for p in accesos):
+            partes = [vecinas_acceso[p] for p in interior]
+            if any(x is None for x in partes):
+                continue
+            accesos = frozenset(v for x in partes for v in x or ()) - set(interior)     # = accesos_de(modelo, interior)
+            if accesos & no_cerrables:
                 continue
             falta = max(0, len(accesos) - modelo.unidades(excavar))
             if falta and coste_unidad is None:
@@ -427,7 +462,7 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
 
 
 def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
-              previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> bool:
+              previo: Dict[Pos, Pos], hogar: Optional[Pos], cache: Optional[Dict[Any, Optional[List[Accion]]]] = None) -> bool:
     """Plan local exacto del sitio y su coste. Si ``aqui`` está en el entorno del sitio, el plan empieza aquí (y no sale del
     entorno, así que el latido siguiente también); si no, en la entrada, llegando por la ruta más corta (con la orientación de
     llegada que da el modelo del cuerpo)."""
@@ -440,7 +475,13 @@ def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist
         cara0 = cara
         if antes is not None and modelo.mover_libre is not None and modelo.mover_libre[1]:
             cara0 = (sitio.entrada[0] - antes[0], sitio.entrada[1] - antes[1])
-    plan = planificar(modelo, inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos)
+    clave = (inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos, modelo.firma)
+    if cache is not None and clave in cache:
+        plan = cache[clave]
+    else:
+        plan = planificar(modelo, inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos)
+        if cache is not None:
+            cache[clave] = plan
     if plan is None:
         return False
     sitio.plan, sitio.desde_aqui = plan, cerca
@@ -473,6 +514,7 @@ class Recinto(Componente):
         self._ultimo_requisitos = -10**9
         self._sel_requisitos: Optional[Dict[str, Any]] = None
         self._inventario: Dict[str, float] = {}
+        self._planes: Dict[Any, Optional[List[Accion]]] = {}     # caché de planes locales (coste de cálculo)
         self._planificador = PerseguirMetas()
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -484,11 +526,15 @@ class Recinto(Componente):
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
             self._ultimo_requisitos, self._sel_requisitos, self._planificador = -10**9, None, PerseguirMetas()
+            self._planes.clear()
         cara = orientacion(ctx)
         inv = inventario(ctx)
-        if inv != self._inventario:       # lo que se tiene cambia qué sitios son completables: se reevalúa ya
-            self._inventario, self._ultima, self._ultimo_requisitos = inv, -10**9, -10**9
+        objetos = ctx.memoria._objetos(inv)
+        if objetos != self._inventario:   # los objetos que se tienen cambian qué sitios son completables: se reevalúa ya
+            self._inventario, self._ultima, self._ultimo_requisitos = objetos, -10**9, -10**9
         modelo = Modelo(ctx.memoria, inv, _peligros(ctx))
+        if len(self._planes) > 2000 or any(k[-1][0] != ctx.memoria.version_mapa for k in list(self._planes)[:1]):
+            self._planes.clear()      # el mapa ha cambiado: los planes guardados ya no valen
         hogar = pos_de(ctx.memoria.hogar()) if ctx.perfil.hogar else None
         dentro = recinto_actual(modelo, aqui)
         carga: Dict[str, Any] = {"dentro": dentro is not None, "interior": list(dentro or ()), "coste": None, "confianza": 0.0,
@@ -555,6 +601,8 @@ class Recinto(Componente):
             por_unidad = sum((x or 0.0) * n for x, (_, n) in zip(costes, c.requiere, strict=True))
             if cierre is None or por_unidad < cierre[0]:
                 cierre = (por_unidad, c)
+        if cierre is None and not coste_cavar:
+            return None           # nada que conseguir haría completable un sitio
         con_herramientas = Modelo(modelo.mem, {**inv, **herramientas}, modelo.peligros)
         extra = {k: con_herramientas.inv.get(k, 0.0) + n * 2 * len(DIRECCIONES) for k, n in cierre[1].requiere} if cierre else {}
         previsto = Modelo(modelo.mem, {**con_herramientas.inv, **extra}, modelo.peligros)
@@ -563,7 +611,7 @@ class Recinto(Componente):
         anterior: Optional[Tuple[Sitio, Dict[str, float]]] = None
         for s in candidatos(con_herramientas, aqui, dist, hogar, cierre[0] if cierre else None)[:CANDIDATOS_EXACTOS]:
             clases = sorted({modelo.casillas[p] for p in s.excavar if modelo.casillas.get(p) in coste_cavar})
-            if (s.falta == 0 and not clases) or not completar(previsto, s, aqui, cara, dist, previo, hogar):
+            if (s.falta == 0 and not clases) or not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes):
                 continue
             requiere: Dict[str, float] = {}
             for clase in clases:
@@ -594,7 +642,7 @@ class Recinto(Componente):
         actual: Optional[Sitio] = None
         if self._sitio is not None:
             actual = self._reconstruir(modelo, self._sitio, dist, hogar)
-            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar):
+            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes):
                 actual = None
         perdido = self._sitio is not None and actual is None
         if ctx.latido - self._ultima < CADA_EVALUACION and not perdido:
@@ -604,7 +652,7 @@ class Recinto(Componente):
         for s in candidatos(modelo, aqui, dist, hogar)[:CANDIDATOS_EXACTOS]:
             if actual is not None and s.interior == actual.interior:
                 continue
-            if completar(modelo, s, aqui, cara, dist, previo, hogar) and (mejor is None or s.coste < mejor.coste):
+            if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes) and (mejor is None or s.coste < mejor.coste):
                 mejor = s
         if actual is not None and (mejor is None or mejor.coste > actual.coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * actual.coste)):
             mejor = actual
