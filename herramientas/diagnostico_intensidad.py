@@ -28,6 +28,7 @@ def main() -> int:
     p.add_argument("--sin-estrategias-propias", action="store_true", help="solo Crafter: el suelo, sin estrategias del mundo")
     p.add_argument("--apuro", type=float, default=0.5, help="intensidad a partir de la cual una necesidad está apurada")
     p.add_argument("--margen", type=float, default=0.2, help="cuánto más apurada que la del ganador")
+    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden (paso 0)")
     p.add_argument("--raiz", default=RAIZ, help="raíz del repositorio que se ejecuta (p. ej. un worktree de otro commit)")
     args = p.parse_args()
     sys.path.insert(0, args.raiz)
@@ -36,6 +37,11 @@ def main() -> int:
 
     if args.sin_estrategias_propias:
         cargar(args.mundo).estrategias_propias = lambda self: {}
+    if args.mecanismos:
+        from dataclasses import replace
+        clase = cargar(args.mundo)
+        clase.perfil = replace(clase.perfil, mecanismos=replace(clase.perfil.mecanismos, **dict.fromkeys(args.mecanismos, True)))
+    intenciones = set(cargar(args.mundo).perfil.intenciones)
     cuenta: Counter = Counter()
     pares: Counter = Counter()
     estres: List[float] = []
@@ -56,6 +62,8 @@ def main() -> int:
             cuenta["competencia"] += 1
         apurados = [(k, inten.get(k, 0.0)) for k in perdedores if k and k != imp_g
                     and inten.get(k, 0.0) >= args.apuro and inten.get(k, 0.0) >= i_g + args.margen]
+        if any(k not in intenciones for k, _ in apurados):
+            cuenta["inversion_necesidades"] += 1      # pierde una necesidad apurada (no una intención)
         if apurados:
             cuenta["inversion"] += 1
             k, v = max(apurados, key=lambda x: x[1])
@@ -69,10 +77,12 @@ def main() -> int:
                        opciones_mundo=opciones)
     n = max(1, cuenta["competencia"])
     print(f"## {args.mundo} {'suelo' if args.sin_estrategias_propias else 'con estrategias'} semilla {args.semilla}: "
-          f"{res[0]['latidos']} latidos")
+          f"{res[0]['latidos']} latidos; mecanismos: {', '.join(args.mecanismos) or 'ninguno'}")
     print(f"- latidos con más de un candidato: {cuenta['competencia']}")
     print(f"- gana un impulso menos apurado (perdedor ≥ {args.apuro} y ≥ ganador + {args.margen}): "
           f"{cuenta['inversion']} ({100 * cuenta['inversion'] / n:.1f} %)")
+    print(f"- de ellas, con una necesidad apurada que pierde (sin contar intenciones): {cuenta['inversion_necesidades']} "
+          f"({100 * cuenta['inversion_necesidades'] / n:.1f} %)")
     print(f"- estrés medio {sum(estres) / max(1, len(estres)):.3f}; latidos con estrés ≥ 0,3: {sum(e >= 0.3 for e in estres)}")
     print("- pares (impulso del ganador → impulso apurado que pierde):", pares.most_common(6))
     for e in ejemplos:

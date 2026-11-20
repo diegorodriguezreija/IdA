@@ -34,8 +34,9 @@ REFERENCIA = os.path.join(RAIZ, "datos", "invariancia", "referencia.json")
 DECIMALES = 9
 
 
-def _apagar_mecanismos(mundos) -> None:
-    """La invariancia compara con base-v2.0: todos los mecanismos de memoria del bloque E apagados."""
+def _apagar_mecanismos(mundos, activos=()) -> None:
+    """La invariancia compara con base-v2.0: todos los mecanismos (bloques E y F, paso 0) apagados, salvo
+    los que se pidan con ``--mecanismos`` (p. ej. ``urgencia_local`` para comprobar el paso 0a)."""
     from dataclasses import replace
 
     from ida.core.mundo import MecanismosMemoria
@@ -43,7 +44,7 @@ def _apagar_mecanismos(mundos) -> None:
 
     for m in mundos:
         clase = cargar(m)
-        clase.perfil = replace(clase.perfil, mecanismos=MecanismosMemoria())
+        clase.perfil = replace(clase.perfil, mecanismos=MecanismosMemoria(**dict.fromkeys(activos, True)))
 
 
 def _congelar_reloj() -> None:
@@ -88,9 +89,10 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--referencia", action="store_true", help="guarda la referencia en lugar de comparar")
     p.add_argument("--mundos", nargs="*", default=list(MUNDOS))
+    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden (por defecto, ninguno)")
     args = p.parse_args()
     _congelar_reloj()
-    _apagar_mecanismos(args.mundos)
+    _apagar_mecanismos(args.mundos, args.mecanismos)
 
     actual = {f"{m}:{s}": vida(m, s) for m in args.mundos for s in SEMILLAS}
     if args.referencia:

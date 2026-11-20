@@ -89,8 +89,9 @@ NECESIDADES_BASE: Tuple[Necesidad, ...] = (
 
 @dataclass(frozen=True)
 class MecanismosMemoria:
-    """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22). Todos apagados:
-    IdA se comporta como ``base-v2.0``. Cada uno se activa por separado."""
+    """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22), de los del bloque F y
+    de los del paso 0 de la fase de generalización (``docs/PROPUESTA_PASO0.md``). Todos apagados: IdA se
+    comporta como ``base-v2.0``. Cada uno se activa por separado."""
 
     buffer: bool = False          # E1: búfer diurno de tamaño fijo y episodio del día
     consolidacion: bool = False   # E2: al dormir (o al final de la vida), del búfer al grafo semántico
@@ -101,6 +102,7 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
+    urgencia_local: bool = False  # paso 0a: el Tribunal pesa cada candidato con la urgencia de su impulso de origen
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).

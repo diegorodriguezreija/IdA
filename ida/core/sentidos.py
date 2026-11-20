@@ -85,12 +85,17 @@ class Tribunal(Componente):
     - Si los dos mejores casi empatan, decide el azar.
     - Acecho: un candidato con poca confianza y poca urgencia no se ejecuta enseguida; su
       confianza se acumula latido a latido hasta superar el umbral.
+    - Urgencia local (paso 0a, interruptor ``Perfil.mecanismos.urgencia_local``): cada candidato usa
+      como estrés el mayor entre el estrés del cuerpo y la urgencia de su impulso de origen,
+      u(I) = max(0, (I − U) / (1 − U)) con U = ``UMBRAL_URGENCIA``. Mientras ningún impulso pase de U,
+      la puntuación es la misma que sin el interruptor (``docs/PROPUESTA_PASO0.md``, alternativa A).
     """
 
     tipo = "Decision"
     EMPATE = 0.02
     PLUS_ACTIVA = 0.1     # plus a la acción de la estrategia en curso, × (1 − agotamiento) × (1 − progreso)
     UMBRAL_ACECHO = 0.35
+    UMBRAL_URGENCIA = 0.5   # paso 0a: U, intensidad a partir de la cual un impulso apurado pesa por su urgencia
 
     def __init__(self):
         super().__init__("Tribunal")
@@ -105,13 +110,17 @@ class Tribunal(Componente):
         peso = ctx.perfil.peso_experiencia if ctx.con_experiencia else 0.0
         en_curso = self._estrategia_en_curso(ctx)
         impulsos = {**ctx.onda.ef("Impulso"), **ctx.onda.ef("Intencion")}
+        urgencia_local = ctx.perfil.mecanismos.urgencia_local
         evaluados: List[Dict[str, Any]] = []
         for c in candidatos:
             # Arousal ya modulado (decisión 23): lo que S2 o S3 hayan subido o bajado el impulso de origen.
             imp = impulsos.get(c.carga.get("origen", {}).get("impulso", ""))
             modulacion = float(imp.arousal) - float(imp.carga.get("intensidad", imp.arousal)) if imp is not None else 0.0
             arousal = max(0.0, min(1.0, c.arousal + modulacion))
-            base = arousal * estres + c.confianza * (1.0 - estres)
+            e = estres
+            if urgencia_local and imp is not None:     # paso 0a: estrés local del candidato
+                e = max(estres, self.urgencia(float(imp.carga.get("intensidad", imp.arousal))))
+            base = arousal * e + c.confianza * (1.0 - e)
             act, pro = ctx.memoria.sesgo(c.carga["verbo"], c.carga.get("clase", ""), ctx.latido) if peso else (0.0, 0.0)
             plus = 0.0
             if en_curso is not None and c.carga.get("origen", {}).get("estrategia") == en_curso.id:
@@ -153,6 +162,11 @@ class Tribunal(Componente):
                 return
         self.acumulado.clear()
         self._decidir(ctx, g.carga["verbo"], g.carga["objetivo"], g.carga.get("clase", ""), g.carga.get("motivo", ""), g, evaluados)
+
+    @classmethod
+    def urgencia(cls, intensidad: float) -> float:
+        """Paso 0a: u(I) = max(0, (I − U) / (1 − U)). Nula por debajo de U; 1 con la necesidad al máximo."""
+        return max(0.0, min(1.0, (intensidad - cls.UMBRAL_URGENCIA) / (1.0 - cls.UMBRAL_URGENCIA)))
 
     @staticmethod
     def _estrategia_en_curso(ctx: Contexto) -> Optional[Pieza]:

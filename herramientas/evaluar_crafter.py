@@ -92,6 +92,7 @@ def evaluar(
     sin_herencia: bool = False,
     manual: str = "estricto",
     quiet: bool = False,
+    mecanismos: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     import crafter.constants
 
@@ -101,6 +102,10 @@ def evaluar(
     estrategias_originales = clase_crafter.estrategias_propias
     if sin_estrategias_propias:
         clase_crafter.estrategias_propias = lambda self: {}
+    perfil_original = clase_crafter.perfil
+    if mecanismos:      # interruptores de Perfil.mecanismos (p. ej. paso 0: urgencia_local, aliestesia)
+        from dataclasses import replace
+        clase_crafter.perfil = replace(perfil_original, mecanismos=replace(perfil_original.mecanismos, **dict.fromkeys(mecanismos, True)))
 
     temp_dir = tempfile.mkdtemp(prefix="ida_eval_crafter_")
     m = clase_crafter(vista=vista, longitud=longitud_episodio, manual=manual)
@@ -194,6 +199,7 @@ def evaluar(
         persistencia.cerrar()
         if sin_estrategias_propias:
             clase_crafter.estrategias_propias = estrategias_originales
+        clase_crafter.perfil = perfil_original
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     t_total = time.perf_counter() - t_inicio
@@ -230,6 +236,7 @@ def evaluar(
         "sin_estrategias_propias": sin_estrategias_propias,
         "sin_herencia": sin_herencia,
         "manual": manual,
+        "mecanismos": sorted(mecanismos or []),
     }
 
 
@@ -240,6 +247,7 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
     config_estr = "SIN estrategias propias (suelo)" if res["sin_estrategias_propias"] else "CON estrategias propias"
     herencia_str = "SIN herencia" if res["sin_herencia"] else "CON linaje"
     print(f"Configuración: Perfil {res['perfil']} · Vista {res['vista']} · {config_estr} · {herencia_str}")
+    print(f"Mecanismos:    {', '.join(res.get('mecanismos') or []) or 'ninguno'}")
     print(f"Presupuesto:   {res['pasos']} pasos en {res['episodios']} episodios (semilla base {res['semilla_base']})")
     print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms/paso)")
     print("-" * 65)
@@ -271,6 +279,8 @@ def main() -> int:
                         help="Manual declarativo de Crafter (paso 2)")
     parser.add_argument("--salida", type=str, default=None, help="Ruta de archivo JSON donde guardar el resultado")
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
+    parser.add_argument("--mecanismos", nargs="*", default=[],
+                        help="Interruptores de Perfil.mecanismos que se encienden (paso 0: urgencia_local, aliestesia)")
     args = parser.parse_args()
 
     res = evaluar(
@@ -283,6 +293,7 @@ def main() -> int:
         sin_herencia=args.sin_herencia,
         manual=args.manual,
         quiet=args.quiet,
+        mecanismos=args.mecanismos,
     )
     imprimir_informe(res)
     if args.salida:
