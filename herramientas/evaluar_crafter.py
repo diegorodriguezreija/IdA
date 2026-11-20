@@ -104,7 +104,7 @@ def evaluar(
     if sin_estrategias_propias:
         clase_crafter.estrategias_propias = lambda self: {}
     perfil_original = clase_crafter.perfil
-    if mecanismos:      # interruptores de Perfil.mecanismos (p. ej. paso 0: urgencia_local, aliestesia)
+    if mecanismos:      # interruptores de Perfil.mecanismos (bloques E y F)
         from dataclasses import replace
         clase_crafter.perfil = replace(perfil_original, mecanismos=replace(perfil_original.mecanismos, **dict.fromkeys(mecanismos, True)))
 
@@ -283,7 +283,7 @@ def main() -> int:
     parser.add_argument("--salida", type=str, default=None, help="Ruta de archivo JSON donde guardar el resultado")
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
     parser.add_argument("--mecanismos", nargs="*", default=[],
-                        help="Interruptores de Perfil.mecanismos que se encienden (paso 0: urgencia_local, aliestesia)")
+                        help="Interruptores de Perfil.mecanismos que se encienden (bloques E y F)")
     parser.add_argument("--sin-urgencia-sed", action="store_true",
                         help="Paso 0, criterio 4: RefugioNocturno sin el apaño de sed crítica (0,92) de _motivacion")
     args = parser.parse_args()

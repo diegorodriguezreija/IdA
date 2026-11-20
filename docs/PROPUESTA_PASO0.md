@@ -180,3 +180,25 @@ B puede venir más tarde, si A deja demostrado que el arbitraje por intensidad f
 - medir `wake_up` y las muertes nocturnas con 0a. Referencia: `wake_up` está en 6,73 % en el suelo y 51,44 % en `main` sin herencia (`docs/MEDICION_OFICIAL.md:108`);
 - incluir en el paso 3 («proteger X», con X = uno mismo) una pauta general: descansar cuando es seguro si se anticipa la oscuridad, según la tendencia de la luz percibida;
 - el umbral 0,6 de `_descansar` es candidato a desaparecer en 0b o en el paso 3, cuando la competencia por intensidad haga su papel.
+
+## Resultado
+
+Fecha: 20/11/2026. Mediciones: `docs/MEDICION_PASO5_PASO0.md` (rama `feature/paso0`, commit `43f636c`; datos en `datos/evaluacion/`). Protocolo: 100 000 pasos, semilla 31, vista oficial, sin herencia, manual estricto.
+
+### 0a (urgencia local): resultado negativo, retirada
+
+| Condición | Score (%) | IC 95 % (%) | Episodios | Muertes por zombi / hambre / sed |
+|---|---|---|---|---|
+| G1 (paso 5, suelo, sin 0a) | 8,81 | [7,91, 9,57] | 410 | 312 / 21 / 20 |
+| P1 (G1 + 0a) | 8,85 | [7,97, 9,61] | 412 | 320 / 17 / 18 |
+
+- P1 − G1 = +0,04 pp, con los intervalos solapados. Ningún logro cambia más de 1 pp (p. ej. `collect_sapling` 50,24 → 51,21 %, `make_wood_pickaxe` 47,07 → 47,57 %).
+- Criterio 3 (inversiones de necesidades reducidas al menos a la mitad), diagnóstico de una vida con la semilla 31 (`herramientas/diagnostico_intensidad.py`):
+  - en el suelo, 5 → 5: la vida es idéntica;
+  - con estrategias, 23 → 16.
+  
+  No se cumple.
+- Ajedrez: en las 3 semillas de `invariancia.py` hay necesidades por encima de U, pero el ganador no cambia en ningún latido.
+- Lectura probable, no verificada en Crafter: el estrés global ya es alto (0,38-0,60 de media, sección a), así que la urgencia local de una necesidad por encima de U rara vez lo supera. Era el riesgo anotado en la sección e. En ajedrez sí se contó: la urgencia local supera al estrés en 5, 4 y 3 latidos por semilla.
+
+Decisión: se retira 0a (código, interruptor y tests) en la rama `feature/cierre-paso0`. El Tribunal vuelve a la fórmula de la sección a.

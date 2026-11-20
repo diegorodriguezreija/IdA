@@ -28,7 +28,7 @@ def main() -> int:
     p.add_argument("--sin-estrategias-propias", action="store_true", help="solo Crafter: el suelo, sin estrategias del mundo")
     p.add_argument("--apuro", type=float, default=0.5, help="intensidad a partir de la cual una necesidad está apurada")
     p.add_argument("--margen", type=float, default=0.2, help="cuánto más apurada que la del ganador")
-    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden (paso 0)")
+    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden (bloques E y F)")
     p.add_argument("--raiz", default=RAIZ, help="raíz del repositorio que se ejecuta (p. ej. un worktree de otro commit)")
     args = p.parse_args()
     sys.path.insert(0, args.raiz)

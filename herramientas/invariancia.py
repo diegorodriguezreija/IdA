@@ -35,8 +35,8 @@ DECIMALES = 9
 
 
 def _apagar_mecanismos(mundos, activos=()) -> None:
-    """La invariancia compara con base-v2.0: todos los mecanismos (bloques E y F, paso 0) apagados, salvo
-    los que se pidan con ``--mecanismos`` (p. ej. ``urgencia_local`` para comprobar el paso 0a)."""
+    """La invariancia compara con base-v2.0: todos los mecanismos (bloques E y F) apagados, salvo
+    los que se pidan con ``--mecanismos`` (p. ej. ``buffer``)."""
     from dataclasses import replace
 
     from ida.core.mundo import MecanismosMemoria
