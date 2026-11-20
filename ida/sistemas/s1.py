@@ -5,8 +5,9 @@
 | Sentir      | Imagen         | Imagen (gestalt del instante) |
 | Interpretar | Objeto         | Objeto (cada cuerpo de la Imagen que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
+| Interpretar | Recinto        | Recinto: dentro de uno, el mejor sitio para protegerse y su plan (``proteger.py``; con ``mecanismos.proteger``) |
 | Reaccionar  | Reflejo        | Reflejo: sobresalto ante un salto brusco del peligro |
-| Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda) |
+| Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda o, con alostasis, anticipada) |
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
@@ -21,6 +22,7 @@ from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
+from ida.sistemas.proteger import COBIJO, Proteger, Recinto, recinto
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -540,7 +542,7 @@ class Alimentarse(Definicion):
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento()]
+    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------
@@ -573,18 +575,66 @@ class Reflejo(Componente):
                                            carga={"salto": round(salto, 3), "peligro": a.carga["peligro"], "de": a.carga["clase_amenaza"]}))
 
 
+VENTANA_TENDENCIA = 50   # alostasis: latidos de la media móvil de la tendencia de cada déficit
+
+
 class Impulso(Componente):
     """Un impulso por necesidad que declara el mundo (su déficit es la intensidad cruda) y Seguridad
-    (el peligro). No proponen acciones: lo hacen las estrategias (decisiones 2 y 3)."""
+    (el peligro). No proponen acciones: lo hacen las estrategias (decisiones 2 y 3).
+
+    **Alostasis** (paso 3, ``docs/ENCARGO_PASO3_PROTEGER.md``, 3.2): regulación por anticipación. Con ``mecanismos.proteger``
+    (solo el cobijo), la intensidad es la del déficit previsto:
+    ``max(déficit, déficit + tendencia · T)``, con la tendencia como media móvil del cambio del déficit por latido. Sin
+    tendencia que suba, o sin déficit (saciedad: lo lleno no se llena más), la intensidad es el déficit. El horizonte T sale
+    del recinto (``alostasis``); sin sitio para protegerse, es 0 y nada cambia."""
 
     tipo = "Impulso"
     entradas = ("Supervivencia",)
 
     def reactiva(self, ctx: Contexto) -> None:
         rasgos = {n.nombre: n.rasgo for n in ctx.perfil.necesidades}
-        for nombre, intensidad in deficits(ctx).items():
-            self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
-                                           carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre)}))
+        mec = ctx.perfil.mecanismos
+        if not mec.proteger:
+            for nombre, intensidad in deficits(ctx).items():
+                self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
+                                               carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre)}))
+            return
+        defs = deficits(ctx)
+        for nombre, (intensidad, tendencia, horizonte) in alostasis(ctx, defs).items():
+            self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad, carga={
+                "intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre), "deficit": round(defs[nombre], 4),
+                "tendencia": round(tendencia, 6), "horizonte": round(horizonte, 2)}))
+
+
+def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, float, float]]:
+    """Intensidad anticipada, tendencia y horizonte de cada necesidad (3.2 del encargo del paso 3).
+
+    - **Tendencia:** media móvil (``VENTANA_TENDENCIA`` latidos) del cambio del déficit por latido, desde el impulso del latido
+      anterior. Seguridad (el peligro) no se anticipa.
+    - **Cobijo** (``mecanismos.proteger``): T = coste en pasos del mejor sitio para protegerse (``Recinto``); dentro de un
+      recinto, 0. Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
+    - Las demás necesidades no se anticipan (es el subpaso 3b)."""
+    mec = ctx.perfil.mecanismos
+    previos = ctx.onda.ei("Impulso")
+    a = 1.0 / VENTANA_TENDENCIA
+    tendencias: Dict[str, float] = {}
+    for nombre, d in defs.items():
+        p = previos.get(nombre)
+        if nombre == SEGURIDAD or p is None or "deficit" not in p.carga:
+            tendencias[nombre] = 0.0
+        else:
+            tendencias[nombre] = (1.0 - a) * float(p.carga.get("tendencia", 0.0)) + a * (d - float(p.carga["deficit"]))
+    r = recinto(ctx)
+    coste = None if r is None or r.carga["coste"] is None else max(0.0, float(r.carga["coste"]))
+    horizontes: Dict[str, float] = dict.fromkeys(defs, 0.0)
+    if coste is not None:
+        if mec.proteger and COBIJO in defs:
+            horizontes[COBIJO] = coste
+    salida: Dict[str, Tuple[float, float, float]] = {}
+    for nombre, d in defs.items():
+        t, h = tendencias[nombre], horizontes[nombre]
+        salida[nombre] = (acotar(max(d, d + t * h)) if d > 0.0 and t > 0.0 and h > 0.0 else d, t, h)
+    return salida
 
 
 def deficits(ctx: Contexto) -> Dict[str, float]:
@@ -626,7 +676,7 @@ def crear_s1() -> Sistema:
     catalogo = Catalogo(estrategias_s1())
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
-        Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia()]),
+        Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia(), Recinto()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
         Modulo("Actuar", [Accion(catalogo), Anticipacion()]),
     ])

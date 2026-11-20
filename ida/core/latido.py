@@ -19,7 +19,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expecta
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
-from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento
+from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -205,6 +205,8 @@ class Organismo:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
+        if self.con_experiencia and self.perfil.mecanismos.proteger and self.memoria.activa:
+            self._aprender_mapa(ctx, previa.carga if previa is not None else None)
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
@@ -244,6 +246,67 @@ class Organismo:
             self.memoria.aprender_satisface(str(c["clase"]), subidas)
         else:
             self.memoria.actualizar_linea_base(subidas)
+
+    def _aprender_mapa(self, ctx: Contexto, c: Optional[Dict[str, Any]]) -> None:
+        """Paso 3 (``mecanismos.proteger``): mapa local, modelo del cuerpo y transformaciones, desde lo percibido.
+
+        Necesita posiciones (ubicación ``<nombre>_x_y``) y la clase de cada casilla a la vista (``cuerpo["casillas"]``);
+        sin ellas no hace nada. Antes de actualizar el mapa contrasta la acción anterior con lo que hay ahora:
+        - MOVER hacia una casilla vecina de clase conocida: si la posición cambió y si quedó mirando hacia ella, según la
+          casilla fuera transitable o no (modelo del cuerpo, propiocepción);
+        - COGER, COMER o ATACAR sobre una vecina: si quedó mirando hacia ella;
+        - COGER o USAR: si la casilla sobre la que actuó cambió de clase (la de delante, para USAR), la transformación.
+        """
+        obs = ctx.observacion
+        if obs is None:
+            return
+        aqui = pos_de(obs.ubicacion)
+        cuerpo = obs.cuerpo or {}
+        crudas = cuerpo.get("casillas")
+        if aqui is None or not isinstance(crudas, dict) or not crudas:
+            return
+        casillas = {(int(k[0]), int(k[1])): str(v) for k, v in crudas.items()}
+        o = cuerpo.get("orientacion")
+        cara = (int(o[0]), int(o[1])) if isinstance(o, (list, tuple)) and len(o) == 2 else None
+        mem = self.memoria
+        if c is not None and mem.yo_previo is not None:
+            p0, f0 = mem.yo_previo
+            verbo = c["verbo"]
+            if verbo == Verbo.USAR:
+                destino = (p0[0] + f0[0], p0[1] + f0[1]) if f0 is not None else None
+            else:
+                destino = pos_de(c.get("objetivo"))
+            if destino is not None and abs(destino[0] - p0[0]) + abs(destino[1] - p0[1]) == 1:
+                direccion = (destino[0] - p0[0], destino[1] - p0[1])
+                antes = mem.casillas.get(destino)
+                if verbo == Verbo.MOVER:
+                    libre = mem.transitable(antes)
+                    if libre is not None:
+                        mem.aprender_cuerpo("mover", libre, aqui == destino, cara == direccion)
+                elif verbo in (Verbo.COGER, Verbo.COMER, Verbo.ATACAR):
+                    mem.aprender_cuerpo("interactuar", True, aqui != p0, cara == direccion)
+                despues = casillas.get(destino)
+                if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and antes != despues:
+                    objetivo = str(c.get("clase") or c.get("objetivo") or "")
+                    mem.aprender_transformacion(verbo, objetivo, antes, despues)
+                    if verbo == Verbo.USAR and not mem.transitable_peligro(despues):
+                        mem.cierres.add(destino)
+                    else:
+                        mem.cierres.discard(destino)
+        libres, ocupadas, peligros = set(), set(), set()
+        for e in obs.entidades:
+            pos = e.datos.get("pos")
+            if not isinstance(pos, (list, tuple)) or len(pos) != 2:
+                continue
+            p = (int(pos[0]), int(pos[1]))
+            if e.rasgos.get("lugar", 0.0) >= 0.5:
+                libres.add(p)
+            elif e.clase != casillas.get(p):
+                ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
+                if e.rasgos.get("peligro", 0.0) >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
+                    peligros.add(p)
+        mem.ver_casillas(aqui, casillas, libres, ocupadas, peligros)
+        mem.yo_previo = (aqui, cara)
 
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:

@@ -20,7 +20,8 @@ Diferencias con el benchmark oficial: IdA lee el estado simbólico del juego, no
 
 La tecnología (fabricar, colocar, qué recoger) ya no es conducta del mundo: la persigue la estrategia
 general ``PerseguirMetas`` de S3 (paso 5) a partir de las metas y los requisitos del manual. La
-propiocepción incluye lo que hay delante (``cuerpo["delante"]``), que se ve.
+propiocepción incluye lo que hay delante (``cuerpo["delante"]``), que se ve, y la clase de cada casilla a la vista
+(``cuerpo["casillas"]``), para el mapa local de la base (paso 3).
 """
 
 from collections import deque
@@ -257,6 +258,11 @@ class MundoCrafter(Mundo):
                         vista[(int(x), int(y))] = str(mat)
         return vista
 
+    def _casillas(self) -> Dict[Pos, str]:
+        """Clase de cada casilla a la vista (se ve), con los nombres de las entidades y de lo de delante: material o suelo.
+        Lo que hay encima (criaturas, plantas) va aparte, como entidades. Para el mapa local de la base (paso 3)."""
+        return {pos: MATERIALES.get(mat) or SUELOS.get(mat) or mat for pos, mat in self._vista_local().items()}
+
     def _cosas(self) -> List[Tuple[str, str, Pos, Any]]:
         """(id, clase, posición, objeto) de lo que hay en el radio de visión."""
         w, (px, py) = self.env._world, self.jugador.pos
@@ -341,7 +347,7 @@ class MundoCrafter(Mundo):
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
                            cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "vista": self._vista_local(),
-                                   "delante": self._delante()},
+                                   "delante": self._delante(), "casillas": self._casillas()},
                            ambiente={"luz": float(w.daylight)})
 
     # --- acción --------------------------------------------------------------
@@ -437,6 +443,10 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
+        """Con ``mecanismos.proteger`` (paso 3a) el refugio lo da la base (``Proteger``) y ``RefugioNocturno`` no se registra:
+        las dos versiones conviven tras el interruptor para medirlas una contra otra. Se borra en 3c."""
+        if self.perfil.mecanismos.proteger:
+            return {"S1": [DefensaArmada(), CerrarDistancia()]}
         return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()]}
 
     def puntuacion(self) -> Dict[str, Any]:
