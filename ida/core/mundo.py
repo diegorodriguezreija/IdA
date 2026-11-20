@@ -89,9 +89,8 @@ NECESIDADES_BASE: Tuple[Necesidad, ...] = (
 
 @dataclass(frozen=True)
 class MecanismosMemoria:
-    """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22), de los del bloque F y
-    de los del paso 0 de la fase de generalización (``docs/PROPUESTA_PASO0.md``). Todos apagados: IdA se
-    comporta como ``base-v2.0``. Cada uno se activa por separado."""
+    """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22) y de los del bloque F.
+    Todos apagados: IdA se comporta como ``base-v2.0``. Cada uno se activa por separado."""
 
     buffer: bool = False          # E1: búfer diurno de tamaño fijo y episodio del día
     consolidacion: bool = False   # E2: al dormir (o al final de la vida), del búfer al grafo semántico
@@ -102,7 +101,6 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
-    aliestesia: bool = False      # paso 0b: el valor de lo comestible depende de qué necesidad satisface y de su intensidad
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).
@@ -136,6 +134,14 @@ class Perfil:
     gracia_estrategia: int = 10               # latidos antes de que una estrategia pueda agotarse
     ritmo_esperado_estrategia: float = 0.02   # progreso por latido esperado (por defecto, sin aprender)
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
+
+    @property
+    def aliestesia(self) -> bool:
+        """Paso 0b (``docs/PROPUESTA_PASO0.md``): hay que aprender qué necesidad satisface cada clase cuando dos o
+        más necesidades se satisfacen con el mismo rasgo (el rasgo no dice a cuál sirve un objeto). Con una sola
+        necesidad por rasgo, el rasgo ya lo dice: satisface = rasgo y la base hace lo de siempre."""
+        rasgos = [n.rasgo for n in self.necesidades if n.rasgo]
+        return len(rasgos) != len(set(rasgos))
 
 
 class Mundo(ABC):

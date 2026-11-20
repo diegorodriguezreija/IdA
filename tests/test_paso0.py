@@ -1,11 +1,10 @@
 """Paso 0 de la fase de generalización (docs/PROPUESTA_PASO0.md): la intensidad del impulso llega al Tribunal.
 
 - 0a (urgencia local en ``Tribunal.reactiva``) se retiró: resultado negativo (``docs/PROPUESTA_PASO0.md``, «Resultado»).
-- 0b: aliestesia en la base (interruptor ``Perfil.mecanismos.aliestesia``): ``Memoria.satisface``,
-  componente ``Apetencia`` de S1 y ``Alimentarse`` por necesidad.
+- 0b: aliestesia en la base, siempre activa donde dos o más necesidades comparten rasgo (``Perfil.aliestesia``):
+  ``Memoria.satisface``, componente ``Apetencia`` de S1 y ``Alimentarse`` por necesidad.
 """
 
-from dataclasses import replace
 from typing import List, Optional, Tuple
 
 import pytest
@@ -28,7 +27,8 @@ from ida.sistemas import crear_sistemas
 # o lo aprende la experiencia.
 
 NECESIDADES_JUGUETE = (Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"))
-CON_0B = MecanismosMemoria(aliestesia=True)
+# Las mismas, con la sed sin rasgo: una sola necesidad por rasgo, sin aliestesia (como mínimo y archivos).
+UNA_POR_RASGO = (NECESIDADES_JUGUETE[0], Necesidad("sed", ("agua",), 95.0))
 MANUAL_JUGUETE = {"hechos": [
     {"tipo": "proposicion", "sujeto": "baya", "relacion": "NUTRITIVO", "veredicto": "afirma", "necesidad": "hambre"},
     {"tipo": "proposicion", "sujeto": "charca", "relacion": "NUTRITIVO", "veredicto": "afirma", "necesidad": "sed"},
@@ -39,7 +39,7 @@ class MundoDosNecesidades(Mundo):
     """Una baya y una charca siempre al alcance. Comer la baya sube la comida; beber de la charca, el agua."""
 
     nombre = "dos_necesidades"
-    perfil = Perfil(vitales_propios=True, duerme=False, necesidades=NECESIDADES_JUGUETE, mecanismos=CON_0B)
+    perfil = Perfil(vitales_propios=True, duerme=False, necesidades=NECESIDADES_JUGUETE)
 
     def __init__(self, gasto_comida: float = 2.0, gasto_agua: float = 3.0, manual: bool = False):
         self.gasto = {"comida": gasto_comida, "agua": gasto_agua}
@@ -74,10 +74,10 @@ class MundoDosNecesidades(Mundo):
         return MANUAL_JUGUETE if self.con_manual else {}
 
 
-def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, mecanismos: MecanismosMemoria = CON_0B):
+def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, necesidades: Tuple[Necesidad, ...] = NECESIDADES_JUGUETE):
     """Contexto de S1 con la interocepción, los dos objetos al alcance y los impulsos de hambre y sed."""
     onda = Onda(1, 100, 1e9)
-    perfil = Perfil(vitales_propios=True, necesidades=NECESIDADES_JUGUETE, mecanismos=mecanismos)
+    perfil = Perfil(vitales_propios=True, necesidades=necesidades)
     for k, v in {"comida": comida, "agua": agua}.items():
         onda.percibir("Interocepcion", Pieza(k, "Interocepcion", carga={"valor": v, "delta": 0.0}, sistema="CORE"))
     for oid, clase, pos in (("baya_1", "baya", (1, 0)), ("charca_1", "charca", (0, 1))):
@@ -110,9 +110,14 @@ def _apetencia(ctx: Contexto) -> None:
     a.reactiva(ctx)
 
 
-def test_aliestesia_apagada_por_defecto_y_sin_piezas():
-    assert Perfil().mecanismos.aliestesia is False
-    ctx = _ctx_juguete(20.0, 90.0, mecanismos=MecanismosMemoria())
+def test_aliestesia_solo_con_un_rasgo_compartido_por_varias_necesidades():
+    """Sin interruptor: actúa cuando el rasgo no dice a qué necesidad sirve un objeto. Con las necesidades de la
+    base (una sola con rasgo) no produce nada, y mínimo, archivos y ajedrez se comportan como antes."""
+    assert Perfil().aliestesia is False
+    assert Perfil(necesidades=NECESIDADES_JUGUETE).aliestesia is True
+    assert Perfil(necesidades=UNA_POR_RASGO).aliestesia is False
+    assert not hasattr(MecanismosMemoria(), "aliestesia")
+    ctx = _ctx_juguete(20.0, 90.0, necesidades=UNA_POR_RASGO)
     _apetencia(ctx)
     assert ctx.onda.ev("Apetencia") == {}
 
@@ -227,10 +232,10 @@ def test_apetencia_depende_del_estado_interno():
 
 
 def test_cada_impulso_come_lo_que_satisface_su_necesidad():
-    """Sin el interruptor, hambre y sed eligen el mismo objeto (por nutritivo); con él, cada una el suyo."""
+    """Sin aliestesia (una necesidad por rasgo), hambre y sed eligen el mismo objeto (por nutritivo); con ella, cada una el suyo."""
     mem = Memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
-    sin = _ctx_juguete(30.0, 40.0, mem, mecanismos=MecanismosMemoria())
+    sin = _ctx_juguete(30.0, 40.0, mem, necesidades=UNA_POR_RASGO)
     assert _propuesta(sin, "hambre").objetivo == _propuesta(sin, "sed").objetivo
     ctx = _ctx_juguete(30.0, 40.0, mem)
     _apetencia(ctx)
@@ -289,29 +294,27 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
     assert all(c[1] == "baya" for c in tarde if c[2] > c[3] + 0.2)
 
 
-def test_crafter_con_aliestesia_el_nutritivo_es_perceptivo_y_constante():
-    """Con el interruptor, el adaptador de Crafter no decide qué apetece: ``nutritivo`` vale 0,6 en lo que el
+def test_crafter_el_nutritivo_es_perceptivo_y_constante():
+    """El adaptador de Crafter no decide qué apetece (``_deseo`` ya no existe): ``nutritivo`` vale 0,6 en lo que el
     manual declara NUTRITIVO (la planta, solo madura) y 0 en lo demás, sea cual sea la sed o el hambre."""
     pytest.importorskip("crafter")
     from ida.mundos.crafter import NUTRITIVO_MANUAL, MundoCrafter
 
-    original = MundoCrafter.perfil
-    try:
-        MundoCrafter.perfil = replace(original, mecanismos=MecanismosMemoria(aliestesia=True))
-        m = MundoCrafter(vista="oficial")
-        m.reiniciar(1)
-        assert m.nutritivos == {"agua", "vaca", "planta"}
-        valores = set()
-        for _ in range(60):
-            obs = m.observar()
-            valores |= {e.rasgos.get("nutritivo", 0.0) for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5}
-            for e in obs.entidades:
-                if e.clase in ("agua", "vaca"):
-                    assert e.rasgos["nutritivo"] == NUTRITIVO_MANUAL
-            m.ejecutar(Verbo.MOVER, f"celda_{m.jugador.pos[0] + 1}_{m.jugador.pos[1]}", {})
-        assert valores <= {0.0, NUTRITIVO_MANUAL}
-    finally:
-        MundoCrafter.perfil = original
+    assert MundoCrafter.perfil.aliestesia is True           # hambre y sed comparten «nutritivo»
+    assert not hasattr(MundoCrafter, "_deseo")
+    m = MundoCrafter(vista="oficial")
+    m.reiniciar(1)
+    assert m.nutritivos == {"agua", "vaca", "planta"}
+    valores = set()
+    for _ in range(60):
+        m.jugador.inventory["drink"] = 2                     # sed apurada: el agua no vale más por ello
+        obs = m.observar()
+        valores |= {e.rasgos.get("nutritivo", 0.0) for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5}
+        for e in obs.entidades:
+            if e.clase in ("agua", "vaca"):
+                assert e.rasgos["nutritivo"] == NUTRITIVO_MANUAL
+        m.ejecutar(Verbo.MOVER, f"celda_{m.jugador.pos[0] + 1}_{m.jugador.pos[1]}", {})
+    assert valores <= {0.0, NUTRITIVO_MANUAL}
 
 
 def test_crafter_interruptor_del_apano_de_sed_critica():

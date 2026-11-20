@@ -202,3 +202,17 @@ Fecha: 20/11/2026. Mediciones: `docs/MEDICION_PASO5_PASO0.md` (rama `feature/pas
 - Lectura probable, no verificada en Crafter: el estrés global ya es alto (0,38-0,60 de media, sección a), así que la urgencia local de una necesidad por encima de U rara vez lo supera. Era el riesgo anotado en la sección e. En ajedrez sí se contó: la urgencia local supera al estrés en 5, 4 y 3 latidos por semilla.
 
 Decisión: se retira 0a (código, interruptor y tests) en la rama `feature/cierre-paso0`. El Tribunal vuelve a la fórmula de la sección a.
+
+### 0b (aliestesia): queda en la base
+
+- P2 (G1 + 0a + 0b) da 10,14 % [9,27, 10,88]: +1,33 pp sobre G1, con los intervalos solapados.
+- P3 (G3 + 0a + 0b) da 14,27 % [13,24, 15,09] frente a 14,45 % de G3: −0,18 pp, con los intervalos solapados.
+- No hay medición de 0b sin 0a. Como 0a no cambia el resultado (P1 ≈ G1), P2 y P3 se leen como el efecto de 0b. Esto es una inferencia, no una medición.
+
+Decisión: 0b queda siempre activa, sin interruptor, y se borra `_deseo` del adaptador de Crafter (regla de traslado).
+
+Actúa en los perfiles en que dos o más necesidades comparten rasgo (`Perfil.aliestesia`), porque solo ahí hay que elegir qué necesidad satisface cada clase:
+- en Crafter, hambre y sed comparten `nutritivo`;
+- en mínimo, archivos y ajedrez hay una sola necesidad con rasgo, y su conducta no cambia (`invariancia.py` OK).
+
+Encendida sin esa condición, la contingencia aprendida y el acercamiento por `_hacia` cambian decisiones en mínimo (semillas 1-3, desde los latidos 52, 127 y 24) y en archivos (semillas 1 y 3, latidos 4 y 5). La sección d suponía que en esos mundos 0b no cambiaba nada, y no se cumplía.

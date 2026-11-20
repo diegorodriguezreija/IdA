@@ -165,16 +165,16 @@ def satisface_de(ctx: Contexto, o: Pieza) -> Dict[str, float]:
 
 
 class Apetencia(Componente):
-    """Aliestesia (Cabanac, 1971; paso 0b, interruptor ``Perfil.mecanismos.aliestesia``): el valor de algo
+    """Aliestesia (Cabanac, 1971; paso 0b, con ``Perfil.aliestesia``: un rasgo que satisface varias necesidades): el valor de algo
     comestible depende del estado interno. Para cada Objeto que parece comestible (el rasgo de alguna
     necesidad ≥ ``SATISFACE_MIN``, el mismo filtro que sin aliestesia) y satisface alguna necesidad,
-    deseo = Σ_n intensidad(n) · satisface(clase, n). Sin el interruptor no produce nada."""
+    deseo = Σ_n intensidad(n) · satisface(clase, n). Sin ``Perfil.aliestesia`` no produce nada."""
 
     tipo = "Apetencia"
     entradas = ("Objeto", "Interocepcion")
 
     def reactiva(self, ctx: Contexto) -> None:
-        if not ctx.perfil.mecanismos.aliestesia:
+        if not ctx.perfil.aliestesia:
             return
         inten = intensidades(ctx)
         rasgos = {n.rasgo for n in ctx.perfil.necesidades if n.rasgo}
@@ -400,7 +400,7 @@ class Alimentarse(Definicion):
       aceptable a la vista: no se come y se va a otro sitio, el lugar más nuevo y menos peligroso.
     Elegible mientras haya algo de eso; si no hay nada a la vista, se cierra y exploran otros sistemas.
 
-    **Por necesidad** (paso 0b, con ``Perfil.mecanismos.aliestesia``): cada impulso al que sirve solo
+    **Por necesidad** (paso 0b, con ``Perfil.aliestesia``): cada impulso al que sirve solo
     considera comestible lo que satisface **su** necesidad (``Apetencia``: satisface ≥ ``SATISFACE_MIN``),
     elige entre ello por el deseo (aliestesia) y su arousal sale de la intensidad del impulso de origen,
     no del hambre global del cuerpo. El olor de los lugares solo guía si su rasgo no es ambiguo (una sola
@@ -495,13 +495,13 @@ class Alimentarse(Definicion):
 
     # --- conducta -----------------------------------------------------------------------------
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        if ctx.perfil.mecanismos.aliestesia:
+        if ctx.perfil.aliestesia:
             return self._elegible_por_necesidad(ctx, impulso)
         aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         return bool(aceptables or rechazados) or _destino_comida(ctx) is not None
 
     def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
-        if ctx.perfil.mecanismos.aliestesia:
+        if ctx.perfil.aliestesia:
             return self._paso_por_necesidad(ctx, str(estrategia.carga["impulso"]))
         aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         if aceptables and Verbo.COMER in ctx.verbos and ctx.soma.alimentacion < 95.0:
@@ -511,7 +511,7 @@ class Alimentarse(Definicion):
         return ACERCARSE if _destino_comida(ctx) is not None else BUSCAR
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
-        if ctx.perfil.mecanismos.aliestesia:
+        if ctx.perfil.aliestesia:
             return self._actuar_por_necesidad(ctx, estrategia)
         paso = estrategia.carga.get("paso")
         if paso == COMER:

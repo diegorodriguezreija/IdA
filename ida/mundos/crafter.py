@@ -282,30 +282,10 @@ class MundoCrafter(Mundo):
         """El manual elegido con la opción ``manual`` (``"estricto"`` por defecto o ``"ampliado"``)."""
         return copy.deepcopy(self._manual)
 
-    def _deseo(self, clase: str, obj: Any) -> float:
-        """Aliestesia: lo que vale cada cosa para el cuerpo depende de lo que le falta.
-
-        DEUDA (paso 0 de la fase de generalización): esto es el adaptador pensando por el individuo. Decide
-        qué apetece (agua según la sed, vaca o planta madura según el hambre) y aplica la regla de
-        regeneración (×1,3 con salud < 7). Pasa a la base cuando hambre y sed sean dos necesidades con su
-        intensidad. El paso 2 no lo toca: qué nutre ya está en el manual (P01-P03), pero aún no se usa aquí."""
-        inv = self.jugador.inventory
-        salud = self.jugador.health
-        # Homeostasis de reparación: si la salud está mermada, comer/beber es aún más prioritario
-        # para activar la regeneración pasiva del organismo (+1 salud cada 25 pasos si hay comida y bebida).
-        urgencia_reparacion = 1.3 if salud < 7 else 1.0
-        if clase == "agua":
-            return min(1.0, max(0.1, (9 - inv["drink"]) / 9 * urgencia_reparacion))
-        if clase == "vaca" or (clase == "planta" and obj is not None and getattr(obj, "ripe", False)):
-            return min(1.0, max(0.1, (9 - inv["food"]) / 9 * urgencia_reparacion))
-        return 0.0
-
     def _nutritivo(self, clase: str, obj: Any) -> float:
-        """Rasgo ``nutritivo`` de lo percibido. Con ``Perfil.mecanismos.aliestesia`` (paso 0b) es perceptivo y
-        constante: ``NUTRITIVO_MANUAL`` si el manual declara la clase NUTRITIVO (la planta, solo madura: su textura
-        se ve); qué apetece lo decide la base. Sin el interruptor, ``_deseo`` (la deuda que el paso 0 cierra)."""
-        if not self.perfil.mecanismos.aliestesia:
-            return self._deseo(clase, obj)
+        """Rasgo ``nutritivo`` de lo percibido, perceptivo y constante (paso 0b): ``NUTRITIVO_MANUAL`` si el manual
+        declara la clase NUTRITIVO (la planta, solo madura: su textura se ve). Qué apetece según lo que falta lo
+        decide la base (aliestesia: ``Apetencia`` y ``Alimentarse`` por necesidad)."""
         if clase not in self.nutritivos or (clase == "planta" and not (obj is not None and getattr(obj, "ripe", False))):
             return 0.0
         return NUTRITIVO_MANUAL
