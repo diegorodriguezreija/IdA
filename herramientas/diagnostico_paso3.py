@@ -26,7 +26,9 @@ la mejor propuesta de ``PerseguirMetas`` en cada latido (sus metas y las peticio
     python herramientas/diagnostico_paso3.py --pasos 10000 --semilla 31 --salida d31.json
     python herramientas/diagnostico_paso3.py --resumir d31.json d32.json d33.json
 
-Es un diagnóstico, no una medición.
+Es un diagnóstico, no una medición. Hay que lanzar las semillas **una tras otra**: el Core corta un latido que pasa de
+``Perfil.frecuencia_ms`` en tiempo de reloj (guillotina), y con varios procesos a la vez se cortan latidos que solos no
+se cortarían, y la vida cambia. El resumen cuenta los latidos cortados.
 """
 
 import argparse
@@ -66,6 +68,71 @@ def _de_metas(evaluado: Dict[str, Any]) -> bool:
     return evaluado.get("sistema") == "S3" and (motivo.startswith("metas:") or ": pide " in motivo)
 
 
+VITALES = ("health", "food", "drink", "energy")
+
+
+def cavable(mem: Any, aqui: Tuple[int, int], inv: Dict[str, float]) -> Dict[str, Any]:
+    """La casilla conocida más cercana (Manhattan) de una clase que cavar abre (``Modelo.abre``: observado o inducido), y si
+    entra en la búsqueda de sitio: ``nunca vista`` (ninguna en el mapa local), ``lejos`` (fuera de lo que ``candidatos``
+    considera: alcanzable en ≤ ``ALCANCE_SITIO`` pasos más 2 casillas cavables) o ``dentro`` con el motivo de descarte."""
+    from ida.sistemas.proteger import ALCANCE_SITIO, Modelo, _vecinas, candidatos, rutas
+    modelo = Modelo(mem, inv, set())
+    clases = sorted(c for c in set(mem.casillas.values()) if modelo.abre(c))
+    celdas = [p for p, c in mem.casillas.items() if c in clases]
+    if not celdas:
+        return {"caso": "nunca vista", "clases": clases, "distancia": None, "motivo": ""}
+    cerca = min(celdas, key=lambda p: (abs(p[0] - aqui[0]) + abs(p[1] - aqui[1]), p))
+    d = abs(cerca[0] - aqui[0]) + abs(cerca[1] - aqui[1])
+    dist, _ = rutas(modelo, aqui)
+    alcance = set(dist)
+    for _ in range(2):
+        alcance |= {v for p in list(alcance) for v in _vecinas(p) if mem.casillas.get(v) in clases}
+    dentro = [p for p in celdas if p in alcance]
+    if not dentro:
+        return {"caso": "lejos", "clases": clases, "distancia": d, "motivo": f"más allá de {ALCANCE_SITIO} pasos"}
+    falta = {k: v for c in sorted({mem.casillas[p] for p in dentro}) for k, v in (modelo.falta_para_cavar(c) or {}).items()}
+    formas = _formas(modelo, dist)
+    if falta:
+        motivo = "falta para cavar: " + ", ".join(sorted(falta))
+    elif not candidatos(modelo, aqui, dist, None):
+        motivo = "sin forma válida: " + max(("vecina sin ver", "acceso que no se sabe cerrar", "peligro al lado", "falta material"),
+                                            key=lambda k: formas.get(k, 0))
+    else:
+        motivo = "hay candidatos y ninguno completable"
+    cerradores = {c.objetivo: c.unidades for c in modelo.cerradores}
+    return {"caso": "dentro del alcance", "clases": clases, "distancia": d, "motivo": motivo, "formas": formas, "cerradores": cerradores}
+
+
+def _formas(modelo: Any, dist: Dict[Tuple[int, int], int]) -> Dict[str, int]:
+    """Por qué se descartan las formas de 1-3 casillas al alcance (el mismo filtro que ``candidatos``), la primera razón de cada una."""
+    from ida.sistemas.proteger import _manhattan, _suma, _vecinas, accesos_de
+    celdas = set(dist)
+    for _ in range(2):
+        celdas |= {v for p in list(celdas) for v in _vecinas(p) if modelo.rinde(v) is not None}
+    razones: Counter = Counter()
+    for a in sorted(celdas):
+        for forma in ((a,), (a, _suma(a, (1, 0))), (a, _suma(a, (0, 1)))):
+            if not all(p in celdas for p in forma):
+                continue
+            excavar = [p for p in forma if p not in dist]
+            if any(modelo.rinde(p) is None for p in excavar):
+                razones["no se puede cavar"] += 1
+                continue
+            if any(_manhattan(p, q) <= 1 for p in forma for q in modelo.peligros):
+                razones["peligro al lado"] += 1
+                continue
+            accesos = accesos_de(modelo, forma)
+            if accesos is None:
+                razones["vecina sin ver"] += 1
+            elif any(not modelo.cerrable(v) for v in accesos):
+                razones["acceso que no se sabe cerrar"] += 1
+            elif len(accesos) > modelo.unidades(frozenset(excavar)):
+                razones["falta material"] += 1
+            else:
+                razones["válida"] += 1
+    return dict(razones)
+
+
 def _mesa_cerca(world: Any, pos: Tuple[int, int]) -> bool:
     mats, _ = world.nearby(pos, 1)
     return "table" in mats
@@ -93,8 +160,16 @@ class Episodio:
         self.usar: Counter = Counter()
         self.oportunidad: Counter = Counter()
         self.latidos_tras_mesa = 0
+        self.inv_previo: Dict[str, int] = {}
+        self.colocadas: Counter = Counter()      # USAR que cambian el inventario, en todo el episodio, por objetivo
+        self.usar_sin_efecto: Counter = Counter()
+        self.cavable: Optional[Dict[str, Any]] = None
+        self.retencion: Counter = Counter()
+        self.retencion_proteger: Counter = Counter()
+        self.retencion_impulsos: List[Dict[str, float]] = []
         self.causa: Optional[str] = None
         self.vivo = False
+        self.guillotinas = 0
 
     def latido(self, org: Any, onda: Any) -> None:
         self.n += 1
@@ -108,6 +183,12 @@ class Episodio:
         inv = {k: int(v) for k, v in jug.inventory.items()}
         for logro in org.mundo.logros():
             self.logros.setdefault(logro, n)
+        # Un USAR de Crafter es «éxito» si la receta existe aunque no haga nada: solo cuenta si cambia el inventario.
+        usar = getattr(carga.get("verbo"), "value", "") == "USAR"
+        efectivo = usar and any(inv.get(k, 0) != self.inv_previo.get(k, 0) for k in inv if k not in VITALES)
+        if usar:
+            (self.colocadas if efectivo else self.usar_sin_efecto)[str(carga.get("objetivo"))] += 1
+        self.inv_previo = inv
 
         # a) y b): primera noche
         if self.fase == "dia" and luz < OCASO:
@@ -118,6 +199,7 @@ class Episodio:
             self.estado_oscuro = None if r is None else {
                 "dentro": bool(r.carga.get("dentro")), "coste": r.carga.get("coste"), "accion": r.carga.get("accion") is not None,
                 "requiere": dict(r.carga.get("requiere") or {}), "explicacion": str(r.carga.get("explicacion", ""))[:120]}
+            self.cavable = cavable(org.memoria, pos, {k: float(v) for k, v in inv.items()})
         if self.fase in ("ocaso", "oscuro"):
             if self.dentro and not dentro:
                 propia = pos != self.pos or carga.get("verbo") is not None and carga["verbo"].value in ("COGER", "MOVER")
@@ -131,6 +213,22 @@ class Episodio:
                 self.dentro_al_final_oscuro = dentro
         if self.fase == "oscuro" and luz >= OSCURO:
             self.fase, self.t_fin_noche = "despues", n
+        if self.fase == "despues" and self.salida_tras_noche is None and dentro and self.dentro_al_final_oscuro:
+            self.retencion[f"{_estrategia(carga)} · {_motivo(str(carga.get('motivo', '')))}"] += 1
+            imp = {k: float(p.arousal) for k, p in onda.reactiva.ef.get("Impulso", {}).items()}
+            alarma = onda.ef("Supervivencia").get("alarma")
+            r = onda.reactiva.ef.get("Recinto", {}).get("recinto")
+            prot = next((e for e in onda.notas.get("evaluados") or [] if str(e.get("motivo", "")).startswith("proteger:")), None)
+            hostiles = [abs(o.pos[0] - pos[0]) + abs(o.pos[1] - pos[1]) for o in w.objects
+                        if type(o).__name__ in ("Zombie", "Skeleton") and abs(o.pos[0] - pos[0]) + abs(o.pos[1] - pos[1]) <= 9]
+            self.retencion_impulsos.append({**{k: round(v, 3) for k, v in imp.items()},
+                                            "peligro_alarma": round(float(alarma.carga["peligro"]), 3) if alarma is not None else 0.0,
+                                            "hostil_d": float(min(hostiles)) if hostiles else 99.0,
+                                            "puede_abrir": float(bool(r is not None and r.carga.get("abrir"))),
+                                            "luz": round(luz, 3), "gana": _estrategia(carga),
+                                            "proteger_total": round(float(prot["total"]), 3) if prot else 0.0,
+                                            "primero_total": round(float((onda.notas.get("evaluados") or [{}])[0].get("total", 0.0)), 3)})
+            self.retencion_proteger[_motivo(str(prot["motivo"])) if prot else "Proteger no propone"] += 1
         if self.fase == "despues" and self.salida_tras_noche is None and not dentro and self.dentro_al_final_oscuro:
             self.salida_tras_noche = {"latido": n, "comida": inv.get("food", 0), "bebida": inv.get("drink", 0),
                                       "energia": inv.get("energy", 0), "tras_fin_noche": n - (self.t_fin_noche or n)}
@@ -139,7 +237,7 @@ class Episodio:
         # c) cadena de herramientas
         if "place_table" in self.logros:
             self.latidos_tras_mesa += 1
-            if carga.get("exito") and getattr(carga.get("verbo"), "value", "") == "USAR":
+            if efectivo:
                 self.usar[f"{carga.get('objetivo')} · {_motivo(str(carga.get('motivo', '')))}"] += 1
             mesa = _mesa_cerca(w, pos)
             self.oportunidad["madera"] += int(inv.get("wood", 0) >= 1)
@@ -184,7 +282,10 @@ class Episodio:
                 "oscuro_fuera_antes_de_entrar": self.latidos_oscuro_fuera_antes_de_entrar if self.entro else None,
                 "salida_tras_noche": self.salida_tras_noche, "logros": self.logros, "gana": {k: dict(v) for k, v in self.gana.items()},
                 "metas": {k: dict(v) for k, v in self.metas.items()}, "usar": dict(self.usar), "oportunidad": dict(self.oportunidad),
-                "latidos_tras_mesa": self.latidos_tras_mesa}
+                "latidos_tras_mesa": self.latidos_tras_mesa, "colocadas": dict(self.colocadas),
+                "usar_sin_efecto": dict(self.usar_sin_efecto), "cavable": self.cavable, "retencion": dict(self.retencion),
+                "retencion_proteger": dict(self.retencion_proteger),
+                "retencion_impulsos": self.retencion_impulsos, "guillotinas": self.guillotinas}
 
 
 def ejecutar(args: argparse.Namespace) -> int:
@@ -199,6 +300,7 @@ def ejecutar(args: argparse.Namespace) -> int:
         r = vivir_original(self, max_latidos, al_latir=eps[-1].latido)
         eps[-1].vivo = bool(self.soma.esta_vivo)
         eps[-1].causa = self.causa_muerte if not self.soma.esta_vivo else None
+        eps[-1].guillotinas = int(self.contadores.get("guillotinas", 0))
         return r
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
@@ -224,7 +326,8 @@ def resumir(rutas: List[str]) -> int:
     eps = [e for c in corridas for e in c["episodios"]]
     sem = [c["semilla"] for c in corridas]
     print(f"Semillas {', '.join(map(str, sem))} · {', '.join(str(c['pasos']) for c in corridas)} pasos · "
-          f"{len(eps)} episodios · score {', '.join(str(c['score']) for c in corridas)}\n")
+          f"{len(eps)} episodios · score {', '.join(str(c['score']) for c in corridas)} · "
+          f"latidos cortados por la guillotina: {sum(e.get('guillotinas', 0) for e in eps)}\n")
 
     # a)
     print("### a) Primera noche de cada episodio\n")
@@ -263,11 +366,78 @@ def resumir(rutas: List[str]) -> int:
     print(f"- Al salir (0-9): comida mediana {_med([s['comida'] for s in sal])}, bebida mediana {_med([s['bebida'] for s in sal])}; "
           f"con comida ≤ 3: {sum(s['comida'] <= 3 for s in sal)}; con bebida ≤ 3: {sum(s['bebida'] <= 3 for s in sal)}.")
     print(f"- Con `wake_up`: {sum('wake_up' in e['logros'] for e in pasan)} de {len(pasan)}.")
+    ret: Counter = Counter()
+    for e in pasan:
+        ret.update(e.get("retencion") or {})
+    if ret:
+        tr = sum(ret.values())
+        print(f"\nQué gana desde el final de lo oscuro hasta salir ({tr} latidos):\n")
+        print("| Estrategia · motivo | Latidos |\n|---|---|")
+        for m, k in ret.most_common(8):
+            print(f"| {m} | {_pct(k, tr)} |")
+        imp: Dict[str, List[float]] = {}
+        for e in pasan:
+            for x in e.get("retencion_impulsos") or []:
+                for k, v in x.items():
+                    if isinstance(v, (int, float)):
+                        imp.setdefault(k, []).append(float(v))
+        tramos: Counter = Counter()
+        for e in pasan:
+            for x in e.get("retencion_impulsos") or []:
+                if "gana" in x:
+                    tramo = "peligro < 0,5" if x["peligro_alarma"] < 0.5 else ("0,5-0,8" if x["peligro_alarma"] < 0.8 else "≥ 0,8")
+                    hostil = "hostil a ≤ 4" if x["hostil_d"] <= 4 else "sin hostil a ≤ 4"
+                    tramos[(tramo, hostil, x["gana"])] += 1
+        if tramos:
+            print("\n| Peligro de la alarma | Hostil real | Gana | Latidos |\n|---|---|---|---|")
+            for (tramo, hostil, gana), k in sorted(tramos.items(), key=lambda kv: -kv[1])[:12]:
+                print(f"| {tramo} | {hostil} | {gana} | {_pct(k, tr)} |")
+        rp: Counter = Counter()
+        for e in pasan:
+            rp.update(e.get("retencion_proteger") or {})
+        print("\n| Propuesta de Proteger en esos latidos | Latidos |\n|---|---|")
+        for m, k in rp.most_common(6):
+            print(f"| {m} | {_pct(k, tr)} |")
+        print("\n| Impulso en esos latidos | Mediana | p75 |\n|---|---|---|")
+        for k in sorted(imp):
+            q = statistics.quantiles(imp[k], n=4) if len(imp[k]) >= 4 else [0.0, 0.0, 0.0]
+            print(f"| {k} | {statistics.median(imp[k]):.2f} | {q[2]:.2f} |")
+
+    # a2) dónde está lo cavable en los que no encuentran sitio
+    ns = [e for e in eps if e["noche"] == "no encuentra sitio" and e.get("cavable")]
+    if ns:
+        print("\n### a2) «No encuentra sitio»: casilla conocida más cercana de una clase que se puede cavar\n")
+        print("| Caso | Episodios | Distancia Manhattan (mediana) |\n|---|---|---|")
+        for caso in ("nunca vista", "lejos", "dentro del alcance"):
+            g = [e for e in ns if e["cavable"]["caso"] == caso]
+            print(f"| {caso} | {_pct(len(g), len(ns))} | {_med([e['cavable']['distancia'] for e in g if e['cavable']['distancia'] is not None])} |")
+        mot = Counter(e["cavable"]["motivo"] for e in ns if e["cavable"]["caso"] == "dentro del alcance")
+        for m, k in mot.most_common():
+            print(f"- dentro del alcance, descartada: {m}: {k}")
+        print(f"- clases que se pueden cavar según el modelo: {dict(Counter(c for e in ns for c in e['cavable']['clases']))}")
+        formas: Counter = Counter()
+        for e in ns:
+            formas.update(e["cavable"].get("formas") or {})
+        if formas:
+            print(f"- formas de 1-3 casillas al alcance, por la primera razón de descarte (suma de episodios): {dict(formas.most_common())}")
+            cerr = Counter(f"{k} ({'con' if n > 0 else 'sin'} material)" for e in ns for k, n in (e["cavable"].get("cerradores") or {}).items())
+            print(f"- acciones que el modelo sabe que cierran (episodios): {dict(cerr.most_common())}; "
+                  f"sin ninguna: {sum(1 for e in ns if e['cavable']['caso'] == 'dentro del alcance' and not e['cavable'].get('cerradores'))}")
 
     # c)
     mesa = [e for e in eps if "place_table" in e["logros"]]
     print("\n### c) Cadena de herramientas\n")
     print(f"Episodios con mesa: {_pct(len(mesa), len(eps))}.\n")
+    if all("colocadas" in e for e in eps):
+        mesas = [e["colocadas"].get("place_table", 0) for e in eps]
+        print(f"Mesas colocadas por episodio (USAR que cambia el inventario): media {statistics.mean(mesas):.2f}, "
+              f"mediana {_med(mesas)}, máximo {max(mesas)}; episodios con 2 o más: {sum(m >= 2 for m in mesas)}.\n")
+        sin_ef: Counter = Counter()
+        con_ef: Counter = Counter()
+        for e in eps:
+            sin_ef.update(e["usar_sin_efecto"])
+            con_ef.update(e["colocadas"])
+        print(f"USAR con efecto: {dict(con_ef.most_common())}; sin efecto: {dict(sin_ef.most_common())}.\n")
     print("| Herramienta | Fabricada tras la mesa | Latidos desde la mesa (mediana) | (p25-p75) |")
     print("|---|---|---|---|")
     for h in ("make_wood_pickaxe", "make_wood_sword"):
