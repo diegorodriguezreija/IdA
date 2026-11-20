@@ -62,3 +62,17 @@ Son pocos casos; solo si siguen pesando tras C.4.
   - medir primero con una sola planta.
 - **Aprovechable de la rama WIP:** el arreglo de salida en `amanecer` (no quedarse atascado en la galería; semilla 17) y la separación entre plantas vistas como obstáculo y plantas propias como pared. Cada uno, con su propia medición.
 
+
+## 9. Aliestesia (paso 0b) sin condición
+
+- **Qué pasa:** la aliestesia solo actúa cuando dos o más necesidades comparten rasgo (`Perfil.aliestesia`, en `ida/core/mundo.py`). Sin esa condición cambiaba decisiones en mínimo (semillas 1-3, latidos 52, 127 y 24) y en archivos (semillas 1 y 3, latidos 4 y 5), según `invariancia.py` en la rama `feature/cierre-paso0`.
+- **Lo más limpio** sería que 0b actuara siempre.
+- **Requisito para quitar la condición:** benchmark pareado (N = 10) de mínimo y archivos, con el criterio de la sección e de `docs/PROPUESTA_PASO0.md`: ninguna diferencia significativa en contra en latidos ni en fitness, ni más muertes por hambre en archivos, y un coste por latido como mucho un 10 % mayor.
+
+## 10. Peligro sin gradaciones (para el paso 6)
+
+- **Qué pasa:** con el manual estricto, el adaptador da el mismo peligro (`PELIGRO_MANUAL` = 0,8) a todo lo que el manual declara PELIGROSO, flecha incluida. IdA huye de las flechas y casi nunca se enfrenta al esqueleto: `defeat_skeleton` cae del 43,17 % al 7,39 % (`docs/DIAGNOSTICO_G3.md`).
+- **Lo correcto:** aprender cuánto daño hace cada clase. La experiencia ya registra la causa de cada daño (`Efecto.causa`). Pertenece al paso 6 (defensa general).
+- **Referencias para medirlo,** en `docs/DIAGNOSTICO_G3.md`:
+  - el contrafactual con los peligros graduados de `main` (zombi 0,8, esqueleto 0,7, flecha 0,5, lava 1,0): `defeat_skeleton` pasa de 1/27 a 6/29 episodios (`main`: 7/24), con las semillas 31-33 y 3000 pasos, sin subir la Score;
+  - `herramientas/diagnostico_logros.py`, que cuenta los latidos que gana «huir de flecha» y «acortar distancia a esqueleto» y los ATACAR al esqueleto, para comparar con las mismas semillas.

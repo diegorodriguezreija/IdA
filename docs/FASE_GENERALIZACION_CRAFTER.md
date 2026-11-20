@@ -338,6 +338,7 @@ Encargo detallado: `docs/ENCARGO_PASO2_MANUAL.md`.
 ## Paso 6. Defensa general (diseño: yo; implementa: Argon)
 
 - `DefensaArmada` y `CerrarDistancia` se sustituyen por la respuesta general de S1 a un peligro (huir, enfrentarse o protegerse), con el daño y el alcance **estimados por la experiencia** y no escritos.
+- El peligro se gradúa por el daño aprendido (`Efecto.causa`), no por valores escritos en el adaptador (`docs/DEUDA_TECNICA_CRAFTER.md`, punto 10).
 - Con este paso, `estrategias_propias()` de Crafter queda vacía.
 - **Criterio:** muertes por criatura no peores de forma significativa frente al paso 5; test de frontera (pilar 1) en verde.
 
