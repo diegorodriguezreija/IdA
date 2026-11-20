@@ -93,6 +93,7 @@ def evaluar(
     manual: str = "estricto",
     quiet: bool = False,
     mecanismos: Optional[List[str]] = None,
+    sin_urgencia_sed: bool = False,
 ) -> Dict[str, Any]:
     import crafter.constants
 
@@ -108,7 +109,7 @@ def evaluar(
         clase_crafter.perfil = replace(perfil_original, mecanismos=replace(perfil_original.mecanismos, **dict.fromkeys(mecanismos, True)))
 
     temp_dir = tempfile.mkdtemp(prefix="ida_eval_crafter_")
-    m = clase_crafter(vista=vista, longitud=longitud_episodio, manual=manual)
+    m = clase_crafter(vista=vista, longitud=longitud_episodio, manual=manual, urgencia_sed=0 if sin_urgencia_sed else 1)
 
     azar = Azar(semilla_base)
     linaje = Linaje(os.path.join(temp_dir, "linaje.json"))
@@ -237,6 +238,7 @@ def evaluar(
         "sin_herencia": sin_herencia,
         "manual": manual,
         "mecanismos": sorted(mecanismos or []),
+        "sin_urgencia_sed": sin_urgencia_sed,
     }
 
 
@@ -247,7 +249,8 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
     config_estr = "SIN estrategias propias (suelo)" if res["sin_estrategias_propias"] else "CON estrategias propias"
     herencia_str = "SIN herencia" if res["sin_herencia"] else "CON linaje"
     print(f"Configuración: Perfil {res['perfil']} · Vista {res['vista']} · {config_estr} · {herencia_str}")
-    print(f"Mecanismos:    {', '.join(res.get('mecanismos') or []) or 'ninguno'}")
+    print(f"Mecanismos:    {', '.join(res.get('mecanismos') or []) or 'ninguno'}"
+          + (" · sin apaño de sed crítica en RefugioNocturno" if res.get("sin_urgencia_sed") else ""))
     print(f"Presupuesto:   {res['pasos']} pasos en {res['episodios']} episodios (semilla base {res['semilla_base']})")
     print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms/paso)")
     print("-" * 65)
@@ -281,6 +284,8 @@ def main() -> int:
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
     parser.add_argument("--mecanismos", nargs="*", default=[],
                         help="Interruptores de Perfil.mecanismos que se encienden (paso 0: urgencia_local, aliestesia)")
+    parser.add_argument("--sin-urgencia-sed", action="store_true",
+                        help="Paso 0, criterio 4: RefugioNocturno sin el apaño de sed crítica (0,92) de _motivacion")
     args = parser.parse_args()
 
     res = evaluar(
@@ -294,6 +299,7 @@ def main() -> int:
         manual=args.manual,
         quiet=args.quiet,
         mecanismos=args.mecanismos,
+        sin_urgencia_sed=args.sin_urgencia_sed,
     )
     imprimir_informe(res)
     if args.salida:
