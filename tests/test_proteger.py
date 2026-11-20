@@ -294,20 +294,6 @@ def test_la_alostasis_adelanta_la_intensidad_del_cobijo():
     assert all(c["intensidad"] >= c["deficit"] for c in con_horizonte)
 
 
-def test_la_alostasis_del_hambre_solo_con_su_interruptor_y_un_sitio():
-    """3b: con un sitio y el cobijo subiendo, el hambre (que baja con el tiempo) se anticipa; sin ``alostasis``, no."""
-    roca = {(x, y) for x in range(1, 3) for y in range(1, 10)}
-
-    def vida(alostasis: bool) -> List[Dict[str, Dict]]:
-        mundo = MundoCueva(_campo(ancho=16, roca=roca), (13, 5), luz=95.0, bajada=2.0, comida=90.0, gasto=0.5)
-        mundo.perfil = replace(MundoCueva.perfil, mecanismos=MecanismosMemoria(proteger=True, alostasis=alostasis))
-        return _intensidades(mundo, _memoria(mundo, aprendida=True), 40)
-
-    con, sin = vida(True), vida(False)
-    assert max(r["hambre"]["intensidad"] - r["hambre"]["deficit"] for r in con if "hambre" in r) > 0.02
-    assert all(r["hambre"]["intensidad"] == r["hambre"]["deficit"] for r in sin if "hambre" in r)
-
-
 def test_sin_tendencia_no_hay_anticipacion():
     """Una necesidad que no cambia (luz fija) no se anticipa aunque haya sitio."""
     roca = {(x, y) for x in range(1, 3) for y in range(1, 10)}

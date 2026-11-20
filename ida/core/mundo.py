@@ -103,7 +103,6 @@ class MecanismosMemoria:
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
     # Fase de generalización, paso 3 (docs/ENCARGO_PASO3_PROTEGER.md). Conviven con la versión del mundo para medirlas.
     proteger: bool = False        # 3a: mapa local, modelo del cuerpo, Recinto y Proteger; alostasis del cobijo
-    alostasis: bool = False       # 3b: alostasis también para las demás necesidades (provisiones antes de encerrarse)
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).

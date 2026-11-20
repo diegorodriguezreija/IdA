@@ -144,3 +144,16 @@ Ninguna secuencia «madera → herramientas → provisiones → mina → cavar �
 - **Coste de cálculo:** evaluar sitios cada latido puede ser caro. Se recalcula solo cuando cambia el mapa local o cada N latidos, con histéresis.
 - **Quedarse dentro con hambre o sed:** la alostasis (3b) y la intensidad de cada necesidad deben poder sacarlo. Hay que vigilar las muertes por hambre y sed (en G3 ya son el 33 %).
 - **Que las propuestas pierdan en el Tribunal:** con la confianza en su sitio, debería ganar por la intensidad anticipada como arousal cuando el estrés es alto. Si no gana, se diagnostica antes de tocar constantes.
+
+## Resultado
+
+Mediciones oficiales en [`docs/MEDICION_PASO3.md`](MEDICION_PASO3.md) (rama `feature/proteger`, código `c0fd4e3`; 100 000 pasos, vista oficial, sin herencia, manual estricto; datos en `datos/evaluacion/`).
+
+### 3b (alostasis de las demás necesidades): retirada
+
+| Condición | Score (%) | IC 95 % | `wake_up` (%) | Muertes por hambre | Muertes por sed |
+|---|---|---|---|---|---|
+| L1a: 3a, semilla 31 | 11,95 | [11,01, 12,76] | 18,49 | 31 (8,1 %) | 39 (10,2 %) |
+| L1b: 3a + 3b, semilla 31 | 11,70 | [10,86, 12,41] | 18,75 | 31 (8,1 %) | 38 (9,9 %) |
+
+L1b frente a L1a: −0,25 puntos, con los intervalos solapados. Las muertes por hambre y sed no bajan, que era lo que 3b buscaba (riesgo 2 de la sección 7). Sin efecto medido, se retira: el código (rama `mecanismos.alostasis` de `alostasis` en `ida/sistemas/s1.py`), el interruptor y su test. La alostasis del cobijo (3a) se queda.
