@@ -585,8 +585,9 @@ class PerseguirMetas(ConPropuestas):
     requisitos → efecto. Con ``memoria.metas`` vacía (un mundo sin manual) no es elegible.
 
     - Para cada meta pendiente busca la primera acción ejecutable que la acerca (``_resolver``) y propone la
-      de menor coste: submetas pendientes más distancia a la instancia objetivo, penalizada por la tasa de
-      éxito del requisito.
+      de menor coste: submetas pendientes más distancia a la instancia objetivo, más los fallos esperados de
+      la acción, 1 / tasa − 1 (``Memoria.tasa_estimada``). Una acción cuyo efecto puede salir (manual o
+      experiencia) no se bloquea por fallos seguidos: su coste crece con ellos.
     - No persigue metas de ATACAR (lo arbitra Seguridad) ni de DORMIR (no decide cuándo dormir): son metas
       del manual, pero se cumplen por otras vías.
     - Sin plan, con calma y con poca frecuencia, prueba COGER sobre lo que tiene delante si aún no lo ha
@@ -703,7 +704,9 @@ class PerseguirMetas(ConPropuestas):
     def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
         verbo, objetivo = accion
         confianza = float(r.confianza) if r is not None else 0.5
-        penal = 5.0 * (1.0 - float(r.tasa)) if r is not None else 0.0
+        # Coste en intentos: 1 / tasa estimada. El primer intento ya cuenta como el paso (coste 0, como cualquier
+        # acción que siempre funciona); se suman los fallos esperados antes del éxito, 1 / tasa − 1.
+        penal = 1.0 / max(ctx.memoria.tasa_estimada(verbo, objetivo), 1e-6) - 1.0
         texto = f"{verbo.value} {objetivo}"
         if verbo == Verbo.USAR:
             d = delante(ctx)

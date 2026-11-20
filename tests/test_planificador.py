@@ -3,6 +3,8 @@
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
+import pytest
+
 from ida.core.memoria import Memoria
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
@@ -96,6 +98,35 @@ def test_efecto_probabilistico_no_se_bloquea():
     assert not m.bloqueada(Verbo.COGER, "c")
 
 
+def test_meta_del_manual_no_se_bloquea():
+    """Una acción que el manual declara (meta o requisito) puede salir aunque falle seguido: no se bloquea, y su
+    tasa estimada cuenta la declaración como un éxito. Una que nadie declara y nunca ha funcionado, sí se bloquea."""
+    m = Memoria()
+    m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "hierba"}]})
+    for _ in range(3):
+        m.aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
+        m.aprender_requisito(Verbo.COGER, "piedra", {}, {}, set(), False)
+    assert m.puede_salir(Verbo.COGER, "hierba") and not m.bloqueada(Verbo.COGER, "hierba")
+    assert m.tasa_estimada(Verbo.COGER, "hierba") == 1.0 / 4.0          # (0 + 1) / (0 + 3 + 1)
+    assert not m.puede_salir(Verbo.COGER, "piedra") and m.bloqueada(Verbo.COGER, "piedra")
+    assert m.tasa_estimada(Verbo.COGER, "piedra") == 0.0
+
+
+def test_el_coste_del_paso_es_uno_entre_la_tasa():
+    """El planificador cuenta los fallos esperados antes del éxito: 1 / tasa − 1. Con 3 fallos y la declaración
+    del manual (tasa 1/4), 3; sin intentos, 0, como una acción que siempre funciona."""
+    m = Memoria()
+    m.aplicar_manual({"inventario": [], "hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "hierba"}]})
+    plan = PerseguirMetas()
+    ctx = _ctx(m, [_entidad("hierba_1", "hierba", 1.0)], {})
+    assert plan._resolver(ctx, (Verbo.COGER, "hierba"), {}, frozenset(), 0).coste == 0.0
+    for _ in range(3):
+        m.aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
+    paso = plan._resolver(ctx, (Verbo.COGER, "hierba"), {}, frozenset(), 0)
+    assert (paso.verbo, paso.objetivo) == (Verbo.COGER, "hierba_1")
+    assert paso.coste == pytest.approx(3.0)
+
+
 def test_donde_se_puede_colocar_y_lo_que_aparece():
     m = Memoria()
     m.aplicar_manual(MANUAL)
@@ -107,9 +138,11 @@ def test_donde_se_puede_colocar_y_lo_que_aparece():
 
 def test_exploracion_de_efectos_prueba_lo_de_delante():
     m = Memoria()
-    m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "imposible"}],
-                      "inventario": []})
-    m.fallos_seguidos[(Verbo.USAR, "imposible")] = 3                                 # bloqueada: no hay plan
+    # Sin plan: la meta requiere una llave que ninguna acción conocida da. (Antes se forzaba con la meta bloqueada
+    # por fallos seguidos; una meta del manual ya no se bloquea: ver test_meta_del_manual_no_se_bloquea.)
+    m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "imposible"},
+                                 {"tipo": "requisito", "verbo": "USAR", "objetivo": "imposible", "requiere_inventario": {"llave": 1}}],
+                      "inventario": ["llave"]})
     ctx = _ctx(m, [], {}, delante={"id": "d_1_2", "clase": "d"}, latido=5)
     propuestas = PerseguirMetas().actuar(ctx, None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.COGER, "d_1_2")]
@@ -147,3 +180,73 @@ def test_antibloqueo_aparca_un_destino_que_no_se_acerca():
     assert plan.actuar(ctx, None) == []                                   # aparcado
     ctx = _ctx(m, vista, {}, ubicacion="celda_0_0", latido=9 + PerseguirMetas.APARCAR + 1)
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]   # vuelve a intentarlo
+
+
+# --- Efecto probabilístico en un mundo de juguete ---------------------------------------------------------------
+class MundoRetono:
+    """Hierba siempre al alcance. COGER hierba da un retoño con probabilidad ``p`` (como en Crafter, 0,1); si no sale,
+    no es éxito. El manual solo declara la meta (coger hierba con efecto), no la probabilidad."""
+
+    def __new__(cls, *a, **k):
+        from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+
+        class _Mundo(Mundo):
+            nombre = "retono"
+            perfil = Perfil(vitales_propios=True, duerme=False, intenciones=("progresar",))
+
+            def __init__(self, p: float = 0.1, semilla: int = 1):
+                import random
+
+                self.p, self.azar, self.inv = p, random.Random(semilla), {"reton": 0.0}
+                self.intentos = 0
+
+            def reiniciar(self, semilla):
+                self.inv = {"reton": 0.0}
+
+            def observar(self):
+                entidades = [Entidad("hierba_1", "hierba", {"proximidad": 1.0}, {"pos": (1, 0)}),
+                             Entidad("celda_a", "suelo", {"lugar": 1.0, "proximidad": 1.0, "novedad": 0.0}, {"pos": (0, 0)})]
+                vitales = {"vitalidad": 100.0, "alimentacion": 100.0, "energia": 100.0, "descanso": 100.0}
+                return Observacion(ubicacion="celda_0_0", entidades=entidades, vitales=vitales, inventario=dict(self.inv),
+                                   cuerpo={"delante": {"id": "hierba_1", "clase": "hierba"}})
+
+            def ejecutar(self, verbo, objetivo, datos):
+                if verbo == Verbo.COGER and objetivo.startswith("hierba"):
+                    self.intentos += 1
+                    if self.azar.random() < self.p:
+                        self.inv["reton"] += 1
+                        return Efecto(exito=True, obtenido="reton")
+                    return Efecto(exito=False)
+                return Efecto(exito=True)
+
+            def verbos(self):
+                return {Verbo.COGER, Verbo.MOVER, Verbo.ESPERAR}
+
+            def manual(self):
+                return {"inventario": ["reton"], "hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "hierba"}]}
+
+        return _Mundo(*a, **k)
+
+
+def _vivir_retono(semilla: int, latidos: int = 150):
+    from ida.core.azar import Azar
+    from ida.core.latido import Organismo
+    from ida.core.linaje import Arquetipo
+    from ida.sistemas import crear_sistemas
+
+    mundo = MundoRetono(p=0.1, semilla=semilla)
+    memoria = Memoria()
+    memoria.aplicar_manual(mundo.manual())
+    org = Organismo(mundo, crear_sistemas(), Arquetipo(), memoria, Azar(semilla), con_experiencia=True)
+    bloqueos = []
+    org.vivir(latidos, al_latir=lambda o, _onda: bloqueos.append(o.memoria.bloqueada(Verbo.COGER, "hierba")))
+    return mundo, org.memoria, bloqueos
+
+
+@pytest.mark.parametrize("semilla", range(1, 11))
+def test_efecto_con_probabilidad_0_1_no_se_bloquea_y_acaba_saliendo(semilla):
+    """Con el bloqueo por 3 fallos seguidos, el retoño no saldría en el 73 % de las vidas (0,9³). La meta del manual
+    dice que puede salir: no se bloquea nunca y se sigue intentando hasta conseguirlo."""
+    mundo, memoria, bloqueos = _vivir_retono(semilla)
+    assert not any(bloqueos)
+    assert memoria.metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1

@@ -1060,10 +1060,36 @@ class Memoria:
 
     def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:
         """Paso 5 (5.2 b): una acción que nunca ha funcionado y ha fallado ``FALLOS_BLOQUEO`` veces seguidas
-        no se vuelve a intentar hasta que el inventario gane un tipo de objeto nuevo. Con algún éxito
-        (efecto probabilístico) no se bloquea."""
+        no se vuelve a intentar hasta que el inventario gane un tipo de objeto nuevo. Una acción cuyo efecto
+        puede salir (``puede_salir``) no se bloquea: si es probabilística, fallar seguido no dice que no
+        funcione; lo que dicen los fallos lo recoge su coste (``tasa_estimada``)."""
+        if self.puede_salir(verbo, objetivo):
+            return False
+        return self.fallos_seguidos.get((verbo, objetivo), 0) >= self.FALLOS_BLOQUEO
+
+    def declarada(self, verbo: Verbo, objetivo: str) -> bool:
+        """El manual declara la acción: es una de sus metas o tiene un requisito suyo (fuente «manual»)."""
         r = self.requisitos.get((verbo, objetivo))
-        return self.fallos_seguidos.get((verbo, objetivo), 0) >= self.FALLOS_BLOQUEO and (r is None or r.exitos == 0)
+        return (verbo, objetivo) in self.metas or (r is not None and r.fuente == "manual")
+
+    def puede_salir(self, verbo: Verbo, objetivo: str) -> bool:
+        """Según la experiencia (algún éxito) o el manual (``declarada``), el efecto de la acción puede salir,
+        aunque sea con poca probabilidad."""
+        r = self.requisitos.get((verbo, objetivo))
+        return (r is not None and r.exitos > 0) or self.declarada(verbo, objetivo)
+
+    def tasa_estimada(self, verbo: Verbo, objetivo: str) -> float:
+        """Tasa de éxito estimada: (éxitos + w) / (éxitos + fallos + w), con w = ``PESO_MANUAL`` si el manual
+        declara la acción (su declaración pesa como un éxito propio, como sus proposiciones) y 0 si no. Los
+        fallos son los del requisito o, sin requisito aún, los intentos fallidos recordados (hasta
+        ``MAX_INTENTOS``). 1 sin intentos."""
+        clave = (verbo, objetivo)
+        r = self.requisitos.get(clave)
+        exitos = r.exitos if r is not None else 0
+        fallos = r.fallos if r is not None else len(self.intentos.get(clave, []))
+        w = self.PESO_MANUAL if self.declarada(verbo, objetivo) else 0.0
+        total = exitos + fallos + w
+        return (exitos + w) / total if total > 0 else 1.0
 
     def aprender_requisito(
         self,
