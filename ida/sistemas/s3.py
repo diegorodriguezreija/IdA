@@ -634,8 +634,21 @@ class PerseguirMetas(ConPropuestas):
             self._seguimiento = (destino, mejor_d, n)
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return bool(ctx.con_experiencia) and any(not m.conseguida and m.verbo in self.VERBOS_PLAN
-                                                 for m in ctx.memoria.metas.values())
+        return bool(ctx.con_experiencia) and (any(not m.conseguida and m.verbo in self.VERBOS_PLAN for m in ctx.memoria.metas.values())
+                                              or bool(self._peticiones(ctx, inventario(ctx))))
+
+    @staticmethod
+    def _peticiones(ctx: Contexto, inv: Dict[str, float]) -> List[Pieza]:
+        """Metas instrumentales pendientes (piezas ``Peticion`` de este latido): lo pedido que aún no se tiene."""
+        return [p for _, p in sorted(ctx.onda.ef("Peticion").items()) if inv.get(str(p.carga["objeto"]), 0.0) < float(p.carga["cantidad"])]
+
+    def conseguir(self, ctx: Contexto, objeto: str, inv: Dict[str, float]) -> Optional[Paso]:
+        """Primer paso del plan más barato para tener una unidad más de ``objeto``: la mejor de las acciones cuyo efecto
+        lo da (requisitos), resuelta hacia atrás como cualquier carencia de inventario. None si nada lo da."""
+        productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+                             key=lambda k: (k[0].value, k[1]))
+        pasos = [p for p in (self._resolver(ctx, k, inv, frozenset(), 0) for k in productoras) if p is not None]
+        return min(pasos, key=lambda q: q.coste) if pasos else None
 
     def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
         inv = inventario(ctx)
@@ -654,6 +667,22 @@ class PerseguirMetas(ConPropuestas):
                           clase=mejor_paso.clase, **mejor_paso.datos)
         else:
             self._explorar_efectos(ctx)
+        self._atender_peticiones(ctx, inv)
+
+    def _atender_peticiones(self, ctx: Contexto, inv: Dict[str, float]) -> None:
+        """Metas instrumentales (``Peticion``): para cada objeto pedido que falta, el primer paso para conseguirlo, con el
+        arousal de quien lo pide (la urgencia de su impulso). Compite en el Tribunal con lo demás."""
+        for p in self._peticiones(ctx, inv):
+            objeto = str(p.carga["objeto"])
+            sin = {**inv, objeto: 0.0}        # una unidad más, aunque ya se tenga alguna
+            paso = self.conseguir(ctx, objeto, sin)
+            if paso is None:
+                continue
+            motivo = f"{p.carga['origen']}: pide {objeto}" + "".join(f" ← {m}" for m in paso.motivo)
+            if p.carga.get("motivo"):
+                motivo += f" · {p.carga['motivo']}"
+            self.proponer(ctx, paso.verbo, paso.objetivo, float(p.carga["urgencia"]), paso.confianza, motivo,
+                          clase=paso.clase, **paso.datos)
 
     def _resolver(self, ctx: Contexto, accion: Tuple[Verbo, str], inv: Dict[str, float], visitado: frozenset,
                   prof: int) -> Optional[Paso]:

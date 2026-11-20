@@ -88,6 +88,11 @@ class Definicion:
         """La acción del latido, o varias acciones de la misma fase entre las que decide el Tribunal."""
         return None
 
+    def pedir(self, ctx: Any, estrategia: Pieza) -> List[Dict[str, Any]]:
+        """Metas instrumentales que la estrategia pide al planificador en este latido: ``{"objeto", "cantidad", "urgencia",
+        "motivo"}`` = «tener al menos ``cantidad`` de ``objeto``», con la urgencia de su impulso. Por defecto, ninguna."""
+        return []
+
 
 class Plan(Definicion):
     """Plan (bloque F, F2; decisión 24): una estrategia que es una cadena de pasos hacia su meta.

@@ -137,21 +137,33 @@ class Modelo:
             self._cavables[clase] = self._rinde_clase(clase)
         return self._cavables[clase]
 
-    def _rinde_clase(self, clase: str) -> Optional[Dict[str, float]]:
-        """Cavar ``clase`` abre espacio si la transformación aprendida la deja transitable. Sin experiencia de esa clase, por
-        inducción: si coger otra clase no transitable la dejó transitable, se espera lo mismo de una clase no transitable que
-        se sabe recogible (su COGER tiene efecto, del manual o de la experiencia). Hace falta cumplir su requisito."""
+    def abre(self, clase: str) -> Optional[bool]:
+        """Si cavar ``clase`` la deja transitable: lo observado (True o False); sin observarlo, True por inducción si coger
+        otra clase no transitable la dejó transitable y esta se sabe recogible (su COGER tiene efecto, del manual o de la
+        experiencia); None si no hay base para decirlo."""
         if self.mem.transitable(clase) is not False:
             return None
-        r = self.mem.requisitos.get((Verbo.COGER, clase))
         despues = self.mem.resultado(Verbo.COGER, clase, clase)
         if despues is not None:
-            if self.mem.transitable(despues) is not True:
-                return None
-        elif not (self._abre_alguna and r is not None and any(n > 0 for n in r.efecto.values())):
+            return self.mem.transitable(despues) is True
+        r = self.mem.requisitos.get((Verbo.COGER, clase))
+        return True if self._abre_alguna and r is not None and any(n > 0 for n in r.efecto.values()) else None
+
+    def falta_para_cavar(self, clase: str) -> Optional[Dict[str, float]]:
+        """Lo que falta en el inventario para cavar ``clase`` (vacío si nada); None si cavarla no abre espacio."""
+        if not self.abre(clase):
             return None
-        if r is not None and not r.cumple_inventario(self.inv):
+        r = self.mem.requisitos.get((Verbo.COGER, clase))
+        if r is None:
+            return {}
+        return {k: float(max(1, n or 1)) - self.inv.get(k, 0.0) for k, n in r.requiere_inventario.items()
+                if self.inv.get(k, 0.0) < max(1, n or 1)}
+
+    def _rinde_clase(self, clase: str) -> Optional[Dict[str, float]]:
+        """Cavar ``clase`` ahora: abre espacio (``abre``) y se cumple su requisito. Devuelve lo que da al inventario."""
+        if self.falta_para_cavar(clase) != {}:
             return None
+        r = self.mem.requisitos.get((Verbo.COGER, clase))
         return {k: float(n) for k, n in (r.efecto if r is not None else {}).items() if n > 0}
 
     # Cierre
@@ -425,13 +437,13 @@ def _abribles(modelo: Modelo, interior: Tuple[Pos, ...]) -> List[Pos]:
     paredes = {v for p in interior for v in _vecinas(p) if v not in interior and modelo.rinde(v) is not None}
     return sorted(paredes, key=lambda p: (p not in modelo.mem.cierres, p))
 
-
 # --- componente de Interpretar ---------------------------------------------------------------------
 class Recinto(Componente):
     """Interpreta el espacio para protegerse (con ``mecanismos.proteger``): una pieza ``recinto`` con
     ``dentro`` (y las casillas del recinto), el sitio elegido, la primera acción de su plan, su coste en pasos (lo usa la
     alostasis del cobijo) y su confianza (tasas estimadas de las acciones de cavar y cerrar), y las paredes que se pueden
-    abrir. Evalúa todos los candidatos cada ``CADA_EVALUACION`` latidos; entretanto, replanifica solo el sitio actual.
+    abrir. Evalúa todos los candidatos cada ``CADA_EVALUACION`` latidos o cuando cambia el inventario; entretanto, replanifica
+    solo el sitio actual.
     Histéresis: otro sitio sustituye al actual solo si es claramente más barato."""
 
     tipo = "Recinto"
@@ -442,8 +454,9 @@ class Recinto(Componente):
         self._memoria: Optional[int] = None
         self._sitio: Optional[Tuple[Pos, ...]] = None
         self._ultima = -10**9
-        self._ultimo_material = -10**9
-        self._sel_material: Optional[Tuple[Tuple[Pos, ...], Cerrador, int, float]] = None
+        self._ultimo_requisitos = -10**9
+        self._sel_requisitos: Optional[Dict[str, Any]] = None
+        self._inventario: Dict[str, float] = {}
         self._planificador = PerseguirMetas()
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -454,13 +467,16 @@ class Recinto(Componente):
             return
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
-            self._ultimo_material, self._sel_material, self._planificador = -10**9, None, PerseguirMetas()
+            self._ultimo_requisitos, self._sel_requisitos, self._planificador = -10**9, None, PerseguirMetas()
         cara = orientacion(ctx)
-        modelo = Modelo(ctx.memoria, inventario(ctx), _peligros(ctx))
+        inv = inventario(ctx)
+        if inv != self._inventario:       # lo que se tiene cambia qué sitios son completables: se reevalúa ya
+            self._inventario, self._ultima, self._ultimo_requisitos = inv, -10**9, -10**9
+        modelo = Modelo(ctx.memoria, inv, _peligros(ctx))
         hogar = pos_de(ctx.memoria.hogar()) if ctx.perfil.hogar else None
         dentro = recinto_actual(modelo, aqui)
         carga: Dict[str, Any] = {"dentro": dentro is not None, "interior": list(dentro or ()), "coste": None, "confianza": 0.0,
-                                 "accion": None, "explicacion": "", "abrir": []}
+                                 "accion": None, "explicacion": "", "abrir": [], "requiere": {}}
         if dentro is not None:
             if ctx.perfil.hogar:
                 ctx.memoria.recordar_lugar(ctx.observacion.ubicacion if ctx.observacion else "", 1.0)
@@ -478,68 +494,84 @@ class Recinto(Componente):
                 carga.update(coste=round(sitio.coste, 2), confianza=round(self._confianza(ctx, modelo, sitio), 4), accion=accion,
                              interior=list(sitio.interior), explicacion=self._explicar(sitio, accion))
         elif sitio is None:
-            carga.update(self._material(ctx, modelo, aqui, cara, dist, previo, hogar))
+            if ctx.latido - self._ultimo_requisitos >= CADA_EVALUACION:     # sin elección, tampoco se rehace antes
+                self._sel_requisitos = self._requisitos(ctx, modelo, aqui, cara, dist, previo, hogar)
+            carga.update(self._sel_requisitos or {})
         self.registrar(ctx, self.pieza(ctx, "recinto", arousal=0.0, carga=carga))
 
-    def _paso_material(self, ctx: Contexto, modelo: Modelo, c: Cerrador) -> Any:
-        """Primer paso del planificador del paso 5 para conseguir lo que consume un cierre más (None si no lo hay)."""
-        sin = {**modelo.inv, **{k: 0.0 for k, _ in c.requiere}}
-        paso = self._planificador._resolver(ctx, (Verbo.USAR, c.objetivo), sin, frozenset(), 0)
-        return None if paso is None or paso.verbo == Verbo.USAR else paso
+    def _coste_objeto(self, ctx: Contexto, objeto: str, inv: Dict[str, float], cache: Dict[str, Optional[float]]) -> Optional[float]:
+        """Pasos estimados por el planificador del paso 5 para tener una unidad más de ``objeto`` (None si nada lo da)."""
+        if objeto not in cache:
+            paso = self._planificador.conseguir(ctx, objeto, {**inv, objeto: 0.0})
+            cache[objeto] = None if paso is None else paso.coste + 1.0
+        return cache[objeto]
 
-    def _material(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
-                  previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Dict[str, Any]:
-        """Sin sitio factible con el material de ahora (3.4: el material de cierre es un requisito de USAR y lo resuelve el
-        planificador): para cada acción que cierra, el planificador del paso 5 da el primer paso para conseguir lo que consume
-        y su coste; con el más barato por cierre, el sitio más barato contando el material que falta y cuyo plan sale con ese
-        material (buscador con un inventario previsto). La elección (sitio y cierre) se rehace cada ``CADA_EVALUACION``
-        latidos, con la misma histéresis que los sitios factibles; el primer paso del planificador, en cada latido."""
-        sel = self._sel_material
-        if ctx.latido - self._ultimo_material >= CADA_EVALUACION:     # sin elección, tampoco se rehace antes
-            sel = self._elegir_material(ctx, modelo, aqui, cara, dist, previo, hogar)
-        if sel is None:
-            return {}
-        interior, c, falta, coste = sel
-        paso = self._paso_material(ctx, modelo, c)
-        if paso is None:
-            self._sel_material = None
-            return {}
-        accion = {"verbo": paso.verbo, "objetivo": paso.objetivo, "clase": paso.clase, "que": "material", "datos": dict(paso.datos)}
-        donde = "+".join(f"{x},{y}" for x, y in interior)
-        return {"coste": round(coste, 2), "confianza": round(acotar(paso.confianza), 4), "accion": accion, "interior": list(interior),
-                "explicacion": f"material para {c.objetivo} (faltan {falta}) ← {' ← '.join(paso.motivo)} · sitio {donde} · coste {coste:.0f}"}
-
-    def _elegir_material(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
-                         previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Optional[Tuple[Tuple[Pos, ...], Cerrador, int, float]]:
-        self._ultimo_material = ctx.latido
-        mejor: Optional[Tuple[float, Cerrador]] = None
-        for c in modelo.cerradores:
-            paso = self._paso_material(ctx, modelo, c)
-            if paso is None:
+    def _requisitos(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
+                    previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Optional[Dict[str, Any]]:
+        """Sin sitio completable con lo que se tiene: el mejor sitio cuyos requisitos sin cumplir se pueden conseguir, con el
+        coste completo (3.4 del encargo; metas instrumentales). Requisitos: el objeto que pide cavar una clase (p. ej. una
+        herramienta) y el material de los cierres que faltan, ambos requisitos de acciones de la memoria. El coste de cada
+        unidad lo da el planificador del paso 5 (``PerseguirMetas.conseguir``). El plan del sitio se comprueba con el
+        buscador sobre un inventario previsto que ya tiene lo que falta. Lo que falta no lo propone ``Recinto``: ``Proteger``
+        lo pide al planificador (``requiere``). Se rehace cada ``CADA_EVALUACION`` latidos, con histéresis."""
+        self._ultimo_requisitos = ctx.latido
+        inv = modelo.inv
+        cache: Dict[str, Optional[float]] = {}
+        # Requisitos para cavar: clases que abrirían espacio si se tuviera lo que pide su COGER.
+        coste_cavar: Dict[str, float] = {}
+        herramientas: Dict[str, float] = {}
+        for clase in sorted(set(modelo.casillas.values())):
+            falta = modelo.falta_para_cavar(clase)
+            if not falta:
                 continue
-            por_unidad = (paso.coste + 1.0) * max(n for _, n in c.requiere)
-            if mejor is None or por_unidad < mejor[0]:
-                mejor = (por_unidad, c)
-        elegido: Optional[Sitio] = None
-        if mejor is not None:
-            por_unidad, c = mejor
-            inv = modelo.inv
-            previsto = Modelo(modelo.mem, {**inv, **{k: inv.get(k, 0.0) + n * 2 * len(DIRECCIONES) for k, n in c.requiere}},
-                              modelo.peligros)
-            anterior: Optional[Sitio] = None
-            for s in [s for s in candidatos(modelo, aqui, dist, hogar, por_unidad) if s.falta > 0][:CANDIDATOS_EXACTOS]:
-                if not completar(previsto, s, aqui, cara, dist, previo, hogar):
-                    continue
-                s.coste += s.falta * por_unidad
-                if self._sel_material is not None and s.interior == self._sel_material[0]:
-                    anterior = s
-                if elegido is None or s.coste < elegido.coste:
-                    elegido = s
-            if anterior is not None and elegido is not None and \
-                    elegido.coste > anterior.coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * anterior.coste):
-                elegido = anterior
-        self._sel_material = (elegido.interior, mejor[1], elegido.falta, elegido.coste) if elegido is not None and mejor is not None else None
-        return self._sel_material
+            costes = [self._coste_objeto(ctx, k, inv, cache) for k in sorted(falta)]
+            if any(c is None for c in costes):
+                continue
+            coste_cavar[clase] = sum((c or 0.0) * falta[k] for c, k in zip(costes, sorted(falta), strict=True))
+            for k, n in falta.items():
+                herramientas[k] = max(herramientas.get(k, 0.0), inv.get(k, 0.0) + n)
+        # Material: el cierre más barato por unidad.
+        cierre: Optional[Tuple[float, Cerrador]] = None
+        for c in modelo.cerradores:
+            costes = [self._coste_objeto(ctx, k, inv, cache) for k, _ in c.requiere]
+            if any(x is None for x in costes):
+                continue
+            por_unidad = sum((x or 0.0) * n for x, (_, n) in zip(costes, c.requiere, strict=True))
+            if cierre is None or por_unidad < cierre[0]:
+                cierre = (por_unidad, c)
+        con_herramientas = Modelo(modelo.mem, {**inv, **herramientas}, modelo.peligros)
+        extra = {k: con_herramientas.inv.get(k, 0.0) + n * 2 * len(DIRECCIONES) for k, n in cierre[1].requiere} if cierre else {}
+        previsto = Modelo(modelo.mem, {**con_herramientas.inv, **extra}, modelo.peligros)
+        previa = self._sel_requisitos
+        elegido: Optional[Tuple[Sitio, Dict[str, float]]] = None
+        anterior: Optional[Tuple[Sitio, Dict[str, float]]] = None
+        for s in candidatos(con_herramientas, aqui, dist, hogar, cierre[0] if cierre else None)[:CANDIDATOS_EXACTOS]:
+            clases = sorted({modelo.casillas[p] for p in s.excavar if modelo.casillas.get(p) in coste_cavar})
+            if (s.falta == 0 and not clases) or not completar(previsto, s, aqui, cara, dist, previo, hogar):
+                continue
+            requiere: Dict[str, float] = {}
+            for clase in clases:
+                for k, n in (modelo.falta_para_cavar(clase) or {}).items():
+                    requiere[k] = max(requiere.get(k, 0.0), inv.get(k, 0.0) + n)
+            if s.falta and cierre is not None:
+                for k, n in cierre[1].requiere:
+                    requiere[k] = requiere.get(k, inv.get(k, 0.0)) + s.falta * n
+            s.coste += s.falta * (cierre[0] if cierre else 0.0) + sum(coste_cavar[c] for c in clases)
+            if previa is not None and list(s.interior) == previa["interior"]:
+                anterior = (s, requiere)
+            if elegido is None or s.coste < elegido[0].coste:
+                elegido = (s, requiere)
+        if anterior is not None and elegido is not None and \
+                elegido[0].coste > anterior[0].coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * anterior[0].coste):
+            elegido = anterior
+        if elegido is None:
+            return None
+        s, requiere = elegido
+        donde = "+".join(f"{x},{y}" for x, y in s.interior)
+        pide = ", ".join(f"{k} {n:g}" for k, n in sorted(requiere.items()))
+        confianza = self._confianza(ctx, previsto, s)
+        return {"coste": round(s.coste, 2), "confianza": round(confianza, 4), "interior": list(s.interior), "requiere": requiere,
+                "explicacion": f"conseguir {pide} · sitio {donde} · cavar {len(s.excavar)}, cerrar {len(s.accesos)}, coste {s.coste:.0f}"}
 
     def _elegir(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
                 previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Optional[Sitio]:
@@ -640,6 +672,7 @@ class Proteger(ConPropuestas):
       cobijo (anticipada por la alostasis); confianza = confianza del sitio × esa intensidad: la confianza de que protegerse
       ahora sirve a la necesidad. Sin sitio, o si otra necesidad de fuera pesa más, no propone (deciden otras estrategias).
       La alostasis de 3b no entra aquí: sube la intensidad del hambre y la sed, y con ella el arousal de sus estrategias.
+    - **Sin sitio completable:** pide al planificador lo que falta (``pedir``, metas instrumentales) y no propone.
     - **Dentro:** si el cobijo (o el peligro de fuera) pesa al menos tanto como el déficit de cualquier necesidad que se
       satisface fuera (las que declaran un ``rasgo``), quedarse: DORMIR (o ESPERAR si el mundo no deja dormir). Si una de
       ellas pesa más, abrir: COGER sobre una pared que se pueda cavar (primero la que cerró uno mismo, que además devuelve
@@ -653,7 +686,19 @@ class Proteger(ConPropuestas):
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
         r = recinto(ctx)
-        return r is not None and (bool(r.carga["dentro"]) or r.carga["accion"] is not None)
+        return r is not None and (bool(r.carga["dentro"]) or r.carga["accion"] is not None or bool(r.carga.get("requiere")))
+
+    def pedir(self, ctx: Contexto, estrategia: Pieza) -> List[Dict[str, Any]]:
+        """Metas instrumentales: si el mejor sitio necesita algo que no se tiene (``requiere`` del recinto), se pide al
+        planificador con urgencia = intensidad anticipada del cobijo. No se pide si otra necesidad de fuera pesa más."""
+        r = recinto(ctx)
+        if r is None or r.carga["dentro"] or not r.carga.get("requiere"):
+            return []
+        cobijo, _, otras = self._intensidades(ctx)
+        if otras > cobijo:
+            return []
+        return [{"objeto": k, "cantidad": n, "urgencia": cobijo, "motivo": f"proteger: {r.carga['explicacion']}"}
+                for k, n in sorted(r.carga["requiere"].items())]
 
     @staticmethod
     def _intensidades(ctx: Contexto) -> Tuple[float, str, float]:

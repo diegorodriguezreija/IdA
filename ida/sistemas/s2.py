@@ -22,7 +22,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expecta
 from ida.core.estrategia import Catalogo, Definicion, Plan, Propuesta, estado_plan, paso_actual
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas.comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
 EXPLORACION = "exploracion"
@@ -453,5 +453,5 @@ def crear_s2() -> Sistema:
         Modulo("Sentir", [Patron(), Emocion(), Recuerdo()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
         Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
-        Modulo("Actuar", [Accion(catalogo), Anticipacion(("placer", "estres"))]),
+        Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion(("placer", "estres"))]),
     ])

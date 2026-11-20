@@ -11,6 +11,7 @@
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
+| Actuar      | Peticion       | Metas instrumentales que las estrategias activas piden al planificador de S3 |
 | Actuar      | Anticipacion   | Expectativa: cambio esperado de las necesidades si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
 
@@ -20,7 +21,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expecta
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
+from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
 from ida.sistemas.proteger import COBIJO, Proteger, Recinto, recinto
 
@@ -611,8 +612,9 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
 
     - **Tendencia:** media móvil (``VENTANA_TENDENCIA`` latidos) del cambio del déficit por latido, desde el impulso del latido
       anterior. Seguridad (el peligro) no se anticipa.
-    - **Cobijo** (``mecanismos.proteger``): T = coste en pasos del mejor sitio para protegerse (``Recinto``); dentro de un
-      recinto, 0. Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
+    - **Cobijo** (``mecanismos.proteger``): T = coste en pasos del mejor sitio para protegerse (``Recinto``), incluido lo que
+      cuesta conseguir lo que le falta (metas instrumentales); dentro de un recinto, 0.
+      Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
     - **Las demás** (``mecanismos.alostasis``, provisiones): con un sitio para protegerse, T = coste del sitio + I · D, con I la
       intensidad anticipada del cobijo y D la duración prevista del periodo protegido: lo que tardaría el déficit del cobijo
       en llegar al máximo y volver si la excursión fuera simétrica, 2 · (1 − déficit) / tendencia, sin pasar de los latidos
@@ -688,5 +690,5 @@ def crear_s1() -> Sistema:
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia(), Recinto()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
-        Modulo("Actuar", [Accion(catalogo), Anticipacion()]),
+        Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion()]),
     ])

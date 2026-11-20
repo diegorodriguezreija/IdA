@@ -31,9 +31,9 @@ class MundoCueva(Mundo):
     """Cuadrícula finita. ``luz`` (0-100) es la constante del cobijo; ``bajada`` la reduce cada latido."""
 
     nombre = "cueva"
-    perfil = Perfil(vitales_propios=True, duerme=True,
+    perfil = Perfil(vitales_propios=True, duerme=True, amplitud=200,
                     necesidades=(Necesidad("cobijo", ("cobijo",), 100.0), Necesidad("hambre", ("comida",), 95.0, "nutritivo")),
-                    mecanismos=MecanismosMemoria(proteger=True))
+                    intenciones=("progresar",), mecanismos=MecanismosMemoria(proteger=True))
 
     def __init__(self, mapa: Dict[Pos, str], pos: Pos, cara: Pos = (0, 1), luz: float = 10.0, bajada: float = 0.0,
                  comida: float = 100.0, gasto: float = 0.0, rocas: int = 0):
@@ -232,7 +232,8 @@ def test_proteger_elige_el_sitio_mas_barato_y_lo_completa():
 
 def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
     """Sin roca en el inventario y sin saber que cavar abre espacio, ningún sitio es factible. El material de cierre es un
-    requisito de USAR: el planificador lleva a conseguir roca (de lo que la da) y, con ella, acaba encerrado. Al coger roca
+    requisito de USAR: Proteger lo pide al planificador (meta instrumental), que lleva a conseguir roca (de lo que la da) y,
+    con ella, acaba encerrado. Al coger roca
     aprende además qué deja en la casilla, así que el sitio final puede ser otro que el hueco del principio."""
     mapa = _campo(roca={(x, y) for x in range(1, 13) for y in range(1, 10)} - {(3, 5), (4, 5), (5, 5)} - {(x, 6) for x in range(5, 12)})
     mapa[(11, 7)] = "suelo"
@@ -251,7 +252,7 @@ def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
         motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
 
     _vivir(mundo, mem, 40, al_latir)
-    assert any(m.startswith("proteger: material para poner_roca") for m in motivos), motivos
+    assert any(m.startswith("proteger: pide roca") for m in motivos), motivos   # meta instrumental, la propone S3
     assert mundo.encerrado(), (mundo.pos, motivos)
     assert any(m.startswith("proteger: cerrar") for m in motivos)
 

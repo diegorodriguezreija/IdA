@@ -28,6 +28,9 @@ class _Onda:
     def ev(self, canal: str) -> Dict[str, Pieza]:
         return self.canales.get(canal, {})
 
+    def ef(self, canal: str) -> Dict[str, Pieza]:      # lo registrado en el latido (p. ej. peticiones): nada en estos tests
+        return {}
+
 
 def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0, pos: Optional[tuple] = None) -> Pieza:
     return Pieza(id=id_, tipo="Exterocepcion", carga={"clase": clase, "rasgos": {"proximidad": proximidad, "lugar": lugar},
