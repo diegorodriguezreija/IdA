@@ -152,3 +152,64 @@ Ninguna pone nombres de Crafter en `ida/core` ni en `ida/sistemas`.
 3. **Que la Seguridad también pida metas instrumentales.**
    - **Qué:** el impulso de peligro, como el cobijo, pide al planificador lo que la memoria asocia con reducir el daño. Un objeto que es requisito de una acción contra lo peligroso (`Efecto.causa` y los requisitos del manual) tendría la urgencia del peligro aprendido. Encaja con el paso 6 (peligro graduado por el daño aprendido).
    - **Impacto esperado:** la espada (47 % tras la mesa) y la lucha en lugar de la huida, que gana entre el 19 % y el 27 % de los latidos tras la mesa. Es lo que perdió L2 al borrar `RefugioNocturno`.
+
+---
+
+# Segunda ronda (21/11/2026)
+
+## Correcciones al diagnóstico anterior
+
+1. **USAR «con éxito» no es colocar.** En Crafter, un USAR cuenta como éxito si la receta existe, aunque no haga nada. Las tablas de USAR de la sección c contaban intentos, no mesas colocadas; las 57 y 87 «mesas nuevas» eran intentos. La herramienta cuenta ahora solo los USAR que cambian el inventario.
+   - **Antes de la ronda:** 1,73 mesas por episodio (media, 113 episodios), y 59 episodios con 2 o más.
+   - La conclusión de que se repetían mesas se mantiene, con cifras menores.
+2. **Lanzar las semillas una tras otra.** El Core corta un latido que pasa de `Perfil.frecuencia_ms` (100 ms) en tiempo de reloj: es la guillotina.
+   - **Lo que se vio:** con 3 o 4 procesos a la vez, la misma semilla dio vidas distintas. Por ejemplo, el episodio 4 de la semilla 32 duró 247 latidos en una corrida y 501 en otra.
+   - **Comprobación:** una tras otra, las corridas coinciden (semillas de hash 0 y 2: 273 y 327 latidos en los dos primeros episodios).
+   - **Consecuencia:** las tablas de la primera ronda, lanzadas en paralelo, tienen ese ruido.
+   - **A partir de aquí:** todo se ha lanzado en serie y el resumen cuenta los latidos cortados (0 en todas las corridas de esta ronda).
+   - **Datos:** `datos/diagnostico/paso3_antes_semilla3{1,2,3}.json`. Es el código de `04a6417`, con la herramienta nueva, que no cambia la conducta.
+
+## Punto 2: por qué «no encuentra sitio»
+
+**Datos** (después del punto 1, `b452ec4`): `datos/diagnostico/paso3_p1_semilla3{1,2,3}.json`. Son 62 episodios que no encuentran sitio, de 113.
+
+En el primer latido oscuro, la casilla conocida más cercana de una clase que se puede cavar (según `Modelo.abre`) está así:
+
+| Caso | Episodios | Distancia Manhattan (mediana) |
+|---|---|---|
+| nunca vista | 13 (21,0 %) | — |
+| vista pero fuera del alcance (15 pasos) | 0 (0,0 %) | — |
+| dentro del alcance, pero descartada | 49 (79,0 %) | 3 |
+
+**Por qué se descarta** (49 episodios):
+- en 31, ninguna forma tiene material para cerrar sus accesos;
+- en 7, algún acceso es de una clase que no se sabe cerrar;
+- en 6, falta el pico para cavar;
+- en 5, hay candidatos y ninguno se completa.
+
+Las clases que el modelo da por cavables son sobre todo `arbol` (49 episodios) y `piedra` (17).
+
+**Lo que de verdad falla dentro de `Recinto`**, con el material contado por su coste:
+
+```bash
+python herramientas/diagnostico_sitio.py --pasos 3000 --semilla 31   # y 32, 33, una tras otra
+```
+
+Cuenta los latidos con luz < 0,5 en que `_requisitos` no devuelve nada:
+
+| Razón | Semilla 31 | Semilla 32 | Semilla 33 | Total |
+|---|---|---|---|---|
+| hay candidatos y el plan exacto no cierra ninguno de los 6 más baratos | 60 | 68 | 74 | 202 |
+| el planificador no sabe conseguir el material de ningún cierre | 36 | 52 | 42 | 130 |
+| la memoria no conoce ninguna acción que cierre | 0 | 35 | 0 | 35 |
+| sin candidatos ni contando el material | 0 | 0 | 2 | 2 |
+
+**Forma de los candidatos que no se completan** (interior, cavar, accesos, cierres sin material):
+- (1, 0, 2, 2) es la más frecuente en las tres semillas: 169, 89 y 106 veces;
+- después vienen otras de 1 casilla con 1 a 3 accesos.
+
+**Causa:** con el modelo del cuerpo aprendido, moverse hacia una casilla libre hace avanzar. Desde una sola casilla interior no se puede quedar mirando a un acceso libre sin salir por él, así que esos sitios no se pueden cerrar. La estimación de `candidatos`, sin orientación, los pone primero por baratos. Como solo se planifican con exactitud los `CANDIDATOS_EXACTOS` (6) más baratos, a menudo fallan los 6 y no se mira más abajo, donde están los de 2 casillas.
+
+**Decisión:** no domina «nunca vista» (21 %) ni «vista pero lejos» (0 %), así que no se implementa ninguna de las dos ramas del encargo (explorar en busca de sitio, o buscar fuera del alcance). Quedan como propuestas, sin implementar:
+- **Seguir bajando por la lista de candidatos** hasta encontrar uno que el plan exacto cierre, con un tope de búsquedas por evaluación. Los fallos ya quedan en la caché de planes (`Recinto._planes`). Es general: no supone nada del mundo, solo no confiar en la estimación sin orientación cuando falla.
+- **Usar el mapa local para conseguir material** en `PerseguirMetas.conseguir`. Hoy el planificador solo va a lo visible o a lo que recuerda la memoria topológica; `ir_por_el_mapa`, del punto 1, solo se usa para los requisitos de cercanía. Es la segunda razón: 130 latidos.
