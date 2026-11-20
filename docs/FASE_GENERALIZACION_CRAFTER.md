@@ -364,3 +364,47 @@ Encargo detallado: `docs/ENCARGO_PASO2_MANUAL.md`.
 | 9.º | 7 | Evaluación final | Flash | No | — |
 
 Reglas que siguen vigentes: nunca hacer push sin permiso; no hacer pruebas visuales mientras corre un benchmark; benchmarks rápidos antes que completos; cada cambio confirma su hipótesis con medición.
+
+
+---
+
+# Resultados de la fase hasta ahora
+
+Actualizado el 21/11/2026.
+
+**Protocolo** de todas las filas: 100 000 pasos, vista oficial, sin herencia y, salvo el suelo, manual estricto. Los datos están en `datos/evaluacion/` y las tablas completas en los documentos citados. El IC es al 95 %.
+
+**Línea general** (sin estrategias propias del mundo):
+
+| Condición | Qué es | Semilla | Score (%) [IC 95 %] | `wake_up` (%) | Fichero | Documento |
+|---|---|---|---|---|---|---|
+| Suelo (S0) | `main` sin estrategias propias | 31 | 1,45 [1,37, 1,50] | 6,21 | `suelo_sin_herencia.json` | `MEDICION_CIERRE_PASO0.md` |
+| G1 | Paso 5: planificador sobre el manual | 31 | 8,81 [7,91, 9,57] | 5,85 | `paso5_G1.json` | `MEDICION_PASO5_PASO0.md` |
+| C1 | Cierre del paso 0 (0b, aliestesia en la base) | 31 | 11,29 [10,44, 12,01] | 3,85 | `cierre0_C1.json` | `MEDICION_CIERRE_PASO0.md` |
+| C3 | Igual que C1 | 32 | 11,05 [10,21, 11,72] | 1,89 | `cierre0_C3.json` | `MEDICION_CIERRE_PASO0.md` |
+| L1a | Paso 3a: proteger X | 31 | 11,95 [11,01, 12,76] | 18,49 | `paso3_L1a.json` | `MEDICION_PASO3.md` |
+| L1c | Paso 3a: proteger X | 32 | 12,41 [11,42, 13,24] | 18,35 | `paso3_L1c.json` | `MEDICION_PASO3.md` |
+
+**Lectura:**
+- Del suelo a C1, la Score pasa de 1,45 a 11,29 con el planificador y la aliestesia en la base.
+- `proteger` (L1a y L1c) multiplica `wake_up` por unas 5 (semilla 31) y 10 (semilla 32) frente a C1 y C3.
+- La Score sube +0,66 y +1,36 puntos, pero en las dos semillas los intervalos se solapan.
+
+**Línea con las estrategias propias del mundo:**
+- C2 (cierre del paso 0, con `RefugioNocturno`, semilla 31) da 15,29 [14,00, 16,30].
+- L2 (con `Proteger` en su lugar) da 13,12 [11,96, 14,12]: −2,17 puntos.
+- Es la pérdida aceptada al borrar `RefugioNocturno`, explicada en `docs/ENCARGO_PASO3_PROTEGER.md`, «Resultado».
+
+**Pasos retirados:**
+
+| Paso | Qué era | Medición | Motivo |
+|---|---|---|---|
+| 0a | Urgencia local en el Tribunal: una necesidad por encima de un umbral pesa por su propia urgencia y no por el estrés global | P1 frente a G1: 8,85 frente a 8,81 (+0,04 puntos, IC solapados); las inversiones de necesidades no bajaron a la mitad (criterio 3) | Sin efecto. El estrés global ya es alto y la urgencia local rara vez lo supera (`docs/PROPUESTA_PASO0.md`, «0a») |
+| 3b | Alostasis de hambre y sed: anticipar las provisiones antes de encerrarse | L1b frente a L1a: 11,70 frente a 11,95 (−0,25 puntos, IC solapados); las muertes por hambre (31 frente a 31) y por sed (38 frente a 39) no bajan | Sin efecto (`docs/ENCARGO_PASO3_PROTEGER.md`, «Resultado») |
+
+**Reproducibilidad:**
+- El Core corta un latido que pasa de `Perfil.frecuencia_ms` (100 ms en Crafter) en tiempo de reloj: es la guillotina.
+- Varias vidas a la vez en la misma máquina pueden cortar latidos que una vida sola no cortaría, y entonces cambia la conducta.
+- Visto el 21/11/2026 con el diagnóstico del paso 3 (`docs/DIAGNOSTICO_PASO3.md`).
+- Las mediciones de 100 000 pasos conviene lanzarlas una a una.
+- `evaluar_crafter.py` no guarda hoy los latidos cortados, así que no se puede comprobar en las filas de arriba si los hubo.
