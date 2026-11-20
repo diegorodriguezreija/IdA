@@ -8,7 +8,7 @@ Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia) con un gancho 
 - **propuestas de Proteger:** motivos de unas 20 propuestas a lo largo del anochecer (luz de 0,7 a 0,2) del episodio en que
   más propone, ganen o no, con su total en el Tribunal.
 
-    python herramientas/diagnostico_proteger.py --pasos 3000 --semilla 31 --sin-estrategias-propias --mecanismos proteger
+    python herramientas/diagnostico_proteger.py --pasos 3000 --semilla 31 --sin-estrategias-propias
 
 Es un diagnóstico de pocas vidas, no una medición.
 """

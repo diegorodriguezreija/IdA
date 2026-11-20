@@ -5,9 +5,9 @@
 | Sentir      | Imagen         | Imagen (gestalt del instante) |
 | Interpretar | Objeto         | Objeto (cada cuerpo de la Imagen que entra en la atención) |
 | Interpretar | Supervivencia  | Supervivencia por objeto (peligro graduado) y una alarma global |
-| Interpretar | Recinto        | Recinto: dentro de uno, el mejor sitio para protegerse y su plan (``proteger.py``; con ``mecanismos.proteger``) |
+| Interpretar | Recinto        | Recinto: dentro de uno, el mejor sitio para protegerse y su plan (``proteger.py``) |
 | Reaccionar  | Reflejo        | Reflejo: sobresalto ante un salto brusco del peligro |
-| Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda o, con alostasis, anticipada) |
+| Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda; la del cobijo, anticipada: alostasis) |
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
@@ -583,8 +583,8 @@ class Impulso(Componente):
     """Un impulso por necesidad que declara el mundo (su déficit es la intensidad cruda) y Seguridad
     (el peligro). No proponen acciones: lo hacen las estrategias (decisiones 2 y 3).
 
-    **Alostasis** (paso 3, ``docs/ENCARGO_PASO3_PROTEGER.md``, 3.2): regulación por anticipación. Con ``mecanismos.proteger``
-    (solo el cobijo), la intensidad es la del déficit previsto: ``max(déficit, déficit + tendencia · T)``, con la tendencia
+    **Alostasis** (paso 3, ``docs/ENCARGO_PASO3_PROTEGER.md``, 3.2): regulación por anticipación. Solo para el cobijo,
+    la intensidad es la del déficit previsto: ``max(déficit, déficit + tendencia · T)``, con la tendencia
     como media móvil del cambio del déficit por latido. Sin tendencia que suba, o sin déficit (saciedad: lo lleno no se llena
     más), la intensidad es el déficit. El horizonte T sale del recinto (``alostasis``). Las demás necesidades no se anticipan."""
 
@@ -593,12 +593,6 @@ class Impulso(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         rasgos = {n.nombre: n.rasgo for n in ctx.perfil.necesidades}
-        mec = ctx.perfil.mecanismos
-        if not mec.proteger:
-            for nombre, intensidad in deficits(ctx).items():
-                self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
-                                               carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre)}))
-            return
         defs = deficits(ctx)
         for nombre, (intensidad, tendencia, horizonte) in alostasis(ctx, defs).items():
             self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad, carga={
@@ -611,12 +605,11 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
 
     - **Tendencia:** media móvil (``VENTANA_TENDENCIA`` latidos) del cambio del déficit por latido, desde el impulso del latido
       anterior. Seguridad (el peligro) no se anticipa.
-    - **Cobijo** (``mecanismos.proteger``): T = coste en pasos del mejor sitio para protegerse (``Recinto``), incluido lo que
+    - **Cobijo:** T = coste en pasos del mejor sitio para protegerse (``Recinto``), incluido lo que
       cuesta conseguir lo que le falta (metas instrumentales); dentro de un recinto, 0; sin ningún sitio posible, una
       estimación alta declarada (``COSTE_SIN_SITIO``). Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
     - **Las demás:** T = 0, no se anticipan. La versión que las anticipaba (3b, provisiones antes de encerrarse) se retiró
       por no tener efecto medido (``docs/ENCARGO_PASO3_PROTEGER.md``, «Resultado»)."""
-    mec = ctx.perfil.mecanismos
     previos = ctx.onda.ei("Impulso")
     a = 1.0 / VENTANA_TENDENCIA
     tendencias: Dict[str, float] = {}
@@ -629,7 +622,7 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
     r = recinto(ctx)
     coste = None if r is None or r.carga["coste"] is None else max(0.0, float(r.carga["coste"]))
     horizontes: Dict[str, float] = dict.fromkeys(defs, 0.0)
-    if mec.proteger and COBIJO in defs and r is not None:
+    if COBIJO in defs and r is not None:
         horizontes[COBIJO] = coste if coste is not None else (0.0 if r.carga["dentro"] else float(COSTE_SIN_SITIO))
     salida: Dict[str, Tuple[float, float, float]] = {}
     for nombre, d in defs.items():

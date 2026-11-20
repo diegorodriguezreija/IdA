@@ -157,3 +157,27 @@ Mediciones oficiales en [`docs/MEDICION_PASO3.md`](MEDICION_PASO3.md) (rama `fea
 | L1b: 3a + 3b, semilla 31 | 11,70 | [10,86, 12,41] | 18,75 | 31 (8,1 %) | 38 (9,9 %) |
 
 L1b frente a L1a: −0,25 puntos, con los intervalos solapados. Las muertes por hambre y sed no bajan, que era lo que 3b buscaba (riesgo 2 de la sección 7). Sin efecto medido, se retira: el código (rama `mecanismos.alostasis` de `alostasis` en `ida/sistemas/s1.py`), el interruptor y su test. La alostasis del cobijo (3a) se queda.
+
+### 3c: `RefugioNocturno` borrado, `proteger` siempre activo
+
+Se borran `RefugioNocturno` y lo que solo usaba él (detalle en [`docs/INVENTARIO_CONOCIMIENTO_CRAFTER.md`](INVENTARIO_CONOCIMIENTO_CRAFTER.md), sección 7), y se quita el interruptor `proteger`.
+
+La invariancia sigue OK en mínimo, archivos y ajedrez, porque esos mundos no dan casillas ni la necesidad `cobijo`. En Crafter, la conducta cambia desde el primer latido.
+
+**Pérdida aceptada en la línea con estrategias (L2, semilla 31):**
+
+| Métrica | C2 (con `RefugioNocturno`) | L2 (con `Proteger`) |
+|---|---|---|
+| Score (%) | 15,29 [14,00, 16,30] | 13,12 [11,96, 14,12] |
+| `make_wood_pickaxe` (%) | 91,89 | 60,98 |
+| `make_wood_sword` (%) | 84,80 | 37,67 |
+| `defeat_zombie` (%) | 69,93 | 49,86 |
+| `wake_up` (%) | 37,16 | 22,49 |
+| Muertes por zombi | 164 (55,4 %) | 242 (65,6 %) |
+| Pasos por episodio | 337,8 | 271,0 |
+
+L2 queda 2,17 puntos por debajo de C2, en el límite del criterio 2 de la sección 6 («no peor en más de 2 puntos»).
+
+**Causa:** `RefugioNocturno` hacía también lo que no es protegerse. En su fase «herramientas» fabricaba el pico y la espada de madera con urgencias fijas de 0,92 a 0,98. Con la espada, `DefensaArmada` lucha en vez de huir. Sin él, la cadena de herramientas depende solo de `PerseguirMetas`: el pico cae del 92 % al 61 % y la espada del 85 % al 38 %, en las mismas cifras que en la línea sin estrategias propias (C1: 62 % y 40 %). Con menos espadas hay menos zombis abatidos y más muertes por zombi.
+
+Se acepta porque aquella conducta era conocimiento de Crafter cableado en el mundo. El diagnóstico de la cadena de herramientas está en [`docs/DIAGNOSTICO_PASO3.md`](DIAGNOSTICO_PASO3.md).

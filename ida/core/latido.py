@@ -205,7 +205,7 @@ class Organismo:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
-        if self.con_experiencia and self.perfil.mecanismos.proteger and self.memoria.activa:
+        if self.con_experiencia and self.memoria.activa:
             self._aprender_mapa(ctx, previa.carga if previa is not None else None)
         if previa is None or not self.con_experiencia:
             return
@@ -248,7 +248,7 @@ class Organismo:
             self.memoria.actualizar_linea_base(subidas)
 
     def _aprender_mapa(self, ctx: Contexto, c: Optional[Dict[str, Any]]) -> None:
-        """Paso 3 (``mecanismos.proteger``): mapa local, modelo del cuerpo y transformaciones, desde lo percibido.
+        """Paso 3 (proteger X): mapa local, modelo del cuerpo y transformaciones, desde lo percibido.
 
         Necesita posiciones (ubicación ``<nombre>_x_y``) y la clase de cada casilla a la vista (``cuerpo["casillas"]``);
         sin ellas no hace nada. Antes de actualizar el mapa contrasta la acción anterior con lo que hay ahora:

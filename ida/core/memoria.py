@@ -380,7 +380,7 @@ class Memoria:
         self.satisface: Dict[Tuple[str, str], Satisface] = {}
         self.linea_base: Dict[str, float] = {}      # necesidad -> P(sube | sin comer), media móvil
         self.n_base: Dict[str, int] = {}            # latidos sin comer contados por necesidad
-        # Paso 3 (proteger X, con ``mecanismos.proteger``): mapa local de esta vida (no se hereda). Es la versión
+        # Paso 3 (proteger X): mapa local de esta vida (no se hereda). Es la versión
         # mínima del mapa cognitivo compartido: clase de cada casilla vista, qué clases son transitables, qué hace
         # cada acción con la casilla sobre la que actúa y cómo se mueve el propio cuerpo.
         self.casillas: Dict[Pos, str] = {}

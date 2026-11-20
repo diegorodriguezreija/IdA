@@ -17,7 +17,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
 from ida.core.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.proteger import Modelo, buscar_postura
@@ -33,7 +33,7 @@ class MundoCueva(Mundo):
     nombre = "cueva"
     perfil = Perfil(vitales_propios=True, duerme=True, amplitud=200,
                     necesidades=(Necesidad("cobijo", ("cobijo",), 100.0), Necesidad("hambre", ("comida",), 95.0, "nutritivo")),
-                    intenciones=("progresar",), mecanismos=MecanismosMemoria(proteger=True))
+                    intenciones=("progresar",))
 
     def __init__(self, mapa: Dict[Pos, str], pos: Pos, cara: Pos = (0, 1), luz: float = 10.0, bajada: float = 0.0,
                  comida: float = 100.0, gasto: float = 0.0, rocas: int = 0):
@@ -257,10 +257,12 @@ def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
     assert any(m.startswith("proteger: cerrar") for m in motivos)
 
 
-def test_sin_el_interruptor_no_hay_mapa_ni_proteger():
+def test_sin_la_necesidad_de_cobijo_no_hay_proteger():
+    """Proteger está siempre activo, pero solo responde al impulso ``cobijo``: un mundo que no lo declara no lo ve actuar
+    (el mapa local sí se aprende, porque el mundo da posiciones y casillas)."""
     roca = {(x, y) for x in range(9, 13) for y in range(1, 10)}
     mundo = MundoCueva(_campo(roca=roca), (6, 5), luz=10.0)
-    mundo.perfil = replace(MundoCueva.perfil, mecanismos=MecanismosMemoria())
+    mundo.perfil = replace(MundoCueva.perfil, necesidades=tuple(n for n in MundoCueva.perfil.necesidades if n.nombre != "cobijo"))
     mem = _memoria(mundo, aprendida=True)
     motivos: List[str] = []
 
@@ -269,7 +271,7 @@ def test_sin_el_interruptor_no_hay_mapa_ni_proteger():
         motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
 
     _vivir(mundo, mem, 20, al_latir)
-    assert not mem.casillas
+    assert mem.casillas
     assert not any(m.startswith("proteger") for m in motivos)
 
 
@@ -302,19 +304,15 @@ def test_sin_tendencia_no_hay_anticipacion():
     assert all(r["cobijo"]["intensidad"] == r["cobijo"]["deficit"] for r in registro if "cobijo" in r)
 
 
-# --- Crafter: las dos versiones del refugio conviven tras el interruptor ---------------------------
-def test_crafter_con_proteger_no_registra_refugio_nocturno():
+# --- Crafter: el refugio lo da la base (3c) ---------------------------------------------------------
+def test_crafter_no_tiene_refugio_propio():
     pytest.importorskip("crafter")
+    from ida.mundos import crafter
     from ida.mundos.crafter import MundoCrafter
 
-    original = MundoCrafter.perfil
-    try:
-        assert "S2" in MundoCrafter().estrategias_propias()
-        MundoCrafter.perfil = replace(original, mecanismos=replace(original.mecanismos, proteger=True))
-        propias = MundoCrafter().estrategias_propias()
-        assert "S2" not in propias and {d.nombre for d in propias["S1"]} == {"defensa_armada", "cerrar_distancia"}
-    finally:
-        MundoCrafter.perfil = original
+    propias = MundoCrafter().estrategias_propias()
+    assert "S2" not in propias and {d.nombre for d in propias["S1"]} == {"defensa_armada", "cerrar_distancia"}
+    assert not hasattr(crafter, "RefugioNocturno")
 
 
 # --- inducción entre clases: menos confianza que lo observado y se corrige con el primer intento -------------

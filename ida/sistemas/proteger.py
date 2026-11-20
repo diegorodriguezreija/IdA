@@ -1,6 +1,7 @@
 """S1 · «Proteger X» con X = uno mismo: el refugio general (fase de generalización, paso 3).
 
-Diseño: ``docs/ENCARGO_PASO3_PROTEGER.md``. Todo está tras ``Perfil.mecanismos.proteger``; apagado, nada de esto actúa.
+Diseño: ``docs/ENCARGO_PASO3_PROTEGER.md``. Siempre activo: sin posiciones, sin casillas a la vista o sin la necesidad
+``cobijo``, nada de esto actúa.
 
 | Etapa       | Componente | Produce |
 |-------------|------------|---------|
@@ -506,7 +507,7 @@ def _abrir(modelo: Modelo, interior: Tuple[Pos, ...], aqui: Pos) -> List[Dict[st
 
 # --- componente de Interpretar ---------------------------------------------------------------------
 class Recinto(Componente):
-    """Interpreta el espacio para protegerse (con ``mecanismos.proteger``): una pieza ``recinto`` con
+    """Interpreta el espacio para protegerse: una pieza ``recinto`` con
     ``dentro`` (y las casillas del recinto), el sitio elegido, la primera acción de su plan, su coste en pasos (lo usa la
     alostasis del cobijo) y su confianza (tasas estimadas de las acciones de cavar y cerrar), y las paredes que se pueden
     abrir. Evalúa todos los candidatos cada ``CADA_EVALUACION`` latidos o cuando cambia el inventario; entretanto, replanifica
@@ -528,7 +529,7 @@ class Recinto(Componente):
         self._planificador = PerseguirMetas()
 
     def reactiva(self, ctx: Contexto) -> None:
-        if not ctx.perfil.mecanismos.proteger or not ctx.con_experiencia or not ctx.memoria.activa:
+        if not ctx.con_experiencia or not ctx.memoria.activa:
             return
         aqui = posicion(ctx)
         if aqui is None or not ctx.memoria.casillas:
@@ -739,7 +740,7 @@ def recinto(ctx: Contexto) -> Optional[Pieza]:
 
 # --- estrategia ------------------------------------------------------------------------------------
 class Proteger(ConPropuestas):
-    """Estrategia general del impulso ``cobijo`` (con ``mecanismos.proteger``): protegerse en un recinto.
+    """Estrategia general del impulso ``cobijo``: protegerse en un recinto.
 
     - **Fuera:** si el cobijo pesa al menos tanto como el déficit de las necesidades que se satisfacen fuera, propone la
       primera acción del plan del sitio que interpreta ``Recinto`` (ir, cavar, girarse, cerrar). Arousal = intensidad del

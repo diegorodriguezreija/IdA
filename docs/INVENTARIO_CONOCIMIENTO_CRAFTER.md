@@ -108,3 +108,15 @@ Lista de cada constante, umbral o regla de `ida/mundos/crafter.py` que codifica 
 - **Borrado:** `PlanTecnologico` entero (sección 4): recetas (`constants.make/place`), `OBJETIVOS`, `RECURSO`, `LOGROS_PLAN`, herramientas por mineral, plantar sobre hierba, retoño de la hierba y dormir de día. La tecnología la persigue `PerseguirMetas` (S3, general) con las metas y los requisitos del manual.
 - **Pendiente para el paso 3:** `RefugioNocturno` sigue usando recetas propias como conducta de refugio: fabricar pico y espada de madera con madera ≥ 1 (líneas 1255-1260 de la tabla 3), colocar la mesa con madera ≥ 2 sobre grass, sand o path (1266-1274), tapar con 1 piedra (1381, 1414) y la madera necesaria de `_madera_faltante` (624-630).
 - **Percepción nueva:** `cuerpo["delante"]` (clase e id de lo que hay en la casilla de delante; se ve). Para los suelos usa `SUELOS` (hierba, arena, camino), que solo nombra lo visible.
+
+## 7. Estado tras el paso 3 (rama `feature/proteger`, subpaso 3c)
+
+- **Borrado:** `RefugioNocturno` entero (sección 3) y lo que solo usaba él:
+  - sus constantes: `NO_TRANSITABLES_ZOMBI`, `ROCA_EXCAVABLE`, `TRANSITABLES_JUGADOR`, `LUZ_PLENO_DIA` y `MEMORIA_VACA`;
+  - su mapa propio y las lecturas de la propiocepción que lo alimentaban (`_inventario`, `_orientacion`, `_vista`, `_terreno`, `_luz`);
+  - su apaño de motivación (0,98; 0,92; 0,84 + 0,12 × empuje);
+  - lo que el adaptador daba solo para él: `cuerpo["vista"]` (la rejilla de materiales) y el dato `terreno` de cada lugar;
+  - el arnés `herramientas/arnes_refugio_crafter.py`.
+- **Quién lo hace ahora:** el refugio nocturno lo da la base: `Recinto` y `Proteger` (`ida/sistemas/proteger.py`), con el mapa local de la memoria, el modelo del cuerpo y la alostasis del cobijo. Siempre activos, sin interruptor. El material y las herramientas para cerrar o cavar se piden a `PerseguirMetas` como metas instrumentales.
+- **Lo que el mundo da para eso:** solo percepción. Es `cuerpo["casillas"]`, la clase de cada casilla a la vista, con los mismos nombres que las entidades y que `SUELOS`.
+- **Lo que queda en el mundo:** `DefensaArmada` y `CerrarDistancia` (sección 2, paso 6).
