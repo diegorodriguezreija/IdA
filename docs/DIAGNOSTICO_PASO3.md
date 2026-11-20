@@ -213,3 +213,63 @@ Cuenta los latidos con luz < 0,5 en que `_requisitos` no devuelve nada:
 **Decisión:** no domina «nunca vista» (21 %) ni «vista pero lejos» (0 %), así que no se implementa ninguna de las dos ramas del encargo (explorar en busca de sitio, o buscar fuera del alcance). Quedan como propuestas, sin implementar:
 - **Seguir bajando por la lista de candidatos** hasta encontrar uno que el plan exacto cierre, con un tope de búsquedas por evaluación. Los fallos ya quedan en la caché de planes (`Recinto._planes`). Es general: no supone nada del mundo, solo no confiar en la estimación sin orientación cuando falla.
 - **Usar el mapa local para conseguir material** en `PerseguirMetas.conseguir`. Hoy el planificador solo va a lo visible o a lo que recuerda la memoria topológica; `ir_por_el_mapa`, del punto 1, solo se usa para los requisitos de cercanía. Es la segunda razón: 130 latidos.
+
+## Punto 3: salida tardía tras la noche
+
+**Diagnóstico** (después del punto 1, `b452ec4`). En los 11 episodios que pasan la primera noche dentro, entre el final de lo oscuro y la salida (836 latidos):
+- **63 % de los latidos los gana `huir`** (de zombi 33,1 %, de esqueleto 30,0 %), con un hostil real a 4 casillas o menos y la alarma en 0,8 o más.
+  - Dentro del recinto, `huir` solo mueve entre las casillas interiores: el peligro que da el mundo por casilla no tiene en cuenta las paredes.
+- **Proteger:** propone quedarse («dentro, dormir») en el 51 % de los latidos, no propone nada en el 30 % y propone abrir en el resto.
+  - Cuando propone abrir, pierde en el Tribunal: total mediano 0,17 frente a 1,03 del ganador.
+- **De día el cobijo baja a 0 y Proteger se cierra.** Las estrategias de la sed y el hambre no ven agua ni comida a través de las paredes, así que nadie propone abrir aunque la sed esté en 1,00.
+- **La causa no es que el cobijo tarde en bajar**, que tiene una mediana de 0,15. Es el peligro percibido, junto con que salir solo lo proponía la estrategia del cobijo.
+
+**Corrección** (`80f5352`, general, sin nombres de ningún mundo):
+- `Huir` no es elegible dentro de un recinto (sin accesos para un peligro, según `Recinto`): el refugio ya protege.
+- Nueva estrategia `SalirDelRecinto` para las necesidades «de fuera» (las que declaran un `rasgo`): abre cuando el déficit pesa más que el cobijo y que el riesgo exterior.
+- `riesgo_exterior` es el peligro percibido si llega al umbral de miedo, y 0 por debajo. Proteger usa la misma regla.
+
+Solo con `SalirDelRecinto`, las tres vidas salieron idénticas latido a latido a las del punto 1: perdía siempre frente a `huir`.
+
+El diagnóstico no registra qué acción abre el recinto: el latido de salida ya cuenta como fuera. No se puede atribuir la salida a una estrategia concreta.
+
+## Antes y después de la ronda
+
+**Condiciones:** semillas 31, 32 y 33, 10 000 pasos cada una, una tras otra, 0 latidos cortados por la guillotina.
+- **Antes:** `04a6417`, en `datos/diagnostico/paso3_antes_semilla3{1,2,3}.json`.
+- **Después:** `80f5352`, con los puntos 1 y 3, en `datos/diagnostico/paso3_despues_semilla3{1,2,3}.json`.
+
+```bash
+python herramientas/diagnostico_paso3.py --resumir datos/diagnostico/paso3_antes_semilla3{1,2,3}.json
+python herramientas/diagnostico_paso3.py --resumir datos/diagnostico/paso3_despues_semilla3{1,2,3}.json
+```
+
+| Métrica | Antes | Después |
+|---|---|---|
+| Score por semilla (31 / 32 / 33) | 12,75 / 10,99 / 11,48 | 12,73 / 13,16 / 9,44 |
+| Episodios | 113 | 115 |
+| **Primera noche** | | |
+| Muere antes de anochecer | 1 (0,9 %) | 1 (0,9 %) |
+| No encuentra sitio | 67 (59,3 %) | 63 (54,8 %) |
+| No lo completa a tiempo | 26 (23,0 %) | 33 (28,7 %) |
+| Sale antes del amanecer | 2 (1,8 %) | 5 (4,3 %) |
+| Pasa la noche dentro | 14 (12,4 %) | 11 (9,6 %) |
+| Latidos oscuros fuera antes de entrar (mediana) | 34 | 22 |
+| **Después de la noche** (los que la pasan dentro) | | |
+| Latidos hasta salir (mediana) | 62 | 21 |
+| Comida y bebida al salir (medianas, 0-9) | 2 y 2 | 3 y 3 |
+| Salen con comida ≤ 3 / con bebida ≤ 3 | 12 y 11 de 14 | 7 y 6 de 11 |
+| Mueren después de sed o hambre | 8 de 14 | 6 de 11 |
+| Latidos vividos desde el final de lo oscuro (mediana) | 212 | 208 |
+| **Cadena de herramientas** | | |
+| Episodios con mesa | 95 (84,1 %) | 95 (82,6 %) |
+| Mesas colocadas por episodio (media) / episodios con 2 o más | 1,73 / 59 | 1,09 / 26 |
+| Pico tras la mesa; latidos (mediana, p25-p75) | 74,7 %; 12 (4-36) | 73,7 %; 8 (3-22) |
+| Espada tras la mesa; latidos | 47,4 %; 26 (9-58) | 46,3 %; 12 (8-43) |
+
+**Lectura:**
+- **Lo que cambia:** se colocan muchas menos mesas, las herramientas llegan antes y se sale antes tras la noche, con más reservas.
+- **Lo que no cambia:** la fracción que fabrica pico o espada y las muertes después de la noche.
+- **Pasar la noche dentro** baja de 14 a 11 episodios. Con tan pocos casos puede ser ruido; no está comprobado.
+- **La Score** sube en la semilla 32 y baja en la 33: no hay efecto claro en 3 semillas.
+- **Lo que más pesa sigue sin tocarse:** «no encuentra sitio». Su causa está en el punto 2, con dos propuestas sin implementar.
