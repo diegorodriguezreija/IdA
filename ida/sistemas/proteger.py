@@ -674,7 +674,8 @@ class Proteger(ConPropuestas):
       cobijo (anticipada por la alostasis); confianza = confianza del sitio × esa intensidad: la confianza de que protegerse
       ahora sirve a la necesidad. Sin sitio, o si otra necesidad de fuera pesa más, no propone (deciden otras estrategias).
       La alostasis de 3b no entra aquí: sube la intensidad del hambre y la sed, y con ella el arousal de sus estrategias.
-    - **Sin sitio completable:** pide al planificador lo que falta (``pedir``, metas instrumentales) y no propone.
+    - **Sin sitio completable:** pide al planificador lo que falta (``pedir``, metas instrumentales) y no propone; ante
+      un peligro por encima del umbral de miedo, cede (``_cede``).
     - **Dentro:** si el cobijo (o el peligro de fuera) pesa al menos tanto como el déficit de cualquier necesidad que se
       satisface fuera (las que declaran un ``rasgo``), quedarse: DORMIR (o ESPERAR si el mundo no deja dormir). Si una de
       ellas pesa más, abrir: COGER sobre una pared que se pueda cavar (primero la que cerró uno mismo, que además devuelve
@@ -690,14 +691,23 @@ class Proteger(ConPropuestas):
         r = recinto(ctx)
         return r is not None and (bool(r.carga["dentro"]) or r.carga["accion"] is not None or bool(r.carga.get("requiere")))
 
+    @staticmethod
+    def _cede(ctx: Contexto) -> bool:
+        """Con un peligro percibido por encima del umbral de miedo (el mismo que hace elegible huir), un sitio que aún no se
+        puede completar no se persigue: conseguir lo que falta (material, herramientas) junto a un hostil es exponerse, y
+        se deja que respondan las estrategias de Seguridad. Un sitio completable sí se sigue (llegar a él también aleja)."""
+        a = ctx.onda.ev("Supervivencia").get("alarma")
+        return a is not None and float(a.carga["peligro"]) >= ctx.arquetipo.umbral_miedo
+
     def pedir(self, ctx: Contexto, estrategia: Pieza) -> List[Dict[str, Any]]:
         """Metas instrumentales: si el mejor sitio necesita algo que no se tiene (``requiere`` del recinto), se pide al
-        planificador con urgencia = intensidad anticipada del cobijo. No se pide si otra necesidad de fuera pesa más."""
+        planificador con urgencia = intensidad anticipada del cobijo. No se pide si otra necesidad de fuera pesa más, ni si
+        hay que ceder ante un peligro (``_cede``)."""
         r = recinto(ctx)
         if r is None or r.carga["dentro"] or not r.carga.get("requiere"):
             return []
         cobijo, _, otras = self._intensidades(ctx)
-        if otras > cobijo:
+        if otras > cobijo or self._cede(ctx):
             return []
         return [{"objeto": k, "cantidad": n, "urgencia": cobijo, "motivo": f"proteger: {r.carga['explicacion']}"}
                 for k, n in sorted(r.carga["requiere"].items())]
