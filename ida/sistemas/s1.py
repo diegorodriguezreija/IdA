@@ -23,7 +23,7 @@ from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
-from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, Recinto, recinto
+from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, Recinto, SalirDelRecinto, recinto
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -216,13 +216,18 @@ def _peligro(ctx: Contexto) -> float:
 
 # --- Estrategias genéricas de S1 (decisiones 3, 6 y 17) -----------------------------------------
 class Huir(Definicion):
-    """Seguridad: alejarse al lugar más seguro mientras el peligro supere el umbral de miedo."""
+    """Seguridad: alejarse al lugar más seguro mientras el peligro supere el umbral de miedo. Dentro de un recinto (sin
+    accesos por los que llegue un peligro, ``Recinto``) no se huye: el refugio ya protege, y moverse dentro no aleja de
+    nada. Si salir o quedarse lo deciden el cobijo, el riesgo de fuera y las necesidades (``Proteger``, ``SalirDelRecinto``)."""
 
     nombre = "huir"
     impulsos = (SEGURIDAD,)
     prioridad = 10
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        r = recinto(ctx)
+        if r is not None and r.carga["dentro"]:
+            return False
         return intensidad >= ctx.arquetipo.umbral_miedo and _salida(ctx, intensidad) is not None
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
@@ -543,7 +548,7 @@ class Alimentarse(Definicion):
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger()]
+    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger(), SalirDelRecinto()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------

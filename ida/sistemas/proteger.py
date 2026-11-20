@@ -8,6 +8,7 @@ Diseño: ``docs/ENCARGO_PASO3_PROTEGER.md``. Siempre activo: sin posiciones, sin
 | Interpretar | Recinto    | Recinto: si se está dentro de uno, el mejor sitio para protegerse, el plan para completarlo y su coste |
 |             |            | (sin material, el primer paso para conseguirlo, del planificador de S3)                                 |
 | Actuar      | Proteger   | (estrategia del impulso ``cobijo``) la acción del plan, quedarse dentro o abrir |
+| Actuar      | SalirDelRecinto | (estrategia de las necesidades «de fuera») abrir el recinto cuando una pesa más que quedarse |
 
 Conceptos (sección 2 del encargo), todos desde la percepción y el mapa local de la memoria, sin nombres de ningún mundo:
 - **casilla transitable:** su clase ha sido un lugar (``Memoria.transitable``);
@@ -749,10 +750,11 @@ class Proteger(ConPropuestas):
       Aquí solo cuenta el déficit actual de las demás necesidades, no lo que se prevea de ellas.
     - **Sin sitio completable:** pide al planificador lo que falta (``pedir``, metas instrumentales) y no propone; ante
       un peligro por encima del umbral de miedo, cede (``_cede``).
-    - **Dentro:** si el cobijo (o el peligro de fuera) pesa al menos tanto como el déficit de cualquier necesidad que se
-      satisface fuera (las que declaran un ``rasgo``), quedarse: DORMIR (o ESPERAR si el mundo no deja dormir). Si una de
-      ellas pesa más, abrir: COGER sobre una pared que se pueda cavar (primero la que cerró uno mismo, que además devuelve
-      el material).
+    - **Dentro:** si el cobijo (o el riesgo de fuera, ``riesgo_exterior``) pesa al menos tanto como el déficit de cualquier
+      necesidad que se satisface fuera (las que declaran un ``rasgo``), quedarse: DORMIR (o ESPERAR si el mundo no deja
+      dormir). Si una de ellas pesa más, abrir: COGER sobre una pared que se pueda cavar (primero la que cerró uno mismo,
+      que además devuelve el material). Cuando el cobijo ya no pide nada (de día), Proteger se cierra y la salida la
+      propone ``SalirDelRecinto`` desde la propia necesidad.
     """
 
     nombre = "proteger"
@@ -804,20 +806,74 @@ class Proteger(ConPropuestas):
         c = r.carga
         cobijo, otra, otras = self._intensidades(ctx)
         if c["dentro"]:
-            a = ctx.onda.ev("Supervivencia").get("alarma")
-            peligro = float(a.carga["peligro"]) if a is not None else 0.0
-            if max(cobijo, peligro) >= otras or not c["abrir"]:
+            if max(cobijo, riesgo_exterior(ctx)) >= otras or not c["abrir"]:
                 verbo = Verbo.DORMIR if Verbo.DORMIR in ctx.verbos else Verbo.ESPERAR
                 self.proponer(ctx, verbo, "", cobijo, acotar(cobijo), f"proteger: dentro, {verbo.value.lower()}")
                 return
-            pared = c["abrir"][0]
-            confianza = ctx.memoria.tasa_estimada(Verbo.COGER, pared["clase"]) if pared["verbo"] == Verbo.COGER else 1.0
-            que = f"abrir {pared['clase']}" if pared["verbo"] == Verbo.COGER else "ir junto a la pared para abrir"
-            self.proponer(ctx, pared["verbo"], pared["objetivo"], otras, confianza,
-                          f"proteger: {que} ({otra} {otras:.2f} > cobijo {cobijo:.2f})", clase=pared["clase"])
+            _proponer_abrir(self, ctx, c, "proteger", otra, otras, cobijo)
             return
         accion = c["accion"]
         if accion is None or otras > cobijo:
             return      # otra necesidad de fuera pesa más: que actúen sus estrategias
         self.proponer(ctx, accion["verbo"], accion["objetivo"], cobijo, acotar(float(c["confianza"]) * cobijo),
                       f"proteger: {c['explicacion']}", clase=accion.get("clase", ""), **(accion.get("datos") or {}))
+
+
+def riesgo_exterior(ctx: Contexto) -> float:
+    """El riesgo de salir: el peligro percibido si llega al umbral de miedo (el mismo que hace elegible huir); por debajo,
+    0, porque fuera no hay nada de lo que haya que huir."""
+    a = ctx.onda.ev("Supervivencia").get("alarma")
+    peligro = float(a.carga["peligro"]) if a is not None else 0.0
+    return peligro if peligro >= ctx.arquetipo.umbral_miedo else 0.0
+
+
+def _proponer_abrir(estrategia: ConPropuestas, ctx: Contexto, c: Dict[str, Any], origen: str, necesidad: str, deficit: float,
+                    cobijo: float) -> None:
+    """Abrir el recinto: la primera pared que se puede cavar (``Recinto``, ``abrir``), con arousal = déficit de la necesidad que
+    saca y confianza = tasa estimada de cavarla."""
+    pared = c["abrir"][0]
+    confianza = ctx.memoria.tasa_estimada(Verbo.COGER, pared["clase"]) if pared["verbo"] == Verbo.COGER else 1.0
+    que = f"abrir {pared['clase']}" if pared["verbo"] == Verbo.COGER else "ir junto a la pared para abrir"
+    estrategia.proponer(ctx, pared["verbo"], pared["objetivo"], deficit, confianza,
+                        f"{origen}: {que} ({necesidad} {deficit:.2f} > cobijo {cobijo:.2f})", clase=pared["clase"])
+
+
+class SalirDelRecinto(ConPropuestas):
+    """Estrategia general de las necesidades «de fuera» (las que declaran un ``rasgo``: se satisfacen con algo del mundo):
+    dentro de un recinto, abrirlo cuando el déficit de la necesidad pesa más que quedarse.
+
+    Quedarse pesa lo que el cobijo y lo que el riesgo de salir (``riesgo_exterior``: el peligro percibido, si llega al umbral
+    de miedo). Es la misma regla con la que ``Proteger`` abre de noche, pero desde la necesidad. De día el cobijo no pide
+    nada y ``Proteger`` se cierra, y dentro de un recinto las estrategias de la necesidad no ven lo que buscan. Sin esta
+    estrategia, nadie abre: se sale tarde o por azar (``docs/DIAGNOSTICO_PASO3.md``, punto 3). Una necesidad apurada saca
+    del recinto en cuanto el riesgo de fuera baja del umbral de miedo, o antes si pesa más que ese riesgo.
+    """
+
+    nombre = "salir_del_recinto"
+    cualquier_impulso = True
+    prioridad = 60
+
+    @staticmethod
+    def _deficit(ctx: Contexto, impulso: str) -> Optional[float]:
+        fuera = {n.nombre for n in ctx.perfil.necesidades if n.rasgo} - {COBIJO}
+        p = ctx.onda.ef("Impulso").get(impulso)
+        if impulso not in fuera or p is None:
+            return None
+        return float(p.carga.get("deficit", p.carga["intensidad"]))
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        r = recinto(ctx)
+        deficit = self._deficit(ctx, impulso)
+        if r is None or not r.carga["dentro"] or not r.carga["abrir"] or deficit is None:
+            return False
+        cobijo, _, _ = Proteger._intensidades(ctx)
+        return deficit > max(cobijo, riesgo_exterior(ctx))
+
+    def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
+        r = recinto(ctx)
+        impulso = str(estrategia.carga.get("impulso", "")) if estrategia is not None else ""
+        deficit = self._deficit(ctx, impulso)
+        if r is None or deficit is None or not r.carga["abrir"]:
+            return
+        cobijo, _, _ = Proteger._intensidades(ctx)
+        _proponer_abrir(self, ctx, r.carga, "salir del recinto", impulso, deficit, cobijo)

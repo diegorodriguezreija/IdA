@@ -9,7 +9,7 @@ que se prueba).
 
 from dataclasses import replace
 from types import SimpleNamespace
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pytest
 
@@ -375,3 +375,61 @@ def test_para_abrir_solo_coge_una_pared_vecina():
     m = Modelo(mem, {}, set())
     assert _abrir(m, ((1, 0), (2, 0)), (2, 0)) == [{"verbo": Verbo.MOVER, "objetivo": "celda_1_0", "clase": "suelo"}]
     assert _abrir(m, ((1, 0), (2, 0)), (1, 0))[0]["objetivo"] == "roca_0_0"
+
+
+# --- salir del recinto: una necesidad de fuera apurada saca de él de día ---------------------------
+def _encerrado_de_dia(comida: float) -> Tuple[MundoCueva, Memoria]:
+    """Dentro de un recinto de 2 casillas excavado en roca, de día (cobijo sin déficit) y sin peligro."""
+    roca = {(x, y) for x in range(1, 13) for y in range(1, 10)} - {(6, 5), (6, 6)}
+    mundo = MundoCueva(_campo(roca=roca), (6, 5), luz=100.0, comida=comida)
+    mem = _memoria(mundo, aprendida=True)
+    mem.casillas.update(mundo.mapa)
+    return mundo, mem
+
+
+def test_de_dia_una_necesidad_de_fuera_apurada_abre_el_recinto():
+    mundo, mem = _encerrado_de_dia(comida=10.0)
+    assert mundo.encerrado()
+    motivos: List[str] = []
+
+    def al_latir(o, onda):
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
+
+    _vivir(mundo, mem, 15, al_latir)
+    assert any(m.startswith("salir del recinto: abrir roca (hambre") for m in motivos), motivos
+    assert not mundo.encerrado()
+
+
+def test_sin_necesidad_apurada_no_sale_del_recinto():
+    """Con la comida llena (sin déficit) nada saca del recinto."""
+    mundo, mem = _encerrado_de_dia(comida=100.0)
+    motivos: List[str] = []
+    def al_latir(o, onda):
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
+
+    _vivir(mundo, mem, 10, al_latir)
+    assert not any(m.startswith("salir del recinto") for m in motivos)
+    assert mundo.encerrado()
+
+
+def test_el_riesgo_de_salir_solo_cuenta_desde_el_umbral_de_miedo():
+    from ida.sistemas.proteger import riesgo_exterior
+
+    def ctx(peligro: float) -> Any:
+        alarma = SimpleNamespace(carga={"peligro": peligro})
+        onda = SimpleNamespace(ev=lambda canal: {"alarma": alarma} if canal == "Supervivencia" else {})
+        return SimpleNamespace(onda=onda, arquetipo=SimpleNamespace(umbral_miedo=0.5))
+
+    assert riesgo_exterior(ctx(0.3)) == 0.0
+    assert riesgo_exterior(ctx(0.9)) == 0.9
+
+
+def test_dentro_de_un_recinto_no_se_huye():
+    """Dentro de un recinto, Huir no es elegible aunque el peligro supere el umbral de miedo: el refugio ya protege."""
+    from ida.sistemas.s1 import Huir
+    recinto_dentro = SimpleNamespace(carga={"dentro": True})
+    onda = SimpleNamespace(ef=lambda canal: {"recinto": recinto_dentro} if canal == "Recinto" else {})
+    ctx = SimpleNamespace(onda=onda, arquetipo=SimpleNamespace(umbral_miedo=0.5))
+    assert not Huir().elegible(ctx, "seguridad", 0.95)
