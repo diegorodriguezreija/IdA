@@ -8,7 +8,7 @@ import json
 import os
 import statistics
 import sys
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS_DIR = os.path.join(RAIZ, "datos", "evaluacion")
@@ -18,6 +18,253 @@ def formatear_float_es(valor: float, decimales: int = 2) -> str:
     """Formatea un float con punto de miles y coma decimal estilo español (p. ej. 1.379,2)."""
     s = f"{valor:,.{decimales}f}"
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+# =====================================================================
+# Informe Cierre Paso 0
+# =====================================================================
+
+CONDICIONES_CIERRE_PASO0 = [
+    {
+        "id": "suelo_linaje",
+        "nombre": "Suelo con linaje",
+        "columna": "Suelo con linaje",
+        "archivo": "suelo_main.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-estrategias-propias",
+    },
+    {
+        "id": "S0",
+        "nombre": "S0",
+        "columna": "S0",
+        "archivo": "suelo_sin_herencia.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --sin-estrategias-propias",
+    },
+    {
+        "id": "G1",
+        "nombre": "G1",
+        "columna": "G1",
+        "archivo": "paso5_G1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "P2",
+        "nombre": "P2",
+        "columna": "P2",
+        "archivo": "paso0_P2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto --mecanismos urgencia_local aliestesia"
+        ),
+    },
+    {
+        "id": "C1",
+        "nombre": "C1",
+        "columna": "C1",
+        "archivo": "cierre0_C1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "C3",
+        "nombre": "C3",
+        "columna": "C3",
+        "archivo": "cierre0_C3.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "G3",
+        "nombre": "G3",
+        "columna": "G3",
+        "archivo": "paso5_G3.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto",
+    },
+    {
+        "id": "P3",
+        "nombre": "P3",
+        "columna": "P3",
+        "archivo": "paso0_P3.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --mecanismos urgencia_local aliestesia"
+        ),
+    },
+    {
+        "id": "C2",
+        "nombre": "C2",
+        "columna": "C2",
+        "archivo": "cierre0_C2.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto",
+    },
+]
+
+
+def cargar_datos_cierre_paso0() -> Dict[str, Dict[str, Any]]:
+    datos = {}
+    for c in CONDICIONES_CIERRE_PASO0:
+        ruta = os.path.join(DATOS_DIR, c["archivo"])
+        with open(ruta, "r", encoding="utf-8") as f:
+            datos[c["id"]] = json.load(f)
+    return datos
+
+
+def generar_tabla_general_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
+    lineas = [
+        "## 1. Tabla general",
+        "",
+        "| Condición | Opciones exactas | Score (%) | IC 95 % (%) | Episodios | Pasos / ep. | Rendimiento (ms/paso) |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for c in CONDICIONES_CIERRE_PASO0:
+        cid = c["id"]
+        d = datos[cid]
+        score_str = formatear_float_es(d["score"])
+        ic_str = f"[{formatear_float_es(d['score_ci_95'][0])}, {formatear_float_es(d['score_ci_95'][1])}]"
+        ep = d["episodios"]
+        pasos_ep = formatear_float_es(d["pasos"] / ep, 1)
+        ms_paso = formatear_float_es(d["ms_por_paso"])
+        lineas.append(
+            f"| **{c['nombre']}** | `{c['opciones']}` | **{score_str}** | {ic_str} | {ep} | {pasos_ep} | {ms_paso} |"
+        )
+    return "\n".join(lineas)
+
+
+def generar_tasas_logros_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_CIERRE_PASO0]
+    lineas = [
+        "## 2. Tasas por logro (%)",
+        "",
+        "Porcentaje de episodios donde se obtuvo cada uno de los 22 logros oficiales de Crafter:",
+        "",
+        f"| Logro | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todos_logros = sorted(datos["suelo_linaje"]["tasas_logros"].keys())
+    ids = [c["id"] for c in CONDICIONES_CIERRE_PASO0]
+    for logro in todos_logros:
+        valores = [formatear_float_es(datos[cid]["tasas_logros"].get(logro, 0.0)) for cid in ids]
+        lineas.append(f"| `{logro}` | {' | '.join(valores)} |")
+    return "\n".join(lineas)
+
+
+def generar_causas_muerte_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_CIERRE_PASO0]
+    lineas = [
+        "## 3. Causas de muerte por condición",
+        "",
+        "Número de episodios y porcentaje sobre el total de episodios de cada condición:",
+        "",
+        f"| Causa | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todas_causas = sorted(
+        {causa for d in datos.values() for causa in d["causas_muerte"]},
+        key=lambda x: (x == "cortado por presupuesto", x),
+    )
+    ids = [c["id"] for c in CONDICIONES_CIERRE_PASO0]
+    for causa in todas_causas:
+        cols = []
+        for cid in ids:
+            d = datos[cid]
+            n = d["causas_muerte"].get(causa, 0)
+            pct = formatear_float_es((n / d["episodios"]) * 100.0, 1)
+            cols.append(f"{n} ({pct} %)")
+        lineas.append(f"| `{causa}` | {' | '.join(cols)} |")
+    totales = [str(datos[cid]["episodios"]) for cid in ids]
+    lineas.append(f"| **Total episodios** | **{'** | **'.join(totales)}** |")
+    return "\n".join(lineas)
+
+
+def generar_comparaciones_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
+    lineas = [
+        "## 4. Comparaciones",
+        "",
+        "Diferencias de Crafter Score (en puntos porcentuales) y comprobación de solapamiento de intervalos de confianza al 95 %:",
+        "",
+    ]
+
+    def comparar(nom_a: str, id_a: str, nom_b: str, id_b: str) -> str:
+        da, db = datos[id_a], datos[id_b]
+        diff = da["score"] - db["score"]
+        signo = "+" if diff >= 0 else ""
+        diff_str = f"{signo}{formatear_float_es(diff)} pp"
+        ic_a = (da["score_ci_95"][0], da["score_ci_95"][1])
+        ic_b = (db["score_ci_95"][0], db["score_ci_95"][1])
+        solapa = se_solapan(ic_a, ic_b)
+        solapa_str = "Sí" if solapa else "No"
+        ic_a_str = f"[{formatear_float_es(ic_a[0])}, {formatear_float_es(ic_a[1])}] %"
+        ic_b_str = f"[{formatear_float_es(ic_b[0])}, {formatear_float_es(ic_b[1])}] %"
+        return (
+            f"- **{nom_a} frente a {nom_b}**:\n"
+            f"  - Score {nom_a}: {formatear_float_es(da['score'])} % (IC 95 %: {ic_a_str})\n"
+            f"  - Score {nom_b}: {formatear_float_es(db['score'])} % (IC 95 %: {ic_b_str})\n"
+            f"  - Diferencia de Score ({nom_a} - {nom_b}): {diff_str}\n"
+            f"  - ¿Se solapan los IC 95 %?: **{solapa_str}**"
+        )
+
+    # 1. C1 frente a G1 y P2
+    lineas.append("### C1 frente a G1 y P2")
+    lineas.append(comparar("C1", "C1", "G1", "G1"))
+    lineas.append("")
+    lineas.append(comparar("C1", "C1", "P2", "P2"))
+    lineas.append("")
+
+    # 2. C2 frente a G3 y P3
+    lineas.append("### C2 frente a G3 y P3")
+    lineas.append(comparar("C2", "C2", "G3", "G3"))
+    lineas.append("")
+    lineas.append(comparar("C2", "C2", "P3", "P3"))
+    lineas.append("")
+
+    # 3. C3 frente a C1
+    lineas.append("### C3 frente a C1")
+    lineas.append(comparar("C3", "C3", "C1", "C1"))
+    lineas.append("")
+
+    # 4. S0 frente al suelo con linaje
+    lineas.append("### S0 frente al suelo con linaje")
+    lineas.append(comparar("S0", "S0", "Suelo con linaje", "suelo_linaje"))
+    lineas.append("")
+
+    return "\n".join(lineas)
+
+
+def generar_informe_cierre_paso0() -> str:
+    datos = cargar_datos_cierre_paso0()
+    cabecera = [
+        "# Medición Oficial: Cierre del Paso 0 (Crafter)",
+        "",
+        "Evaluación oficial en Crafter (100.000 pasos, vista oficial, sin herencia) "
+        "en la rama `feature/cierre-paso0` (commit `1ecf254`). "
+        "Cierra el Paso 0 y verifica la corrección del bloqueo de acciones probabilísticas.",
+        "",
+        "Ficheros de datos utilizados (en `datos/evaluacion/`):",
+        "- `suelo_main.json`: suelo con linaje (referencia `main` sin estrategias)",
+        "- `suelo_sin_herencia.json`: S0 (suelo sin herencia, commit congelado `crafter-procedimental-v1`)",
+        "- `paso5_G1.json`: G1 (Paso 5, sin estrategias propias, manual estricto, semilla 31)",
+        "- `paso0_P2.json`: P2 (Paso 0, urgencia_local + aliestesia, manual estricto, sin estrategias propias, semilla 31)",
+        "- `cierre0_C1.json`: C1 (Cierre Paso 0, sin estrategias propias, manual estricto, semilla 31)",
+        "- `cierre0_C3.json`: C3 (Cierre Paso 0, sin estrategias propias, manual estricto, semilla 32)",
+        "- `paso5_G3.json`: G3 (Paso 5, manual estricto, con estrategias propias, semilla 31)",
+        "- `paso0_P3.json`: P3 (Paso 0, urgencia_local + aliestesia, manual estricto, con estrategias propias, semilla 31)",
+        "- `cierre0_C2.json`: C2 (Cierre Paso 0, manual estricto, con estrategias propias, semilla 31)",
+        "",
+    ]
+    partes = [
+        "\n".join(cabecera),
+        generar_tabla_general_cierre0(datos),
+        generar_tasas_logros_cierre0(datos),
+        generar_causas_muerte_cierre0(datos),
+        generar_comparaciones_cierre0(datos),
+    ]
+    return "\n\n---\n\n".join(partes) + "\n"
 
 
 # =====================================================================
@@ -71,7 +318,10 @@ CONDICIONES_PASO5_PASO0 = [
         "id": "P2",
         "nombre": "P2 (Paso 0)",
         "archivo": "paso0_P2.json",
-        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --sin-estrategias-propias --manual estricto --mecanismos urgencia_local aliestesia",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto --mecanismos urgencia_local aliestesia"
+        ),
     },
     {
         "id": "P3",
@@ -409,14 +659,35 @@ def generar_markdown_oficial() -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--oficial", action="store_true", help="Genera las secciones 3 a 6 para MEDICION_OFICIAL.md")
-    parser.add_argument("--salida", type=str, default=None, help="Ruta donde guardar el markdown generado")
+    parser.add_argument(
+        "--cierre-paso0",
+        action="store_true",
+        help="Genera el informe de cierre del Paso 0 (por defecto)",
+    )
+    parser.add_argument(
+        "--paso5-paso0",
+        action="store_true",
+        help="Genera el informe de Paso 5 y Paso 0 (MEDICION_PASO5_PASO0.md)",
+    )
+    parser.add_argument(
+        "--oficial",
+        action="store_true",
+        help="Genera las secciones 3 a 6 para MEDICION_OFICIAL.md",
+    )
+    parser.add_argument(
+        "--salida",
+        type=str,
+        default=None,
+        help="Ruta donde guardar el markdown generado",
+    )
     args = parser.parse_args()
 
     if args.oficial:
         salida = generar_markdown_oficial()
-    else:
+    elif args.paso5_paso0:
         salida = generar_informe_paso5_paso0()
+    else:
+        salida = generar_informe_cierre_paso0()
 
     if args.salida:
         os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)
