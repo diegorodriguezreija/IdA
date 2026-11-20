@@ -489,10 +489,20 @@ def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist
     return True
 
 
-def _abribles(modelo: Modelo, interior: Tuple[Pos, ...]) -> List[Pos]:
-    """Paredes del recinto que se pueden cavar para salir; primero las que cerró el propio individuo."""
-    paredes = {v for p in interior for v in _vecinas(p) if v not in interior and modelo.rinde(v) is not None}
-    return sorted(paredes, key=lambda p: (p not in modelo.mem.cierres, p))
+def _abrir(modelo: Modelo, interior: Tuple[Pos, ...], aqui: Pos) -> List[Dict[str, Any]]:
+    """Cómo salir del recinto: COGER sobre una pared que se pueda cavar y esté al lado (primero las que cerró el propio
+    individuo); si ninguna está al lado, MOVER a la casilla interior que tiene una (COGER solo actúa sobre lo vecino)."""
+    paredes = sorted({v for p in interior for v in _vecinas(p) if v not in interior and modelo.rinde(v) is not None},
+                     key=lambda p: (p not in modelo.mem.cierres, p))
+    vecinas = [p for p in paredes if _manhattan(p, aqui) == 1]
+    if vecinas:
+        return [{"verbo": Verbo.COGER, "objetivo": f"{modelo.casillas[p]}_{p[0]}_{p[1]}", "clase": modelo.casillas[p]} for p in vecinas]
+    for pared in paredes:
+        desde = next((p for p in interior if _manhattan(p, pared) == 1), None)
+        if desde is not None:
+            return [{"verbo": Verbo.MOVER, "objetivo": f"celda_{desde[0]}_{desde[1]}", "clase": modelo.casillas.get(desde, "")}]
+    return []
+
 
 # --- componente de Interpretar ---------------------------------------------------------------------
 class Recinto(Componente):
@@ -543,8 +553,7 @@ class Recinto(Componente):
             if ctx.perfil.hogar:
                 ctx.memoria.recordar_lugar(ctx.observacion.ubicacion if ctx.observacion else "", 1.0)
             carga.update(coste=0.0, confianza=1.0, explicacion="dentro del recinto",
-                         abrir=[{"objetivo": f"{modelo.casillas[p]}_{p[0]}_{p[1]}", "clase": modelo.casillas[p]}
-                                for p in _abribles(modelo, dentro)])
+                         abrir=_abrir(modelo, dentro, aqui))
             self._sitio = dentro
             self.registrar(ctx, self.pieza(ctx, "recinto", arousal=0.0, carga=carga))
             return
@@ -801,8 +810,10 @@ class Proteger(ConPropuestas):
                 self.proponer(ctx, verbo, "", cobijo, acotar(cobijo), f"proteger: dentro, {verbo.value.lower()}")
                 return
             pared = c["abrir"][0]
-            self.proponer(ctx, Verbo.COGER, pared["objetivo"], otras, ctx.memoria.tasa_estimada(Verbo.COGER, pared["clase"]),
-                          f"proteger: abrir {pared['clase']} ({otra} {otras:.2f} > cobijo {cobijo:.2f})", clase=pared["clase"])
+            confianza = ctx.memoria.tasa_estimada(Verbo.COGER, pared["clase"]) if pared["verbo"] == Verbo.COGER else 1.0
+            que = f"abrir {pared['clase']}" if pared["verbo"] == Verbo.COGER else "ir junto a la pared para abrir"
+            self.proponer(ctx, pared["verbo"], pared["objetivo"], otras, confianza,
+                          f"proteger: {que} ({otra} {otras:.2f} > cobijo {cobijo:.2f})", clase=pared["clase"])
             return
         accion = c["accion"]
         if accion is None or otras > cobijo:

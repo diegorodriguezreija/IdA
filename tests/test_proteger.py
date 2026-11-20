@@ -378,3 +378,16 @@ def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
     fallida = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "otra", "exito": False}
     Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
     assert (Verbo.COGER, "otra") not in mem.transformaciones           # sin éxito y sin cambio no dice nada
+
+
+def test_para_abrir_solo_coge_una_pared_vecina():
+    """Recinto de 2 casillas (1,0)+(2,0); la única pared cavable, (0,0), es vecina de (1,0). Desde (2,0) no se coge a dos
+    casillas: primero se va a (1,0)."""
+    from ida.sistemas.proteger import _abrir
+    mapa = {(1, 0): "suelo", (2, 0): "suelo", (0, 0): "roca"} | {(x, y): "muro" for x in range(-1, 4) for y in (-1, 1)} | {(3, 0): "muro"}
+    mem = _memoria(MundoCueva(mapa, (2, 0)), aprendida=True)
+    mem.paso_bloqueado["muro"] = 1
+    mem.casillas.update(mapa)
+    m = Modelo(mem, {}, set())
+    assert _abrir(m, ((1, 0), (2, 0)), (2, 0)) == [{"verbo": Verbo.MOVER, "objetivo": "celda_1_0", "clase": "suelo"}]
+    assert _abrir(m, ((1, 0), (2, 0)), (1, 0))[0]["objetivo"] == "roca_0_0"
