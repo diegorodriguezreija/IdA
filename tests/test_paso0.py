@@ -216,9 +216,85 @@ def test_satisface_de_la_experiencia_corrige_al_manual():
         mem.aprender_satisface("charca", {"hambre": False, "sed": True})
     s = mem.satisfaccion("charca")
     assert s is not None
-    assert s["sed"] == pytest.approx((4 + Memoria.CONFIANZA_MANUAL) / 5)
-    assert s["hambre"] == 0.0
+    # Línea base 0 (nada sube sin comer): ΔP = 1, combinado con el manual (peso 1), como antes.
+    assert s["sed"] == pytest.approx((4 * 1.0 + Memoria.CONFIANZA_MANUAL) / 5)
+    assert s["hambre"] == 0.0                                   # el manual no la declara y nunca subió
     assert mem.satisface[("charca", "sed")].fuente == "manual+experiencia"
+
+
+def _vivir_contingencia(latidos: int = 600) -> Memoria:
+    """Secuencia sintética de una vida: se come baya cada 7 latidos; la «luz» sube sola 10 latidos de cada 40
+    (como el amanecer), coma o no; la «comida» solo sube al comer baya."""
+    mem = Memoria()
+    for t in range(latidos):
+        luz_sube = (t % 40) < 10
+        if t % 7 == 0:
+            mem.aprender_satisface("baya", {"comida": True, "luz": luz_sube})
+        else:
+            mem.actualizar_linea_base({"comida": False, "luz": luz_sube})
+    return mem
+
+
+def test_contingencia_una_necesidad_que_sube_sola_no_se_atribuye_a_la_clase():
+    mem = _vivir_contingencia()
+    s = mem.satisface[("baya", "luz")]
+    assert s.sube / s.n > 0.15                                   # coincidencia: muchas comidas caen al «amanecer»
+    assert mem.estimacion_satisface("baya", "luz") <= 0.1       # contingencia: ΔP ≈ 0
+
+
+def test_contingencia_una_necesidad_que_solo_sube_al_comer_si_se_atribuye():
+    mem = _vivir_contingencia()
+    assert mem.linea_base["comida"] == 0.0
+    assert mem.estimacion_satisface("baya", "comida") >= 0.9
+
+
+def test_una_coincidencia_aislada_no_basta_en_una_clase_del_manual():
+    """Comer vaca una vez al amanecer (la luz sube sola): sin previo, ΔP = 1 − línea base. El manual declara la
+    vaca para el hambre, no para la luz: la luz parte de 0 con peso ``PREVIO`` y una coincidencia no la lleva lejos."""
+    mem = Memoria()
+    mem.aplicar_manual({"hechos": [{"tipo": "proposicion", "sujeto": "vaca", "relacion": "NUTRITIVO", "necesidad": "comida"}]})
+    for t in range(80):
+        mem.actualizar_linea_base({"comida": False, "luz": (t % 40) < 10})
+    mem.aprender_satisface("vaca", {"comida": True, "luz": True})
+    assert mem.estimacion_satisface("vaca", "luz") <= 0.25
+    assert mem.estimacion_satisface("vaca", "comida") >= 0.8
+
+
+def test_sin_manual_el_previo_es_la_percepcion():
+    """Una clase de la que el manual no habla: el rasgo perceptivo es el previo y la experiencia lo corrige."""
+    mem = Memoria()
+    previos = {"comida": 0.6, "agua": 0.6}
+    assert mem.satisfaccion("baya", previos) is None
+    mem.aprender_satisface("baya", {"comida": True, "agua": False})
+    s = mem.satisfaccion("baya", previos)
+    assert s == {"comida": pytest.approx((1.0 + 3 * 0.6) / 4), "agua": pytest.approx(3 * 0.6 / 4)}
+    for _ in range(40):
+        mem.aprender_satisface("baya", {"comida": True, "agua": False})
+    assert mem.estimacion_satisface("baya", "agua", previos) < 0.1
+
+
+def test_la_contingencia_compara_con_la_linea_base_del_mismo_momento():
+    """Si casi siempre se come en la fase en que la luz sube sola, P(sube | comer) es alta; pero la línea base de
+    ese momento también. Comparada con la línea base al final (otra fase), parecería contingente; no lo es."""
+    mem = Memoria()
+    for t in range(600):
+        fase_sube = (t % 150) < 75                    # sube sola media «jornada», baja la otra media
+        if fase_sube and t % 5 == 0:                   # se come solo en la fase de subida
+            mem.aprender_satisface("baya", {"luz": True})
+        else:
+            mem.actualizar_linea_base({"luz": fase_sube})
+    assert mem.satisface[("baya", "luz")].sube / mem.satisface[("baya", "luz")].n == 1.0
+    assert mem.linea_base["luz"] < 0.5                 # al final, en la fase de bajada
+    assert mem.estimacion_satisface("baya", "luz") <= 0.2      # residuo: la línea base tarda unos latidos en seguir la fase
+
+
+def test_la_linea_base_es_una_media_movil():
+    mem = Memoria()
+    for _ in range(200):
+        mem.actualizar_linea_base({"luz": True})
+    for _ in range(Memoria.VENTANA_BASE * 3):
+        mem.actualizar_linea_base({"luz": False})
+    assert mem.linea_base["luz"] < 0.1                          # olvida lo antiguo: no es la media de toda la vida
 
 
 def test_apetencia_depende_del_estado_interno():
@@ -286,9 +362,9 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
             comidas.append((o.ciclo, ej.carga["clase"], inten.get("hambre", 0.0), inten.get("sed", 0.0)))
 
     org.vivir(300, al_latir=anotar)
-    s = org.memoria.satisface
-    assert s[("baya", "hambre")].estimacion >= 0.9 and s[("charca", "sed")].estimacion >= 0.9
-    assert s[("baya", "sed")].estimacion <= 0.1 and s[("charca", "hambre")].estimacion <= 0.1
+    e = org.memoria.estimacion_satisface
+    assert e("baya", "hambre") >= 0.9 and e("charca", "sed") >= 0.9
+    assert e("baya", "sed") <= 0.1 and e("charca", "hambre") <= 0.1
     tarde = [c for c in comidas if c[0] > 150]
     agua = [c for c in tarde if c[1] == "charca"]
     assert tarde and agua

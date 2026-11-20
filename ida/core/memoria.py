@@ -273,8 +273,17 @@ class Satisface:
     """Paso 0b (aliestesia): cuánto satisface comer algo de ``clase`` la ``necesidad``, en [0, 1].
 
     Dos fuentes, combinadas como las de ``Proposicion``: lo que declara el manual (``c_aut`` con peso
-    ``w_aut``) y la experiencia (``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las
-    cuales subió alguna constante vital de la necesidad). Es aprendizaje de contingencias."""
+    ``w_aut``) y la experiencia. La experiencia es **contingencia** (Rescorla, 1968), no coincidencia:
+    ``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las cuales subió alguna constante
+    vital de la necesidad en el latido siguiente; ΔP = P(sube | comer la clase) − P(sube | sin comer),
+    acotada a [0, 1]. La línea base P(sube | sin comer) es de la necesidad, no de la clase
+    (``Memoria.linea_base``, media móvil). Las dos probabilidades se comparan en el mismo momento: en cada
+    comida se acumula en ``esperado`` la línea base vigente, y ΔP = (sube − esperado) / n. Así una
+    necesidad que sube sola por fases (la luz al amanecer) no se atribuye a lo que se come en esa fase.
+    La estimación combina ΔP (peso ``n``) con un previo (``Memoria.satisfaccion``): lo que declara el
+    manual (``c_aut``, peso ``w_aut``); 0 con peso ``PREVIO`` para una necesidad que el manual no declara
+    en una clase suya; o lo que sugiere la percepción (el rasgo de la necesidad) con peso ``PREVIO`` si el
+    manual no habla de la clase. Una coincidencia aislada no basta para atribuir."""
 
     clase: str
     necesidad: str
@@ -282,12 +291,18 @@ class Satisface:
     sube: int = 0
     c_aut: Optional[float] = None
     w_aut: float = 0.0
+    esperado: float = 0.0   # suma de la línea base vigente en cada comida (subidas esperadas sin comer)
 
-    @property
-    def estimacion(self) -> float:
-        aut = self.w_aut if self.c_aut is not None else 0.0
-        total = self.n + aut
-        return (self.sube + aut * (self.c_aut or 0.0)) / total if total > 0 else 0.0
+    PREVIO = 3.0   # peso (en comidas) del previo que no viene del manual
+
+    def contingencia(self) -> float:
+        """ΔP de la experiencia, en [0, 1] (0 sin comidas)."""
+        return max(0.0, min(1.0, (self.sube - self.esperado) / self.n)) if self.n else 0.0
+
+    def estimacion(self, previo: float, peso: float) -> float:
+        """(n · ΔP + peso · previo) / (n + peso)."""
+        total = self.n + peso
+        return (self.n * self.contingencia() + peso * previo) / total if total > 0 else 0.0
 
     @property
     def fuente(self) -> str:
@@ -351,6 +366,8 @@ class Memoria:
         self._tenidos_iniciado = False
         # Paso 0b (aliestesia): qué necesidad satisface comer cada clase, del manual y de la experiencia.
         self.satisface: Dict[Tuple[str, str], Satisface] = {}
+        self.linea_base: Dict[str, float] = {}      # necesidad -> P(sube | sin comer), media móvil
+        self.n_base: Dict[str, int] = {}            # latidos sin comer contados por necesidad
 
     @property
     def activa(self) -> bool:
@@ -988,13 +1005,30 @@ class Memoria:
         return n
 
     # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
-    def satisfaccion(self, clase: str) -> Optional[Dict[str, float]]:
-        """Lo que se sabe de cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa
-        clase (ni del manual ni de la experiencia). Las necesidades que no aparecen valen 0."""
+    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
+        """Cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa clase (ni del manual
+        ni de la experiencia). ``previos``: lo que sugiere la percepción para cada necesidad (el previo de una clase
+        de la que el manual no habla). Las necesidades que no aparecen valen 0."""
         if not self.activa:
             return None
-        conocidas = {nec: s.estimacion for (c, nec), s in self.satisface.items() if c == clase}
-        return conocidas or None
+        registros = {nec: s for (c, nec), s in self.satisface.items() if c == clase}
+        if not registros:
+            return None
+        manual = any(s.c_aut is not None for s in registros.values())
+        resultado: Dict[str, float] = {}
+        for nec in sorted(set(registros) | set(previos or {})):
+            s = registros.get(nec) or Satisface(clase, nec)
+            if s.c_aut is not None:
+                previo, peso = s.c_aut, s.w_aut
+            elif manual:
+                previo, peso = 0.0, Satisface.PREVIO
+            else:
+                previo, peso = (previos or {}).get(nec, 0.0), Satisface.PREVIO
+            resultado[nec] = s.estimacion(previo, peso)
+        return resultado
+
+    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:
+        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
 
     def aprender_satisface(self, clase: str, subidas: Dict[str, bool]) -> None:
         """Tras comer algo de ``clase`` con éxito: para cada necesidad, si subió alguna de sus constantes vitales."""
@@ -1004,6 +1038,19 @@ class Memoria:
             s = self.satisface.setdefault((clase, necesidad), Satisface(clase, necesidad))
             s.n += 1
             s.sube += int(bool(subio))
+            s.esperado += self.linea_base.get(necesidad, 0.0)
+
+    VENTANA_BASE = 10   # latidos de la media móvil de la línea base (media exacta mientras haya menos): lo reciente
+
+    def actualizar_linea_base(self, subidas: Dict[str, bool]) -> None:
+        """En un latido sin comer: para cada necesidad, si subió alguna de sus constantes (p. ej. sola, al amanecer)."""
+        if not self.activa:
+            return
+        for necesidad, subio in subidas.items():
+            k = self.n_base.get(necesidad, 0) + 1
+            self.n_base[necesidad] = k
+            previa = self.linea_base.get(necesidad, 0.0)
+            self.linea_base[necesidad] = previa + (float(bool(subio)) - previa) / min(k, self.VENTANA_BASE)
 
     def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
         """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
@@ -1153,10 +1200,11 @@ class Memoria:
         requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
         if requisitos:
             legado["requisitos"] = requisitos
-        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube}
+        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube, "esperado": round(s.esperado, 4)}
                      for s in self.satisface.values() if s.n >= 2]       # paso 0b: solo lo vivido (el manual se vuelve a leer)
         if satisface:
             legado["satisface"] = satisface
+            legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
         return legado
 
     def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
@@ -1207,5 +1255,9 @@ class Memoria:
             veces = max(1, int(d["n"]) // 2)
             s.n += veces
             s.sube += round(veces * int(d["sube"]) / max(1, int(d["n"])))
+            s.esperado += veces * float(d.get("esperado", 0.0)) / max(1, int(d["n"]))
             n += 1
+        for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
+            if necesidad not in self.linea_base:
+                self.linea_base[necesidad] = float(base)
         return n

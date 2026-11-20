@@ -153,13 +153,15 @@ def intensidades(ctx: Contexto) -> Dict[str, float]:
 
 
 def satisface_de(ctx: Contexto, o: Pieza) -> Dict[str, float]:
-    """Paso 0b: cuánto satisface ``o`` cada necesidad declarada. Lo que sabe la memoria de su clase (manual o
-    experiencia; lo que no consta vale 0). Si no sabe nada de la clase, el rasgo perceptivo con el que el mundo
-    declara que se satisface cada necesidad (``Necesidad.rasgo``), como hasta ahora."""
-    conocida = ctx.memoria.satisfaccion(o.clase)
+    """Paso 0b: cuánto satisface ``o`` cada necesidad declarada. Lo que sabe la memoria de su clase (manual y
+    contingencia aprendida; lo que no consta vale 0). El rasgo perceptivo con el que el mundo declara que se
+    satisface cada necesidad (``Necesidad.rasgo``) es el previo: si la memoria no sabe nada de la clase, es
+    todo lo que hay, como hasta ahora."""
+    previos = {n.nombre: (o.rasgo(n.rasgo) if n.rasgo else 0.0) for n in ctx.perfil.necesidades}
+    conocida = ctx.memoria.satisfaccion(o.clase, previos)
     if conocida is not None:
         return {n.nombre: conocida.get(n.nombre, 0.0) for n in ctx.perfil.necesidades}
-    return {n.nombre: (o.rasgo(n.rasgo) if n.rasgo else 0.0) for n in ctx.perfil.necesidades}
+    return previos
 
 
 class Apetencia(Componente):

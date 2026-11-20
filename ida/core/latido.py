@@ -219,8 +219,8 @@ class Organismo:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
                                             bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
                                             distancias=self._antes_accion[3])
-        if self.perfil.mecanismos.aliestesia and c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
-            self._aprender_satisface(ctx, str(c["clase"]))
+        if self.perfil.mecanismos.aliestesia:
+            self._aprender_satisface(ctx, c)
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
                                         self._antes_accion[0] if self._antes_accion is not None else None,
@@ -234,13 +234,16 @@ class Organismo:
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
 
-    def _aprender_satisface(self, ctx: Contexto, clase: str) -> None:
-        """Paso 0b (aliestesia): tras comer algo de ``clase``, qué constantes vitales subieron respecto al latido
-        anterior (``delta`` de la interocepción) y, con ellas, qué necesidades satisface: cada ``Necesidad``
-        declara sus constantes."""
+    def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
+        """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior
+        (``delta`` de la interocepción; cada ``Necesidad`` declara sus constantes). Tras comer algo con éxito, cuenta
+        para esa clase; en cualquier otro latido, para la línea base de cada necesidad (lo que sube sin comer)."""
         delta = {k: float(p.carga.get("delta", 0.0)) for k, p in ctx.onda.ev("Interocepcion").items()}
-        self.memoria.aprender_satisface(clase, {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes)
-                                                for n in self.perfil.necesidades})
+        subidas = {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes) for n in self.perfil.necesidades}
+        if c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
+            self.memoria.aprender_satisface(str(c["clase"]), subidas)
+        else:
+            self.memoria.actualizar_linea_base(subidas)
 
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:
