@@ -316,12 +316,3 @@ def test_crafter_el_nutritivo_es_perceptivo_y_constante():
         m.ejecutar(Verbo.MOVER, f"celda_{m.jugador.pos[0] + 1}_{m.jugador.pos[1]}", {})
     assert valores <= {0.0, NUTRITIVO_MANUAL}
 
-
-def test_crafter_interruptor_del_apano_de_sed_critica():
-    """Criterio 4 del paso 0: el apaño de sed crítica de ``RefugioNocturno._motivacion`` (0,92) se puede quitar
-    para medir si 0a lo sustituye. Por defecto sigue puesto."""
-    pytest.importorskip("crafter")
-    from ida.mundos.crafter import MundoCrafter
-
-    assert MundoCrafter().estrategias_propias()["S2"][0].urgencia_sed is True
-    assert MundoCrafter(urgencia_sed=0).estrategias_propias()["S2"][0].urgencia_sed is False

@@ -140,7 +140,7 @@ class MundoCrafter(Mundo):
                     intenciones=("progresar",))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
-                 manual: str = "estricto", urgencia_sed: Any = 1, **_):
+                 manual: str = "estricto", **_):
         import crafter                     # dependencia solo de este mundo
         from crafter import constants
         self._crafter = crafter
@@ -153,8 +153,6 @@ class MundoCrafter(Mundo):
         self.radio = int(radio)
         self.modo_vista = str(vista)
         self.longitud = int(longitud)
-        # Paso 0, criterio 4: con 0, RefugioNocturno._motivacion pierde su apaño de sed crítica (0,92).
-        self.urgencia_sed = str(urgencia_sed) not in ("0", "no", "false", "False")
         self.ventana = str(ventana) in ("1", "si", "sí", "true")
         self.env: Any = None
         self.visitas: Dict[Pos, int] = {}
@@ -439,7 +437,7 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno(urgencia_sed=self.urgencia_sed)]}
+        return {"S1": [DefensaArmada(), CerrarDistancia()], "S2": [RefugioNocturno()]}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -612,8 +610,7 @@ class RefugioNocturno(Definicion):
     LUZ_PLENO_DIA = 0.83      # Crafter: con luz > 0,83 el máximo de zombis por zona (3,5 − 3·luz) baja de 1
     MEMORIA_VACA = 40         # latidos que se recuerda dónde se vio una vaca
 
-    def __init__(self, urgencia_sed: bool = True) -> None:
-        self.urgencia_sed = urgencia_sed   # paso 0, criterio 4: apaño de urgencia de sed crítica en _motivacion
+    def __init__(self) -> None:
         self.mapa: Dict[Pos, str] = {}
         self.visitadas: Set[Pos] = set()
         self.rocas_inspeccionadas: Set[Pos] = set()
@@ -1085,8 +1082,8 @@ class RefugioNocturno(Definicion):
         """Motivación continua (arousal, confianza) en función de la luz restante y el coste hasta sellar."""
         if self.dominante:
             return 0.98, 0.98
-        if self.urgencia_sed and inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values()):
-            return 0.92, 0.92      # apaño de urgencia del mundo (paso 0, criterio 4: candidato a borrarse con 0a)
+        if inv.get("drink", 0) <= 3 and any(m == "water" for m in self.mapa.values()):
+            return 0.92, 0.92
         luz = _luz(ctx)
         mina: Optional[Tuple[Pos, Pos]] = estado.get("mina")
         if not self._anticipa_refugio(luz, pos, inv, mina):
