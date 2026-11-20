@@ -47,6 +47,8 @@ CADA_EVALUACION = 5       # latidos entre evaluaciones completas de sitios (entr
 MARGEN_SITIO = 0.25       # histéresis: otro sitio sustituye al actual si cuesta al menos un 25 % menos...
 MARGEN_SITIO_MIN = 3.0    # ...y al menos 3 pasos menos
 BONO_HOGAR = 5.0          # preferencia por el recinto recordado (hogar), en pasos
+COSTE_SIN_SITIO = 3 * ALCANCE_SITIO   # horizonte del cobijo sin ningún sitio posible: estimación alta (ir y volver al
+                                      # alcance de búsqueda y otro tanto para conseguir material, cavar y cerrar)
 
 
 # --- percepción ----------------------------------------------------------------------------------
