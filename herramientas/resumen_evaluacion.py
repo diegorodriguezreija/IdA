@@ -21,6 +21,245 @@ def formatear_float_es(valor: float, decimales: int = 2) -> str:
 
 
 # =====================================================================
+# Informe Paso 3: Proteger X (el refugio general)
+# =====================================================================
+
+CONDICIONES_PASO3 = [
+    {
+        "id": "C1",
+        "nombre": "C1",
+        "columna": "C1",
+        "archivo": "cierre0_C1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "L1a",
+        "nombre": "L1a",
+        "columna": "L1a",
+        "archivo": "paso3_L1a.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos proteger"
+        ),
+    },
+    {
+        "id": "L1b",
+        "nombre": "L1b",
+        "columna": "L1b",
+        "archivo": "paso3_L1b.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos proteger alostasis"
+        ),
+    },
+    {
+        "id": "C3",
+        "nombre": "C3",
+        "columna": "C3",
+        "archivo": "cierre0_C3.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "L1c",
+        "nombre": "L1c",
+        "columna": "L1c",
+        "archivo": "paso3_L1c.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos proteger"
+        ),
+    },
+    {
+        "id": "C2",
+        "nombre": "C2",
+        "columna": "C2",
+        "archivo": "cierre0_C2.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto",
+    },
+    {
+        "id": "L2",
+        "nombre": "L2",
+        "columna": "L2",
+        "archivo": "paso3_L2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --mecanismos proteger"
+        ),
+    },
+]
+
+
+def cargar_datos_paso3() -> Dict[str, Dict[str, Any]]:
+    datos = {}
+    for c in CONDICIONES_PASO3:
+        ruta = os.path.join(DATOS_DIR, c["archivo"])
+        with open(ruta, "r", encoding="utf-8") as f:
+            datos[c["id"]] = json.load(f)
+    return datos
+
+
+def generar_tabla_general_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO3]
+    ids = [c["id"] for c in CONDICIONES_PASO3]
+
+    scores = [f"**{formatear_float_es(datos[cid]['score'])}**" for cid in ids]
+    ics = [
+        f"[{formatear_float_es(datos[cid]['score_ci_95'][0])}, {formatear_float_es(datos[cid]['score_ci_95'][1])}]"
+        for cid in ids
+    ]
+    episodios = [str(datos[cid]["episodios"]) for cid in ids]
+    pasos_ep = [
+        formatear_float_es(datos[cid]["pasos"] / datos[cid]["episodios"], 1)
+        for cid in ids
+    ]
+    ms_paso = [formatear_float_es(datos[cid]["ms_por_paso"]) for cid in ids]
+
+    lineas = [
+        "## 1. Tabla general",
+        "",
+        f"| Métrica | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+        f"| **Score (%)** | {' | '.join(scores)} |",
+        f"| **IC 95 % (%)** | {' | '.join(ics)} |",
+        f"| **Episodios** | {' | '.join(episodios)} |",
+        f"| **Pasos por episodio** | {' | '.join(pasos_ep)} |",
+        f"| **ms por paso** | {' | '.join(ms_paso)} |",
+    ]
+    return "\n".join(lineas)
+
+
+def generar_tasas_logros_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO3]
+    lineas = [
+        "## 2. Tasas por logro (%)",
+        "",
+        "Porcentaje de episodios donde se obtuvo cada uno de los 22 logros oficiales de Crafter:",
+        "",
+        f"| Logro | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todos_logros = sorted(datos["C1"]["tasas_logros"].keys())
+    ids = [c["id"] for c in CONDICIONES_PASO3]
+    for logro in todos_logros:
+        valores = [formatear_float_es(datos[cid]["tasas_logros"].get(logro, 0.0)) for cid in ids]
+        lineas.append(f"| `{logro}` | {' | '.join(valores)} |")
+    return "\n".join(lineas)
+
+
+def generar_causas_muerte_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO3]
+    lineas = [
+        "## 3. Causas de muerte por condición",
+        "",
+        "Número de episodios y porcentaje sobre el total de episodios de cada condición:",
+        "",
+        f"| Causa | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todas_causas = sorted(
+        {causa for d in datos.values() for causa in d["causas_muerte"]},
+        key=lambda x: (x == "cortado por presupuesto", x),
+    )
+    ids = [c["id"] for c in CONDICIONES_PASO3]
+    for causa in todas_causas:
+        cols = []
+        for cid in ids:
+            d = datos[cid]
+            n = d["causas_muerte"].get(causa, 0)
+            pct = formatear_float_es((n / d["episodios"]) * 100.0, 1)
+            cols.append(f"{n} ({pct} %)")
+        lineas.append(f"| `{causa}` | {' | '.join(cols)} |")
+    totales = [str(datos[cid]["episodios"]) for cid in ids]
+    lineas.append(f"| **Total episodios** | **{'** | **'.join(totales)}** |")
+    return "\n".join(lineas)
+
+
+def generar_comparaciones_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    lineas = [
+        "## 4. Comparaciones",
+        "",
+        "Diferencias de Crafter Score (en puntos porcentuales) y comprobación de solapamiento de intervalos de confianza al 95 %:",
+        "",
+    ]
+
+    def comparar(nom_a: str, id_a: str, nom_b: str, id_b: str) -> str:
+        da, db = datos[id_a], datos[id_b]
+        diff = da["score"] - db["score"]
+        signo = "+" if diff >= 0 else ""
+        diff_str = f"{signo}{formatear_float_es(diff)} pp"
+        ic_a = (da["score_ci_95"][0], da["score_ci_95"][1])
+        ic_b = (db["score_ci_95"][0], db["score_ci_95"][1])
+        solapa = se_solapan(ic_a, ic_b)
+        solapa_str = "Sí" if solapa else "No"
+        ic_a_str = f"[{formatear_float_es(ic_a[0])}, {formatear_float_es(ic_a[1])}] %"
+        ic_b_str = f"[{formatear_float_es(ic_b[0])}, {formatear_float_es(ic_b[1])}] %"
+        return (
+            f"- **{nom_a} frente a {nom_b}**:\n"
+            f"  - Score {nom_a}: {formatear_float_es(da['score'])} % (IC 95 %: {ic_a_str})\n"
+            f"  - Score {nom_b}: {formatear_float_es(db['score'])} % (IC 95 %: {ic_b_str})\n"
+            f"  - Diferencia de Score ({nom_a} - {nom_b}): {diff_str}\n"
+            f"  - ¿Se solapan los IC 95 %?: **{solapa_str}**"
+        )
+
+    # 1. L1a frente a C1
+    lineas.append("### L1a frente a C1")
+    lineas.append(comparar("L1a", "L1a", "C1", "C1"))
+    lineas.append("")
+
+    # 2. L1b frente a L1a
+    lineas.append("### L1b frente a L1a")
+    lineas.append(comparar("L1b", "L1b", "L1a", "L1a"))
+    lineas.append("")
+
+    # 3. L1c frente a C3
+    lineas.append("### L1c frente a C3")
+    lineas.append(comparar("L1c", "L1c", "C3", "C3"))
+    lineas.append("")
+
+    # 4. L2 frente a C2
+    lineas.append("### L2 frente a C2")
+    lineas.append(comparar("L2", "L2", "C2", "C2"))
+    lineas.append("")
+
+    return "\n".join(lineas)
+
+
+def generar_informe_paso3() -> str:
+    datos = cargar_datos_paso3()
+    cabecera = [
+        "# Medición Oficial: Paso 3 (Crafter)",
+        "",
+        "Evaluación oficial en Crafter (100.000 pasos, vista oficial, sin herencia, manual estricto) "
+        "en la rama `feature/proteger` (commit `c0fd4e3`). "
+        "Evalúa la capacidad general «proteger X» (el refugio general) y la alostasis.",
+        "",
+        "Ficheros de datos utilizados (en `datos/evaluacion/`):",
+        "- `cierre0_C1.json`: C1 (Cierre Paso 0, sin estrategias propias, semilla 31)",
+        "- `paso3_L1a.json`: L1a (Paso 3, sin estrategias propias, mecanismo proteger, semilla 31)",
+        "- `paso3_L1b.json`: L1b (Paso 3, sin estrategias propias, mecanismos proteger + alostasis, semilla 31)",
+        "- `cierre0_C3.json`: C3 (Cierre Paso 0, sin estrategias propias, semilla 32)",
+        "- `paso3_L1c.json`: L1c (Paso 3, sin estrategias propias, mecanismo proteger, semilla 32)",
+        "- `cierre0_C2.json`: C2 (Cierre Paso 0, con estrategias propias, semilla 31)",
+        "- `paso3_L2.json`: L2 (Paso 3, con estrategias propias, mecanismo proteger, semilla 31)",
+        "",
+    ]
+    partes = [
+        "\n".join(cabecera),
+        generar_tabla_general_paso3(datos),
+        generar_tasas_logros_paso3(datos),
+        generar_causas_muerte_paso3(datos),
+        generar_comparaciones_paso3(datos),
+    ]
+    return "\n\n---\n\n".join(partes) + "\n"
+
+
+# =====================================================================
 # Informe Cierre Paso 0
 # =====================================================================
 
@@ -660,9 +899,14 @@ def generar_markdown_oficial() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--paso3",
+        action="store_true",
+        help="Genera el informe del Paso 3 (MEDICION_PASO3.md, por defecto)",
+    )
+    parser.add_argument(
         "--cierre-paso0",
         action="store_true",
-        help="Genera el informe de cierre del Paso 0 (por defecto)",
+        help="Genera el informe de cierre del Paso 0",
     )
     parser.add_argument(
         "--paso5-paso0",
@@ -686,8 +930,10 @@ def main() -> int:
         salida = generar_markdown_oficial()
     elif args.paso5_paso0:
         salida = generar_informe_paso5_paso0()
-    else:
+    elif args.cierre_paso0:
         salida = generar_informe_cierre_paso0()
+    else:
+        salida = generar_informe_paso3()
 
     if args.salida:
         os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)
