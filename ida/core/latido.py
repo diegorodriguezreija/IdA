@@ -255,7 +255,8 @@ class Organismo:
         - MOVER hacia una casilla vecina de clase conocida: si la posición cambió y si quedó mirando hacia ella, según la
           casilla fuera transitable o no (modelo del cuerpo, propiocepción);
         - COGER, COMER o ATACAR sobre una vecina: si quedó mirando hacia ella;
-        - COGER o USAR: si la casilla sobre la que actuó cambió de clase (la de delante, para USAR), la transformación.
+        - COGER o USAR: si la casilla sobre la que actuó cambió de clase (la de delante, para USAR), la transformación; si la
+          acción salió y la casilla no cambió, también («no la cambia»): así un primer intento real corrige lo inferido.
         """
         obs = ctx.observacion
         if obs is None:
@@ -286,12 +287,13 @@ class Organismo:
                 elif verbo in (Verbo.COGER, Verbo.COMER, Verbo.ATACAR):
                     mem.aprender_cuerpo("interactuar", True, aqui != p0, cara == direccion)
                 despues = casillas.get(destino)
-                if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and antes != despues:
+                cambio = antes is not None and despues is not None and antes != despues
+                if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and (cambio or bool(c.get("exito"))):
                     objetivo = str(c.get("clase") or c.get("objetivo") or "")
-                    mem.aprender_transformacion(verbo, objetivo, antes, despues)
-                    if verbo == Verbo.USAR and not mem.transitable_peligro(despues):
+                    mem.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
+                    if cambio and verbo == Verbo.USAR and not mem.transitable_peligro(despues):
                         mem.cierres.add(destino)
-                    else:
+                    elif cambio:
                         mem.cierres.discard(destino)
         libres, ocupadas, peligros = set(), set(), set()
         for e in obs.entidades:

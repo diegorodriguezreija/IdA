@@ -329,3 +329,52 @@ def test_crafter_con_proteger_no_registra_refugio_nocturno():
         assert "S2" not in propias and {d.nombre for d in propias["S1"]} == {"defensa_armada", "cerrar_distancia"}
     finally:
         MundoCrafter.perfil = original
+
+
+# --- inducción entre clases: menos confianza que lo observado y se corrige con el primer intento -------------
+def _memoria_induccion() -> Memoria:
+    """Coger «tronco» lo dejó transitable (observado). «Bloque» es no transitable y recogible (su COGER da algo), sin observar."""
+    mem = Memoria("completa")
+    mem.aplicar_manual({"inventario": ["tronco", "bloque"], "hechos": [
+        {"tipo": "requisito", "verbo": "COGER", "objetivo": "tronco", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"tronco": 1}},
+        {"tipo": "requisito", "verbo": "COGER", "objetivo": "bloque", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"bloque": 1}},
+    ]})
+    mem.paso_libre.update({"suelo": 1})
+    mem.paso_bloqueado.update({"tronco": 1, "bloque": 1})
+    mem.aprender_transformacion(Verbo.COGER, "tronco", "tronco", "suelo")
+    return mem
+
+
+def test_lo_inferido_pesa_menos_que_lo_observado():
+    m = Modelo(_memoria_induccion(), {}, set())
+    assert m.abre("tronco") is True and not m.inferida("tronco")
+    assert m.abre("bloque") is True and m.inferida("bloque")
+    assert m.confianza_cavar("bloque") < m.confianza_cavar("tronco")
+
+
+def test_lo_inferido_se_corrige_con_el_primer_intento_real():
+    """Si coger «bloque» sale pero la casilla no cambia, ya no se cree que abra espacio; si la deja transitable, pasa a ser
+    observado y pesa como lo observado."""
+    mem = _memoria_induccion()
+    mem.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "bloque")     # intento real: no cambia
+    m = Modelo(mem, {}, set())
+    assert m.abre("bloque") is False
+    assert m.falta_para_cavar("bloque") is None
+    mem2 = _memoria_induccion()
+    mem2.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "suelo")     # intento real: abre
+    m2 = Modelo(mem2, {}, set())
+    assert m2.abre("bloque") is True and not m2.inferida("bloque")
+    assert m2.confianza_cavar("bloque") == m2.confianza_cavar("tronco")
+
+
+def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
+    mapa = {(0, 0): "suelo", (1, 0): "bloque"} | {(x, y): "bloque" for x in range(-1, 2) for y in (-1, 1)} | {(-1, 0): "bloque"}
+    mem = Memoria("completa")
+    yo = SimpleNamespace(memoria=mem)
+    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), None)   # type: ignore[arg-type]
+    accion = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "bloque", "exito": True}
+    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), accion)   # type: ignore[arg-type]
+    assert mem.resultado(Verbo.COGER, "bloque", "bloque") == "bloque"
+    fallida = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "otra", "exito": False}
+    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
+    assert (Verbo.COGER, "otra") not in mem.transformaciones           # sin éxito y sin cambio no dice nada

@@ -117,8 +117,12 @@ class Modelo:
         self.interactuar = mem.modelo_cuerpo("interactuar", True)
         self.cerradores = self._cerradores()
         self._cavables: Dict[str, Optional[Dict[str, float]]] = {}
-        self._abre_alguna = any(self.mem.transitable(a) is False and self.mem.transitable(d) is True
-                                for (v, _), t in self.mem.transformaciones.items() if v == Verbo.COGER for (a, d) in t)
+        # Clases no transitables cuyo resultado al cogerlas se ha observado, y cuántas quedaron transitables (inducción).
+        observadas = {a for (v, _), t in self.mem.transformaciones.items() if v == Verbo.COGER for (a, _d) in t
+                      if self.mem.transitable(a) is False}
+        abren = {a for a in observadas if self.mem.transitable(self.mem.resultado(Verbo.COGER, a, a)) is True}
+        self._abre_alguna = bool(abren)
+        self.induccion = (len(abren) + 1.0) / (len(observadas) + 2.0)    # regla de sucesión de Laplace
 
     # Casillas
     def libre(self, p: Pos) -> bool:
@@ -142,7 +146,7 @@ class Modelo:
     def abre(self, clase: str) -> Optional[bool]:
         """Si cavar ``clase`` la deja transitable: lo observado (True o False); sin observarlo, True por inducción si coger
         otra clase no transitable la dejó transitable y esta se sabe recogible (su COGER tiene efecto, del manual o de la
-        experiencia); None si no hay base para decirlo."""
+        experiencia); None si no hay base para decirlo. El primer intento real (con éxito) lo sustituye por lo observado."""
         if self.mem.transitable(clase) is not False:
             return None
         despues = self.mem.resultado(Verbo.COGER, clase, clase)
@@ -150,6 +154,16 @@ class Modelo:
             return self.mem.transitable(despues) is True
         r = self.mem.requisitos.get((Verbo.COGER, clase))
         return True if self._abre_alguna and r is not None and any(n > 0 for n in r.efecto.values()) else None
+
+    def inferida(self, clase: str) -> bool:
+        """Que cavar ``clase`` abre espacio se infiere (inducción), no se ha observado."""
+        return self.mem.resultado(Verbo.COGER, clase, clase) is None and self.abre(clase) is True
+
+    def confianza_cavar(self, clase: str) -> float:
+        """Tasa estimada de cavar la clase; si que abre espacio es inferido, por la confianza de la inducción
+        (``induccion``, menor que 1): lo inferido pesa menos que lo observado."""
+        c = self.mem.tasa_estimada(Verbo.COGER, clase)
+        return c * self.induccion if self.inferida(clase) else c
 
     def falta_para_cavar(self, clase: str) -> Optional[Dict[str, float]]:
         """Lo que falta en el inventario para cavar ``clase`` (vacío si nada); None si cavarla no abre espacio."""
@@ -644,10 +658,11 @@ class Recinto(Componente):
 
     @staticmethod
     def _confianza(ctx: Contexto, modelo: Modelo, sitio: Sitio) -> float:
-        """Producto de las tasas estimadas de las acciones del plan (cavar cada clase, cerrar)."""
+        """Producto de las tasas estimadas de las acciones del plan (cavar cada clase, cerrar). Cavar una clase de la que
+        solo se infiere que abre espacio pesa menos (``Modelo.confianza_cavar``)."""
         c = 1.0
         for clase in sorted({modelo.casillas[p] for p in sitio.excavar}):
-            c *= ctx.memoria.tasa_estimada(Verbo.COGER, clase)
+            c *= modelo.confianza_cavar(clase)
         if sitio.accesos:
             cerrador = next((modelo.cerrador_para(p) for p in sorted(sitio.accesos) if modelo.cerrador_para(p) is not None), None)
             if cerrador is not None:
