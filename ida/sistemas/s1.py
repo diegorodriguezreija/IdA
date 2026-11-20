@@ -164,7 +164,8 @@ def satisface_de(ctx: Contexto, o: Pieza) -> Dict[str, float]:
 
 class Apetencia(Componente):
     """Aliestesia (Cabanac, 1971; paso 0b, interruptor ``Perfil.mecanismos.aliestesia``): el valor de algo
-    comestible depende del estado interno. Para cada Objeto que satisface alguna necesidad,
+    comestible depende del estado interno. Para cada Objeto que parece comestible (el rasgo de alguna
+    necesidad ≥ ``SATISFACE_MIN``, el mismo filtro que sin aliestesia) y satisface alguna necesidad,
     deseo = Σ_n intensidad(n) · satisface(clase, n). Sin el interruptor no produce nada."""
 
     tipo = "Apetencia"
@@ -174,7 +175,10 @@ class Apetencia(Componente):
         if not ctx.perfil.mecanismos.aliestesia:
             return
         inten = intensidades(ctx)
+        rasgos = {n.rasgo for n in ctx.perfil.necesidades if n.rasgo}
         for o in objetos(ctx):
+            if not any(o.rasgo(r) >= SATISFACE_MIN for r in rasgos):
+                continue        # no parece comestible (p. ej. aún no está maduro): la memoria dice a qué sirve, no si lo es ahora
             sat = satisface_de(ctx, o)
             if not any(v >= SATISFACE_MIN for v in sat.values()):
                 continue

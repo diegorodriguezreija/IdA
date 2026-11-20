@@ -248,6 +248,17 @@ def test_cada_impulso_come_lo_que_satisface_su_necesidad():
     assert hambre.arousal > sed.arousal
 
 
+def test_lo_que_no_parece_comestible_no_apetece_aunque_su_clase_satisfaga():
+    """La memoria dice a qué necesidad sirve una clase, no si este objeto es comestible ahora (p. ej. una planta
+    que aún no está madura): sin el rasgo perceptivo, no hay apetencia."""
+    mem = Memoria()
+    mem.aplicar_manual(MANUAL_JUGUETE)
+    ctx = _ctx_juguete(20.0, 20.0, mem)
+    ctx.onda.ev("Objeto")["baya_1"].carga["rasgos"]["nutritivo"] = 0.0
+    _apetencia(ctx)
+    assert set(ctx.onda.ev("Apetencia")) == {"charca_1"}
+
+
 def test_sin_nada_que_satisfaga_su_necesidad_la_estrategia_no_es_elegible():
     from ida.sistemas.s1 import Alimentarse
 
