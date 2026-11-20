@@ -51,6 +51,12 @@ def verificar_estricto(hechos: List[Dict[str, Any]], articulo: str, readme: str)
             faltan.append(f"{h['id']}: no aparece «{h['cita']}» ({h.get('lugar', '')})")
         if h.get("cita_efecto") and normalizar(h["cita_efecto"]) not in articulo:
             faltan.append(f"{h['id']}: no aparece la cita del efecto «{h['cita_efecto']}»")
+        if h.get("necesidad") and not h.get("cita_necesidad"):
+            faltan.append(f"{h['id']}: declara la necesidad «{h['necesidad']}» sin cita")
+        if h.get("cita_necesidad"):      # paso 0b: qué necesidad satisface lo NUTRITIVO
+            donde_n = readme if str(h.get("lugar_necesidad", "")).startswith("README") else articulo
+            if normalizar(h["cita_necesidad"]) not in donde_n:
+                faltan.append(f"{h['id']}: no aparece la cita de la necesidad «{h['cita_necesidad']}» ({h.get('lugar_necesidad', '')})")
     return faltan
 
 

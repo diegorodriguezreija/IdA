@@ -42,6 +42,7 @@ MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carb
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
 PELIGRO_MANUAL = 0.8   # peligro de lo que el manual declara PELIGROSO (paso 2: sin gradaciones, ninguna fuente las da)
 RECURSO_MANUAL = 0.6   # recurso de lo que el manual declara UTIL
+NUTRITIVO_MANUAL = 0.6   # paso 0b (aliestesia en la base): nutritivo de lo que el manual declara NUTRITIVO, constante
 SUELOS = {"grass": "hierba", "sand": "arena", "path": "camino"}   # solo para lo de delante (no son entidades)
 MANUALES = {"estricto": "crafter_manual.json", "ampliado": "crafter_manual_ampliado.json"}
 MOVIMIENTOS = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
@@ -147,6 +148,7 @@ class MundoCrafter(Mundo):
         self._manual = cargar_manual(str(manual))
         self.peligrosos = _sujetos(self._manual, "PELIGROSO")
         self.utiles = _sujetos(self._manual, "UTIL")
+        self.nutritivos = _sujetos(self._manual, "NUTRITIVO")
         self.acciones = {nombre: i for i, nombre in enumerate(constants.actions)}
         self.radio = int(radio)
         self.modo_vista = str(vista)
@@ -296,6 +298,16 @@ class MundoCrafter(Mundo):
             return min(1.0, max(0.1, (9 - inv["food"]) / 9 * urgencia_reparacion))
         return 0.0
 
+    def _nutritivo(self, clase: str, obj: Any) -> float:
+        """Rasgo ``nutritivo`` de lo percibido. Con ``Perfil.mecanismos.aliestesia`` (paso 0b) es perceptivo y
+        constante: ``NUTRITIVO_MANUAL`` si el manual declara la clase NUTRITIVO (la planta, solo madura: su textura
+        se ve); qué apetece lo decide la base. Sin el interruptor, ``_deseo`` (la deuda que el paso 0 cierra)."""
+        if not self.perfil.mecanismos.aliestesia:
+            return self._deseo(clase, obj)
+        if clase not in self.nutritivos or (clase == "planta" and not (obj is not None and getattr(obj, "ripe", False))):
+            return 0.0
+        return NUTRITIVO_MANUAL
+
     def _delante(self) -> Optional[Dict[str, str]]:
         """Lo que hay en la casilla de delante (se ve): la criatura, si hay una, o el material o el suelo."""
         w, p = self.env._world, self.jugador
@@ -321,12 +333,12 @@ class MundoCrafter(Mundo):
             d = _dist(pos, cpos)
             entidades.append(Entidad(cid, clase, {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
-                "nutritivo": self._deseo(clase, obj),
+                "nutritivo": self._nutritivo(clase, obj),
                 "peligro": PELIGRO_MANUAL if clase in self.peligrosos else 0.0,
                 "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }, {"pos": cpos}))
-        deseables = [(c, self._deseo(c[1], c[3])) for c in cosas if self._deseo(c[1], c[3]) > 0.1]
+        deseables = [(c, self._nutritivo(c[1], c[3])) for c in cosas if self._nutritivo(c[1], c[3]) > 0.1]
         hostiles = [c for c in cosas if c[1] in self.peligrosos]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():

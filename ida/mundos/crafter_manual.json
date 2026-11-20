@@ -12,7 +12,10 @@
       "relacion": "NUTRITIVO",
       "veredicto": "afirma",
       "cita": "restored by drinking from a lake",
-      "lugar": "artículo, 3.1 (Health and survival)"
+      "lugar": "artículo, 3.1 (Health and survival)",
+      "necesidad": "sed",
+      "cita_necesidad": "Rainbow manages to drink water",
+      "lugar_necesidad": "artículo, figura 6"
     },
     {
       "id": "P02",
@@ -21,7 +24,10 @@
       "relacion": "NUTRITIVO",
       "veredicto": "afirma",
       "cita": "Cows move randomly and offer a food source.",
-      "lugar": "artículo, 3.1 (Creatures and night)"
+      "lugar": "artículo, 3.1 (Creatures and night)",
+      "necesidad": "hambre",
+      "cita_necesidad": "offer a food source",
+      "lugar_necesidad": "artículo, 3.1 (Creatures and night)"
     },
     {
       "id": "P03",
@@ -30,7 +36,10 @@
       "relacion": "NUTRITIVO",
       "veredicto": "afirma",
       "cita": "chasing cows or growing fruits to eat",
-      "lugar": "artículo, 3.1 (Health and survival)"
+      "lugar": "artículo, 3.1 (Health and survival)",
+      "necesidad": "hambre",
+      "cita_necesidad": "growing fruits to eat",
+      "lugar_necesidad": "artículo, 3.1 (Health and survival)"
     },
     {
       "id": "P04",

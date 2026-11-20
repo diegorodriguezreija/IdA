@@ -138,6 +138,54 @@ class Supervivencia(Componente):
         ))
 
 
+SATISFACE_MIN = 0.3   # paso 0b: a partir de aquí algo satisface una necesidad (como ``nutritivo`` ≥ 0,3 hoy)
+
+
+def intensidades(ctx: Contexto) -> Dict[str, float]:
+    """Déficit de cada necesidad que declara el mundo (sin Seguridad), desde la interocepción."""
+    valores = {n: float(p.carga["valor"]) for n, p in ctx.onda.ev("Interocepcion").items()}
+    d: Dict[str, float] = {}
+    for necesidad in ctx.perfil.necesidades:
+        v = necesidad.deficit(valores)
+        if v is not None:
+            d[necesidad.nombre] = v
+    return d
+
+
+def satisface_de(ctx: Contexto, o: Pieza) -> Dict[str, float]:
+    """Paso 0b: cuánto satisface ``o`` cada necesidad declarada. Lo que sabe la memoria de su clase (manual o
+    experiencia; lo que no consta vale 0). Si no sabe nada de la clase, el rasgo perceptivo con el que el mundo
+    declara que se satisface cada necesidad (``Necesidad.rasgo``), como hasta ahora."""
+    conocida = ctx.memoria.satisfaccion(o.clase)
+    if conocida is not None:
+        return {n.nombre: conocida.get(n.nombre, 0.0) for n in ctx.perfil.necesidades}
+    return {n.nombre: (o.rasgo(n.rasgo) if n.rasgo else 0.0) for n in ctx.perfil.necesidades}
+
+
+class Apetencia(Componente):
+    """Aliestesia (Cabanac, 1971; paso 0b, interruptor ``Perfil.mecanismos.aliestesia``): el valor de algo
+    comestible depende del estado interno. Para cada Objeto que satisface alguna necesidad,
+    deseo = Σ_n intensidad(n) · satisface(clase, n). Sin el interruptor no produce nada."""
+
+    tipo = "Apetencia"
+    entradas = ("Objeto", "Interocepcion")
+
+    def reactiva(self, ctx: Contexto) -> None:
+        if not ctx.perfil.mecanismos.aliestesia:
+            return
+        inten = intensidades(ctx)
+        for o in objetos(ctx):
+            sat = satisface_de(ctx, o)
+            if not any(v >= SATISFACE_MIN for v in sat.values()):
+                continue
+            por_necesidad = {n: inten.get(n, 0.0) * s for n, s in sat.items()}
+            deseo = acotar(sum(por_necesidad.values()))
+            self.percibir(ctx, self.pieza(ctx, o.id, arousal=deseo, carga={
+                "clase": o.clase, "deseo": round(deseo, 4), "satisface": {n: round(s, 4) for n, s in sat.items() if s > 0.0},
+                "necesidad": max(por_necesidad, key=lambda n: (por_necesidad[n], n)) if por_necesidad else None},
+                entradas=[o.id]))
+
+
 SEGURIDAD = "seguridad"
 
 
@@ -281,18 +329,23 @@ def _rechazado(ctx: Contexto, o: Pieza) -> bool:
 
 
 Rechazo = Callable[[Contexto, Pieza], bool]
+Comestible = Callable[[Pieza], bool]
 
 
-def _al_alcance(ctx: Contexto, rechaza: Rechazo = _rechazado) -> Tuple[List[Pieza], List[Pieza]]:
+def _nutritivo(o: Pieza) -> bool:
+    return o.rasgo("nutritivo") >= 0.3
+
+
+def _al_alcance(ctx: Contexto, rechaza: Rechazo = _rechazado, comestible: Comestible = _nutritivo) -> Tuple[List[Pieza], List[Pieza]]:
     """Comestibles al alcance, separados en aceptables y rechazados."""
-    comestibles = [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and al_alcance(o)]
+    comestibles = [o for o in objetos(ctx) if comestible(o) and al_alcance(o)]
     rechazados = [o for o in comestibles if rechaza(ctx, o)]
     return [o for o in comestibles if o not in rechazados], rechazados
 
 
-def _aceptables_a_la_vista(ctx: Contexto, rechaza: Rechazo = _rechazado) -> List[Pieza]:
+def _aceptables_a_la_vista(ctx: Contexto, rechaza: Rechazo = _rechazado, comestible: Comestible = _nutritivo) -> List[Pieza]:
     """Comestibles a la vista pero no al alcance que no se rechazan."""
-    return [o for o in objetos(ctx) if o.rasgo("nutritivo") >= 0.3 and not al_alcance(o) and not rechaza(ctx, o)]
+    return [o for o in objetos(ctx) if comestible(o) and not al_alcance(o) and not rechaza(ctx, o)]
 
 
 def _posicion(ctx: Contexto, pid: str) -> Optional[Tuple[float, ...]]:
@@ -340,6 +393,12 @@ class Alimentarse(Definicion):
     - **buscar**: lo único al alcance se rechaza (se valora mal o se sabe dañino) y no hay nada
       aceptable a la vista: no se come y se va a otro sitio, el lugar más nuevo y menos peligroso.
     Elegible mientras haya algo de eso; si no hay nada a la vista, se cierra y exploran otros sistemas.
+
+    **Por necesidad** (paso 0b, con ``Perfil.mecanismos.aliestesia``): cada impulso al que sirve solo
+    considera comestible lo que satisface **su** necesidad (``Apetencia``: satisface ≥ ``SATISFACE_MIN``),
+    elige entre ello por el deseo (aliestesia) y su arousal sale de la intensidad del impulso de origen,
+    no del hambre global del cuerpo. El olor de los lugares solo guía si su rasgo no es ambiguo (una sola
+    necesidad declarada se satisface con él); si no, se acerca por posición percibida.
     """
 
     nombre = "alimentarse"
@@ -350,11 +409,94 @@ class Alimentarse(Definicion):
         """Criterio de elección del objeto. Un mundo puede ampliarlo con una estrategia propia."""
         return _rechazado(ctx, o)
 
+    # --- paso 0b: por necesidad ---------------------------------------------------------------
+    @staticmethod
+    def _apetencia(ctx: Contexto, o: Pieza) -> Optional[Pieza]:
+        return ctx.onda.ev("Apetencia").get(o.id)
+
+    def _comestible(self, ctx: Contexto, impulso: str) -> Comestible:
+        def comestible(o: Pieza) -> bool:
+            a = self._apetencia(ctx, o)
+            return a is not None and float(a.carga["satisface"].get(impulso, 0.0)) >= SATISFACE_MIN
+        return comestible
+
+    def _deseo(self, ctx: Contexto, o: Pieza) -> float:
+        a = self._apetencia(ctx, o)
+        return float(a.carga["deseo"]) if a is not None else 0.0
+
+    @staticmethod
+    def _olor_sin_ambiguedad(ctx: Contexto, impulso: str) -> bool:
+        """El rasgo de los lugares (su olor) lleva a lo que satisface ``impulso`` solo si ninguna otra necesidad
+        declarada se satisface con ese mismo rasgo."""
+        rasgos = {n.nombre: n.rasgo for n in ctx.perfil.necesidades}
+        rasgo = rasgos.get(impulso)
+        return rasgo is not None and sum(1 for r in rasgos.values() if r == rasgo) == 1
+
+    def _destino_olor(self, ctx: Contexto, impulso: str) -> Optional[Pieza]:
+        return _destino_comida(ctx) if self._olor_sin_ambiguedad(ctx, impulso) else None
+
+    @staticmethod
+    def _intensidad(ctx: Contexto, impulso: str) -> float:
+        imp = ctx.onda.ef("Impulso").get(impulso)
+        return float(imp.carga["intensidad"]) if imp is not None else 0.0
+
+    def _elegible_por_necesidad(self, ctx: Contexto, impulso: str) -> bool:
+        comestible = self._comestible(ctx, impulso)
+        aceptables, rechazados = _al_alcance(ctx, self.rechaza, comestible)
+        return bool(aceptables or rechazados or _aceptables_a_la_vista(ctx, self.rechaza, comestible)) or \
+            self._destino_olor(ctx, impulso) is not None
+
+    def _paso_por_necesidad(self, ctx: Contexto, impulso: str) -> str:
+        comestible = self._comestible(ctx, impulso)
+        aceptables, rechazados = _al_alcance(ctx, self.rechaza, comestible)
+        if aceptables and Verbo.COMER in ctx.verbos and self._intensidad(ctx, impulso) > 0.0:
+            return COMER
+        if _aceptables_a_la_vista(ctx, self.rechaza, comestible):
+            return ACERCARSE
+        if rechazados and not aceptables:
+            return BUSCAR
+        return ACERCARSE if self._destino_olor(ctx, impulso) is not None else BUSCAR
+
+    def _actuar_por_necesidad(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        impulso = str(estrategia.carga["impulso"])
+        ganas = 0.25 + 0.75 * self._intensidad(ctx, impulso)     # como ``apetito``, con la intensidad del impulso de origen
+        comestible = self._comestible(ctx, impulso)
+        paso = estrategia.carga.get("paso")
+        if paso == COMER:
+            aceptables, _ = _al_alcance(ctx, self.rechaza, comestible)
+            cerca = mejor(aceptables, lambda o: self._deseo(ctx, o) - o.rasgo("peligro"))
+            if cerca is not None:
+                return Propuesta(Verbo.COMER, cerca.id, acotar(0.35 + 0.6 * ganas), 0.7, f"comer {cerca.clase}", clase=cerca.clase)
+        if paso == ACERCARSE:
+            vista = mejor(_aceptables_a_la_vista(ctx, self.rechaza, comestible),
+                          lambda o: self._deseo(ctx, o) * o.rasgo("proximidad") - o.rasgo("peligro"))
+            if vista is not None:
+                lugar = _hacia(ctx, vista)
+                if lugar is not None:
+                    a = self._apetencia(ctx, vista)
+                    s = float(a.carga["satisface"].get(impulso, 0.0)) if a is not None else 0.0
+                    return Propuesta(Verbo.MOVER, lugar.id, acotar(0.25 + 0.6 * ganas * s), 0.6, f"acercarse a {vista.clase}", clase=lugar.clase)
+            destino = self._destino_olor(ctx, impulso)
+            if destino is not None:
+                ar = acotar(0.25 + 0.6 * ganas * destino.rasgo("nutritivo"))
+                return Propuesta(Verbo.MOVER, destino.id, ar, 0.6, "acercarse a la comida", clase=destino.clase)
+        if paso in (BUSCAR, ACERCARSE):
+            otro = mejor([lugar for lugar in _lugares_permitidos(ctx) if lugar.rasgo("peligro") < 0.5],
+                         lambda lugar: lugar.rasgo("novedad") - lugar.rasgo("peligro"))
+            if otro is not None:
+                return Propuesta(Verbo.MOVER, otro.id, acotar(0.2 + 0.3 * ganas), 0.5, "buscar comida en otro sitio", clase=otro.clase)
+        return None
+
+    # --- conducta -----------------------------------------------------------------------------
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        if ctx.perfil.mecanismos.aliestesia:
+            return self._elegible_por_necesidad(ctx, impulso)
         aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         return bool(aceptables or rechazados) or _destino_comida(ctx) is not None
 
     def paso(self, ctx: Contexto, estrategia: Pieza) -> str:
+        if ctx.perfil.mecanismos.aliestesia:
+            return self._paso_por_necesidad(ctx, str(estrategia.carga["impulso"]))
         aceptables, rechazados = _al_alcance(ctx, self.rechaza)
         if aceptables and Verbo.COMER in ctx.verbos and ctx.soma.alimentacion < 95.0:
             return COMER
@@ -363,6 +505,8 @@ class Alimentarse(Definicion):
         return ACERCARSE if _destino_comida(ctx) is not None else BUSCAR
 
     def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        if ctx.perfil.mecanismos.aliestesia:
+            return self._actuar_por_necesidad(ctx, estrategia)
         paso = estrategia.carga.get("paso")
         if paso == COMER:
             aceptables, _ = _al_alcance(ctx, self.rechaza)
@@ -476,7 +620,7 @@ def crear_s1() -> Sistema:
     catalogo = Catalogo(estrategias_s1())
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
-        Modulo("Interpretar", [Objeto(), Supervivencia()]),
+        Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
         Modulo("Actuar", [Accion(catalogo), Anticipacion()]),
     ])

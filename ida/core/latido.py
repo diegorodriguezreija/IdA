@@ -219,6 +219,8 @@ class Organismo:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
                                             bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
                                             distancias=self._antes_accion[3])
+        if self.perfil.mecanismos.aliestesia and c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
+            self._aprender_satisface(ctx, str(c["clase"]))
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
                                         self._antes_accion[0] if self._antes_accion is not None else None,
@@ -231,6 +233,14 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
+
+    def _aprender_satisface(self, ctx: Contexto, clase: str) -> None:
+        """Paso 0b (aliestesia): tras comer algo de ``clase``, qué constantes vitales subieron respecto al latido
+        anterior (``delta`` de la interocepción) y, con ellas, qué necesidades satisface: cada ``Necesidad``
+        declara sus constantes."""
+        delta = {k: float(p.carga.get("delta", 0.0)) for k, p in ctx.onda.ev("Interocepcion").items()}
+        self.memoria.aprender_satisface(clase, {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes)
+                                                for n in self.perfil.necesidades})
 
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:

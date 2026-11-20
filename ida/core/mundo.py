@@ -103,6 +103,7 @@ class MecanismosMemoria:
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
     urgencia_local: bool = False  # paso 0a: el Tribunal pesa cada candidato con la urgencia de su impulso de origen
+    aliestesia: bool = False      # paso 0b: el valor de lo comestible depende de qué necesidad satisface y de su intensidad
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).

@@ -268,6 +268,33 @@ class Meta:
     conseguida: bool = False
 
 
+@dataclass
+class Satisface:
+    """Paso 0b (aliestesia): cuánto satisface comer algo de ``clase`` la ``necesidad``, en [0, 1].
+
+    Dos fuentes, combinadas como las de ``Proposicion``: lo que declara el manual (``c_aut`` con peso
+    ``w_aut``) y la experiencia (``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las
+    cuales subió alguna constante vital de la necesidad). Es aprendizaje de contingencias."""
+
+    clase: str
+    necesidad: str
+    n: int = 0
+    sube: int = 0
+    c_aut: Optional[float] = None
+    w_aut: float = 0.0
+
+    @property
+    def estimacion(self) -> float:
+        aut = self.w_aut if self.c_aut is not None else 0.0
+        total = self.n + aut
+        return (self.sube + aut * (self.c_aut or 0.0)) / total if total > 0 else 0.0
+
+    @property
+    def fuente(self) -> str:
+        partes = (["manual"] if self.c_aut is not None and self.w_aut > 0.0 else []) + (["experiencia"] if self.n else [])
+        return "+".join(partes) or "ninguna"
+
+
 def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
@@ -322,6 +349,8 @@ class Memoria:
         self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
         self._tenidos: Set[str] = set()
         self._tenidos_iniciado = False
+        # Paso 0b (aliestesia): qué necesidad satisface comer cada clase, del manual y de la experiencia.
+        self.satisface: Dict[Tuple[str, str], Satisface] = {}
 
     @property
     def activa(self) -> bool:
@@ -929,6 +958,10 @@ class Memoria:
             if tipo == "proposicion":
                 p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
                 p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
+                if h.get("necesidad") and Relacion[h["relacion"]] == Relacion.NUTRITIVO:   # paso 0b: qué necesidad satisface
+                    s = self.satisface.setdefault((str(h["sujeto"]), str(h["necesidad"])), Satisface(str(h["sujeto"]), str(h["necesidad"])))
+                    afirma = str(h.get("veredicto", "afirma")) == "afirma"
+                    s.c_aut, s.w_aut = (self.CONFIANZA_MANUAL if afirma else 1.0 - self.CONFIANZA_MANUAL), self.PESO_MANUAL
                 n += 1
             elif tipo == "meta":
                 clave_m = (Verbo[h["verbo"]], str(h.get("objetivo", "")))
@@ -953,6 +986,24 @@ class Memoria:
                     r.aparece |= aparece
                 n += 1
         return n
+
+    # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
+    def satisfaccion(self, clase: str) -> Optional[Dict[str, float]]:
+        """Lo que se sabe de cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa
+        clase (ni del manual ni de la experiencia). Las necesidades que no aparecen valen 0."""
+        if not self.activa:
+            return None
+        conocidas = {nec: s.estimacion for (c, nec), s in self.satisface.items() if c == clase}
+        return conocidas or None
+
+    def aprender_satisface(self, clase: str, subidas: Dict[str, bool]) -> None:
+        """Tras comer algo de ``clase`` con éxito: para cada necesidad, si subió alguna de sus constantes vitales."""
+        if not self.activa or not clase:
+            return
+        for necesidad, subio in subidas.items():
+            s = self.satisface.setdefault((clase, necesidad), Satisface(clase, necesidad))
+            s.n += 1
+            s.sube += int(bool(subio))
 
     def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
         """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
@@ -1102,6 +1153,10 @@ class Memoria:
         requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
         if requisitos:
             legado["requisitos"] = requisitos
+        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube}
+                     for s in self.satisface.values() if s.n >= 2]       # paso 0b: solo lo vivido (el manual se vuelve a leer)
+        if satisface:
+            legado["satisface"] = satisface
         return legado
 
     def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
@@ -1146,5 +1201,11 @@ class Memoria:
                 exitos=max(1, int(d.get("exitos", 1)) // 2), fallos=int(d.get("fallos", 0)) // 2, heredado=True,
             )
             self.requisitos[(req.verbo, req.objetivo)] = req
+            n += 1
+        for d in legado.get("satisface", []):   # paso 0b: como los registros, con la mitad de la evidencia
+            s = self.satisface.setdefault((str(d["clase"]), str(d["necesidad"])), Satisface(str(d["clase"]), str(d["necesidad"])))
+            veces = max(1, int(d["n"]) // 2)
+            s.n += veces
+            s.sube += round(veces * int(d["sube"]) / max(1, int(d["n"])))
             n += 1
         return n
