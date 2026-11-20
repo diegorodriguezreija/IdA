@@ -537,6 +537,55 @@ class Paso:
 
 COSTE_RECORDADO = 15.0     # ir adonde se recuerda algo que no se ve
 COSTE_POR_PROXIMIDAD = 10.0
+MAX_RUTA_MAPA = 40         # pasos máximos de una ruta por el mapa local hasta algo recordado
+COSTE_SIN_PRODUCTOR = 2 * COSTE_RECORDADO   # reponer una unidad de algo que ninguna acción conocida da
+VECINAS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
+    """Un paso hacia la casilla recordada de ``clase`` más cercana por el mapa local de la memoria (paso 3), con el coste en
+    pasos de la ruta hasta quedar al lado. La ruta solo pasa por casillas de clases que se sabe transitables. Destino
+    ``<clase>@x_y`` (``excluir`` lo aparca). None sin posiciones, sin mapa, sin ninguna recordada a menos de
+    ``MAX_RUTA_MAPA`` pasos, si ya está al lado o si el primer paso no es un lugar percibido sin peligro."""
+    mem = ctx.memoria
+    aqui = _pos_propia(ctx)
+    if aqui is None or not ctx.con_experiencia or not mem.casillas:
+        return None
+    objetivos = {p for p, c in mem.casillas.items() if c == clase and f"{clase}@{p[0]}_{p[1]}" not in excluir}
+    if not objetivos:
+        return None
+    junto = {(x + dx, y + dy): (x, y) for x, y in sorted(objetivos) for dx, dy in VECINAS}
+    if aqui in junto:
+        return None
+    previo: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    frontera, d, llegada = [aqui], 0, None
+    while frontera and llegada is None and d < MAX_RUTA_MAPA:
+        d += 1
+        siguiente = []
+        for x, y in frontera:
+            for dx, dy in VECINAS:
+                v = (x + dx, y + dy)
+                if v in previo or v == aqui or mem.transitable(mem.casillas.get(v)) is not True:
+                    continue
+                previo[v] = (x, y)
+                if v in junto:
+                    llegada = v
+                    break
+                siguiente.append(v)
+            if llegada is not None:
+                break
+        frontera = siguiente
+    if llegada is None:
+        return None
+    primero = llegada
+    while previo[primero] != aqui:
+        primero = previo[primero]
+    puerta = next((lugar for lugar in lugares(ctx) if _pos(lugar) == primero and lugar.rasgo("peligro") < 0.5), None)
+    if puerta is None:
+        return None
+    x, y = junto[llegada]
+    return Paso(Verbo.MOVER, puerta.id, puerta.clase, float(d), confianza, [f"volver a {clase} (mapa, {d} pasos)"],
+                destino=f"{clase}@{x}_{y}", distancia=d)
 
 
 def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
@@ -609,6 +658,7 @@ class PerseguirMetas(ConPropuestas):
         super().__init__()
         self._aparcados: Dict[str, int] = {}          # destino -> latido hasta el que no se elige
         self._seguimiento: Tuple[str, Optional[int], int] = ("", None, 0)   # destino, mejor distancia, propuestas sin bajar
+        self._costes_unidad: Dict[Tuple[int, str], float] = {}           # (latido, objeto) -> pasos para una unidad
 
     def _excluir(self, ctx: Contexto) -> frozenset:
         return frozenset(d for d, hasta in self._aparcados.items() if ctx.latido < hasta)
@@ -719,16 +769,47 @@ class PerseguirMetas(ConPropuestas):
                 return None
             planes.append(p)
         for clase in faltan_cerca:
+            # Ir a una que se ve o se recuerda (mapa local, con el coste de la ruta) frente a producir otra, con el coste de
+            # reponer lo que consume. Así no se coloca una nueva mientras ir a la conocida cueste menos.
             colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
-            opciones = [acercarse_a_clase(ctx, clase, r.confianza if r else 0.5, self._excluir(ctx))]
-            opciones += [self._resolver(ctx, k, inv, visitado, prof + 1) for k in colocadoras]
+            confianza = r.confianza if r else 0.5
+            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), ir_por_el_mapa(ctx, clase, confianza, self._excluir(ctx))]
+            opciones += [self._con_consumo(ctx, k, self._resolver(ctx, k, inv, visitado, prof + 1), inv, visitado, prof)
+                         for k in colocadoras]
             p = mejor_de(opciones, f"falta cerca {clase}")
             if p is None:
                 return None
             planes.append(p)
-        primero = min(planes, key=lambda q: q.coste)
+        # Primero lo que se lleva (inventario) y después el sitio: ir junto a algo antes de tener lo que se usa allí obliga a
+        # volver. El coste cuenta todas las carencias.
+        primero = min(planes[:len(faltan_inv)] or planes, key=lambda q: q.coste)
         primero.coste = sum(q.coste for q in planes)
         return primero
+
+    def _con_consumo(self, ctx: Contexto, accion: Tuple[Verbo, str], paso: Optional[Paso], inv: Dict[str, float],
+                     visitado: frozenset, prof: int) -> Optional[Paso]:
+        """Producir algo cuesta también reponer lo que consume: lo que su efecto aprendido resta del inventario
+        (``Requisito.efecto`` negativo), por el coste de conseguir cada unidad. Sin experiencia de su efecto, nada."""
+        r = ctx.memoria.requisitos.get(accion)
+        if paso is None or r is None:
+            return paso
+        for k, d in sorted(r.efecto.items()):
+            if d < 0:
+                paso.coste += -d * self._coste_unidad(ctx, k, inv, visitado | {accion}, prof + 1)
+        return paso
+
+    def _coste_unidad(self, ctx: Contexto, objeto: str, inv: Dict[str, float], visitado: frozenset, prof: int) -> float:
+        """Pasos estimados para conseguir una unidad de ``objeto`` desde cero (el plan más barato de sus productoras)."""
+        clave = (ctx.latido, objeto)
+        if clave not in self._costes_unidad:
+            if len(self._costes_unidad) > 200:
+                self._costes_unidad.clear()
+            sin = {**inv, objeto: 0.0}
+            productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+                                 key=lambda k: (k[0].value, k[1]))
+            pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
+            self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
+        return self._costes_unidad[clave]
 
     def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
         verbo, objetivo = accion

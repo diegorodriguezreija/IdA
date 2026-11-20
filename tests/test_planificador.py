@@ -253,3 +253,61 @@ def test_efecto_con_probabilidad_0_1_no_se_bloquea_y_acaba_saliendo(semilla):
     mundo, memoria, bloqueos = _vivir_retono(semilla)
     assert not any(bloqueos)
     assert memoria.metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1
+
+
+# --- reutilizar lo construido: ir a la X recordada frente a producir otra -----------------------------------------
+MANUAL_BANCO = {
+    "inventario": ["madera"],
+    "hechos": [
+        {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_a"},
+        {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_a", "requiere_inventario": {"madera": None}, "requiere_cerca": ["banco"]},
+        {"tipo": "requisito", "verbo": "USAR", "objetivo": "poner_banco", "requiere_inventario": {"madera": None}, "aparece": ["banco"]},
+        {"tipo": "requisito", "verbo": "COGER", "objetivo": "arbol", "requiere_inventario": {}, "efecto": {"madera": 1}},
+    ],
+}
+
+
+def _pasillo(banco_en: int, consumo_aprendido: bool = True) -> Any:
+    """Un pasillo de suelo recordado (mapa local) de (0, 0) a (banco_en − 1, 0) y un banco en (banco_en, 0), fuera de la vista.
+    Con ``consumo_aprendido``, la experiencia ya sabe que poner un banco gasta una madera."""
+    m = Memoria()
+    m.aplicar_manual(MANUAL_BANCO)
+    m.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
+    m.casillas[(banco_en, 0)] = "banco"
+    m.paso_libre["suelo"] = 1
+    m.paso_bloqueado["banco"] = 1
+    if consumo_aprendido:
+        m.aprender_requisito(Verbo.USAR, "poner_banco", {"madera": 2.0}, {"madera": 1.0}, set(), True, cerca_despues={"banco"})
+    lugar = _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))
+    return _ctx(m, [lugar], {"madera": 2.0}, ubicacion="celda_0_0")
+
+
+def test_va_al_banco_recordado_si_cuesta_menos_que_poner_otro():
+    """Poner otro banco gasta una madera, y aquí no hay de dónde sacar más (coste alto de reponerla): con el banco
+    recordado a 6 pasos, el planificador vuelve a él por el mapa local en vez de poner otro."""
+    propuestas = PerseguirMetas().actuar(_pasillo(7), None)
+    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
+    assert "volver a banco (mapa, 6 pasos)" in propuestas[0].motivo
+
+
+def test_pone_otro_banco_si_el_recordado_queda_mas_caro():
+    """Con el banco recordado a 37 pasos, reponer la madera (30) más poner el banco cuesta menos: pone otro."""
+    propuestas = PerseguirMetas().actuar(_pasillo(38), None)
+    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.USAR, "poner_banco")]
+
+
+def test_sin_saber_lo_que_consume_poner_es_casi_gratis():
+    """Sin experiencia de lo que consume poner un banco, producir no cuesta reponer nada y gana aunque el recordado esté cerca."""
+    propuestas = PerseguirMetas().actuar(_pasillo(7, consumo_aprendido=False), None)
+    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.USAR, "poner_banco")]
+
+
+def test_primero_lo_que_se_lleva_despues_el_sitio():
+    """Sin madera, con un árbol a la vista en otra dirección (más caro que el banco, recordado a 6 pasos): primero va a por
+    la madera (lo que se usa junto al banco) y no al banco, que obligaría a volver."""
+    ctx = _pasillo(7)
+    ctx.onda.canales["Exterocepcion"]["arbol_1"] = _entidad("arbol_1", "arbol", 0.2, pos=(0, 8))
+    ctx.onda.canales["Exterocepcion"]["celda_0_1"] = _entidad("celda_0_1", "suelo", 1.0, lugar=1.0, pos=(0, 1))
+    ctx.onda.canales["Propiocepcion"]["yo"].carga["inventario"] = {}
+    propuestas = PerseguirMetas().actuar(ctx, None)
+    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_0_1")]
