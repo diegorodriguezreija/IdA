@@ -50,8 +50,10 @@ class MundoCueva(Mundo):
     def observar(self) -> Observacion:
         x0, y0 = self.pos
         vista = {(x, y): c for (x, y), c in self.mapa.items() if abs(x - x0) <= 4 and abs(y - y0) <= 4}
-        entidades = [Entidad(f"{c}_{x}_{y}", c, {"proximidad": max(0.0, 1.0 - (abs(x - x0) + abs(y - y0)) / 9)}, {"pos": (x, y)})
-                     for (x, y), c in sorted(vista.items()) if c == "roca"][:14]
+        entidades = [Entidad(f"{c}_{x}_{y}", c, {"proximidad": 1.0 if abs(x - x0) + abs(y - y0) <= 1 else
+                                                max(0.0, 1.0 - (abs(x - x0) + abs(y - y0)) / 9)}, {"pos": (x, y)})
+                     for (x, y), c in sorted(vista.items(), key=lambda kv: (kv[1] != "cantera", abs(kv[0][0] - x0) + abs(kv[0][1] - y0)))
+                     if c in ("roca", "cantera")][:14]
         for dx, dy in DIRS:
             v = (x0 + dx, y0 + dy)
             if self.libre(v):
@@ -76,6 +78,9 @@ class MundoCueva(Mundo):
             return Efecto(exito=True)
         if verbo == Verbo.COGER and cerca:
             self.cara = (destino[0] - self.pos[0], destino[1] - self.pos[1])
+            if self.mapa.get(destino) == "cantera":       # da roca y sigue ahí
+                self.inv["roca"] += 1
+                return Efecto(exito=True, obtenido="roca")
             if self.mapa.get(destino) == "roca":
                 self.mapa[destino] = "hueco"
                 self.inv["roca"] += 1
@@ -98,6 +103,7 @@ class MundoCueva(Mundo):
             {"tipo": "requisito", "verbo": "USAR", "objetivo": "poner_roca", "requiere_inventario": {"roca": 1}, "requiere_cerca": [],
              "aparece": ["roca"]},
             {"tipo": "requisito", "verbo": "COGER", "objetivo": "roca", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"roca": 1}},
+            {"tipo": "requisito", "verbo": "COGER", "objetivo": "cantera", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"roca": 1}},
         ]}
 
     def encerrado(self) -> bool:
@@ -222,6 +228,32 @@ def test_proteger_elige_el_sitio_mas_barato_y_lo_completa():
     assert sum(1 for p, c in mundo.mapa.items() if c == "hueco") == 2
     assert any(m.startswith("proteger: cerrar") for m in motivos)
     assert "proteger: dentro, dormir" in motivos
+
+
+def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
+    """Sin roca en el inventario y sin saber que cavar abre espacio, ningún sitio es factible. El material de cierre es un
+    requisito de USAR: el planificador lleva a conseguir roca (de lo que la da) y, con ella, acaba encerrado. Al coger roca
+    aprende además qué deja en la casilla, así que el sitio final puede ser otro que el hueco del principio."""
+    mapa = _campo(roca={(x, y) for x in range(1, 13) for y in range(1, 10)} - {(3, 5), (4, 5), (5, 5)} - {(x, 6) for x in range(5, 12)})
+    mapa[(11, 7)] = "suelo"
+    mapa[(12, 6)] = "cantera"
+    mundo = MundoCueva(mapa, (8, 6), cara=(1, 0), luz=10.0)
+    mem = _memoria(mundo, aprendida=False)
+    mem.paso_libre.update({"suelo": 1})
+    mem.paso_bloqueado.update({"roca": 1, "cantera": 1})
+    mem.aprender_cuerpo("mover", True, True, True)
+    mem.aprender_cuerpo("mover", False, False, True)
+    mem.aprender_cuerpo("interactuar", True, False, True)
+    motivos: List[str] = []
+
+    def al_latir(o, onda):
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
+
+    _vivir(mundo, mem, 40, al_latir)
+    assert any(m.startswith("proteger: material para poner_roca") for m in motivos), motivos
+    assert mundo.encerrado(), (mundo.pos, motivos)
+    assert any(m.startswith("proteger: cerrar") for m in motivos)
 
 
 def test_sin_el_interruptor_no_hay_mapa_ni_proteger():

@@ -258,12 +258,18 @@ class EstadoPlan:
     cerradas: FrozenSet[Pos]
 
 
+def entorno(interior: Tuple[Pos, ...]) -> Set[Pos]:
+    """Casillas a 2 o menos (en cada eje) del sitio: la ventana del plan local."""
+    return {(x, y) for (cx, cy) in interior for x in range(cx - 2, cx + 3) for y in range(cy - 2, cy + 3)}
+
+
 def planificar(modelo: Modelo, pos: Pos, cara: Optional[Pos], interior: Tuple[Pos, ...], excavar: FrozenSet[Pos],
                accesos: FrozenSet[Pos]) -> Optional[List[Accion]]:
     """Plan local para completar el recinto ``interior`` desde (``pos``, ``cara``): cavar ``excavar``, cerrar ``accesos``
-    y acabar dentro. Acciones: MOVER (modelo del cuerpo), COGER sobre una casilla vecina por cavar (orienta según el
-    modelo aprendido de interactuar) y USAR sobre la casilla de delante si es un acceso abierto y queda material."""
-    ventana = {(x, y) for (cx, cy) in interior + (pos,) for x in range(cx - 2, cx + 3) for y in range(cy - 2, cy + 3)}
+    y acabar dentro, sin salir del entorno del sitio (``entorno``). Acciones: MOVER (modelo del cuerpo), COGER sobre una
+    casilla vecina por cavar (orienta según el modelo aprendido de interactuar) y USAR sobre la casilla de delante si es un
+    acceso abierto y queda material."""
+    ventana = entorno(interior)
     unidades: Dict[FrozenSet[Pos], int] = {}
     dentro = set(interior)
     orienta = modelo.interactuar[1] if modelo.interactuar is not None else False
@@ -394,9 +400,10 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
 
 def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
               previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> bool:
-    """Plan local exacto del sitio y su coste. Si ``aqui`` está a 2 casillas o menos del sitio, el plan empieza aquí;
-    si no, en la entrada, llegando por la ruta más corta (con la orientación de llegada que da el modelo del cuerpo)."""
-    cerca = any(max(abs(aqui[0] - p[0]), abs(aqui[1] - p[1])) <= 2 for p in sitio.interior)
+    """Plan local exacto del sitio y su coste. Si ``aqui`` está en el entorno del sitio, el plan empieza aquí (y no sale del
+    entorno, así que el latido siguiente también); si no, en la entrada, llegando por la ruta más corta (con la orientación de
+    llegada que da el modelo del cuerpo)."""
+    cerca = aqui in entorno(sitio.interior)
     if cerca:
         inicio, cara0, offset = aqui, cara, 0
     else:
@@ -436,7 +443,7 @@ class Recinto(Componente):
         self._sitio: Optional[Tuple[Pos, ...]] = None
         self._ultima = -10**9
         self._ultimo_material = -10**9
-        self._material_previo: Optional[Dict[str, Any]] = None
+        self._sel_material: Optional[Tuple[Tuple[Pos, ...], Cerrador, int, float]] = None
         self._planificador = PerseguirMetas()
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -447,7 +454,7 @@ class Recinto(Componente):
             return
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
-            self._ultimo_material, self._material_previo, self._planificador = -10**9, None, PerseguirMetas()
+            self._ultimo_material, self._sel_material, self._planificador = -10**9, None, PerseguirMetas()
         cara = orientacion(ctx)
         modelo = Modelo(ctx.memoria, inventario(ctx), _peligros(ctx))
         hogar = pos_de(ctx.memoria.hogar()) if ctx.perfil.hogar else None
@@ -471,41 +478,68 @@ class Recinto(Componente):
                 carga.update(coste=round(sitio.coste, 2), confianza=round(self._confianza(ctx, modelo, sitio), 4), accion=accion,
                              interior=list(sitio.interior), explicacion=self._explicar(sitio, accion))
         elif sitio is None:
-            carga.update(self._material(ctx, modelo, aqui, dist, hogar))
+            carga.update(self._material(ctx, modelo, aqui, cara, dist, previo, hogar))
         self.registrar(ctx, self.pieza(ctx, "recinto", arousal=0.0, carga=carga))
 
-    def _material(self, ctx: Contexto, modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[Pos]) -> Dict[str, Any]:
+    def _paso_material(self, ctx: Contexto, modelo: Modelo, c: Cerrador) -> Any:
+        """Primer paso del planificador del paso 5 para conseguir lo que consume un cierre más (None si no lo hay)."""
+        sin = {**modelo.inv, **{k: 0.0 for k, _ in c.requiere}}
+        paso = self._planificador._resolver(ctx, (Verbo.USAR, c.objetivo), sin, frozenset(), 0)
+        return None if paso is None or paso.verbo == Verbo.USAR else paso
+
+    def _material(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
+                  previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Dict[str, Any]:
         """Sin sitio factible con el material de ahora (3.4: el material de cierre es un requisito de USAR y lo resuelve el
         planificador): para cada acción que cierra, el planificador del paso 5 da el primer paso para conseguir lo que consume
-        y su coste; con el más barato por cierre, el sitio más barato contando el material que falta. La acción es ese primer
-        paso. Se recalcula cada ``CADA_EVALUACION`` latidos."""
-        if ctx.latido - self._ultimo_material < CADA_EVALUACION and self._material_previo is not None:
-            return self._material_previo
+        y su coste; con el más barato por cierre, el sitio más barato contando el material que falta y cuyo plan sale con ese
+        material (buscador con un inventario previsto). La elección (sitio y cierre) se rehace cada ``CADA_EVALUACION``
+        latidos, con la misma histéresis que los sitios factibles; el primer paso del planificador, en cada latido."""
+        sel = self._sel_material
+        if ctx.latido - self._ultimo_material >= CADA_EVALUACION:     # sin elección, tampoco se rehace antes
+            sel = self._elegir_material(ctx, modelo, aqui, cara, dist, previo, hogar)
+        if sel is None:
+            return {}
+        interior, c, falta, coste = sel
+        paso = self._paso_material(ctx, modelo, c)
+        if paso is None:
+            self._sel_material = None
+            return {}
+        accion = {"verbo": paso.verbo, "objetivo": paso.objetivo, "clase": paso.clase, "que": "material", "datos": dict(paso.datos)}
+        donde = "+".join(f"{x},{y}" for x, y in interior)
+        return {"coste": round(coste, 2), "confianza": round(acotar(paso.confianza), 4), "accion": accion, "interior": list(interior),
+                "explicacion": f"material para {c.objetivo} (faltan {falta}) ← {' ← '.join(paso.motivo)} · sitio {donde} · coste {coste:.0f}"}
+
+    def _elegir_material(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
+                         previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Optional[Tuple[Tuple[Pos, ...], Cerrador, int, float]]:
         self._ultimo_material = ctx.latido
-        self._material_previo = {}
-        mejor: Optional[Tuple[float, Cerrador, Any]] = None
-        inv = modelo.inv
+        mejor: Optional[Tuple[float, Cerrador]] = None
         for c in modelo.cerradores:
-            sin = {**inv, **{k: 0.0 for k, _ in c.requiere}}       # lo que haría falta para un cierre más
-            paso = self._planificador._resolver(ctx, (Verbo.USAR, c.objetivo), sin, frozenset(), 0)
-            if paso is None or paso.verbo == Verbo.USAR:
+            paso = self._paso_material(ctx, modelo, c)
+            if paso is None:
                 continue
             por_unidad = (paso.coste + 1.0) * max(n for _, n in c.requiere)
             if mejor is None or por_unidad < mejor[0]:
-                mejor = (por_unidad, c, paso)
-        if mejor is None:
-            return self._material_previo
-        sitios = [s for s in candidatos(modelo, aqui, dist, hogar, mejor[0]) if s.falta > 0][:1]
-        if not sitios:
-            return self._material_previo
-        s, (_, c, paso) = sitios[0], mejor
-        accion = {"verbo": paso.verbo, "objetivo": paso.objetivo, "clase": paso.clase, "que": "material", "datos": dict(paso.datos)}
-        donde = "+".join(f"{x},{y}" for x, y in s.interior)
-        self._material_previo = {
-            "coste": round(s.estimado, 2), "confianza": round(acotar(paso.confianza), 4), "accion": accion, "interior": list(s.interior),
-            "explicacion": f"material para {c.objetivo} (faltan {s.falta}) ← {' ← '.join(paso.motivo)} · sitio {donde} · "
-                           f"coste {s.estimado:.0f}"}
-        return self._material_previo
+                mejor = (por_unidad, c)
+        elegido: Optional[Sitio] = None
+        if mejor is not None:
+            por_unidad, c = mejor
+            inv = modelo.inv
+            previsto = Modelo(modelo.mem, {**inv, **{k: inv.get(k, 0.0) + n * 2 * len(DIRECCIONES) for k, n in c.requiere}},
+                              modelo.peligros)
+            anterior: Optional[Sitio] = None
+            for s in [s for s in candidatos(modelo, aqui, dist, hogar, por_unidad) if s.falta > 0][:CANDIDATOS_EXACTOS]:
+                if not completar(previsto, s, aqui, cara, dist, previo, hogar):
+                    continue
+                s.coste += s.falta * por_unidad
+                if self._sel_material is not None and s.interior == self._sel_material[0]:
+                    anterior = s
+                if elegido is None or s.coste < elegido.coste:
+                    elegido = s
+            if anterior is not None and elegido is not None and \
+                    elegido.coste > anterior.coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * anterior.coste):
+                elegido = anterior
+        self._sel_material = (elegido.interior, mejor[1], elegido.falta, elegido.coste) if elegido is not None and mejor is not None else None
+        return self._sel_material
 
     def _elegir(self, ctx: Contexto, modelo: Modelo, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
                 previo: Dict[Pos, Pos], hogar: Optional[Pos]) -> Optional[Sitio]:
