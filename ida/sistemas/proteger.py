@@ -605,7 +605,7 @@ class Proteger(ConPropuestas):
       primera acción del plan del sitio que interpreta ``Recinto`` (ir, cavar, girarse, cerrar). Arousal = intensidad del
       cobijo (anticipada por la alostasis); confianza = confianza del sitio × esa intensidad: la confianza de que protegerse
       ahora sirve a la necesidad. Sin sitio, o si otra necesidad de fuera pesa más, no propone (deciden otras estrategias).
-      Aquí solo cuenta el déficit actual de las demás necesidades, no lo que se prevea de ellas.
+      La alostasis de 3b no entra aquí: sube la intensidad del hambre y la sed, y con ella el arousal de sus estrategias.
     - **Dentro:** si el cobijo (o el peligro de fuera) pesa al menos tanto como el déficit de cualquier necesidad que se
       satisface fuera (las que declaran un ``rasgo``), quedarse: DORMIR (o ESPERAR si el mundo no deja dormir). Si una de
       ellas pesa más, abrir: COGER sobre una pared que se pueda cavar (primero la que cerró uno mismo, que además devuelve

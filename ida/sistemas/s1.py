@@ -583,7 +583,7 @@ class Impulso(Componente):
     (el peligro). No proponen acciones: lo hacen las estrategias (decisiones 2 y 3).
 
     **Alostasis** (paso 3, ``docs/ENCARGO_PASO3_PROTEGER.md``, 3.2): regulación por anticipación. Con ``mecanismos.proteger``
-    (solo el cobijo), la intensidad es la del déficit previsto:
+    (solo el cobijo) o ``mecanismos.alostasis`` (las demás necesidades), la intensidad es la del déficit previsto:
     ``max(déficit, déficit + tendencia · T)``, con la tendencia como media móvil del cambio del déficit por latido. Sin
     tendencia que suba, o sin déficit (saciedad: lo lleno no se llena más), la intensidad es el déficit. El horizonte T sale
     del recinto (``alostasis``); sin sitio para protegerse, es 0 y nada cambia."""
@@ -594,7 +594,7 @@ class Impulso(Componente):
     def reactiva(self, ctx: Contexto) -> None:
         rasgos = {n.nombre: n.rasgo for n in ctx.perfil.necesidades}
         mec = ctx.perfil.mecanismos
-        if not mec.proteger:
+        if not (mec.proteger or mec.alostasis):
             for nombre, intensidad in deficits(ctx).items():
                 self.registrar(ctx, self.pieza(ctx, nombre, arousal=intensidad,
                                                carga={"intensidad": round(intensidad, 4), "objetivo": 0.0, "rasgo": rasgos.get(nombre)}))
@@ -613,7 +613,10 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
       anterior. Seguridad (el peligro) no se anticipa.
     - **Cobijo** (``mecanismos.proteger``): T = coste en pasos del mejor sitio para protegerse (``Recinto``); dentro de un
       recinto, 0. Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
-    - Las demás necesidades no se anticipan (es el subpaso 3b)."""
+    - **Las demás** (``mecanismos.alostasis``, provisiones): con un sitio para protegerse, T = coste del sitio + I · D, con I la
+      intensidad anticipada del cobijo y D la duración prevista del periodo protegido: lo que tardaría el déficit del cobijo
+      en llegar al máximo y volver si la excursión fuera simétrica, 2 · (1 − déficit) / tendencia, sin pasar de los latidos
+      vividos (no se anticipa más allá de lo que se ha visto). Así se come y se bebe antes de encerrarse."""
     mec = ctx.perfil.mecanismos
     previos = ctx.onda.ei("Impulso")
     a = 1.0 / VENTANA_TENDENCIA
@@ -630,6 +633,13 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
     if coste is not None:
         if mec.proteger and COBIJO in defs:
             horizontes[COBIJO] = coste
+        if mec.alostasis:
+            dc, tc = defs.get(COBIJO, 0.0), tendencias.get(COBIJO, 0.0)
+            ic = acotar(max(dc, dc + tc * horizontes[COBIJO])) if COBIJO in defs else 0.0
+            duracion = min(2.0 * (1.0 - dc) / tc, float(ctx.latido)) if tc > 0.0 else 0.0
+            for nombre in defs:
+                if nombre not in (COBIJO, SEGURIDAD):
+                    horizontes[nombre] = coste + ic * duracion
     salida: Dict[str, Tuple[float, float, float]] = {}
     for nombre, d in defs.items():
         t, h = tendencias[nombre], horizontes[nombre]

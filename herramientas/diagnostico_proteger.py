@@ -9,6 +9,7 @@ Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia) con un gancho 
   más propone, ganen o no, con su total en el Tribunal.
 
     python herramientas/diagnostico_proteger.py --pasos 3000 --semilla 31 --sin-estrategias-propias --mecanismos proteger
+    python herramientas/diagnostico_proteger.py --pasos 3000 --semilla 31 --sin-estrategias-propias --mecanismos proteger alostasis
 
 Es un diagnóstico de pocas vidas, no una medición.
 """
