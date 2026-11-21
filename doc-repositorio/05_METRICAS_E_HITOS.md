@@ -107,6 +107,11 @@ python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista ofici
 | Aprender qué satisface cada necesidad; arreglo del retoño (paso 0) | 11,29 % (10,44–12,01) | 3,9 % | `cierre0_C1.json` |
 | Refugio general (paso 3), semilla 31 | 12,82 % (11,76–13,79) | 20,5 % | `paso3_F1.json` |
 | Refugio general (paso 3), semilla 32 | 13,58 % (12,52–14,47) | 21,3 % | `paso3_F2.json` |
+| Defensa general (paso 6), semilla 31 | 14,04 % (12,92–15,06) | 20,6 % | `paso6_D2.json` |
+| Defensa general (paso 6), semilla 32 | 15,45 % (14,18–16,53) | 23,6 % | `paso6_D3.json` |
+
+Desde el paso 6, el adaptador de Crafter no tiene estrategias propias (`estrategias_propias()` vacío, test `test_crafter_no_escribe_conducta`): la línea general es la conducta por defecto de `main`.
+
 
 #### Línea procedimental (etiqueta `crafter-procedimental-v1`)
 

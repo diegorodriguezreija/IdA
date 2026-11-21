@@ -66,6 +66,15 @@ CONDICIONES_PASO6 = [
         ),
     },
     {
+        "id": "D4",
+        "nombre": "D4",
+        "columna": "D4",
+        "archivo": "paso6_D4.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto"
+        ),
+    },
+    {
         "id": "F2",
         "nombre": "F2",
         "columna": "F2",
@@ -245,6 +254,25 @@ def generar_comparaciones_paso6(datos: Dict[str, Dict[str, Any]]) -> str:
     lineas.append(comparar("D3", "D3", "F2", "F2"))
     lineas.append("")
 
+    # 4. D4 frente a D2
+    lineas.append("### D4 frente a D2 (semilla 31, comprobación de equivalencia del paso 6d)")
+    lineas.append(comparar("D4", "D4", "D2", "D2"))
+    lineas.append("")
+    lineas.append(
+        "**Resultado de la comprobación de equivalencia del 6d:**\n"
+        "Se comprobó que borrar `DefensaArmada` y `CerrarDistancia` y retirar los interruptores de `Perfil` "
+        "no altera la conducta de Crafter. Al comparar `paso6_D4.json` con `paso6_D2.json` "
+        "(ignorando `tiempo_segundos`, `ms_por_paso`, `mecanismos` y `sin_estrategias_propias`), "
+        "**todos los campos son idénticos** (Score 14,04 %, IC 95 % [12,92, 15,06] %, 383 episodios, 100.000 pasos "
+        "y las tasas de los 22 logros oficiales de Crafter) salvo una única causa de muerte:\n"
+        "- En D2: 27 muertes por flecha y 271 por zombi (0 latidos cortados).\n"
+        "- En D4: 26 muertes por flecha y 272 por zombi (1 latido cortado).\n"
+        "Esta divergencia de un solo caso se debe exclusivamente a que en D4 la guillotina cortó 1 latido por reloj (> 100 ms) "
+        "en el episodio 64: dicho episodio duró 167 pasos muriendo por zombi (en vez de 169 pasos muriendo por flecha en D2). "
+        "Todos los demás episodios siguieron trayectorias idénticas, dándose por buena la equivalencia."
+    )
+    lineas.append("")
+
     return "\n".join(lineas)
 
 
@@ -254,13 +282,15 @@ def generar_informe_paso6() -> str:
         "# Medición Oficial: Paso 6 — La defensa general (Crafter)",
         "",
         "Evaluación oficial en Crafter (100.000 pasos, vista oficial, sin herencia, manual estricto, sin estrategias propias) "
-        "en la rama `feature/defensa` (commit `027062e`). "
-        "Evalúa el paso 6: la defensa general (peligro aprendido, afrontar —luchar o huir— y arma como meta instrumental).",
+        "en la rama `feature/defensa` (commit `027062e` para D1-D3; commit `b9daf9c` para D4). "
+        "Evalúa el paso 6: la defensa general (peligro aprendido, afrontar —luchar o huir— y arma como meta instrumental) "
+        "y la retirada de las estrategias propias de Crafter (paso 6d, pilar 1).",
         "",
         "Ficheros de datos utilizados (en `datos/evaluacion/`):",
         "- `paso3_F1.json`: F1 (Referencia Paso 3, semilla 31, sin estrategias propias)",
         "- `paso6_D1.json`: D1 (Paso 6a, semilla 31, mecanismo `peligro_aprendido`)",
         "- `paso6_D2.json`: D2 (Paso 6 completo, semilla 31, mecanismos `peligro_aprendido`, `afrontar`, `arma_instrumental`)",
+        "- `paso6_D4.json`: D4 (Paso 6d en base, semilla 31, sin estrategias propias ni mecanismos)",
         "- `paso3_F2.json`: F2 (Referencia Paso 3, semilla 32, sin estrategias propias)",
         "- `paso6_D3.json`: D3 (Paso 6 completo, semilla 32, mecanismos `peligro_aprendido`, `afrontar`, `arma_instrumental`)",
         "",
@@ -271,6 +301,7 @@ def generar_informe_paso6() -> str:
         "- **F1**: 4 latidos cortados en 4 episodios (0,004 % de los latidos).",
         "- **D1**: 0 latidos cortados.",
         "- **D2**: 0 latidos cortados.",
+        "- **D4**: 1 latido cortado en 1 episodio (episodio 64; 0,001 % de los latidos).",
         "- **F2**: 6 latidos cortados en 4 episodios (0,006 % de los latidos).",
         "- **D3**: 0 latidos cortados.",
         "",

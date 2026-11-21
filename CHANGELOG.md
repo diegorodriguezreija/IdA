@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Fase de generalización en Crafter: paso 6 (defensa general) y pilar 1
+- **Peligro aprendido** (`ida/core/peligro.py`):
+  - daño por contacto y daño dormido;
+  - alcance;
+  - emisores por contingencia (el individuo descubre que las flechas vienen de los esqueletos).
+
+  La base calcula el peligro solo cuando el mundo no da el suyo.
+- **`Afrontar`** (S1): decide si luchar o huir según la salud y la eficacia aprendida. Además, puede pedir un arma al planificador como meta instrumental.
+- **Borradas de Crafter** `DefensaArmada`, `CerrarDistancia`, `PELIGRO_MANUAL` y la atribución del daño por geometría. `estrategias_propias()` de Crafter queda vacío: **pilar 1 cumplido**.
+- **Línea general:** 14,0–15,5 % de Crafter Score (antes, 12,8–13,6 %); `defeat_skeleton` del 0-0,5 % al 5-8 %.
+
 ### Fase de generalización en Crafter (pasos 2, 5, 0 y 3)
 - **Manual declarativo** (`ida/mundos/crafter_manual.json`, estricto y ampliado) con citas verificadas por `herramientas/verificar_manual.py`.
 - **Requisitos de acción y planificador general** (`PerseguirMetas`, S3), con inducción de requisitos, metas instrumentales y reutilización de lo construido.

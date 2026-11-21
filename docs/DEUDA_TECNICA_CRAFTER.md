@@ -98,3 +98,9 @@ Son pocos casos; solo si siguen pesando tras C.4.
   - diagnosticar en qué encuentros `Afrontar` huye y la lucha habría salido bien: reserva, previo de golpes y tasa de daño por latido de exposición;
   - corregirlo en la base, sin umbrales para un mundo.
 - **Cuidado:** las muertes por zombi + desgaste no han subido. Luchar más no debe subirlas (riesgo «luchar de más» del encargo).
+
+## 13. Guillotina lógica para evaluaciones reproducibles
+
+- **Qué pasa:** la guillotina corta por reloj, así que un solo latido cortado cambia una trayectoria; para las evaluaciones, conviene un plazo lógico (en operaciones) en lugar de en milisegundos.
+- **Dónde se vio:** en la comprobación de equivalencia del 6d (`paso6_D4.json`, semilla 31), un único latido cortado en el episodio 64 cambió la causa de muerte de ese episodio de flecha a zombi (167 pasos frente a 169), aunque la Score, el IC, los episodios y los 22 logros fueron idénticos a D2.
+
