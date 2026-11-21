@@ -90,7 +90,8 @@ NECESIDADES_BASE: Tuple[Necesidad, ...] = (
 @dataclass(frozen=True)
 class MecanismosMemoria:
     """Interruptores de los mecanismos de memoria del bloque E (decisiones 19 a 22) y de los del bloque F. Todos apagados:
-    IdA se comporta como ``base-v2.0``. Cada uno se activa por separado. (El paso 3, «proteger X», está siempre activo.)"""
+    IdA se comporta como ``base-v2.0``. Cada uno se activa por separado. (El paso 3, «proteger X», está siempre activo.)
+    También van aquí, apagados, los subpasos de la deuda 11, para medirlos uno contra otro."""
 
     buffer: bool = False          # E1: búfer diurno de tamaño fijo y episodio del día
     consolidacion: bool = False   # E2: al dormir (o al final de la vida), del búfer al grafo semántico
@@ -101,6 +102,8 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
+    # Deuda 11 (docs/ENCARGO_DEUDA11_SITIO.md): cuándo merece la pena perseguir un sitio para protegerse (``Recinto``).
+    factibilidad_temporal: bool = False   # 11a: solo se persigue un sitio que se completa antes de que llegue el peligro
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).

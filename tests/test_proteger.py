@@ -432,3 +432,111 @@ def test_dentro_de_un_recinto_no_se_huye():
     onda = SimpleNamespace(ef=lambda canal: {"recinto": recinto_dentro} if canal == "Recinto" else {})
     ctx = SimpleNamespace(onda=onda, arquetipo=SimpleNamespace(umbral_miedo=0.5))
     assert not Huir().elegible(ctx, "seguridad", 0.95)
+
+
+# --- deuda 11a: un sitio solo se persigue si se completa antes de que llegue el peligro ------------------
+def _con(mundo: MundoCueva, **interruptores: bool) -> MundoCueva:
+    from ida.core.mundo import MecanismosMemoria
+    mundo.perfil = replace(MundoCueva.perfil, mecanismos=MecanismosMemoria(**interruptores))
+    return mundo
+
+
+def _recintos(mundo: MundoCueva, mem: Memoria, latidos: int) -> Tuple[List[Dict[str, Any]], List[str]]:
+    """Carga de la pieza ``recinto`` y motivo de la acción ejecutada en cada latido."""
+    cargas: List[Dict[str, Any]] = []
+    motivos: List[str] = []
+
+    def al_latir(o, onda):
+        r = onda.reactiva.ef.get("Recinto", {}).get("recinto")
+        cargas.append(dict(r.carga) if r is not None else {})
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
+
+    _vivir(mundo, mem, latidos, al_latir)
+    return cargas, motivos
+
+
+def _lejos(luz: float, bajada: float) -> Tuple[MundoCueva, Memoria]:
+    """Una masa de roca al otro lado del campo (x ≤ 3), con el campo ya recordado: el sitio más barato (cavar 2 casillas en
+    ella y cerrar 1 acceso) cuesta 15 pasos desde la casilla de partida."""
+    roca = {(x, y) for x in range(1, 4) for y in range(1, 10)}
+    mundo = MundoCueva(_campo(ancho=18, roca=roca), (13, 5), luz=luz, bajada=bajada)
+    mem = _memoria(mundo, aprendida=True)
+    mem.casillas.update(mundo.mapa)
+    return mundo, mem
+
+
+def test_tiempo_disponible_y_holgura():
+    from ida.sistemas.proteger import MARGEN_TIEMPO, holgura, tiempo_disponible, umbral_peligro
+    assert tiempo_disponible(0.5, 0.01, 0.7) == pytest.approx(20.0)
+    assert tiempo_disponible(0.7, 0.01, 0.7) == 0.0                      # ya ha llegado al umbral
+    assert tiempo_disponible(0.75, -0.01, 0.7) == 0.0                    # aunque baje
+    assert tiempo_disponible(0.5, 0.0, 0.7) == float("inf")             # no sube
+    assert holgura(20.0, 10.0) == pytest.approx(20.0 - 10.0 * (1 + MARGEN_TIEMPO))
+    assert umbral_peligro([]) == 0.7 and umbral_peligro([0.5]) == 0.7     # el previo pesa 2
+    assert umbral_peligro([0.5, 0.5]) == pytest.approx(0.6) and umbral_peligro([0.5, 0.5, 0.5]) == 0.5
+
+
+def test_un_sitio_no_factible_no_se_persigue():
+    """El cobijo ya está en D* (déficit 0,75 ≥ 0,7): no queda tiempo, así que el sitio no se elige ni se piden cosas para
+    él. En el primer latido aún no hay impulso del latido anterior (tiempo infinito). Sin el interruptor, el mismo mundo
+    persigue el sitio y acaba dentro."""
+    mundo, mem = _lejos(25.0, 0.0)
+    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 20)
+    assert all(c.get("accion") is None and not c.get("requiere") and c.get("t_disponible") == 0.0 for c in cargas[1:]), cargas[1:3]
+    assert not any(m.startswith("proteger") for m in motivos[1:]), motivos
+    assert not mundo.encerrado()
+    apagado, mem_apagado = _lejos(25.0, 0.0)
+    cargas_apagado, motivos_apagado = _recintos(apagado, mem_apagado, 20)
+    assert "t_disponible" not in cargas_apagado[0]
+    assert sum(m.startswith("proteger") for m in motivos_apagado) > 10, motivos_apagado
+    assert apagado.encerrado()
+
+
+def test_un_sitio_en_curso_se_abandona_cuando_su_holgura_pasa_a_negativa():
+    """La luz baja 2 por latido desde 50 (déficit 0,5): al principio hay tiempo y el sitio se persigue; antes de completarlo,
+    el tiempo disponible baja del coste que le queda (con el margen) y, sin otro sitio factible, se abandona."""
+    mundo, mem = _lejos(50.0, 2.0)
+    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 20)
+    abandonos = [i for i, c in enumerate(cargas) if c.get("abandono") == "sitio"]
+    assert abandonos, cargas
+    i = abandonos[0]
+    assert all(c.get("accion") is not None for c in cargas[:i]), cargas[:i]
+    assert all(c["holgura"] >= 0 for c in cargas[:i] if c["holgura"] is not None)
+    assert 0 < cargas[i - 1]["coste"] < 15                  # se abandona a medio camino, con el coste que le queda
+    assert all(c.get("accion") is None and not c.get("requiere") for c in cargas[i:]), cargas[i:]
+    assert not any(m.startswith("proteger") for m in motivos[i:]), motivos[i:]
+    assert not mundo.encerrado()
+
+
+class MundoCuevaDanina(MundoCueva):
+    """Campo de suelo cerrado por muros que no se pueden cavar (sin sitio posible). La luz baja de 100 a 20 y vuelve a subir,
+    4 por latido (dos noches en 80 latidos), y con luz < 40 cada acción trae un daño atribuido a «sombra»."""
+
+    def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict) -> Efecto:
+        if self.luz - self.bajada < 20.0 or self.luz - self.bajada > 100.0:
+            self.bajada = -self.bajada
+        efecto = super().ejecutar(verbo, objetivo, datos)
+        if self.luz < 40.0:
+            efecto.delta = {**efecto.delta, "vitalidad": -1.0}
+            efecto.causa = "sombra"
+        return efecto
+
+
+def test_d_estrella_se_aprende_de_los_primeros_danos():
+    """Una observación por subida del cobijo: el déficit del primer daño atribuido (luz < 40, déficit ≈ 0,6). Tras dos
+    noches, D* = mediana(0,7, 0,7, o1, o2)."""
+    from ida.sistemas.proteger import umbral_peligro
+    mapa = {(x, y): "muro" for x in range(12) for y in range(10)}
+    mapa.update({(x, y): "suelo" for x in range(1, 11) for y in range(1, 9)})
+    mundo = _con(MundoCuevaDanina(mapa, (5, 5), luz=100.0, bajada=4.0), factibilidad_temporal=True)
+    mem = _memoria(mundo, aprendida=True)
+    mem.paso_bloqueado["muro"] = 1
+    cargas, _ = _recintos(mundo, mem, 85)
+    d = [c["d_estrella"] for c in cargas if "d_estrella" in c]
+    assert d[0] == 0.7
+    cambios = [x for i, x in enumerate(d) if i and x != d[i - 1]]
+    assert len(cambios) == 1, cambios                     # la 1.ª observación no mueve la mediana; la 2.ª, sí
+    o = 2 * cambios[0] - 0.7                              # mediana de (0,7, 0,7, o1, o2) con o1 ≈ o2 < 0,7
+    assert 0.5 < cambios[0] < 0.7 and 0.3 < o < 0.7, (cambios, o)
+    assert umbral_peligro([0.62, 0.62]) == pytest.approx(0.66)

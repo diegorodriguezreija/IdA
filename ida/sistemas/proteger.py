@@ -27,6 +27,8 @@ Lo que **no** se escribe: ninguna secuencia de fases. Que hacen falta 2 casillas
 sale del buscador: con una sola, entrar deja de espaldas al acceso y no hay forma de girarse hacia él sin salir.
 """
 
+import math
+import statistics
 from collections import deque
 from dataclasses import dataclass
 from typing import Any, Callable, Deque, Dict, FrozenSet, Hashable, Iterable, List, Optional, Set, Tuple
@@ -51,6 +53,11 @@ MARGEN_SITIO_MIN = 3.0    # ...y al menos 3 pasos menos
 BONO_HOGAR = 5.0          # preferencia por el recinto recordado (hogar), en pasos
 COSTE_SIN_SITIO = 3 * ALCANCE_SITIO   # horizonte del cobijo sin ningún sitio posible: estimación alta (ir y volver al
                                       # alcance de búsqueda y otro tanto para conseguir material, cavar y cerrar)
+# Deuda 11a (``docs/ENCARGO_DEUDA11_SITIO.md``), interruptor ``factibilidad_temporal``: factibilidad en el tiempo.
+MARGEN_TIEMPO = 0.2       # holgura = T_disponible − coste · (1 + MARGEN_TIEMPO) (declarado)
+UMBRAL_PREVIO = 0.7       # previo de D*, el déficit del cobijo al que llega el peligro: una necesidad «casi apurada» (declarado)
+PESO_UMBRAL_PREVIO = 2    # ...con peso 2 (cuenta como dos observaciones)
+VENTANA_UMBRAL = 5        # D* es la mediana del previo y de las últimas 5 observaciones (una por subida del cobijo)
 
 
 # --- percepción ----------------------------------------------------------------------------------
@@ -491,6 +498,35 @@ def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist
     return True
 
 
+# --- deuda 11a: ¿se completa el sitio antes de que llegue el peligro? ----------------------------------
+def umbral_peligro(observados: List[float]) -> float:
+    """D*: el déficit del cobijo al que llega el peligro. Mediana del previo (``UMBRAL_PREVIO``, con peso
+    ``PESO_UMBRAL_PREVIO``) y de las últimas ``VENTANA_UMBRAL`` observaciones de la vida."""
+    return float(statistics.median([UMBRAL_PREVIO] * PESO_UMBRAL_PREVIO + list(observados[-VENTANA_UMBRAL:])))
+
+
+def tiempo_disponible(deficit: float, tendencia: float, umbral: float) -> float:
+    """Latidos hasta que el déficit del cobijo llegue a ``umbral`` (D*) al ritmo de su tendencia: 0 si ya ha llegado;
+    infinito si no sube."""
+    if deficit >= umbral:
+        return 0.0
+    if tendencia <= 0.0:
+        return math.inf
+    return (umbral - deficit) / tendencia
+
+
+def holgura(t_disponible: float, coste: float) -> float:
+    """Lo que sobra de tiempo tras completar un sitio de ``coste`` pasos, con un margen (``MARGEN_TIEMPO``)."""
+    return t_disponible - coste * (1.0 + MARGEN_TIEMPO)
+
+
+def _dano_atribuido(ctx: Contexto) -> bool:
+    """La acción del latido anterior trajo un daño atribuido a algo (``Efecto.causa``)."""
+    previa = ctx.onda.ei("Accion").get("Accion")
+    c = previa.carga if previa is not None else {}
+    return bool(c.get("causa")) and float((c.get("delta") or {}).get("vitalidad", 0.0)) < 0.0
+
+
 def _abrir(modelo: Modelo, interior: Tuple[Pos, ...], aqui: Pos) -> List[Dict[str, Any]]:
     """Cómo salir del recinto: COGER sobre una pared que se pueda cavar y esté al lado (primero las que cerró el propio
     individuo); si ninguna está al lado, MOVER a la casilla interior que tiene una (COGER solo actúa sobre lo vecino)."""
@@ -513,7 +549,14 @@ class Recinto(Componente):
     alostasis del cobijo) y su confianza (tasas estimadas de las acciones de cavar y cerrar), y las paredes que se pueden
     abrir. Evalúa todos los candidatos cada ``CADA_EVALUACION`` latidos o cuando cambia el inventario; entretanto, replanifica
     solo el sitio actual.
-    Histéresis: otro sitio sustituye al actual solo si es claramente más barato."""
+    Histéresis: otro sitio sustituye al actual solo si es claramente más barato.
+
+    **Factibilidad en el tiempo** (deuda 11a, interruptor ``factibilidad_temporal``): un sitio solo se elige o se mantiene
+    si se completa antes de que el cobijo llegue al déficit en que aparece el peligro (D*, aprendido: ``_aprender_umbral``).
+    ``T_disponible`` = (D* − déficit) / tendencia, con el déficit y la tendencia del cobijo que calcula la alostasis
+    (``Impulso``, latido anterior); holgura = T_disponible − coste · (1 + ``MARGEN_TIEMPO``), con el coste que le queda.
+    Si el sitio en curso pasa a holgura negativa y no hay otro factible, se abandona: no hay sitio ni requisitos, así que
+    ``Proteger`` no propone ni pide."""
 
     tipo = "Recinto"
     entradas = ("Propiocepcion",)
@@ -528,6 +571,36 @@ class Recinto(Componente):
         self._inventario: Dict[str, float] = {}
         self._planes: Dict[Any, Optional[List[Accion]]] = {}     # caché de planes locales (coste de cálculo)
         self._planificador = PerseguirMetas()
+        # Deuda 11a: D* de esta vida (observaciones, sin herencia) y el tiempo disponible de este latido.
+        self._umbrales: List[float] = []
+        self._armado = True               # la subida del cobijo en curso aún no ha dado su observación de D*
+        self._t = math.inf
+        self._abandono = ""               # "sitio" o "requisitos" si en este latido se abandona el sitio en curso
+
+    def _factible(self, coste: float) -> bool:
+        return self._t == math.inf or holgura(self._t, coste) >= 0.0
+
+    def _aprender_umbral(self, ctx: Contexto, deficit: float, tendencia: float) -> None:
+        """D* se aprende por contingencia, como la aliestesia: a qué déficit del cobijo aparece el peligro. En cada subida
+        del cobijo (tendencia > 0, déficit > 0), el déficit del primer latido con un daño atribuido a algo o con un peligro
+        percibido por encima del umbral de miedo (``riesgo_exterior``) es una observación. Cuando el cobijo deja de subir,
+        la subida siguiente vuelve a contar."""
+        if tendencia <= 0.0:
+            self._armado = True
+            return
+        if self._armado and deficit > 0.0 and (riesgo_exterior(ctx) > 0.0 or _dano_atribuido(ctx)):
+            self._umbrales.append(deficit)
+            self._armado = False
+
+    def _tiempo(self, ctx: Contexto) -> Tuple[float, float]:
+        """Tiempo disponible y D* en este latido (deuda 11a). Sin impulso de cobijo, tiempo infinito."""
+        p = ctx.onda.ei("Impulso").get(COBIJO)
+        if p is None or "deficit" not in p.carga:
+            return math.inf, umbral_peligro(self._umbrales)
+        deficit, tendencia = float(p.carga["deficit"]), float(p.carga.get("tendencia", 0.0))
+        self._aprender_umbral(ctx, deficit, tendencia)
+        d = umbral_peligro(self._umbrales)
+        return tiempo_disponible(deficit, tendencia, d), d
 
     def reactiva(self, ctx: Contexto) -> None:
         if not ctx.con_experiencia or not ctx.memoria.activa:
@@ -539,6 +612,12 @@ class Recinto(Componente):
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
             self._ultimo_requisitos, self._sel_requisitos, self._planificador = -10**9, None, PerseguirMetas()
             self._planes.clear()
+            self._umbrales, self._armado = [], True
+        factibilidad = ctx.perfil.mecanismos.factibilidad_temporal
+        self._t, self._abandono = math.inf, ""
+        d_estrella = UMBRAL_PREVIO
+        if factibilidad:
+            self._t, d_estrella = self._tiempo(ctx)
         cara = orientacion(ctx)
         inv = inventario(ctx)
         objetos = ctx.memoria._objetos(inv)
@@ -551,6 +630,9 @@ class Recinto(Componente):
         dentro = recinto_actual(modelo, aqui)
         carga: Dict[str, Any] = {"dentro": dentro is not None, "interior": list(dentro or ()), "coste": None, "confianza": 0.0,
                                  "accion": None, "explicacion": "", "abrir": [], "requiere": {}}
+        if factibilidad:      # T_disponible None = infinito; holgura del sitio que se informa (None sin sitio o con T infinito)
+            carga.update(t_disponible=None if self._t == math.inf else round(self._t, 2), d_estrella=round(d_estrella, 4),
+                         holgura=None, abandono="")
         if dentro is not None:
             if ctx.perfil.hogar:
                 ctx.memoria.recordar_lugar(ctx.observacion.ubicacion if ctx.observacion else "", 1.0)
@@ -567,9 +649,15 @@ class Recinto(Componente):
                 carga.update(coste=round(sitio.coste, 2), confianza=round(self._confianza(ctx, modelo, sitio), 4), accion=accion,
                              interior=list(sitio.interior), explicacion=self._explicar(sitio, accion))
         elif sitio is None:
+            if self._sel_requisitos is not None and not self._factible(float(self._sel_requisitos["coste"])):
+                self._ultimo_requisitos = -10**9       # 11a, regla 2: lo elegido deja de ser factible, se reevalúa ya
             if ctx.latido - self._ultimo_requisitos >= CADA_EVALUACION:     # sin elección, tampoco se rehace antes
                 self._sel_requisitos = self._requisitos(ctx, modelo, aqui, cara, dist, previo, hogar)
             carga.update(self._sel_requisitos or {})
+        if factibilidad:
+            if carga["coste"] is not None and self._t != math.inf:
+                carga["holgura"] = round(holgura(self._t, float(carga["coste"])), 2)
+            carga["abandono"] = self._abandono
         self.registrar(ctx, self.pieza(ctx, "recinto", arousal=0.0, carga=carga))
 
     def _coste_objeto(self, ctx: Contexto, objeto: str, inv: Dict[str, float], cache: Dict[str, Optional[float]]) -> Optional[float]:
@@ -620,6 +708,7 @@ class Recinto(Componente):
         previa = self._sel_requisitos
         elegido: Optional[Tuple[Sitio, Dict[str, float]]] = None
         anterior: Optional[Tuple[Sitio, Dict[str, float]]] = None
+        previa_infactible = False
         for s in candidatos(con_herramientas, aqui, dist, hogar, cierre[0] if cierre else None)[:CANDIDATOS_EXACTOS]:
             clases = sorted({modelo.casillas[p] for p in s.excavar if modelo.casillas.get(p) in coste_cavar})
             if (s.falta == 0 and not clases) or not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes):
@@ -632,7 +721,11 @@ class Recinto(Componente):
                 for k, n in cierre[1].requiere:
                     requiere[k] = requiere.get(k, inv.get(k, 0.0)) + s.falta * n
             s.coste += s.falta * (cierre[0] if cierre else 0.0) + sum(coste_cavar[c] for c in clases)
-            if previa is not None and list(s.interior) == previa["interior"]:
+            es_previa = previa is not None and list(s.interior) == previa["interior"]
+            if not self._factible(s.coste):       # 11a, reglas 1 y 2: no se completa a tiempo (con lo que le queda)
+                previa_infactible = previa_infactible or es_previa
+                continue
+            if es_previa:
                 anterior = (s, requiere)
             if elegido is None or s.coste < elegido[0].coste:
                 elegido = (s, requiere)
@@ -640,6 +733,8 @@ class Recinto(Componente):
                 elegido[0].coste > anterior[0].coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * anterior[0].coste):
             elegido = anterior
         if elegido is None:
+            if previa_infactible:
+                self._abandono = "requisitos"     # 11a, regla 3: ni el de antes ni otro llegan a tiempo
             return None
         s, requiere = elegido
         donde = "+".join(f"{x},{y}" for x, y in s.interior)
@@ -655,6 +750,9 @@ class Recinto(Componente):
             actual = self._reconstruir(modelo, self._sitio, dist, hogar)
             if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes):
                 actual = None
+        abandonado = False
+        if actual is not None and not self._factible(actual.coste):
+            actual, abandonado = None, True       # 11a, regla 2: con el coste que le queda ya no llega a tiempo
         perdido = self._sitio is not None and actual is None
         if ctx.latido - self._ultima < CADA_EVALUACION and not perdido:
             return actual          # sin sitio, tampoco se busca otro hasta la próxima evaluación
@@ -665,9 +763,13 @@ class Recinto(Componente):
                 continue
             if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes) and (mejor is None or s.coste < mejor.coste):
                 mejor = s
+        if mejor is not None and not self._factible(mejor.coste):
+            mejor = None          # 11a, regla 1: el más barato no llega a tiempo, así que ninguno
         if actual is not None and (mejor is None or mejor.coste > actual.coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * actual.coste)):
             mejor = actual
         self._sitio = mejor.interior if mejor is not None else None
+        if abandonado and mejor is None:
+            self._abandono = "sitio"              # 11a, regla 3: no hay otro factible
         return mejor
 
     @staticmethod
