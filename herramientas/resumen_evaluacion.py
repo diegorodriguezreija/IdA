@@ -26,6 +26,306 @@ def formatear_float_es(valor: float, decimales: int = 2) -> str:
 
 
 # =====================================================================
+# Informe Cierre Paso 3: Proteger X (refugio general en base)
+# =====================================================================
+
+CONDICIONES_CIERRE_PASO3 = [
+    {
+        "id": "C1",
+        "nombre": "C1",
+        "columna": "C1",
+        "archivo": "cierre0_C1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "L1a",
+        "nombre": "L1a",
+        "columna": "L1a",
+        "archivo": "paso3_L1a.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos proteger"
+        ),
+    },
+    {
+        "id": "F1",
+        "nombre": "F1",
+        "columna": "F1",
+        "archivo": "paso3_F1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "C3",
+        "nombre": "C3",
+        "columna": "C3",
+        "archivo": "cierre0_C3.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "L1c",
+        "nombre": "L1c",
+        "columna": "L1c",
+        "archivo": "paso3_L1c.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos proteger"
+        ),
+    },
+    {
+        "id": "F2",
+        "nombre": "F2",
+        "columna": "F2",
+        "archivo": "paso3_F2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "C2",
+        "nombre": "C2",
+        "columna": "C2",
+        "archivo": "cierre0_C2.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto",
+    },
+    {
+        "id": "L2",
+        "nombre": "L2",
+        "columna": "L2",
+        "archivo": "paso3_L2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --mecanismos proteger"
+        ),
+    },
+    {
+        "id": "F3",
+        "nombre": "F3",
+        "columna": "F3",
+        "archivo": "paso3_F3.json",
+        "opciones": "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto",
+    },
+]
+
+
+def cargar_datos_cierre_paso3() -> Dict[str, Dict[str, Any]]:
+    datos = {}
+    for c in CONDICIONES_CIERRE_PASO3:
+        ruta = os.path.join(DATOS_DIR, c["archivo"])
+        with open(ruta, "r", encoding="utf-8") as f:
+            datos[c["id"]] = json.load(f)
+    return datos
+
+
+def generar_tabla_general_cierre_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_CIERRE_PASO3]
+    ids = [c["id"] for c in CONDICIONES_CIERRE_PASO3]
+
+    scores = [f"**{formatear_float_es(datos[cid]['score'])}**" for cid in ids]
+    ics = [
+        f"[{formatear_float_es(datos[cid]['score_ci_95'][0])}, {formatear_float_es(datos[cid]['score_ci_95'][1])}]"
+        for cid in ids
+    ]
+    episodios = [str(datos[cid]["episodios"]) for cid in ids]
+    pasos_ep = [
+        formatear_float_es(datos[cid]["pasos"] / datos[cid]["episodios"], 1)
+        for cid in ids
+    ]
+    ms_paso = [formatear_float_es(datos[cid]["ms_por_paso"]) for cid in ids]
+    cort = [cortados(datos[cid]) for cid in ids]
+
+    lineas = [
+        "## 1. Tabla general",
+        "",
+        f"| Métrica | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+        f"| **Score (%)** | {' | '.join(scores)} |",
+        f"| **IC 95 % (%)** | {' | '.join(ics)} |",
+        f"| **Episodios** | {' | '.join(episodios)} |",
+        f"| **Pasos por episodio** | {' | '.join(pasos_ep)} |",
+        f"| **ms por paso** | {' | '.join(ms_paso)} |",
+        f"| **Latidos cortados** | {' | '.join(cort)} |",
+    ]
+    return "\n".join(lineas)
+
+
+def generar_tasas_logros_cierre_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_CIERRE_PASO3]
+    lineas = [
+        "## 2. Tasas por logro (%)",
+        "",
+        "Porcentaje de episodios donde se obtuvo cada uno de los 22 logros oficiales de Crafter:",
+        "",
+        f"| Logro | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todos_logros = sorted(datos["C1"]["tasas_logros"].keys())
+    ids = [c["id"] for c in CONDICIONES_CIERRE_PASO3]
+    for logro in todos_logros:
+        valores = [formatear_float_es(datos[cid]["tasas_logros"].get(logro, 0.0)) for cid in ids]
+        lineas.append(f"| `{logro}` | {' | '.join(valores)} |")
+    return "\n".join(lineas)
+
+
+def generar_causas_muerte_cierre_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_CIERRE_PASO3]
+    lineas = [
+        "## 3. Causas de muerte por condición",
+        "",
+        "Número de episodios y porcentaje sobre el total de episodios de cada condición:",
+        "",
+        f"| Causa | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todas_causas = sorted(
+        {causa for d in datos.values() for causa in d["causas_muerte"]},
+        key=lambda x: (x == "cortado por presupuesto", x),
+    )
+    ids = [c["id"] for c in CONDICIONES_CIERRE_PASO3]
+    for causa in todas_causas:
+        cols = []
+        for cid in ids:
+            d = datos[cid]
+            n = d["causas_muerte"].get(causa, 0)
+            pct = formatear_float_es((n / d["episodios"]) * 100.0, 1)
+            cols.append(f"{n} ({pct} %)")
+        lineas.append(f"| `{causa}` | {' | '.join(cols)} |")
+    totales = [str(datos[cid]["episodios"]) for cid in ids]
+    lineas.append(f"| **Total episodios** | **{'** | **'.join(totales)}** |")
+    return "\n".join(lineas)
+
+
+def generar_comparaciones_cierre_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
+    lineas = [
+        "## 4. Comparaciones",
+        "",
+        "Diferencias de Crafter Score (en puntos porcentuales) y comprobación de solapamiento de intervalos de confianza al 95 %:",
+        "",
+    ]
+
+    def comparar(nom_a: str, id_a: str, nom_b: str, id_b: str) -> str:
+        da, db = datos[id_a], datos[id_b]
+        diff = da["score"] - db["score"]
+        signo = "+" if diff >= 0 else ""
+        diff_str = f"{signo}{formatear_float_es(diff)} pp"
+        ic_a = (da["score_ci_95"][0], da["score_ci_95"][1])
+        ic_b = (db["score_ci_95"][0], db["score_ci_95"][1])
+        solapa = se_solapan(ic_a, ic_b)
+        solapa_str = "Sí" if solapa else "No"
+        ic_a_str = f"[{formatear_float_es(ic_a[0])}, {formatear_float_es(ic_a[1])}] %"
+        ic_b_str = f"[{formatear_float_es(ic_b[0])}, {formatear_float_es(ic_b[1])}] %"
+        return (
+            f"- **{nom_a} frente a {nom_b}**:\n"
+            f"  - Score {nom_a}: {formatear_float_es(da['score'])} % (IC 95 %: {ic_a_str})\n"
+            f"  - Score {nom_b}: {formatear_float_es(db['score'])} % (IC 95 %: {ic_b_str})\n"
+            f"  - Diferencia de Score ({nom_a} - {nom_b}): {diff_str}\n"
+            f"  - ¿Se solapan los IC 95 %?: **{solapa_str}**"
+        )
+
+    # 1. F1 frente a C1 y a L1a
+    lineas.append("### F1 frente a C1 y a L1a (semilla 31, sin estrategias propias)")
+    lineas.append(comparar("F1", "F1", "C1", "C1"))
+    lineas.append("")
+    lineas.append(comparar("F1", "F1", "L1a", "L1a"))
+    lineas.append("")
+
+    # 2. F2 frente a C3 y a L1c
+    lineas.append("### F2 frente a C3 y a L1c (semilla 32, sin estrategias propias)")
+    lineas.append(comparar("F2", "F2", "C3", "C3"))
+    lineas.append("")
+    lineas.append(comparar("F2", "F2", "L1c", "L1c"))
+    lineas.append("")
+
+    # 3. F3 frente a C2 y a L2
+    lineas.append("### F3 frente a C2 y a L2 (semilla 31, con estrategias propias)")
+    lineas.append(comparar("F3", "F3", "C2", "C2"))
+    lineas.append("")
+    lineas.append(comparar("F3", "F3", "L2", "L2"))
+    lineas.append("")
+
+    return "\n".join(lineas)
+
+
+def generar_comprobacion_reproducibilidad() -> str:
+    lineas = [
+        "## 5. Comprobación de reproducibilidad (Punto 1)",
+        "",
+        "Se comprobó la reproducibilidad de la medición de referencia antigua C1 ejecutando el commit `1ecf254` "
+        "(rama `feature/cierre-paso0`) con las opciones exactas originales y guardando el resultado en `datos/evaluacion/repro_C1.json`:",
+        "",
+        "```bash",
+        "python herramientas\\evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial "
+        "--sin-herencia --sin-estrategias-propias --manual estricto --salida datos\\evaluacion\\repro_C1.json",
+        "```",
+        "",
+        "Al comparar `repro_C1.json` con `origin/feature/cierre-paso0:datos/evaluacion/cierre0_C1.json`, "
+        "ignorando `tiempo_segundos` y `ms_por_paso`, **TODOS los demás campos son estrictamente idénticos**:",
+        "- Score: 11,29 %",
+        "- IC 95 %: [10,44, 12,01] %",
+        "- Episodios: 416 (240,4 pasos/episodio)",
+        "- Tasas de los 22 logros oficiales: exactamente iguales en todos los logros.",
+        "- Causas de muerte: exactamente iguales en todas las causas.",
+        "- Diferencias de reloj: 1.094,6 s (10,95 ms/paso) frente a 1.035,0 s (10,35 ms/paso).",
+        "",
+        "El fichero `repro_C1.json` no contiene rutas locales y se incluye en el repositorio.",
+    ]
+    return "\n".join(lineas)
+
+
+def generar_informe_cierre_paso3() -> str:
+    datos = cargar_datos_cierre_paso3()
+    cabecera = [
+        "# Medición Oficial: Cierre del Paso 3 (Crafter)",
+        "",
+        "Evaluación oficial en Crafter (100.000 pasos, vista oficial, sin herencia, manual estricto) "
+        "en la rama `feature/proteger` (commit `c62b1c5`). "
+        "Evalúa el cierre del Paso 3: la capacidad general «proteger X» (el refugio general) "
+        "integrada en la base del framework (`ida/`).",
+        "",
+        "Ficheros de datos utilizados (en `datos/evaluacion/`):",
+        "- `cierre0_C1.json`: C1 (Cierre Paso 0, sin estrategias propias, semilla 31)",
+        "- `paso3_L1a.json`: L1a (Paso 3 exploratorio, sin estrategias propias, mecanismo proteger, semilla 31)",
+        "- `paso3_F1.json`: F1 (Cierre Paso 3, sin estrategias propias, refugio general en base, semilla 31)",
+        "- `cierre0_C3.json`: C3 (Cierre Paso 0, sin estrategias propias, semilla 32)",
+        "- `paso3_L1c.json`: L1c (Paso 3 exploratorio, sin estrategias propias, mecanismo proteger, semilla 32)",
+        "- `paso3_F2.json`: F2 (Cierre Paso 3, sin estrategias propias, refugio general en base, semilla 32)",
+        "- `cierre0_C2.json`: C2 (Cierre Paso 0, con estrategias propias restantes, semilla 31)",
+        "- `paso3_L2.json`: L2 (Paso 3 exploratorio, con estrategias propias restantes, mecanismo proteger, semilla 31)",
+        "- `paso3_F3.json`: F3 (Cierre Paso 3, con estrategias propias restantes, refugio general en base, semilla 31)",
+        "",
+        "### Control de latidos cortados (guillotina de 100 ms)",
+        "",
+        "Criterio de validez: una medición es válida si registra 10 latidos cortados o menos "
+        "(menos del 0,01 % de los latidos). En las mediciones de cierre:",
+        "- **F1**: 4 latidos cortados en 4 episodios (0,004 % de los latidos). "
+        "Se adopta como definitiva esta segunda ejecución (Score 12,82 %, 380 episodios). "
+        "La primera ejecución registró 1 latido cortado en 1 episodio (Score 12,85 %, 379 episodios).",
+        "- **F2**: 6 latidos cortados en 4 episodios (0,006 % de los latidos; Score 13,58 %, 380 episodios).",
+        "- **F3**: 1 latido cortado en 1 episodio (0,001 % de los latidos; Score 13,80 %, 358 episodios).",
+        "- **C1, C3, C2, L1a, L1c, L2**: anteriores a la instrumentación de conteo de cortes (`no registrado`).",
+        "",
+    ]
+    partes = [
+        "\n".join(cabecera),
+        generar_tabla_general_cierre_paso3(datos),
+        generar_tasas_logros_cierre_paso3(datos),
+        generar_causas_muerte_cierre_paso3(datos),
+        generar_comparaciones_cierre_paso3(datos),
+        generar_comprobacion_reproducibilidad(),
+    ]
+    return "\n\n---\n\n".join(partes) + "\n"
+
+
+# =====================================================================
 # Informe Paso 3: Proteger X (el refugio general)
 # =====================================================================
 
@@ -906,9 +1206,14 @@ def generar_markdown_oficial() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--cierre-paso3",
+        action="store_true",
+        help="Genera el informe de cierre del Paso 3 (MEDICION_CIERRE_PASO3.md, por defecto)",
+    )
+    parser.add_argument(
         "--paso3",
         action="store_true",
-        help="Genera el informe del Paso 3 (MEDICION_PASO3.md, por defecto)",
+        help="Genera el informe exploratorio del Paso 3 (MEDICION_PASO3.md)",
     )
     parser.add_argument(
         "--cierre-paso0",
@@ -939,8 +1244,10 @@ def main() -> int:
         salida = generar_informe_paso5_paso0()
     elif args.cierre_paso0:
         salida = generar_informe_cierre_paso0()
-    else:
+    elif args.paso3:
         salida = generar_informe_paso3()
+    else:
+        salida = generar_informe_cierre_paso3()
 
     if args.salida:
         os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)
