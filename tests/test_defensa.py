@@ -357,3 +357,23 @@ def test_con_el_arma_ya_no_se_pide_y_se_lucha():
     mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
     acciones, _ = _decisiones(mundo, ("peligro_aprendido", "afrontar", "arma_instrumental"), mem, latidos=10)
     assert any(a["verbo"] == Verbo.ATACAR and a["motivo"].startswith("afrontar: atacar") for a in acciones)
+
+
+def test_no_se_pide_un_objeto_que_no_se_distingue():
+    """Bastón y cuerda siempre juntos en los derribos: los dos «reducen» los golpes, pero no se sabe cuál, y no se pide
+    ninguno. Con un derribo que los separa, el bastón se distingue y se pide."""
+    juntos = frozenset({"baston", "cuerda"})
+    derribos = {frozenset(): 5, juntos: 2}
+    mundo = MundoErizos(quieto=True, salud=70.0)
+    mundo.erizo = (5, 6)
+    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
+    assert set(mem.peligros.reductores()) == {"baston", "cuerda"} and mem.peligros.distinguibles() == set()
+    onda = _organismo(mundo, ("peligro_aprendido", "afrontar", "arma_instrumental"), mem).latir()
+    assert not onda.ef("Peticion")
+    mundo = MundoErizos(quieto=True, salud=70.0)
+    mundo.erizo = (5, 6)
+    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
+    mem.peligros.derribos["erizo"].append((frozenset({"baston"}), 2))
+    assert mem.peligros.distinguibles() == {"baston", "cuerda"}
+    onda = _organismo(mundo, ("peligro_aprendido", "afrontar", "arma_instrumental"), mem).latir()
+    assert set(onda.ef("Peticion")) == {"peticion:baston"}

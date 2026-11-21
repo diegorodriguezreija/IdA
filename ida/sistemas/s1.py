@@ -297,7 +297,8 @@ class Afrontar(Definicion):
     exposición), MOVER al lugar que más acerca; si daña solo por contacto, no se huye: se espera (ESPERAR) cuando le
     falta un paso para el contacto y, más lejos, no se propone nada.
     Con ``arma_instrumental`` (6c), si ninguna lucha es favorable pero lo sería con un objeto que reduce los golpes
-    (aprendido por contingencia, ``Peligros.reductores``), fase ``armarse``: pide ese objeto al planificador con la
+    (aprendido por contingencia, ``Peligros.reductores``, y que se distingue de los demás en los derribos: si dos se
+    llevaron siempre juntos no se pide ninguno), fase ``armarse``: pide ese objeto al planificador con la
     intensidad de Seguridad (``Definicion.pedir``) y, mientras tanto, hace lo que haría ``Huir`` (o ``Defenderse`` sin
     salida). Solo con el peligro calculado por la base (``ctx.extra["peligro_aprendido"]``).
 
@@ -345,7 +346,7 @@ class Afrontar(Definicion):
             elif ctx.perfil.mecanismos.arma_instrumental and valoradas:
                 principal = max(valoradas, key=lambda v: (v["pieza"].rasgo("peligro"), v["pieza"].id))
                 elegido: Optional[Tuple[str, Dict[str, Any]]] = None
-                for x in sorted(set(reductores) - llevados):
+                for x in sorted((set(reductores) - llevados) & ctx.memoria.peligros.distinguibles()):
                     w = self._valorar(ctx, principal["pieza"], aqui, salud, llevados | {x}, reductores)
                     if w is not None and w["margen"] > RESERVA and (elegido is None or w["golpes"] < elegido[1]["golpes"]):
                         elegido = (x, w)

@@ -20,6 +20,7 @@ Con ``Perfil.mecanismos.peligro_aprendido``, y solo en un mundo que da posicione
 - **eficacia de ataque**: golpes (ATACAR o COMER sobre una instancia adyacente) hasta que la instancia desaparece
   estando junto a uno (derribo), con los objetos que se llevaban. Un objeto **reduce** los golpes si, por contingencia
   entre llevarlo y los golpes por derribo, los derribos con él piden menos golpes que sin él (razón media entre clases).
+  Mientras dos objetos aparezcan siempre juntos en los derribos, no se distinguen (``distinguibles``).
 
 La **estimación** del rasgo ``peligro`` (revisión del 21/11/2026):
 
@@ -215,6 +216,16 @@ class Peligros:
                     razones.setdefault(x, []).append((sum(con) / len(con)) / (sum(sin) / len(sin)))
         medias = {x: sum(r) / len(r) for x, r in razones.items()}
         return {x: r for x, r in medias.items() if r < 1.0 - MARGEN_REDUCTOR}
+
+    def distinguibles(self) -> Set[str]:
+        """Objetos que se distinguen en los derribos: ningún otro aparece exactamente en los mismos (si dos objetos siempre se
+        llevan juntos, la experiencia no dice cuál de ellos reduce los golpes)."""
+        derribos = [kit for c in sorted(self.derribos) for kit, _ in self.derribos[c]]
+        objetos = sorted(set().union(*derribos)) if derribos else []
+        patrones: Dict[Tuple[bool, ...], List[str]] = {}
+        for x in objetos:
+            patrones.setdefault(tuple(x in kit for kit in derribos), []).append(x)
+        return {xs[0] for xs in patrones.values() if len(xs) == 1}
 
     def golpes(self, clase: str, objetos: Iterable[str], reductores: Optional[Dict[str, float]] = None) -> Tuple[float, int]:
         """Golpes estimados para derribar una ``clase`` llevando ``objetos``, y derribos de la clase en que se basa.
