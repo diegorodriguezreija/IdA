@@ -209,3 +209,67 @@ def test_viviendo_se_aprende_el_dano_por_contacto():
     assert mem.peligros.dano_golpe["erizo"].n >= 1
     assert abs(mem.peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
     assert mem.proposicion("erizo", Relacion.PELIGROSO) is not None
+
+
+# --- 6b: luchar o huir por evaluación ---------------------------------------------------------------------
+def _memoria_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int], eventos: int = 4) -> Memoria:
+    """Lo que ya se habría aprendido de los erizos: 20 de daño por golpe, 40 por encuentro, ``eventos`` daños en 20 latidos
+    de exposición y los derribos dados (objetos llevados -> golpes)."""
+    mem = Memoria()
+    mem.aplicar_manual(mundo.manual())
+    p = mem.peligros
+    p.dano_golpe["erizo"] = pel.Media(5, 20.0)
+    p.dano["erizo"] = pel.Media(5, 40.0)
+    p.expuestos["erizo"], p.eventos["erizo"] = 20, eventos
+    p.derribos["erizo"] = [(k, g) for k, g in golpes.items() for _ in range(2)]
+    return mem
+
+
+def _decisiones(mundo: MundoErizos, mecanismos: Tuple[str, ...], mem: Memoria, latidos: int = 5):
+    """Las acciones de unos latidos (el primero puede ser el reflejo de sobresalto) y las estrategias activas en cada uno."""
+    org = _organismo(mundo, mecanismos, mem)
+    acciones, activas = [], []
+    for _ in range(latidos):
+        if mundo.terminado():
+            break
+        onda = org.latir()
+        acciones.append(onda.reactiva.ef["Accion"]["Accion"].carga)
+        activas.append({p.carga["nombre"] for p in onda.estrategias.values()})
+    return acciones, activas
+
+
+def test_afrontar_lucha_con_margen():
+    """Un erizo que persigue: tras el sobresalto (3 latidos), con margen no se huye y se lucha hasta derribarlo."""
+    mundo = MundoErizos(salud=100.0)
+    mundo.erizo = (5, 6)
+    acciones, _ = _decisiones(mundo, ("peligro_aprendido", "afrontar"), _memoria_con_experiencia(mundo, {NADA: 3}), latidos=14)
+    atacar = [a for a in acciones if a["verbo"] == Verbo.ATACAR]
+    assert atacar and all(a["objetivo"] == "erizo_1" and a["motivo"].startswith("afrontar: atacar erizo") for a in atacar)
+    assert mundo.n == 2                       # el erizo cayó
+
+
+def test_afrontar_huye_sin_margen():
+    mundo = MundoErizos(quieto=True, salud=40.0)
+    mundo.erizo = (5, 6)
+    acciones, activas = _decisiones(mundo, ("peligro_aprendido", "afrontar"), _memoria_con_experiencia(mundo, {NADA: 3}))
+    assert not any(a["verbo"] == Verbo.ATACAR for a in acciones)
+    assert any(a["verbo"] == Verbo.MOVER and "huir" in a["motivo"] for a in acciones)
+    assert not any("afrontar" in x for x in activas)
+
+
+def test_sin_datos_de_eficacia_no_lucha():
+    """El previo de golpes es pesimista: con la tasa previa, la lucha no deja margen y se huye."""
+    mundo = MundoErizos(quieto=True, salud=100.0)
+    mundo.erizo = (5, 6)
+    mem = _memoria_con_experiencia(mundo, {})
+    mem.peligros.expuestos.clear()
+    mem.peligros.eventos.clear()
+    acciones, activas = _decisiones(mundo, ("peligro_aprendido", "afrontar"), mem, latidos=1)
+    assert not any("afrontar" in x for x in activas)
+
+
+def test_sin_el_interruptor_no_hay_afrontar():
+    mundo = MundoErizos(quieto=True, salud=100.0)
+    mundo.erizo = (5, 6)
+    _, activas = _decisiones(mundo, ("peligro_aprendido",), _memoria_con_experiencia(mundo, {NADA: 3}))
+    assert not any("afrontar" in x for x in activas)

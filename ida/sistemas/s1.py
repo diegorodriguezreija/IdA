@@ -15,7 +15,7 @@
 | Actuar      | Anticipacion   | Expectativa: cambio esperado de las necesidades si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
 
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada
 from ida.core.estrategia import Catalogo, Definicion, Propuesta
@@ -256,6 +256,132 @@ class Defenderse(Definicion):
         if amenaza is None or not al_alcance(amenaza):
             return None
         return Propuesta(Verbo.ATACAR, amenaza.id, acotar(0.75 + 0.25 * _peligro(ctx)), 0.7, f"defenderse de {amenaza.clase}", clase=amenaza.clase)
+
+
+RESERVA = 100.0 * 3.0 / 9.0   # paso 6b: vitalidad que una lucha debe dejar intacta (3 de 9, declarado)
+
+
+def _yo(ctx: Contexto) -> Optional[Tuple[int, int]]:
+    """Posición propia percibida (ubicación ``<nombre>_x_y``), o None."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    partes = str(yo.carga.get("ubicacion", "")).rsplit("_", 2) if yo is not None else []
+    if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]):
+        return int(partes[1]), int(partes[2])
+    return None
+
+
+def _objetos_llevados(ctx: Contexto) -> FrozenSet[str]:
+    """Lo que se lleva (inventario percibido), solo las claves que son objetos."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    inv = dict(yo.carga.get("inventario", {})) if yo is not None else {}
+    return frozenset(k for k, v in ctx.memoria._objetos(inv).items() if v >= 1.0)
+
+
+def objetos_peligrosos(ctx: Contexto) -> List[Pieza]:
+    """Los Objetos con peligro (orden estable)."""
+    return sorted((o for o in objetos(ctx) if o.rasgo("peligro") > 0.0), key=lambda o: o.id)
+
+
+class Afrontar(Definicion):
+    """Seguridad (paso 6b, ``Perfil.mecanismos.afrontar``): luchar o huir por evaluación, con lo aprendido en 6a
+    (``ida.core.peligro``). Para cada amenaza percibida (un Objeto con peligro y posición):
+
+    - golpes para derribarla con lo que se lleva (aprendido; previo pesimista sin datos), pasos hasta el contacto
+      (distancia − 1) y exposición = golpes + pasos;
+    - daño recibido = daño por golpe × exposición × tasa de daño por latido de exposición (aprendidos);
+    - margen = salud − daño recibido; beneficio = el peligro que elimina + 1 si derribarla es una meta pendiente
+      del manual (ATACAR sobre su clase).
+
+    Lucha (fase ``luchar``) contra la de mayor beneficio con margen > ``RESERVA`` y beneficio > 0: ATACAR si está en
+    contacto; si no y su alcance es mayor que el contacto (un emisor: huir no lo reduce y acercarse acorta la
+    exposición), MOVER al lugar que más acerca; si daña solo por contacto, no se huye: se espera (ESPERAR) cuando le
+    falta un paso para el contacto y, más lejos, no se propone nada.
+    Solo con el peligro calculado por la base (``ctx.extra["peligro_aprendido"]``).
+
+    Compite con ``Huir`` por el impulso de Seguridad: la elige ``Estrategia`` por su prioridad cuando es elegible, es
+    decir, cuando la evaluación es favorable."""
+
+    nombre = "afrontar"
+    impulsos = (SEGURIDAD,)
+    prioridad = 50
+    LUCHAR = "luchar"
+
+    @staticmethod
+    def _valorar(ctx: Contexto, o: Pieza, aqui: Tuple[int, int], salud: float, llevados: FrozenSet[str],
+                 reductores: Dict[str, float]) -> Optional[Dict[str, Any]]:
+        pos = _posicion(ctx, o.id)
+        if pos is None or len(pos) != 2:
+            return None
+        mem = ctx.memoria
+        pel = mem.peligros
+        d = int(abs(pos[0] - aqui[0]) + abs(pos[1] - aqui[1]))
+        golpes, n_golpes = pel.golpes(o.clase, llevados, reductores)
+        tasa, n_tasa = pel.tasa(o.clase)
+        exposicion = golpes + max(0, d - 1)
+        recibido = pel.dano_por_golpe(o.clase, mem.peligrosa) * exposicion * tasa
+        meta = mem.metas.get((Verbo.ATACAR, o.clase))
+        beneficio = o.rasgo("peligro") + (1.0 if meta is not None and not meta.conseguida else 0.0)
+        return {"pieza": o, "d": d, "golpes": golpes, "n_golpes": n_golpes, "tasa": tasa, "n_tasa": n_tasa,
+                "margen": salud - recibido, "beneficio": beneficio, "alcance": pel.alcance(o.clase, mem.peligrosa)}
+
+    def evaluar(self, ctx: Contexto) -> Optional[Dict[str, Any]]:
+        """La decisión del latido (se calcula una vez): ``{"fase", "valoracion", "objeto"}`` o None."""
+        if "afrontar" in ctx.extra:
+            return cast(Optional[Dict[str, Any]], ctx.extra["afrontar"])
+        res: Optional[Dict[str, Any]] = None
+        aqui = _yo(ctx)
+        if ctx.perfil.mecanismos.afrontar and ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
+            salud = float(ctx.soma.vitalidad)
+            llevados = _objetos_llevados(ctx)
+            reductores = ctx.memoria.peligros.reductores()
+            valoradas = [v for o in objetos_peligrosos(ctx) if (v := self._valorar(ctx, o, aqui, salud, llevados, reductores)) is not None]
+            favorables = [v for v in valoradas if v["margen"] > RESERVA and v["beneficio"] > 0.0]
+            if favorables:
+                v = max(favorables, key=lambda v: (v["beneficio"], -v["d"], v["pieza"].id))
+                res = {"fase": self.LUCHAR, "valoracion": v, "objeto": None}
+        ctx.extra["afrontar"] = res
+        return res
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return intensidad > 0.0 and self.evaluar(ctx) is not None
+
+    def paso(self, ctx: Contexto, estrategia: Pieza) -> Any:
+        e = self.evaluar(ctx)
+        return e["fase"] if e is not None else estrategia.carga.get("paso", 0)
+
+    @staticmethod
+    def _confianza(v: Dict[str, Any]) -> float:
+        n = min(v["n_golpes"] / (v["n_golpes"] + 2.0), v["n_tasa"] / (v["n_tasa"] + 2.0))
+        return acotar(0.5 + 0.45 * n)
+
+    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
+        e = self.evaluar(ctx)
+        if e is None:
+            return None
+        v = e["valoracion"]
+        o = v["pieza"]
+        intensidad = _peligro(ctx)
+        urgencia = acotar(0.75 + 0.25 * intensidad)      # la misma escala que Huir y Defenderse
+        cifras = f"golpes {v['golpes']:.1f}, margen {v['margen']:.0f}, beneficio {v['beneficio']:.2f}"
+        if v["d"] <= 1:
+            return Propuesta(Verbo.ATACAR, o.id, urgencia, self._confianza(v), f"afrontar: atacar {o.clase} ({cifras})", clase=o.clase)
+        if v["alcance"] <= 1:
+            if v["d"] == 2 and Verbo.ESPERAR in ctx.verbos:     # le falta un paso para el contacto: esperarla, no irse
+                return Propuesta(Verbo.ESPERAR, "", urgencia, self._confianza(v), f"afrontar: esperar a {o.clase} ({cifras})")
+            return None
+        meta = _posicion(ctx, o.id)
+        aqui = _yo(ctx)
+        if meta is None or aqui is None:
+            return None
+        ahora = abs(meta[0] - aqui[0]) + abs(meta[1] - aqui[1])
+        pasos = [(abs(meta[0] - pos[0]) + abs(meta[1] - pos[1]), lugar.rasgo("peligro"), lugar.id, lugar)
+                 for lugar in _lugares_permitidos(ctx) if (pos := _posicion(ctx, lugar.id)) is not None and len(pos) == 2]
+        cerca = [x for x in pasos if x[0] < ahora]
+        if not cerca:
+            return None
+        lugar = min(cerca, key=lambda x: x[:3])[3]
+        return Propuesta(Verbo.MOVER, lugar.id, urgencia, self._confianza(v),
+                         f"afrontar: acercarse a {o.clase} (alcance {v['alcance']}, {cifras})", clase=lugar.clase)
 
 
 class Sobresalto(Definicion):
@@ -548,7 +674,8 @@ class Alimentarse(Definicion):
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger(), SalirDelRecinto()]
+    return [Huir(), Defenderse(), Afrontar(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger(),
+            SalirDelRecinto()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------
