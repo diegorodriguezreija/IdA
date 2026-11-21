@@ -273,3 +273,60 @@ python herramientas/diagnostico_paso3.py --resumir datos/diagnostico/paso3_despu
 - **Pasar la noche dentro** baja de 14 a 11 episodios. Con tan pocos casos puede ser ruido; no está comprobado.
 - **La Score** sube en la semilla 32 y baja en la 33: no hay efecto claro en 3 semillas.
 - **Lo que más pesa sigue sin tocarse:** «no encuentra sitio». Su causa está en el punto 2, con dos propuestas sin implementar.
+
+# Tercera ronda (21/11/2026)
+
+**Cambios:**
+
+| Commit | Qué |
+|---|---|
+| `e15cdd6` | Latidos cortados en `evaluar_crafter.py` y `--verificar-determinismo N` |
+| `5663772` | El sitio se descarta si el modelo del cuerpo no deja cerrarlo (`orientable`); se baja por la lista hasta el primero que cierra, con un tope de 3 planes |
+| `86629d3` | Presupuesto de 2 planes exactos nuevos por latido en `Recinto`. Sin él, el punto anterior cortaba latidos: 23 en 1500 pasos |
+| `8833f62` | El planificador busca el material también en el mapa local |
+| `5e0aa98` | El diagnóstico registra quién saca del recinto |
+
+**Diagnóstico:**
+
+- **Condiciones:** semillas 31, 32 y 33, 10 000 pasos cada una, una tras otra, sin nada más corriendo.
+- **Latidos cortados por la guillotina:** 0, 0 y 0.
+- **Datos:** `datos/diagnostico/paso3_ronda3_semilla3{1,2,3}.json`.
+
+| Métrica | Antes de la 2.ª ronda (`04a6417`) | Tras la 2.ª ronda (`80f5352`) | Tras la 3.ª ronda (`5e0aa98`) |
+|---|---|---|---|
+| Score por semilla (31 / 32 / 33) | 12,75 / 10,99 / 11,48 | 12,73 / 13,16 / 9,44 | 10,78 / 10,89 / 9,25 |
+| Episodios | 113 | 115 | 125 |
+| Latidos cortados | 0 | 0 | 0 |
+| **Primera noche** | | | |
+| Muere antes de anochecer | 1 (0,9 %) | 1 (0,9 %) | 5 (4,0 %) |
+| No encuentra sitio | 67 (59,3 %) | 63 (54,8 %) | 31 (24,8 %) |
+| No lo completa a tiempo | 26 (23,0 %) | 33 (28,7 %) | 67 (53,6 %) |
+| — falta material / tiempo / herramienta | — | — | 36 / 18 / 13 |
+| Sale antes del amanecer | 2 (1,8 %) | 5 (4,3 %) | 6 (4,8 %) |
+| Pasa la noche dentro | 14 (12,4 %) | 11 (9,6 %) | 14 (11,2 %) |
+| Latidos oscuros fuera antes de entrar (mediana) | 34 | 22 | 21 |
+| **Después de la noche** (los que la pasan dentro) | | | |
+| Latidos hasta salir (mediana) | 62 | 21 | 25 |
+| Comida y bebida al salir (medianas) | 2 y 2 | 3 y 3 | 1 y 3 |
+| Mueren después de sed o hambre | 8 de 14 | 6 de 11 | 10 de 14 |
+| Latidos vividos desde el final de lo oscuro (mediana) | 212 | 208 | 154 |
+| **Cadena de herramientas** | | | |
+| Mesas por episodio (media) | 1,73 | 1,09 | 1,18 |
+| Pico tras la mesa; latidos (mediana) | 74,7 %; 12 | 73,7 %; 8 | 75,0 %; 8 |
+| Espada tras la mesa; latidos (mediana) | 47,4 %; 26 | 46,3 %; 12 | 40,4 %; 15 |
+
+**Quién saca del recinto** (sección b2 del resumen; 22 salidas en total):
+
+| | Proteger | PerseguirMetas | SalirDelRecinto |
+|---|---|---|---|
+| Todas las salidas | 15 (5 de noche, 10 tras la noche) | 4 (tras la noche; 3 por la meta del horno) | 2 (1 tras la noche, 1 al ocaso) |
+| Los 14 que pasaron dentro la primera noche | 10 | 3 | 1 |
+
+Sale siempre por un COGER sobre la pared.
+
+**Lectura:**
+- **«No encuentra sitio» baja de 54,8 % a 24,8 %**, que era el objetivo de los puntos 2 y 3.
+- **Pero se convierte casi todo en «no lo completa a tiempo»** (28,7 % → 53,6 %), sobre todo por falta de material, y suben las muertes antes de anochecer (1 → 5). Los sitios que ahora sí se encuentran piden material, tiempo o herramienta, y perseguirlos al anochecer no acaba en un recinto.
+- **Pasar la noche dentro** queda en 14 episodios (11,2 %).
+- **La Score baja en las tres semillas** (media 11,78 → 10,31), con más episodios y más cortos.
+- **Resultado negativo en conjunto.** No se ha separado el efecto de cada cambio con el diagnóstico completo. En 3000 pasos de la semilla 31, solo el filtro de orientación ya bajaba la Score de 14,95 a 9,16 (commit `5663772`).
