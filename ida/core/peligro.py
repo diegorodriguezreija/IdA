@@ -15,15 +15,29 @@ Con ``Perfil.mecanismos.peligro_aprendido``, y solo en un mundo que da posicione
   nuevo) lo hacen junto a una X más de lo que tocaría por azar. ΔP = (junto − esperado) / n, con ``esperado`` la suma,
   en cada aparición, de la fracción de casillas a la vista que están junto a alguna X. Un emisor hereda el daño de lo
   que emite;
-- **alcance**: 1 (contacto) para el daño propio; para un emisor, la mayor distancia recorrida desde él por lo que emite
-  (más el contacto), de las últimas ``MAX_RECORRIDOS``;
+- **alcance**: 1 (contacto) para el daño propio; para un emisor, la mediana de la distancia recorrida desde él por lo que
+  emite (más el contacto), de las últimas ``MAX_RECORRIDOS`` (el máximo lo marca lo que sale de la vista);
 - **eficacia de ataque**: golpes (ATACAR o COMER sobre una instancia adyacente) hasta que la instancia desaparece
   estando junto a uno (derribo), con los objetos que se llevaban. Un objeto **reduce** los golpes si, por contingencia
   entre llevarlo y los golpes por derribo, los derribos con él piden menos golpes que sin él (razón media entre clases).
 
-La **estimación** del rasgo ``peligro`` de una entidad a distancia ``d``:
-``acotar(max_componente(daño · f(d, alcance)) / salud)``, con ``f = 1`` hasta el alcance y ``1 / (1 + d − alcance)``
-más allá. El de un lugar, el máximo del de lo peligroso percibido, a la distancia de ese lugar.
+La **estimación** del rasgo ``peligro`` (revisión del 21/11/2026):
+
+- **Pérdida de un encuentro no evitado**, L: el daño por golpe aprendido de la clase (o de lo que emite) **en la
+  condición actual**. Dormido es una condición aparte, aprendida igual (``dano_dormido``); su previo es el daño
+  despierto. Si un encuentro en curso ya ha quitado más, cuenta eso.
+- **Escala** ``g(x) = x / (x + C)``, con x = L / salud: monótona, 0 sin pérdida y tiende a 1 cuando la pérdida se acerca
+  a la salud que queda o la supera. ``C`` sale de una sola condición declarada: el previo del manual (``DANO_PREVIO``, a
+  salud completa) vale ``PELIGRO_PREVIO`` = 0,8, el peligro fijo que daban antes los mundos y para el que están
+  calibrados los umbrales de la base (miedo del arquetipo, 0,5 de ``Proteger`` y del mapa, 0,6 para despertar).
+- **Una cosa**: ``g(L / salud)``, sin distancia: la proximidad la aplica quien percibe (``Supervivencia``), como con el
+  rasgo que dan los mundos. (Con la distancia dentro de g, a 3-4 casillas daba 0,57-0,67 en vez de 0,8, y la proximidad
+  se descontaba dos veces.)
+- **Un lugar** a distancia d de lo peligroso: ``g(L / salud) · max(0, 1 − d / (alcance + MARGEN_LUGAR))``: un gradiente
+  que se anula a ``alcance + MARGEN_LUGAR`` casillas, para que huir tenga adónde ir y lo lejano no pese. Para lo que daña
+  por contacto (alcance 1) es la forma 0,8 · (1 − d/4) que daban los mundos con rejilla.
+
+``f = 1`` hasta el alcance y ``1 / (1 + d − alcance)`` más allá (lo usa la exposición de ``Afrontar``).
 
 Ninguna cifra es de un mundo: los previos están declarados aquí y valen para cualquiera.
 """
@@ -31,7 +45,6 @@ Ninguna cifra es de un mundo: los previos están declarados aquí y valen para c
 from dataclasses import dataclass, field
 from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
-from ida.core.pieza import acotar
 
 Pos = Tuple[int, int]
 
@@ -48,6 +61,14 @@ MAX_RECORRIDOS = 10
 MAX_DERRIBOS = 30
 MARGEN_REDUCTOR = 0.15                       # razón de golpes con / sin el objeto por debajo de 1 − margen: reduce
 MINIMO_LEGADO = 2                            # observaciones mínimas para pasar al legado
+PELIGRO_PREVIO = 0.8                         # peligro del previo del manual a salud completa (fija la escala)
+MARGEN_LUGAR = 3                             # el peligro de un lugar se anula a alcance + 3 casillas
+ESCALA = (DANO_PREVIO / VITALIDAD_MAXIMA) * (1.0 / PELIGRO_PREVIO - 1.0)   # C de g(x) = x / (x + C)
+
+
+def escala(x: float) -> float:
+    """g(x) = x / (x + C): de la pérdida relativa a la salud a un peligro en [0, 1)."""
+    return x / (x + ESCALA) if x > 0.0 else 0.0
 
 
 def manhattan(a: Pos, b: Pos) -> int:
@@ -93,7 +114,8 @@ class Peligros:
     """Lo que la base aprende del peligro (paso 6). Vive en ``Memoria.peligros``; la escribe el Core cada latido."""
 
     dano: Dict[str, Media] = field(default_factory=dict)          # por encuentro
-    dano_golpe: Dict[str, Media] = field(default_factory=dict)    # por daño atribuido
+    dano_golpe: Dict[str, Media] = field(default_factory=dict)    # por daño atribuido, despierto
+    dano_dormido: Dict[str, Media] = field(default_factory=dict)  # por daño atribuido, dormido (vulnerabilidad)
     expuestos: Dict[str, int] = field(default_factory=dict)       # latidos con una instancia de la clase a su alcance
     eventos: Dict[str, int] = field(default_factory=dict)         # daños de la clase (o de lo que emite) en esos latidos
     emision: Dict[Tuple[str, str], Emision] = field(default_factory=dict)
@@ -105,6 +127,7 @@ class Peligros:
     golpeando: Dict[str, Tuple[str, int, FrozenSet[str]]] = field(default_factory=dict)   # id -> (clase, golpes, objetos)
     encuentros: Dict[str, Tuple[str, float]] = field(default_factory=dict)   # id -> (clase, daño acumulado en el encuentro)
     aqui_previo: Optional[Pos] = None
+    dormido_previo: bool = False
     objetos_previos: FrozenSet[str] = frozenset()
 
     # --- estimaciones ---------------------------------------------------------
@@ -113,8 +136,8 @@ class Peligros:
         return sorted(y for (a, y), e in self.emision.items() if a == x and e.n >= N_EMISION_MINIMA and e.contingencia() >= EMISION_MINIMA)
 
     def alcance_emision(self, x: str) -> int:
-        r = self.recorridos.get(x)
-        return max(r) if r else 1
+        r = sorted(self.recorridos.get(x, []))
+        return r[len(r) // 2] if r else 1
 
     def dano_propio(self, clase: str, peligrosa: bool) -> float:
         """Daño esperado de un contacto con ``clase``: la media aprendida con su previo, y como mínimo lo perdido en el
@@ -126,20 +149,32 @@ class Peligros:
         return max([estimado] + en_curso)
 
     def dano_por_golpe(self, clase: str, peligrosa) -> float:
-        """Daño de cada golpe de ``clase`` o de lo que emite (el mayor), con el mismo previo."""
-        def una(c: str) -> float:
-            m = self.dano_golpe.get(c)
-            previo = DANO_PREVIO if peligrosa(c) else 0.0
-            return m.estimar(previo, PESO_PREVIO) if m is not None else previo
-        return max([una(clase)] + [una(y) for y in self.emitidas(clase)])
+        """Daño de cada golpe de ``clase`` o de lo que emite (el mayor), despierto."""
+        return max([self.golpe(clase, peligrosa(clase))] + [self.golpe(y, peligrosa(y)) for y in self.emitidas(clase)])
 
-    def componentes(self, clase: str, peligrosa) -> List[Tuple[float, int]]:
-        """(daño, alcance) de cada forma en que ``clase`` puede hacer daño: el propio, por contacto, y el de lo que emite.
-        ``peligrosa(c)`` dice si la memoria tiene la clase ``c`` por peligrosa (para el previo)."""
-        comps = [(self.dano_propio(clase, peligrosa(clase)), 1)]
+    def golpe(self, clase: str, peligrosa: bool, dormido: bool = False) -> float:
+        """Daño de un golpe de ``clase`` en la condición dada. Dormido, el previo es el daño despierto."""
+        m = self.dano_golpe.get(clase)
+        previo = DANO_PREVIO if peligrosa else 0.0
+        despierto = m.estimar(previo, PESO_PREVIO) if m is not None else previo
+        if not dormido:
+            return despierto
+        md = self.dano_dormido.get(clase)
+        return md.estimar(despierto, PESO_PREVIO) if md is not None else despierto
+
+    def perdida(self, clase: str, peligrosa: bool, dormido: bool = False) -> float:
+        """Lo que un encuentro con ``clase`` puede quitar si no se evita: un golpe en la condición actual, o lo que ya ha
+        quitado el encuentro en curso si es más."""
+        en_curso = [d for c, d in self.encuentros.values() if c == clase]
+        return max([self.golpe(clase, peligrosa, dormido)] + en_curso)
+
+    def componentes(self, clase: str, peligrosa, dormido: bool = False) -> List[Tuple[float, int]]:
+        """(pérdida, alcance) de cada forma en que ``clase`` puede hacer daño: la propia, por contacto, y la de lo que
+        emite. ``peligrosa(c)`` dice si la memoria tiene la clase ``c`` por peligrosa (para el previo)."""
+        comps = [(self.perdida(clase, peligrosa(clase), dormido), 1)]
         alcance = self.alcance_emision(clase)
         for y in self.emitidas(clase):
-            comps.append((self.dano_propio(y, peligrosa(y)), alcance))
+            comps.append((self.perdida(y, peligrosa(y), dormido), alcance))
         return [c for c in comps if c[0] > 0.0]
 
     def dano_esperado(self, clase: str, peligrosa) -> float:
@@ -148,10 +183,16 @@ class Peligros:
     def alcance(self, clase: str, peligrosa) -> int:
         return max((a for _, a in self.componentes(clase, peligrosa)), default=1)
 
-    def peligro_a(self, comps: List[Tuple[float, int]], d: int, salud: float) -> float:
-        if not comps:
-            return 0.0
-        return acotar(max(dano * f_alcance(d, a) for dano, a in comps) / max(salud, 1.0))
+    @staticmethod
+    def peligro_a(comps: List[Tuple[float, int]], d: int, salud: float) -> float:
+        """Peligro de una cosa: g(L / salud). La distancia no entra: la proximidad la aplica quien percibe (``Supervivencia``),
+        como con el rasgo que dan los mundos."""
+        return max((escala(perdida / max(salud, 1.0)) for perdida, _ in comps), default=0.0)
+
+    @staticmethod
+    def peligro_lugar(comps: List[Tuple[float, int]], d: int, salud: float) -> float:
+        """Peligro de un lugar a distancia ``d`` de una cosa peligrosa: g(L / salud) · max(0, 1 − d / (alcance + MARGEN_LUGAR))."""
+        return max((escala(perdida / max(salud, 1.0)) * max(0.0, 1.0 - d / (a + MARGEN_LUGAR)) for perdida, a in comps), default=0.0)
 
     def tasa(self, clase: str) -> Tuple[float, int]:
         """Daños por latido de exposición a ``clase`` y latidos de exposición contados."""
@@ -195,10 +236,11 @@ class Peligros:
 
     # --- aprendizaje (cada latido, desde lo percibido) ----------------------------
     def aprender(self, aqui: Pos, agentes: Dict[str, Tuple[str, Pos]], visibles: Set[Pos], objetos: FrozenSet[str],
-                 verbo: Optional[str], objetivo: str, causa: Optional[str], perdida: float, peligrosa) -> None:
+                 verbo: Optional[str], objetivo: str, causa: Optional[str], perdida: float, peligrosa, dormido: bool = False) -> None:
         """Un latido. ``agentes``: id -> (clase, posición) de lo que se mueve a la vista (no lugares); ``visibles``: las
         casillas a la vista; ``objetos``: lo que se lleva ahora; ``verbo`` y ``objetivo``: la acción anterior; ``causa`` y
-        ``perdida``: el daño que dejó (clase y vitalidad perdida)."""
+        ``perdida``: el daño que dejó (clase y vitalidad perdida); ``dormido``: si se duerme ahora (el daño de la acción
+        anterior se recibió en la condición del latido anterior)."""
         previos = self.vistos
         por_clase: Dict[str, int] = {}     # distancia mínima a cada clase en el latido anterior (cuando se actuó)
         if self.aqui_previo is not None:
@@ -211,7 +253,7 @@ class Peligros:
                 if i not in self.encuentros and manhattan(self.aqui_previo, p) <= 1 and (peligrosa(c) or c in self.dano or c in self.dano_golpe):
                     self.encuentros[i] = (c, 0.0)
         if causa and perdida > 0.0:
-            self.dano_golpe.setdefault(str(causa), Media()).anotar(perdida)
+            (self.dano_dormido if self.dormido_previo else self.dano_golpe).setdefault(str(causa), Media()).anotar(perdida)
             ref = self.aqui_previo or aqui
             candidatas = sorted((manhattan(ref, p), i) for i, (c, p) in previos.items() if c == causa)
             i = candidatas[0][1] if candidatas else f"?{causa}"
@@ -274,6 +316,7 @@ class Peligros:
         self.vistos = dict(agentes)
         self.aqui_previo = aqui
         self.objetos_previos = objetos
+        self.dormido_previo = dormido
 
     # --- volcado y herencia ---------------------------------------------------------
     def volcado(self, peligrosa) -> Dict[str, Any]:
@@ -283,6 +326,7 @@ class Peligros:
             "dano_contacto": {c: {"n": m.n, "media": round(m.media, 2), "estimado": round(self.dano_propio(c, peligrosa(c)), 2)}
                               for c, m in sorted(self.dano.items())},
             "dano_golpe": {c: {"n": m.n, "media": round(m.media, 2)} for c, m in sorted(self.dano_golpe.items())},
+            "dano_dormido": {c: {"n": m.n, "media": round(m.media, 2)} for c, m in sorted(self.dano_dormido.items())},
             "alcance": {c: self.alcance(c, peligrosa) for c in clases if self.dano_esperado(c, peligrosa) > 0.0},
             "emisores": {f"{x}->{y}": {"n": e.n, "junto": e.junto, "esperado": round(e.esperado, 2), "dP": round(e.contingencia(), 3)}
                          for (x, y), e in sorted(self.emision.items()) if e.junto},
@@ -303,6 +347,9 @@ class Peligros:
         golpe = {c: {"n": m.n, "media": round(m.media, 4)} for c, m in self.dano_golpe.items() if m.n >= MINIMO_LEGADO}
         if golpe:
             out["dano_golpe"] = golpe
+        dormido = {c: {"n": m.n, "media": round(m.media, 4)} for c, m in self.dano_dormido.items() if m.n >= MINIMO_LEGADO}
+        if dormido:
+            out["dano_dormido"] = dormido
         tasa = {c: {"expuestos": n, "eventos": self.eventos.get(c, 0)} for c, n in self.expuestos.items() if n >= MINIMO_LEGADO}
         if tasa:
             out["tasa"] = tasa
@@ -327,6 +374,9 @@ class Peligros:
         for c, d in legado.get("dano_golpe", {}).items():
             self.dano_golpe[str(c)] = Media(max(1, int(d["n"]) // 2), float(d["media"]))
             n += 1
+        for c, d in legado.get("dano_dormido", {}).items():
+            self.dano_dormido[str(c)] = Media(max(1, int(d["n"]) // 2), float(d["media"]))
+            n += 1
         for c, d in legado.get("tasa", {}).items():
             self.expuestos[str(c)] = max(1, int(d["expuestos"]) // 2)
             self.eventos[str(c)] = int(d["eventos"]) // 2
@@ -343,7 +393,7 @@ class Peligros:
         return n
 
 
-def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa) -> None:
+def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa, dormido: bool = False) -> None:
     """Escribe el rasgo ``peligro`` de cada entidad con posición (paso 6a): las cosas, por su daño y alcance aprendidos a su
     distancia; los lugares, por lo peligroso percibido a la distancia de cada lugar."""
     fuentes: List[Tuple[Pos, List[Tuple[float, int]]]] = []
@@ -359,9 +409,9 @@ def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, p
             continue
         comps = cache.get(e.clase)
         if comps is None:
-            comps = cache[e.clase] = peligros.componentes(e.clase, peligrosa)
+            comps = cache[e.clase] = peligros.componentes(e.clase, peligrosa, dormido)
         e.rasgos["peligro"] = peligros.peligro_a(comps, manhattan(aqui, p), salud)
         if comps:
             fuentes.append((p, comps))
     for e, p in lugares:
-        e.rasgos["peligro"] = max((peligros.peligro_a(comps, manhattan(p, q), salud) for q, comps in fuentes), default=0.0)
+        e.rasgos["peligro"] = max((peligros.peligro_lugar(comps, manhattan(p, q), salud) for q, comps in fuentes), default=0.0)

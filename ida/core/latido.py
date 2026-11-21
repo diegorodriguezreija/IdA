@@ -265,8 +265,9 @@ class Organismo:
             verbo = c.get("verbo")
             golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
             mem.peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
-                                  c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa)
-        pel.estimar(obs.entidades, aqui, mem.peligros, self.soma.vitalidad, mem.peligrosa)
+                                  c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa,
+                                  dormido=bool(self.soma.dormido))
+        pel.estimar(obs.entidades, aqui, mem.peligros, self.soma.vitalidad, mem.peligrosa, dormido=bool(self.soma.dormido))
         ctx.extra["peligro_aprendido"] = True
 
     def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:

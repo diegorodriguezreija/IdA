@@ -41,12 +41,38 @@ def test_se_aprende_el_dano_por_contacto():
     assert abs(p.dano_por_golpe("erizo", _peligrosa) - (2 * pel.DANO_PREVIO + 12 * 30.0) / 14) < 1e-9
     assert p.dano_propio("erizo", True) > 50.0                         # la experiencia corrige el previo
     assert p.alcance("erizo", _peligrosa) == 1                           # solo por contacto
-    # El peligro de un erizo pegado depende de la salud: con poca, más
+    # El peligro de un erizo depende de la salud: con poca, más
     comps = p.componentes("erizo", _peligrosa)
-    assert p.peligro_a(comps, 1, 100.0) < p.peligro_a(comps, 1, 60.0)
-    assert p.peligro_a(comps, 4, 100.0) < p.peligro_a(comps, 1, 100.0)
+    assert p.peligro_a(comps, 1, 100.0) < p.peligro_a(comps, 1, 60.0) < 1.0
+    # Los lugares: un gradiente que se anula a alcance + MARGEN_LUGAR casillas
+    assert p.peligro_lugar(comps, 1, 100.0) > p.peligro_lugar(comps, 2, 100.0) > p.peligro_lugar(comps, 4, 100.0) == 0.0
     # Lo que no es peligroso ni ha dañado no tiene peligro
     assert p.componentes("piedra", _peligrosa) == []
+
+
+def test_la_escala_da_el_peligro_antiguo_al_previo_del_manual():
+    """g(x) = x / (x + C): el previo del manual a salud completa da 0,8 (el peligro fijo para el que están calibrados los
+    umbrales de la base); más pérdida o menos salud, más peligro, sin llegar a 1."""
+    p = pel.Peligros()
+    comps = p.componentes("erizo", _peligrosa)
+    assert abs(p.peligro_a(comps, 1, 100.0) - pel.PELIGRO_PREVIO) < 1e-9
+    assert abs(p.peligro_lugar(comps, 1, 100.0) - 0.8 * (1 - 1 / 4)) < 1e-9
+    valores = [pel.escala(x) for x in (0.0, 0.05, 0.2, 0.5, 1.0, 3.0)]
+    assert valores == sorted(valores) and valores[0] == 0.0 and valores[-1] < 1.0
+
+
+def test_la_vulnerabilidad_dormido_se_aprende_aparte():
+    p = pel.Peligros()
+    aqui = (5, 5)
+    for _ in range(3):     # dormido: un erizo llega y daña 70
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 70.0, _peligrosa, dormido=True)
+        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True)
+    assert "erizo" not in p.dano_golpe and p.dano_dormido["erizo"].n == 3
+    assert p.golpe("erizo", True, dormido=False) == pel.DANO_PREVIO
+    assert p.golpe("erizo", True, dormido=True) > 50.0
+    despierto, dormido = p.componentes("erizo", _peligrosa), p.componentes("erizo", _peligrosa, dormido=True)
+    assert p.peligro_a(dormido, 2, 100.0) > p.peligro_a(despierto, 2, 100.0)
 
 
 def _lanzamientos(p: pel.Peligros, n: int, recorrido: int, aqui: Pos = (0, 0)) -> None:
@@ -67,9 +93,10 @@ def test_se_aprende_un_emisor_y_su_alcance():
     assert p.emitidas("torre") == ["pua"]
     assert p.emision[("torre", "pua")].contingencia() > 0.8
     assert p.alcance("torre", _peligrosa) == 6         # de (10, 0) a (5, 0), y el contacto
-    # El emisor hereda el daño de lo que emite, con su alcance: a 5 casillas, la torre es tan peligrosa como pegada
+    # El emisor hereda el daño de lo que emite, con su alcance: los lugares a 8 casillas aún son peligrosos
     comps = p.componentes("torre", _peligrosa)
-    assert p.peligro_a(comps, 5, 100.0) == p.peligro_a(comps, 1, 100.0)
+    assert 6 in [a for _, a in comps]
+    assert p.peligro_lugar(comps, 8, 100.0) > 0.0 == p.peligro_lugar(p.componentes("erizo", _peligrosa), 8, 100.0)
     # Aparecer junto a algo una vez no lo hace emisor
     q = pel.Peligros()
     _lanzamientos(q, 1, 3)
@@ -83,7 +110,7 @@ def test_un_lugar_dentro_del_alcance_de_un_emisor_es_peligroso():
     lejos = Entidad("celda_0_0", "suelo", {"lugar": 1.0}, {"pos": (0, 0)})
     torre = Entidad("t", "torre", {"agente": 1.0}, {"pos": (10, 0)})
     pel.estimar([cerca, lejos, torre], (1, 0), p, 100.0, _peligrosa)
-    assert cerca.rasgos["peligro"] > lejos.rasgos["peligro"] > 0.0
+    assert cerca.rasgos["peligro"] > lejos.rasgos["peligro"] == 0.0
     assert torre.rasgos["peligro"] > 0.0
 
 
@@ -112,6 +139,7 @@ class MundoErizos(Mundo):
         self.salud = salud
         self.inv = {"baston": 1.0 if baston else 0.0, "palo": 1.0}
         self.quieto = quieto
+        self.dormido = False
         self.da_peligro = False
         self.t = 0
 
@@ -136,7 +164,7 @@ class MundoErizos(Mundo):
                 if self.da_peligro:
                     r["peligro"] = 0.0
                 ent.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", r, {"pos": c}))
-        return Observacion(ubicacion=f"celda_{self.pos[0]}_{self.pos[1]}", entidades=ent,
+        return Observacion(ubicacion=f"celda_{self.pos[0]}_{self.pos[1]}", entidades=ent, dormido=self.dormido,
                            vitales={"vitalidad": self.salud, "comida": 100.0}, inventario=dict(self.inv))
 
     def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
@@ -195,6 +223,16 @@ def test_la_base_calcula_el_peligro_si_el_mundo_no_lo_da():
     mundo2.da_peligro = True
     onda2 = _organismo(mundo2, ("peligro_aprendido",)).latir()
     assert onda2.ev("Exterocepcion")["erizo_1"].rasgo("peligro") == 0.8
+
+
+def test_un_erizo_que_se_acerca_despierta_al_que_duerme():
+    """A salud completa y sin experiencia (solo el previo del manual), un erizo a 2 casillas despierta; a 4, no."""
+    for distancia, despierta in ((2, True), (4, False)):
+        mundo = MundoErizos(quieto=True)
+        mundo.erizo = (5, 5 + distancia)
+        mundo.dormido = True
+        onda = _organismo(mundo, ("peligro_aprendido",)).latir()
+        assert (onda.notas.get("despierta") == "alarma") == despierta
 
 
 def test_viviendo_se_aprende_el_dano_por_contacto():

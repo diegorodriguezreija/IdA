@@ -389,14 +389,18 @@ class MundoCrafter(Mundo):
     def _contacto(self, antes: Dict[Any, Tuple[str, Pos]]) -> Optional[str]:
         """Paso 6a: la causa de un daño es lo peligroso **en contacto**: lo que estaba junto a la casilla propia antes del
         paso y ya no está (un proyectil se deshace al dañar, en el mismo paso: ``Arrow.update`` de ``crafter/objects.py``),
-        o, si no, lo que está junto a ella ahora (el zombi daña a distancia 1). Sin geometría de alcance."""
+        o, si no, lo que está junto a ella ahora (el zombi daña a distancia 1). Sin geometría de alcance. Entre varias, primero
+        lo que se mueve (criaturas) y después los materiales (la lava solo daña si se entra en ella)."""
         pos = tuple(self.jugador.pos)
         ahora = self._peligrosos_cerca(3)
-        desaparecidos = sorted((c, p) for o, (c, p) in antes.items() if o not in ahora and _dist(pos, p) <= 1)
+
+        def orden(o: Any, c: str, p: Pos) -> Tuple[bool, str, Pos]:
+            return (isinstance(o, tuple), c, p)      # las claves de los materiales son su posición
+        desaparecidos = sorted(orden(o, c, p) for o, (c, p) in antes.items() if o not in ahora and _dist(pos, p) <= 1)
         if desaparecidos:
-            return desaparecidos[0][0]
-        junto = sorted((c, p) for o, (c, p) in ahora.items() if _dist(pos, p) <= 1)
-        return junto[0][0] if junto else None
+            return desaparecidos[0][1]
+        junto = sorted(orden(o, c, p) for o, (c, p) in ahora.items() if _dist(pos, p) <= 1)
+        return junto[0][1] if junto else None
 
     def _posicion(self, objetivo: str) -> Optional[Pos]:
         partes = objetivo.rsplit("_", 2)
