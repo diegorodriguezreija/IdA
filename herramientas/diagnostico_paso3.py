@@ -165,6 +165,7 @@ class Episodio:
         self.usar_sin_efecto: Counter = Counter()
         self.cavable: Optional[Dict[str, Any]] = None
         self.retencion: Counter = Counter()
+        self.aperturas: List[Dict[str, Any]] = []       # cada vez que se pasa de dentro a fuera: quién lo hace
         self.retencion_proteger: Counter = Counter()
         self.retencion_impulsos: List[Dict[str, float]] = []
         self.causa: Optional[str] = None
@@ -232,6 +233,11 @@ class Episodio:
         if self.fase == "despues" and self.salida_tras_noche is None and not dentro and self.dentro_al_final_oscuro:
             self.salida_tras_noche = {"latido": n, "comida": inv.get("food", 0), "bebida": inv.get("drink", 0),
                                       "energia": inv.get("energy", 0), "tras_fin_noche": n - (self.t_fin_noche or n)}
+        if self.dentro and not dentro:
+            fase = {"dia": "antes del ocaso", "ocaso": "ocaso", "oscuro": "noche", "despues": "tras la noche"}[self.fase]
+            self.aperturas.append({"latido": n, "fase": fase, "estrategia": _estrategia(carga), "verbo": str(getattr(carga.get("verbo"), "value", "")),
+                                   "motivo": _motivo(str(carga.get("motivo", ""))), "se_mueve": pos != self.pos,
+                                   "primera_noche": self.dentro_al_final_oscuro and self.fase == "despues"})
         self.dentro, self.pos = dentro, pos
 
         # c) cadena de herramientas
@@ -285,7 +291,8 @@ class Episodio:
                 "latidos_tras_mesa": self.latidos_tras_mesa, "colocadas": dict(self.colocadas),
                 "usar_sin_efecto": dict(self.usar_sin_efecto), "cavable": self.cavable, "retencion": dict(self.retencion),
                 "retencion_proteger": dict(self.retencion_proteger),
-                "retencion_impulsos": self.retencion_impulsos, "guillotinas": self.guillotinas}
+                "retencion_impulsos": self.retencion_impulsos, "guillotinas": self.guillotinas,
+                "aperturas": self.aperturas}
 
 
 def ejecutar(args: argparse.Namespace) -> int:
@@ -402,6 +409,18 @@ def resumir(rutas: List[str]) -> int:
         for k in sorted(imp):
             q = statistics.quantiles(imp[k], n=4) if len(imp[k]) >= 4 else [0.0, 0.0, 0.0]
             print(f"| {k} | {statistics.median(imp[k]):.2f} | {q[2]:.2f} |")
+
+    # b2) quién abre el recinto
+    ap = [x for e in eps for x in e.get("aperturas") or []]
+    if ap:
+        print("\n### b2) Quién saca del recinto (cada paso de dentro a fuera)\n")
+        print("| Fase | Estrategia · motivo | Verbo | Veces |\n|---|---|---|---|")
+        for (fase, quien, verbo), k in Counter((x["fase"], f"{x['estrategia']} · {x['motivo']}", x["verbo"]) for x in ap).most_common(14):
+            print(f"| {fase} | {quien} | {verbo} | {k} |")
+        tras = [x for x in ap if x.get("primera_noche")]
+        if tras:
+            print(f"\nAl salir tras pasar dentro la primera noche ({len(tras)}): "
+                  + "; ".join(f"{q}: {k}" for q, k in Counter(f"{x['estrategia']} · {x['motivo']}" for x in tras).most_common(6)) + ".")
 
     # a2) dónde está lo cavable en los que no encuentran sitio
     ns = [e for e in eps if e["noche"] == "no encuentra sitio" and e.get("cavable")]
