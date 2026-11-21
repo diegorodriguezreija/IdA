@@ -20,10 +20,12 @@ proposiciones **demostradas**.
 | Reaccionar  | Impulso              | Control gradual según la certeza, sobre piezas Impulso (sube o baja impulsos) |
 """
 
-from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
+from ida.core.memoria import desplazamiento
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
@@ -466,6 +468,392 @@ class Estudio(ConPropuestas):
         )
 
 
+# ---------------------------------------------------------------------------
+# Paso 5 de la fase de generalización: planificador general sobre requisitos
+# ---------------------------------------------------------------------------
+def _yo(ctx: Contexto) -> Dict[str, Any]:
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    return dict(yo.carga) if yo is not None else {}
+
+
+def inventario(ctx: Contexto) -> Dict[str, float]:
+    """Inventario percibido (propiocepción)."""
+    return {str(k): float(v) for k, v in (_yo(ctx).get("inventario") or {}).items()}
+
+
+def delante(ctx: Contexto) -> Optional[Dict[str, Any]]:
+    """Lo que hay delante (``cuerpo["delante"]`` = {"id", "clase"}), si el mundo lo percibe."""
+    d = (_yo(ctx).get("cuerpo") or {}).get("delante")
+    return dict(d) if isinstance(d, dict) and d.get("clase") else None
+
+
+def _cosas(ctx: Contexto) -> List[Pieza]:
+    return [p for p in exterocepcion(ctx) if p.rasgo("lugar") < 0.5]
+
+
+def _pos(p: Pieza) -> Optional[Tuple[int, int]]:
+    pos = p.carga.get("datos", {}).get("pos")
+    return (int(pos[0]), int(pos[1])) if isinstance(pos, (list, tuple)) and len(pos) == 2 else None
+
+
+def _dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def al_alcance_clase(ctx: Contexto, clase: str) -> bool:
+    return any(p.clase == clase and al_alcance(p) for p in _cosas(ctx))
+
+
+def desplazamientos_a_clase(ctx: Contexto, clase: str) -> List[Tuple[int, int]]:
+    """Desplazamientos ``(|dx|, |dy|)`` ordenados a cada instancia visible de ``clase``. Con posiciones se
+    calculan; sin ellas, lo que está al alcance cuenta como (0, 1) y lo demás no se sabe (se omite)."""
+    aqui = _pos_propia(ctx)
+    salida: List[Tuple[int, int]] = []
+    for p in _cosas(ctx):
+        if p.clase != clase:
+            continue
+        pos = _pos(p)
+        if aqui is not None and pos is not None:
+            salida.append(desplazamiento(pos[0] - aqui[0], pos[1] - aqui[1]))
+        elif al_alcance(p):
+            salida.append((0, 1))
+    return salida
+
+
+@dataclass
+class Paso:
+    """La primera acción ejecutable de una cadena de requisitos, con su coste estimado."""
+
+    verbo: Verbo
+    objetivo: str
+    clase: str
+    coste: float
+    confianza: float
+    motivo: List[str]
+    datos: Dict[str, Any] = field(default_factory=dict)
+    destino: str = ""                  # adónde lleva un MOVER (instancia o lugar recordado)
+    distancia: Optional[int] = None    # distancia a ese destino al proponerlo, si se sabe
+
+
+COSTE_RECORDADO = 15.0     # ir adonde se recuerda algo que no se ve
+COSTE_POR_PROXIMIDAD = 10.0
+MAX_RUTA_MAPA = 40         # pasos máximos de una ruta por el mapa local hasta algo recordado
+COSTE_SIN_PRODUCTOR = 2 * COSTE_RECORDADO   # reponer una unidad de algo que ninguna acción conocida da
+VECINAS = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
+    """Un paso hacia la casilla recordada de ``clase`` más cercana por el mapa local de la memoria (paso 3), con el coste en
+    pasos de la ruta hasta quedar al lado. La ruta solo pasa por casillas de clases que se sabe transitables. Destino
+    ``<clase>@x_y`` (``excluir`` lo aparca). None sin posiciones, sin mapa, sin ninguna recordada a menos de
+    ``MAX_RUTA_MAPA`` pasos, si ya está al lado o si el primer paso no es un lugar percibido sin peligro."""
+    mem = ctx.memoria
+    aqui = _pos_propia(ctx)
+    if aqui is None or not ctx.con_experiencia or not mem.casillas:
+        return None
+    objetivos = {p for p, c in mem.casillas.items() if c == clase and f"{clase}@{p[0]}_{p[1]}" not in excluir}
+    if not objetivos:
+        return None
+    junto = {(x + dx, y + dy): (x, y) for x, y in sorted(objetivos) for dx, dy in VECINAS}
+    if aqui in junto:
+        return None
+    previo: Dict[Tuple[int, int], Tuple[int, int]] = {}
+    frontera, d, llegada = [aqui], 0, None
+    while frontera and llegada is None and d < MAX_RUTA_MAPA:
+        d += 1
+        siguiente = []
+        for x, y in frontera:
+            for dx, dy in VECINAS:
+                v = (x + dx, y + dy)
+                if v in previo or v == aqui or mem.transitable(mem.casillas.get(v)) is not True:
+                    continue
+                previo[v] = (x, y)
+                if v in junto:
+                    llegada = v
+                    break
+                siguiente.append(v)
+            if llegada is not None:
+                break
+        frontera = siguiente
+    if llegada is None:
+        return None
+    primero = llegada
+    while previo[primero] != aqui:
+        primero = previo[primero]
+    puerta = next((lugar for lugar in lugares(ctx) if _pos(lugar) == primero and lugar.rasgo("peligro") < 0.5), None)
+    if puerta is None:
+        return None
+    x, y = junto[llegada]
+    return Paso(Verbo.MOVER, puerta.id, puerta.clase, float(d), confianza, [f"volver a {clase} (mapa, {d} pasos)"],
+                destino=f"{clase}@{x}_{y}", distancia=d)
+
+
+def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
+    """Un paso hacia la instancia visible más cercana de ``clase`` o, si no se ve, hacia donde se recuerda
+    (``memoria.donde_esta`` y ``memoria.ruta``). General: con posiciones (``datos["pos"]``) elige el lugar
+    vecino que más acorta la distancia; sin ellas, solo la ruta topológica de la memoria. ``excluir``: destinos
+    aparcados (instancias o lugares) que no se eligen."""
+    visibles = [p for p in _cosas(ctx) if p.clase == clase and p.id not in excluir]
+    sitios = [lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5]
+    if visibles:
+        objetivo = max(visibles, key=lambda p: p.rasgo("proximidad"))
+        destino = _pos(objetivo)
+        aqui = _pos_propia(ctx)
+        if destino is not None and aqui is not None:
+            con_pos = [(lugar, _pos(lugar)) for lugar in sitios]
+            candidatos = [(lp, lugar) for lugar, lp in con_pos if lp is not None]
+            if candidatos:
+                lp, lugar = min(candidatos, key=lambda c: _dist(c[0], destino))
+                if _dist(lp, destino) < _dist(aqui, destino):
+                    coste = COSTE_POR_PROXIMIDAD * (1.0 - objetivo.rasgo("proximidad"))
+                    return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"],
+                                destino=objetivo.id, distancia=_dist(aqui, destino))
+    ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
+    destino_nodo = ctx.memoria.donde_esta(clase) if ctx.con_experiencia else None
+    if ubicacion and destino_nodo and destino_nodo != ubicacion and destino_nodo not in excluir:
+        salto = ctx.memoria.ruta(ubicacion, destino_nodo)
+        puerta = next((lugar for lugar in sitios if lugar.id == salto), None)
+        if puerta is not None:
+            camino = ctx.memoria.camino(ubicacion, destino_nodo)
+            return Paso(Verbo.MOVER, puerta.id, puerta.clase, COSTE_RECORDADO, confianza, [f"volver a {clase} (recordado)"],
+                        destino=destino_nodo, distancia=len(camino) - 1 if camino else None)
+    return None
+
+
+def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
+    """Posición propia si la ubicación lleva coordenadas al final (``<nombre>_x_y``); si no, None."""
+    partes = str(ctx.observacion.ubicacion if ctx.observacion else "").rsplit("_", 2)
+    if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
+        return int(partes[1]), int(partes[2])
+    return None
+
+
+class PerseguirMetas(ConPropuestas):
+    """Estrategia general de S3 para la intención «progresar» (paso 5): encadena requisitos hacia atrás desde
+    las metas que declara el manual del mundo. No sabe qué es nada: trabaja con (verbo, objetivo) →
+    requisitos → efecto. Con ``memoria.metas`` vacía (un mundo sin manual) no es elegible.
+
+    - Para cada meta pendiente busca la primera acción ejecutable que la acerca (``_resolver``) y propone la
+      de menor coste: submetas pendientes más distancia a la instancia objetivo, más los fallos esperados de
+      la acción, 1 / tasa − 1 (``Memoria.tasa_estimada``). Una acción cuyo efecto puede salir (manual o
+      experiencia) no se bloquea por fallos seguidos: su coste crece con ellos.
+    - No persigue metas de ATACAR (lo arbitra Seguridad) ni de DORMIR (no decide cuándo dormir): son metas
+      del manual, pero se cumplen por otras vías.
+    - Sin plan, con calma y con poca frecuencia, prueba COGER sobre lo que tiene delante si aún no lo ha
+      probado en esta vida (exploración de efectos, 5.2 c).
+    """
+
+    nombre = "perseguir_metas"
+    impulsos = ("progresar",)
+    prioridad = 10
+    agotable = False
+    PROFUNDIDAD = 5
+    AROUSAL = 0.5
+    CADA_EXPLORACION = 5          # latidos entre pruebas de efectos
+    VERBOS_PLAN = (Verbo.USAR, Verbo.COGER, Verbo.COMER)
+    SIN_ACERCARSE = 8             # propuestas seguidas de MOVER al mismo destino sin que baje la distancia...
+    APARCAR = 30                  # ...que lo dejan aparcado durante estos latidos
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._aparcados: Dict[str, int] = {}          # destino -> latido hasta el que no se elige
+        self._seguimiento: Tuple[str, Optional[int], int] = ("", None, 0)   # destino, mejor distancia, propuestas sin bajar
+        self._costes_unidad: Dict[Tuple[int, str], float] = {}           # (latido, objeto) -> pasos para una unidad
+
+    def _excluir(self, ctx: Contexto) -> frozenset:
+        return frozenset(d for d, hasta in self._aparcados.items() if ctx.latido < hasta)
+
+    def _vigilar(self, ctx: Contexto, paso: Paso) -> None:
+        """Antibloqueo general: si las últimas ``SIN_ACERCARSE`` propuestas fueron MOVER hacia el mismo destino y la
+        distancia no ha bajado, ese destino queda aparcado ``APARCAR`` latidos."""
+        if paso.verbo != Verbo.MOVER or not paso.destino:
+            self._seguimiento = ("", None, 0)
+            return
+        destino, mejor_d, n = self._seguimiento
+        if destino != paso.destino:
+            self._seguimiento = (paso.destino, paso.distancia, 0)
+            return
+        if paso.distancia is not None and (mejor_d is None or paso.distancia < mejor_d):
+            self._seguimiento = (destino, paso.distancia, 0)
+            return
+        n += 1
+        if n >= self.SIN_ACERCARSE:
+            self._aparcados[destino] = ctx.latido + self.APARCAR
+            self._seguimiento = ("", None, 0)
+        else:
+            self._seguimiento = (destino, mejor_d, n)
+
+    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
+        return bool(ctx.con_experiencia) and (any(not m.conseguida and m.verbo in self.VERBOS_PLAN for m in ctx.memoria.metas.values())
+                                              or bool(self._peticiones(ctx, inventario(ctx))))
+
+    @staticmethod
+    def _peticiones(ctx: Contexto, inv: Dict[str, float]) -> List[Pieza]:
+        """Metas instrumentales pendientes (piezas ``Peticion`` de este latido): lo pedido que aún no se tiene."""
+        return [p for _, p in sorted(ctx.onda.ef("Peticion").items()) if inv.get(str(p.carga["objeto"]), 0.0) < float(p.carga["cantidad"])]
+
+    def conseguir(self, ctx: Contexto, objeto: str, inv: Dict[str, float]) -> Optional[Paso]:
+        """Primer paso del plan más barato para tener una unidad más de ``objeto``: la mejor de las acciones cuyo efecto
+        lo da (requisitos), resuelta hacia atrás como cualquier carencia de inventario. None si nada lo da."""
+        productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+                             key=lambda k: (k[0].value, k[1]))
+        pasos = [p for p in (self._resolver(ctx, k, inv, frozenset(), 0) for k in productoras) if p is not None]
+        return min(pasos, key=lambda q: q.coste) if pasos else None
+
+    def decidir(self, ctx: Contexto, estrategia: Optional[Pieza] = None) -> None:
+        inv = inventario(ctx)
+        mejor_paso: Optional[Paso] = None
+        meta_mejor = ""
+        for meta in ctx.memoria.metas.values():
+            if meta.conseguida or meta.verbo not in self.VERBOS_PLAN:
+                continue
+            paso = self._resolver(ctx, (meta.verbo, meta.objetivo), inv, frozenset(), 0)
+            if paso is not None and (mejor_paso is None or paso.coste < mejor_paso.coste):
+                mejor_paso, meta_mejor = paso, meta.objetivo
+        if mejor_paso is not None:
+            self._vigilar(ctx, mejor_paso)
+            motivo = "metas: " + meta_mejor + "".join(f" ← {m}" for m in mejor_paso.motivo)
+            self.proponer(ctx, mejor_paso.verbo, mejor_paso.objetivo, self.AROUSAL, mejor_paso.confianza, motivo,
+                          clase=mejor_paso.clase, **mejor_paso.datos)
+        else:
+            self._explorar_efectos(ctx)
+        self._atender_peticiones(ctx, inv)
+
+    def _atender_peticiones(self, ctx: Contexto, inv: Dict[str, float]) -> None:
+        """Metas instrumentales (``Peticion``): para cada objeto pedido que falta, el primer paso para conseguirlo, con el
+        arousal de quien lo pide (la urgencia de su impulso). Compite en el Tribunal con lo demás."""
+        for p in self._peticiones(ctx, inv):
+            objeto = str(p.carga["objeto"])
+            sin = {**inv, objeto: 0.0}        # una unidad más, aunque ya se tenga alguna
+            paso = self.conseguir(ctx, objeto, sin)
+            if paso is None:
+                continue
+            motivo = f"{p.carga['origen']}: pide {objeto}" + "".join(f" ← {m}" for m in paso.motivo)
+            if p.carga.get("motivo"):
+                motivo += f" · {p.carga['motivo']}"
+            self.proponer(ctx, paso.verbo, paso.objetivo, float(p.carga["urgencia"]), paso.confianza, motivo,
+                          clase=paso.clase, **paso.datos)
+
+    def _resolver(self, ctx: Contexto, accion: Tuple[Verbo, str], inv: Dict[str, float], visitado: frozenset,
+                  prof: int) -> Optional[Paso]:
+        if prof > self.PROFUNDIDAD or accion in visitado or ctx.memoria.bloqueada(*accion):
+            return None
+        visitado = visitado | {accion}
+        mem = ctx.memoria
+        r = mem.requisitos.get(accion)
+        faltan_inv = {k: (n or 1) - inv.get(k, 0.0) for k, n in (r.requiere_inventario if r else {}).items()
+                      if inv.get(k, 0.0) < (n or 1)}
+        faltan_cerca = []
+        for c in sorted(r.requiere_cerca if r else ()):
+            if r is None or not any(r.cerca_basta(c, d) for d in desplazamientos_a_clase(ctx, c)):
+                faltan_cerca.append(c)
+        if not faltan_inv and not faltan_cerca:
+            return self._ejecutar(ctx, accion, r)
+        # Cada carencia necesita su propio plan; si alguna no lo tiene, la acción no es alcanzable. Se ejecuta
+        # primero la carencia más barata y el coste es la suma de todas.
+        planes: List[Paso] = []
+
+        def mejor_de(opciones: List[Optional[Paso]], texto: str) -> Optional[Paso]:
+            validas = [p for p in opciones if p is not None]
+            if not validas:
+                return None
+            p = min(validas, key=lambda q: q.coste)
+            p.coste += 1.0
+            p.motivo.insert(0, texto)
+            return p
+
+        for item in sorted(faltan_inv):
+            productoras = sorted((k for k, q in mem.requisitos.items() if q.efecto.get(item, 0) > 0), key=lambda k: (k[0].value, k[1]))
+            p = mejor_de([self._resolver(ctx, k, inv, visitado, prof + 1) for k in productoras], f"falta {item}")
+            if p is None:
+                return None
+            planes.append(p)
+        for clase in faltan_cerca:
+            # Ir a una que se ve o se recuerda (mapa local, con el coste de la ruta) frente a producir otra, con el coste de
+            # reponer lo que consume. Así no se coloca una nueva mientras ir a la conocida cueste menos.
+            colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
+            confianza = r.confianza if r else 0.5
+            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), ir_por_el_mapa(ctx, clase, confianza, self._excluir(ctx))]
+            opciones += [self._con_consumo(ctx, k, self._resolver(ctx, k, inv, visitado, prof + 1), inv, visitado, prof)
+                         for k in colocadoras]
+            p = mejor_de(opciones, f"falta cerca {clase}")
+            if p is None:
+                return None
+            planes.append(p)
+        # Primero lo que se lleva (inventario) y después el sitio: ir junto a algo antes de tener lo que se usa allí obliga a
+        # volver. El coste cuenta todas las carencias.
+        primero = min(planes[:len(faltan_inv)] or planes, key=lambda q: q.coste)
+        primero.coste = sum(q.coste for q in planes)
+        return primero
+
+    def _con_consumo(self, ctx: Contexto, accion: Tuple[Verbo, str], paso: Optional[Paso], inv: Dict[str, float],
+                     visitado: frozenset, prof: int) -> Optional[Paso]:
+        """Producir algo cuesta también reponer lo que consume: lo que su efecto aprendido resta del inventario
+        (``Requisito.efecto`` negativo), por el coste de conseguir cada unidad. Sin experiencia de su efecto, nada."""
+        r = ctx.memoria.requisitos.get(accion)
+        if paso is None or r is None:
+            return paso
+        for k, d in sorted(r.efecto.items()):
+            if d < 0:
+                paso.coste += -d * self._coste_unidad(ctx, k, inv, visitado | {accion}, prof + 1)
+        return paso
+
+    def _coste_unidad(self, ctx: Contexto, objeto: str, inv: Dict[str, float], visitado: frozenset, prof: int) -> float:
+        """Pasos estimados para conseguir una unidad de ``objeto`` desde cero (el plan más barato de sus productoras)."""
+        clave = (ctx.latido, objeto)
+        if clave not in self._costes_unidad:
+            if len(self._costes_unidad) > 200:
+                self._costes_unidad.clear()
+            sin = {**inv, objeto: 0.0}
+            productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+                                 key=lambda k: (k[0].value, k[1]))
+            pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
+            self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
+        return self._costes_unidad[clave]
+
+    def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
+        verbo, objetivo = accion
+        confianza = float(r.confianza) if r is not None else 0.5
+        # Coste en intentos: 1 / tasa estimada. El primer intento ya cuenta como el paso (coste 0, como cualquier
+        # acción que siempre funciona); se suman los fallos esperados antes del éxito, 1 / tasa − 1.
+        penal = 1.0 / max(ctx.memoria.tasa_estimada(verbo, objetivo), 1e-6) - 1.0
+        texto = f"{verbo.value} {objetivo}"
+        if verbo == Verbo.USAR:
+            d = delante(ctx)
+            if r is not None and d is not None and d["clase"] in r.delante_fallido and r.requiere_delante:
+                sitio = mejor([lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5], lambda lugar: lugar.rasgo("novedad"))
+                if sitio is None:
+                    return None
+                return Paso(Verbo.MOVER, sitio.id, sitio.clase, 2.0 + penal, confianza, [texto, f"no sirve delante {d['clase']}"])
+            return Paso(Verbo.USAR, objetivo, objetivo, penal, confianza, [texto], {"receta": objetivo})
+        d = delante(ctx)
+        if d is not None and d["clase"] == objetivo:
+            return Paso(verbo, str(d["id"]), objetivo, penal, confianza, [texto])
+        instancias = [p for p in _cosas(ctx) if p.clase == objetivo]
+        cerca = [p for p in instancias if al_alcance(p)]
+        if cerca:
+            p = max(cerca, key=lambda q: q.rasgo("proximidad"))
+            return Paso(verbo, p.id, objetivo, penal, confianza, [texto])
+        ir = acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx))
+        if ir is not None:
+            ir.coste += penal
+            ir.motivo.insert(0, texto)
+        return ir
+
+    def _explorar_efectos(self, ctx: Contexto) -> None:
+        """5.2 c: balbuceo motor. Con calma (nada peligroso a la vista) y cada ``CADA_EXPLORACION`` latidos,
+        COGER sobre lo que hay delante si en esta vida aún no se ha probado."""
+        if ctx.latido % self.CADA_EXPLORACION or any(p.rasgo("peligro") > 0.0 for p in _cosas(ctx)):
+            return
+        d = delante(ctx)
+        if d is None:
+            return
+        clave = (Verbo.COGER, str(d["clase"]))
+        if clave in ctx.memoria.requisitos or clave in ctx.memoria.intentos:
+            return
+        self.proponer(ctx, Verbo.COGER, str(d["id"]), 0.3, 0.5, f"metas: probar a coger {d['clase']} (sin plan)", clase=str(d["clase"]))
+
+
 SABER = "saber"
 INTENSIDAD_INTENCION_DEL_MUNDO = 0.5
 
@@ -509,7 +897,7 @@ class Feedback(Componente):
 
 
 def estrategias_s3() -> List[Definicion]:
-    return [EvitarLoPeligroso(), ComerLoNutritivo(), CogerLoUtil(), Estudio()]
+    return [EvitarLoPeligroso(), ComerLoNutritivo(), CogerLoUtil(), Estudio(), PerseguirMetas()]
 
 
 def crear_s3() -> Sistema:

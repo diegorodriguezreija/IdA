@@ -13,13 +13,13 @@ Orden de un latido:
 """
 
 import time
-from typing import Any, Callable, Dict, List, Optional, cast
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.marcapasos import Marcapasos
-from ida.core.memoria import Memoria
+from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -92,6 +92,7 @@ class Organismo:
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
+        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
 
     def _sistema(self, nombre: str) -> Sistema:
@@ -157,6 +158,7 @@ class Organismo:
         onda.notas["ms_cognicion"] = round(onda.ms_transcurridos(), 2)
 
         # 6. Actuar
+        self._antes_accion = self._situacion_inventario(ctx)   # paso 2: lo que había antes de actuar (requisitos)
         ctx.extra.pop("efecto", None)
         with onda.fase("actuar"):
             self.actuar.ejecutar(ctx)
@@ -203,6 +205,8 @@ class Organismo:
                     if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
+        if self.con_experiencia and self.memoria.activa:
+            self._aprender_mapa(ctx, previa.carga if previa is not None else None)
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
@@ -211,6 +215,18 @@ class Organismo:
             if clase_obj:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
+        ahora_inv = self._situacion_inventario(ctx)
+        objetivo = str(c.get("clase") or c.get("objetivo") or "")
+        if c["verbo"] in (Verbo.USAR, Verbo.COGER) and self._antes_accion is not None and ahora_inv is not None:
+            self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
+                                            bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
+                                            distancias=self._antes_accion[3])
+        if self.perfil.aliestesia:
+            self._aprender_satisface(ctx, c)
+        if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
+            self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
+                                        self._antes_accion[0] if self._antes_accion is not None else None,
+                                        ahora_inv[0] if ahora_inv is not None else None, dict(c.get("delta", {})))
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -219,6 +235,115 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
+
+    def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
+        """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior
+        (``delta`` de la interocepción; cada ``Necesidad`` declara sus constantes). Tras comer algo con éxito, cuenta
+        para esa clase; en cualquier otro latido, para la línea base de cada necesidad (lo que sube sin comer)."""
+        delta = {k: float(p.carga.get("delta", 0.0)) for k, p in ctx.onda.ev("Interocepcion").items()}
+        subidas = {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes) for n in self.perfil.necesidades}
+        if c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
+            self.memoria.aprender_satisface(str(c["clase"]), subidas)
+        else:
+            self.memoria.actualizar_linea_base(subidas)
+
+    def _aprender_mapa(self, ctx: Contexto, c: Optional[Dict[str, Any]]) -> None:
+        """Paso 3 (proteger X): mapa local, modelo del cuerpo y transformaciones, desde lo percibido.
+
+        Necesita posiciones (ubicación ``<nombre>_x_y``) y la clase de cada casilla a la vista (``cuerpo["casillas"]``);
+        sin ellas no hace nada. Antes de actualizar el mapa contrasta la acción anterior con lo que hay ahora:
+        - MOVER hacia una casilla vecina de clase conocida: si la posición cambió y si quedó mirando hacia ella, según la
+          casilla fuera transitable o no (modelo del cuerpo, propiocepción);
+        - COGER, COMER o ATACAR sobre una vecina: si quedó mirando hacia ella;
+        - COGER o USAR: si la casilla sobre la que actuó cambió de clase (la de delante, para USAR), la transformación; si la
+          acción salió y la casilla no cambió, también («no la cambia»): así un primer intento real corrige lo inferido.
+        """
+        obs = ctx.observacion
+        if obs is None:
+            return
+        aqui = pos_de(obs.ubicacion)
+        cuerpo = obs.cuerpo or {}
+        crudas = cuerpo.get("casillas")
+        if aqui is None or not isinstance(crudas, dict) or not crudas:
+            return
+        casillas = {(int(k[0]), int(k[1])): str(v) for k, v in crudas.items()}
+        o = cuerpo.get("orientacion")
+        cara = (int(o[0]), int(o[1])) if isinstance(o, (list, tuple)) and len(o) == 2 else None
+        mem = self.memoria
+        if c is not None and mem.yo_previo is not None:
+            p0, f0 = mem.yo_previo
+            verbo = c["verbo"]
+            if verbo == Verbo.USAR:
+                destino = (p0[0] + f0[0], p0[1] + f0[1]) if f0 is not None else None
+            else:
+                destino = pos_de(c.get("objetivo"))
+            if destino is not None and abs(destino[0] - p0[0]) + abs(destino[1] - p0[1]) == 1:
+                direccion = (destino[0] - p0[0], destino[1] - p0[1])
+                antes = mem.casillas.get(destino)
+                if verbo == Verbo.MOVER:
+                    libre = mem.transitable(antes)
+                    if libre is not None:
+                        mem.aprender_cuerpo("mover", libre, aqui == destino, cara == direccion)
+                elif verbo in (Verbo.COGER, Verbo.COMER, Verbo.ATACAR):
+                    mem.aprender_cuerpo("interactuar", True, aqui != p0, cara == direccion)
+                despues = casillas.get(destino)
+                cambio = antes is not None and despues is not None and antes != despues
+                if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and (cambio or bool(c.get("exito"))):
+                    objetivo = str(c.get("clase") or c.get("objetivo") or "")
+                    mem.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
+                    if cambio and verbo == Verbo.USAR and not mem.transitable_peligro(despues):
+                        mem.cierres.add(destino)
+                    elif cambio:
+                        mem.cierres.discard(destino)
+        libres, ocupadas, peligros = set(), set(), set()
+        for e in obs.entidades:
+            pos = e.datos.get("pos")
+            if not isinstance(pos, (list, tuple)) or len(pos) != 2:
+                continue
+            p = (int(pos[0]), int(pos[1]))
+            if e.rasgos.get("lugar", 0.0) >= 0.5:
+                libres.add(p)
+            elif e.clase != casillas.get(p):
+                ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
+                if e.rasgos.get("peligro", 0.0) >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
+                    peligros.add(p)
+        mem.ver_casillas(aqui, casillas, libres, ocupadas, peligros)
+        mem.yo_previo = (aqui, cara)
+
+    @staticmethod
+    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:
+        """Inventario percibido, clases al alcance (no lugares) y clase de lo que hay delante (``cuerpo["delante"]``,
+        si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas."""
+        obs = ctx.observacion
+        if obs is None or obs.inventario is None:
+            return None
+        cerca = {e.clase for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9}
+        delante = (obs.cuerpo or {}).get("delante")
+        return (dict(obs.inventario), cerca, (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
+                Organismo._distancias(obs))
+
+    @staticmethod
+    def _distancias(obs: Any) -> Dict[str, Desplazamiento]:
+        """Desplazamiento ``(|dx|, |dy|)`` ordenado a la instancia más cercana de cada clase, hasta ``RADIO_PRUEBA``
+        casillas (a igual distancia, el más diagonal). Con posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``)
+        se calcula; sin ellas, lo que está al alcance (proximidad ≥ 0,9) cuenta como (0, 1)."""
+        partes = str(obs.ubicacion).rsplit("_", 2)
+        aqui = (int(partes[1]), int(partes[2])) if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]) else None
+        dist: Dict[str, Desplazamiento] = {}
+        for e in obs.entidades:
+            if e.rasgos.get("lugar", 0.0) >= 0.5:
+                continue
+            pos = e.datos.get("pos")
+            if aqui is not None and isinstance(pos, (list, tuple)) and len(pos) == 2:
+                d = desplazamiento(int(pos[0]) - aqui[0], int(pos[1]) - aqui[1])
+            elif e.rasgos.get("proximidad", 0.0) >= 0.9:
+                d = (0, 1)
+            else:
+                continue
+            previo = dist.get(e.clase)
+            if sum(d) <= RADIO_PRUEBA and (previo is None or (sum(d), -d[0]) < (sum(previo), -previo[0])):
+                dist[e.clase] = d
+        return dist
 
     def _causa_de_muerte(self, onda: Onda) -> str:
         """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada

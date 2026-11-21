@@ -46,14 +46,20 @@ Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA 
 
 Opciones comunes: `--latidos`, `--semilla`, `--generaciones`, `--ver` (panel), `--otel` (OpenTelemetry), `--sin-experiencia` (apaga las dimensiones activa y proactiva para comparar), `--tabula-rasa` (borra el linaje), `--cada N` y `--opcion clave=valor`. Los datos se guardan en `datos/<mundo>/`.
 
-Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia` ([método](docs/MEDICION_OFICIAL.md)).
+Evaluación de Crafter con el protocolo oficial, línea general (sin conducta escrita para Crafter): `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --sin-estrategias-propias --manual estricto` ([método](docs/MEDICION_OFICIAL.md), [resultados](docs/MEDICION_CIERRE_PASO3.md)).
 
 > **Nota sobre Snake.** Este mundo juega en [playsnake.org](https://playsnake.org/), un sitio de terceros sin relación con este proyecto, controlando un navegador con Playwright. Es un mundo de demostración: juega una partida cada vez, no usa credenciales ni recoge datos del sitio. Si lo usas, respeta sus condiciones de uso. Si el sitio cambia o deja de estar disponible, este mundo dejará de funcionar; los demás no dependen de internet.
 
 ## Lo conseguido
 
-- **Crafter: 19,2 % de Crafter Score sin ningún entrenamiento.** Medido con el protocolo oficial: episodios de hasta 10 000 pasos, vista local de 9×7 y media geométrica de las tasas de éxito de los 22 logros. La medición abarca 278 episodios, cada uno en un mundo nuevo y con un individuo recién nacido, sin legado (IC 95 %: 17,7–20,5 %). Con linaje entre vidas sube a 20,3 %. Como referencia, en el artículo original de Crafter, DreamerV2 obtiene 10,0 % y PPO 4,6 % tras entrenar con 1M de pasos; el azar saca 1,6 %. IdA no entrena: juega desde que nace, y cada decisión se puede leer (qué sistema la propuso, con qué motivo y por qué ganó en el Tribunal). [Método y datos](docs/MEDICION_OFICIAL.md).
-- **De dónde sale esa cifra, sin adornos.** Incluye estrategias escritas para Crafter (refugio nocturno, defensa y plan tecnológico) sobre el núcleo genérico. Por eso no se presenta como comparación de igual a igual con agentes que aprenden desde píxeles, y queda por debajo de SPRING (27,3 %, GPT-4 leyendo el artículo de Crafter) y de los mejores agentes actuales. La fase en curso traslada esas capacidades al núcleo para medir IdA sin conducta específica del mundo.
+- **Crafter: 12,8–13,6 % de Crafter Score sin entrenamiento y sin ninguna conducta escrita para Crafter.** El mundo solo percibe, actúa y declara hechos en un manual sacado del artículo y el README de Crafter, cada hecho con su cita verificada. Todo lo demás lo pone el núcleo genérico:
+  - un planificador que encadena requisitos y aprende lo que el manual no dice (cantidades, herramientas, de dónde sale cada cosa);
+  - el aprendizaje de qué satisface cada necesidad;
+  - un refugio general que elige, cava y cierra un recinto para pasar la noche.
+
+  Medido con el protocolo oficial (episodios de hasta 10 000 pasos, vista local de 9×7, media geométrica de las tasas de éxito de los 22 logros), con dos semillas base: 12,82 % (IC 95 %: 11,8–13,8) y 13,58 % (IC 95 %: 12,5–14,5), con 380 episodios cada una, cada episodio en un mundo nuevo y con un individuo recién nacido. Como referencia, en el artículo original de Crafter, DreamerV2 obtiene 10,0 % y PPO 4,6 % tras entrenar con 1M de pasos; el azar saca 1,6 %. Cada decisión se puede leer: qué sistema la propuso, con qué motivo («metas: make_stone_pickaxe ← falta piedra ← COGER piedra») y por qué ganó en el Tribunal.
+- **Cómo se llegó, medido paso a paso.** El núcleo sin conducta de Crafter partía del 1,45 %, al nivel del azar. El manual y el planificador lo llevaron al 8,8 %; aprender qué satisface cada necesidad, al 11,3 %; el refugio general, al 12,8–13,6 %. Dos mecanismos que no aportaron se retiraron y quedan documentados. Detalle en [`docs/FASE_GENERALIZACION_CRAFTER.md`](docs/FASE_GENERALIZACION_CRAFTER.md).
+- **La versión anterior, con conducta escrita para Crafter, queda como referencia.** Con estrategias propias del mundo (refugio nocturno, defensa y plan tecnológico), IdA obtenía 19,2 % (IC 95 %: 17,7–20,5). Se conserva en la etiqueta `crafter-procedimental-v1` y se reproduce desde ella. La diferencia entre las dos líneas mide lo que aún falta por trasladar al núcleo. Ninguna de las dos se presenta como comparación de igual a igual con agentes que aprenden desde píxeles: IdA recibe la escena en forma simbólica. Las dos quedan por debajo de SPRING (27,3 %, GPT-4 leyendo el artículo de Crafter) y de los mejores agentes actuales.
 - **El mismo núcleo vive en cinco mundos** muy distintos, y un test con AST vigila que no aprenda palabras de ninguno.
 - **Optimizando solo el código de cada mundo:**
   - Snake pasa de unos 232 a 916 puntos de media en nivel pitón (récord: 1605).
@@ -63,9 +69,9 @@ Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_cr
 - **Repetible con semilla** en el mundo mínimo, el de archivos, Crafter y el ajedrez.
 - **Lo que no funciona, también publicado:**
   - Contra el rival de ajedrez de 3 ply pierde.
-  - En Crafter, los episodios duran poco más de un día de juego (unos 360 pasos de media; un día son 300), y terminan por zombis, esqueletos, hambre y sed.
-  - Los cinco logros de hierro y diamante siguen al 0 %, y comer una planta, al 0,4 %, aunque la planta casi siempre. 
-  - Sin las estrategias escritas para Crafter (refugio nocturno, defensa y plan tecnológico), el núcleo saca 1,46 %, al nivel del azar
+  - En Crafter, los episodios duran menos de un día de juego (unos 263 pasos de media; un día son 300). Solo en uno de cada cinco el individuo sobrevive a la noche: la mayoría no encuentra a tiempo un sitio donde refugiarse. El 70 % de los episodios terminan por zombis.
+  - Los cinco logros de hierro y diamante siguen prácticamente al 0 %, y comer una planta, por debajo del 1 %, aunque la planta casi siempre.
+  - En `main`, el adaptador de Crafter aún conserva dos estrategias de defensa propias. Con ellas la Score es del 13,8 %; las cifras de la línea general se miden sin ellas (`--sin-estrategias-propias`).
 
 Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). La métrica anterior de Crafter (logros por vida: 9,30 ± 1,09) y su historia siguen allí.
 
@@ -101,7 +107,7 @@ Este repositorio es el framework: sirve para ejecutar y ver vivir a los individu
 
 ## Honestidad
 
-Es un prototipo personal, no un estudio. La mayoría de las mediciones usan pocas vidas y pocas semillas. La de Crafter sigue el protocolo oficial, pero con 100 000 pasos (278 episodios) en lugar del millón completo. Como cada episodio empieza sin legado, la cifra no depende de la duración del presupuesto; aun así, la evaluación completa con semillas reservadas se publicará al cerrar la fase de generalización. Los nombres biológicos son inspiración, no equivalencia. Las cifras se publican tal como salieron, también cuando son malas. Gran parte del código se escribió con agentes de IA bajo la dirección y la revisión del autor.
+Es un prototipo personal, no un estudio. La mayoría de las mediciones usan pocas vidas y pocas semillas. Las de Crafter siguen el protocolo oficial, pero con 100 000 pasos (unos 380 episodios) en lugar del millón completo. Como cada episodio empieza sin legado, la cifra no depende de la duración del presupuesto; aun así, la evaluación completa con semillas reservadas se publicará al cerrar la fase de generalización. Son reproducibles con semilla: repetir una medición da exactamente el mismo resultado. La única excepción posible es un latido que supere el plazo de 100 ms y se corte; cada medición registra cuántos lo hacen (como mucho 6 de 100 000 en las publicadas). Los nombres biológicos son inspiración, no equivalencia. Las cifras se publican tal como salieron, también cuando son malas. Gran parte del código se escribió con agentes de IA bajo la dirección y la revisión del autor.
 
 ## Licencia
 

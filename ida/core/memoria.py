@@ -191,6 +191,137 @@ class RecuerdoLugar:
     confianza: float = 1.0
 
 
+RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
+Desplazamiento = Tuple[int, int]   # (|dx|, |dy|) ordenados de menor a mayor: (0, 1) al lado, (1, 1) diagonal, (0, 2) a dos en línea
+
+
+def desplazamiento(dx: int, dy: int) -> Desplazamiento:
+    a, b = sorted((abs(int(dx)), abs(int(dy))))
+    return (a, b)
+
+
+Pos = Tuple[int, int]
+DIRECCIONES: Tuple[Pos, ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def pos_de(texto: Any) -> Optional[Pos]:
+    """Posición al final de un identificador ``<nombre>_x_y`` (convención de los mundos con rejilla), o None."""
+    partes = str(texto or "").rsplit("_", 2)
+    if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
+        return int(partes[1]), int(partes[2])
+    return None
+
+
+@dataclass
+class Requisito:
+    """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
+
+    «Para que ``verbo`` sobre ``objetivo`` tenga efecto hace falta llevar ``requiere_inventario`` y tener
+    cerca ``requiere_cerca``; su efecto en el inventario es ``efecto``». En ``requiere_inventario``,
+    ``None`` es «al menos uno, cantidad desconocida». Las claves de inventario son las que percibe el
+    individuo. Entra del manual del mundo (``fuente`` = «manual», con confianza de autoridad) o se
+    descubre con la experiencia (``fuente`` = «experiencia»); la experiencia mueve cantidades y confianza.
+    """
+
+    verbo: Verbo
+    objetivo: str
+    requiere_inventario: Dict[str, Optional[int]] = field(default_factory=dict)
+    requiere_cerca: Set[str] = field(default_factory=set)
+    efecto: Dict[str, int] = field(default_factory=dict)
+    fuente: str = "manual"
+    confianza: float = 0.8
+    exitos: int = 0
+    fallos: int = 0
+    heredado: bool = False
+    aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
+    requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
+    delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
+    cerca_ok: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)       # desplazamientos desde los que ha funcionado
+    cerca_fallida: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)  # desde los que ha fallado (lo demás, presente)
+
+    def cerca_basta(self, clase: str, desp: Desplazamiento) -> bool:
+        """Si ``clase`` a ese desplazamiento cuenta como cerca: si ya ha funcionado desde ahí, sí; si ha fallado, no;
+        al lado (0, 1), sí; y hasta ``RADIO_PRUEBA`` casillas se prueba antes de caminar. La diagonal (1, 1) y dos
+        casillas en línea (0, 2) se aprenden por separado."""
+        if desp in self.cerca_ok.get(clase, set()):
+            return True
+        if desp in self.cerca_fallida.get(clase, set()):
+            return False
+        return sum(desp) <= RADIO_PRUEBA
+
+    @property
+    def tasa(self) -> float:
+        """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
+        total = self.exitos + self.fallos
+        return self.exitos / total if total else 1.0
+
+    def cumple_inventario(self, inventario: Dict[str, float]) -> bool:
+        return all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
+
+    def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
+        """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
+        return (all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
+                and self.requiere_cerca <= cerca)
+
+    def a_dict(self) -> Dict[str, Any]:
+        return {"verbo": self.verbo.name, "objetivo": self.objetivo, "requiere_inventario": dict(self.requiere_inventario),
+                "requiere_cerca": sorted(self.requiere_cerca), "efecto": dict(self.efecto), "fuente": self.fuente,
+                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos,
+                "aparece": sorted(self.aparece), "requiere_delante": sorted(self.requiere_delante)}
+
+
+@dataclass
+class Meta:
+    """Paso 5 (5.0): una meta declarada por el manual del mundo: hacer ``verbo`` sobre ``objetivo`` con efecto."""
+
+    verbo: Verbo
+    objetivo: str
+    id: str = ""
+    conseguida: bool = False
+
+
+@dataclass
+class Satisface:
+    """Paso 0b (aliestesia): cuánto satisface comer algo de ``clase`` la ``necesidad``, en [0, 1].
+
+    Dos fuentes, combinadas como las de ``Proposicion``: lo que declara el manual (``c_aut`` con peso
+    ``w_aut``) y la experiencia. La experiencia es **contingencia** (Rescorla, 1968), no coincidencia:
+    ``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las cuales subió alguna constante
+    vital de la necesidad en el latido siguiente; ΔP = P(sube | comer la clase) − P(sube | sin comer),
+    acotada a [0, 1]. La línea base P(sube | sin comer) es de la necesidad, no de la clase
+    (``Memoria.linea_base``, media móvil). Las dos probabilidades se comparan en el mismo momento: en cada
+    comida se acumula en ``esperado`` la línea base vigente, y ΔP = (sube − esperado) / n. Así una
+    necesidad que sube sola por fases (la luz al amanecer) no se atribuye a lo que se come en esa fase.
+    La estimación combina ΔP (peso ``n``) con un previo (``Memoria.satisfaccion``): lo que declara el
+    manual (``c_aut``, peso ``w_aut``); 0 con peso ``PREVIO`` para una necesidad que el manual no declara
+    en una clase suya; o lo que sugiere la percepción (el rasgo de la necesidad) con peso ``PREVIO`` si el
+    manual no habla de la clase. Una coincidencia aislada no basta para atribuir."""
+
+    clase: str
+    necesidad: str
+    n: int = 0
+    sube: int = 0
+    c_aut: Optional[float] = None
+    w_aut: float = 0.0
+    esperado: float = 0.0   # suma de la línea base vigente en cada comida (subidas esperadas sin comer)
+
+    PREVIO = 3.0   # peso (en comidas) del previo que no viene del manual
+
+    def contingencia(self) -> float:
+        """ΔP de la experiencia, en [0, 1] (0 sin comidas)."""
+        return max(0.0, min(1.0, (self.sube - self.esperado) / self.n)) if self.n else 0.0
+
+    def estimacion(self, previo: float, peso: float) -> float:
+        """(n · ΔP + peso · previo) / (n + peso)."""
+        total = self.n + peso
+        return (self.n * self.contingencia() + peso * previo) / total if total > 0 else 0.0
+
+    @property
+    def fuente(self) -> str:
+        partes = (["manual"] if self.c_aut is not None and self.w_aut > 0.0 else []) + (["experiencia"] if self.n else [])
+        return "+".join(partes) or "ninguna"
+
+
 def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
@@ -236,6 +367,31 @@ class Memoria:
         # F1: modelo de transiciones (sistema, verbo, clase) -> cambio medio de cada variable, aprendido de lo vivido.
         self.modelo: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         self._modelo_por: Dict[Tuple[str, str], Set[str]] = {}
+        # Paso 2 (fase de generalización): requisitos de las acciones e intentos fallidos (para el planificador).
+        self.requisitos: Dict[Tuple[Verbo, str], Requisito] = {}
+        self.intentos: Dict[Tuple[Verbo, str], List[Dict[str, float]]] = {}
+        self.claves_inventario: Optional[Set[str]] = None   # si el manual las declara, solo esas cuentan como objetos
+        # Paso 5: metas del manual (se consiguen en cada vida), bloqueo por fallos seguidos y objetos ya tenidos.
+        self.metas: Dict[Tuple[Verbo, str], Meta] = {}
+        self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
+        self._tenidos: Set[str] = set()
+        self._tenidos_iniciado = False
+        # Paso 0b (aliestesia): qué necesidad satisface comer cada clase, del manual y de la experiencia.
+        self.satisface: Dict[Tuple[str, str], Satisface] = {}
+        self.linea_base: Dict[str, float] = {}      # necesidad -> P(sube | sin comer), media móvil
+        self.n_base: Dict[str, int] = {}            # latidos sin comer contados por necesidad
+        # Paso 3 (proteger X): mapa local de esta vida (no se hereda). Es la versión
+        # mínima del mapa cognitivo compartido: clase de cada casilla vista, qué clases son transitables, qué hace
+        # cada acción con la casilla sobre la que actúa y cómo se mueve el propio cuerpo.
+        self.casillas: Dict[Pos, str] = {}
+        self.version_mapa = 0                       # sube cada vez que cambia una casilla recordada
+        self.paso_libre: Dict[str, int] = {}        # clase -> veces que una vecina de esa clase era un lugar (transitable)
+        self.paso_bloqueado: Dict[str, int] = {}    # clase -> veces que una vecina vacía de esa clase no lo era
+        self.peligro_sobre: Set[str] = set()        # clases de casilla sobre las que se ha visto un peligro que se mueve
+        self.transformaciones: Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]] = {}   # (verbo, objetivo) -> {(antes, después): n}
+        self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
+        self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
+        self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
 
     @property
     def activa(self) -> bool:
@@ -820,10 +976,327 @@ class Memoria:
             "episodios_replay": episodios_replay,
         }
 
+    # --- manual del mundo y requisitos de las acciones (paso 2) ----------------
+    CONFIANZA_MANUAL = 0.8      # c_aut de lo que declara el manual (y confianza inicial de sus requisitos)
+    PESO_MANUAL = 1.0           # w_aut del manual: pesa como una experiencia propia
+    PASO_CONFIANZA_REQUISITO = 0.1
+    MAX_INTENTOS = 50           # intentos fallidos recordados por (verbo, objetivo); se olvidan los más antiguos
+    FALLOS_BLOQUEO = 3          # paso 5: fallos seguidos sin ningún éxito que bloquean una acción
+
+    def aplicar_manual(self, manual: Dict[str, Any]) -> int:
+        """Al nacer, antes de heredar: las proposiciones del manual entran como autoridad (``c_aut``), refutables
+        por la experiencia; los requisitos, con fuente «manual»; las metas, sin conseguir. Un requisito repetido
+        (mismo verbo y objetivo) completa al anterior: fija cantidades desconocidas y suma lo que falte. Los
+        hechos de tipo «nota» no se cargan. Con ``inventario``, el manual declara qué claves del inventario
+        percibido son objetos. Devuelve cuántos hechos se cargaron."""
+        if not self.activa or not manual:
+            return 0
+        if manual.get("inventario") is not None:
+            self.claves_inventario = {str(k) for k in manual["inventario"]}
+        n = 0
+        for h in manual.get("hechos", []):
+            tipo = h.get("tipo")
+            if tipo == "proposicion":
+                p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
+                p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
+                if h.get("necesidad") and Relacion[h["relacion"]] == Relacion.NUTRITIVO:   # paso 0b: qué necesidad satisface
+                    s = self.satisface.setdefault((str(h["sujeto"]), str(h["necesidad"])), Satisface(str(h["sujeto"]), str(h["necesidad"])))
+                    afirma = str(h.get("veredicto", "afirma")) == "afirma"
+                    s.c_aut, s.w_aut = (self.CONFIANZA_MANUAL if afirma else 1.0 - self.CONFIANZA_MANUAL), self.PESO_MANUAL
+                n += 1
+            elif tipo == "meta":
+                clave_m = (Verbo[h["verbo"]], str(h.get("objetivo", "")))
+                self.metas.setdefault(clave_m, Meta(clave_m[0], clave_m[1], str(h.get("id", ""))))
+                n += 1
+            elif tipo == "requisito":
+                clave = (Verbo[h["verbo"]], str(h["objetivo"]))
+                inv = {str(k): (None if v is None else int(v)) for k, v in (h.get("requiere_inventario") or {}).items()}
+                cerca = {str(c) for c in h.get("requiere_cerca") or []}
+                efecto = {str(k): int(v) for k, v in (h.get("efecto") or {}).items()}
+                aparece = {str(c) for c in h.get("aparece") or []}
+                r = self.requisitos.get(clave)
+                if r is None:
+                    self.requisitos[clave] = Requisito(clave[0], clave[1], inv, cerca, efecto, fuente="manual",
+                                                       confianza=self.CONFIANZA_MANUAL, aparece=aparece)
+                else:
+                    for k, v in inv.items():
+                        previo = r.requiere_inventario.get(k)
+                        r.requiere_inventario[k] = v if previo is None else (previo if v is None else max(previo, v))
+                    r.requiere_cerca |= cerca
+                    r.efecto.update(efecto)
+                    r.aparece |= aparece
+                n += 1
+        return n
+
+    # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
+    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
+        """Cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa clase (ni del manual
+        ni de la experiencia). ``previos``: lo que sugiere la percepción para cada necesidad (el previo de una clase
+        de la que el manual no habla). Las necesidades que no aparecen valen 0."""
+        if not self.activa:
+            return None
+        registros = {nec: s for (c, nec), s in self.satisface.items() if c == clase}
+        if not registros:
+            return None
+        manual = any(s.c_aut is not None for s in registros.values())
+        resultado: Dict[str, float] = {}
+        for nec in sorted(set(registros) | set(previos or {})):
+            s = registros.get(nec) or Satisface(clase, nec)
+            if s.c_aut is not None:
+                previo, peso = s.c_aut, s.w_aut
+            elif manual:
+                previo, peso = 0.0, Satisface.PREVIO
+            else:
+                previo, peso = (previos or {}).get(nec, 0.0), Satisface.PREVIO
+            resultado[nec] = s.estimacion(previo, peso)
+        return resultado
+
+    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:
+        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
+
+    def aprender_satisface(self, clase: str, subidas: Dict[str, bool]) -> None:
+        """Tras comer algo de ``clase`` con éxito: para cada necesidad, si subió alguna de sus constantes vitales."""
+        if not self.activa or not clase:
+            return
+        for necesidad, subio in subidas.items():
+            s = self.satisface.setdefault((clase, necesidad), Satisface(clase, necesidad))
+            s.n += 1
+            s.sube += int(bool(subio))
+            s.esperado += self.linea_base.get(necesidad, 0.0)
+
+    VENTANA_BASE = 10   # latidos de la media móvil de la línea base (media exacta mientras haya menos): lo reciente
+
+    def actualizar_linea_base(self, subidas: Dict[str, bool]) -> None:
+        """En un latido sin comer: para cada necesidad, si subió alguna de sus constantes (p. ej. sola, al amanecer)."""
+        if not self.activa:
+            return
+        for necesidad, subio in subidas.items():
+            k = self.n_base.get(necesidad, 0) + 1
+            self.n_base[necesidad] = k
+            previa = self.linea_base.get(necesidad, 0.0)
+            self.linea_base[necesidad] = previa + (float(bool(subio)) - previa) / min(k, self.VENTANA_BASE)
+
+    def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
+        """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
+        if self.claves_inventario is None:
+            return {k: float(v) for k, v in inventario.items()}
+        return {k: float(v) for k, v in inventario.items() if k in self.claves_inventario}
+
+    # --- paso 3: mapa local, transitabilidad, transformaciones y modelo del cuerpo -------------
+    def transitable(self, clase: Optional[str]) -> Optional[bool]:
+        """Si se puede pasar por una casilla de ``clase``: sí si alguna vez fue un lugar (casilla a la que ir); no si,
+        vacía, nunca lo fue; None si no hay pruebas."""
+        if not clase:
+            return None
+        if self.paso_libre.get(clase, 0) > 0:
+            return True
+        if self.paso_bloqueado.get(clase, 0) > 0:
+            return False
+        return None
+
+    def transitable_peligro(self, clase: Optional[str]) -> bool:
+        """Si un peligro puede llegar por una casilla de ``clase``. Previo: por donde pasa uno mismo pasa un peligro que se
+        mueve, y lo desconocido se supone abierto; la experiencia añade las clases sobre las que se ha visto uno."""
+        return self.transitable(clase) is not False or clase in self.peligro_sobre
+
+    def ver_casillas(self, aqui: Pos, casillas: Dict[Pos, str], libres: Set[Pos], ocupadas: Set[Pos], peligros: Set[Pos]) -> None:
+        """Actualiza el mapa local con lo visto. ``libres``: casillas que son lugares; ``ocupadas``: con algo encima (no
+        dicen nada de su clase); ``peligros``: casillas con un peligro que se mueve encima."""
+        for p, c in casillas.items():
+            if self.casillas.get(p) != c:
+                self.casillas[p] = c
+                self.version_mapa += 1
+        for dx, dy in DIRECCIONES:
+            v = (aqui[0] + dx, aqui[1] + dy)
+            vecina = casillas.get(v)
+            if vecina is None:
+                continue
+            if v in libres:
+                self.paso_libre[vecina] = self.paso_libre.get(vecina, 0) + 1
+            elif v not in ocupadas:
+                self.paso_bloqueado[vecina] = self.paso_bloqueado.get(vecina, 0) + 1
+        for p in peligros:
+            if p in casillas:
+                self.peligro_sobre.add(casillas[p])
+
+    def aprender_transformacion(self, verbo: Verbo, objetivo: str, antes: str, despues: str) -> None:
+        """La acción cambió la clase de la casilla sobre la que actuó."""
+        t = self.transformaciones.setdefault((verbo, objetivo), {})
+        t[(antes, despues)] = t.get((antes, despues), 0) + 1
+
+    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:
+        """Clase en la que la acción ha convertido más veces la casilla (de clase ``antes``, si se da)."""
+        t = {k: n for k, n in self.transformaciones.get((verbo, objetivo), {}).items() if antes is None or k[0] == antes}
+        return max(t, key=lambda k: (t[k], k))[1] if t else None
+
+    def aprender_cuerpo(self, accion: str, libre: bool, avanza: bool, mira: bool) -> None:
+        """Propiocepción: tras ``accion`` hacia una casilla libre o no, si cambió la posición y si quedó mirando hacia ella."""
+        r = self.cuerpo.setdefault((accion, libre), [0, 0, 0])
+        r[0] += 1
+        r[1] += int(avanza)
+        r[2] += int(mira)
+
+    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:
+        """(avanza, queda mirando hacia allí) más frecuentes tras ``accion`` hacia una casilla libre o no; None sin experiencia."""
+        r = self.cuerpo.get((accion, libre))
+        if not r or r[0] == 0:
+            return None
+        return 2 * r[1] > r[0], 2 * r[2] > r[0]
+
+    def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:
+        """Paso 5 (5.2 b): una acción que nunca ha funcionado y ha fallado ``FALLOS_BLOQUEO`` veces seguidas
+        no se vuelve a intentar hasta que el inventario gane un tipo de objeto nuevo. Una acción cuyo efecto
+        puede salir (``puede_salir``) no se bloquea: si es probabilística, fallar seguido no dice que no
+        funcione; lo que dicen los fallos lo recoge su coste (``tasa_estimada``)."""
+        if self.puede_salir(verbo, objetivo):
+            return False
+        return self.fallos_seguidos.get((verbo, objetivo), 0) >= self.FALLOS_BLOQUEO
+
+    def declarada(self, verbo: Verbo, objetivo: str) -> bool:
+        """El manual declara la acción: es una de sus metas o tiene un requisito suyo (fuente «manual»)."""
+        r = self.requisitos.get((verbo, objetivo))
+        return (verbo, objetivo) in self.metas or (r is not None and r.fuente == "manual")
+
+    def puede_salir(self, verbo: Verbo, objetivo: str) -> bool:
+        """Según la experiencia (algún éxito) o el manual (``declarada``), el efecto de la acción puede salir,
+        aunque sea con poca probabilidad."""
+        r = self.requisitos.get((verbo, objetivo))
+        return (r is not None and r.exitos > 0) or self.declarada(verbo, objetivo)
+
+    def tasa_estimada(self, verbo: Verbo, objetivo: str) -> float:
+        """Tasa de éxito estimada: (éxitos + w) / (éxitos + fallos + w), con w = ``PESO_MANUAL`` si el manual
+        declara la acción (su declaración pesa como un éxito propio, como sus proposiciones) y 0 si no. Los
+        fallos son los del requisito o, sin requisito aún, los intentos fallidos recordados (hasta
+        ``MAX_INTENTOS``). 1 sin intentos."""
+        clave = (verbo, objetivo)
+        r = self.requisitos.get(clave)
+        exitos = r.exitos if r is not None else 0
+        fallos = r.fallos if r is not None else len(self.intentos.get(clave, []))
+        w = self.PESO_MANUAL if self.declarada(verbo, objetivo) else 0.0
+        total = exitos + fallos + w
+        return (exitos + w) / total if total > 0 else 1.0
+
+    def aprender_requisito(
+        self,
+        verbo: Verbo,
+        objetivo: str,
+        inv_antes: Dict[str, float],
+        inv_despues: Dict[str, float],
+        cerca: Set[str],
+        exito: bool,
+        cerca_despues: Optional[Set[str]] = None,
+        delante: Optional[str] = None,
+        distancias: Optional[Dict[str, Desplazamiento]] = None,
+    ) -> None:
+        """Tras una acción con objetivo: contrasta el inventario de antes y de después.
+
+        - Hay efecto si la acción tuvo éxito **y** el inventario cambió. Lo consumido fija la cantidad exacta;
+          un requisito que no se conocía se descubre (fuente «experiencia»). Lo que aparece cerca y antes no
+          estaba queda en ``aparece``. Si antes había fallado, lo que hay ahora y faltaba en todos los fallos
+          se induce como requisito (5.2 a) y esos intentos se olvidan.
+        - Sin efecto, el intento se recuerda. Si se creía cumplir el requisito, alguna cantidad desconocida
+          es mayor: sube a lo que había + 1, salvo las que ya fijó lo consumido en un éxito.
+        - ``delante``: la clase de lo que había delante; las clases donde funcionó forman ``requiere_delante``
+          y aquellas donde solo ha fallado, ``delante_fallido`` (5.2 d).
+        - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
+        - Un requisito descubierto por un primer éxito sin fallos previos solo registra el efecto: los requisitos
+          de inventario los añade la inducción por diferencia.
+        - ``distancias`` (clase → desplazamiento ``(|dx|, |dy|)`` ordenado, hasta ``RADIO_PRUEBA`` casillas): con
+          éxito, el desplazamiento queda como válido para cada requisito de cercanía; con fallo y el inventario
+          cumplido, como fallido (salvo si ya funcionó desde ahí).
+        - Inducción por diferencia: solo cuentan los fallos que no explica ya un requisito conocido (con el
+          inventario del fallo por debajo de una cantidad conocida o estimada, el fallo ya tiene causa).
+        - ``delante`` solo cuenta para USAR (COGER y COMER se orientan hacia su objetivo antes de actuar).
+        """
+        if not self.activa or not objetivo:
+            return
+        if verbo != Verbo.USAR:
+            delante = None
+        distancias = distancias or {}
+        antes_obj, despues_obj = self._objetos(inv_antes), self._objetos(inv_despues)
+        claves = sorted(set(antes_obj) | set(despues_obj))
+        antes = {k: antes_obj.get(k, 0.0) for k in claves}
+        delta = {k: int(round(despues_obj.get(k, 0.0) - antes[k])) for k in claves}
+        delta = {k: d for k, d in delta.items() if d}
+        nuevos = {k for k, v in despues_obj.items() if v >= 1} - self._tenidos - {k for k, v in antes_obj.items() if v >= 1}
+        if nuevos and self._tenidos_iniciado:
+            self.fallos_seguidos.clear()          # novedad: se vuelve a probar lo bloqueado
+        self._tenidos |= {k for k, v in antes_obj.items() if v >= 1} | nuevos
+        self._tenidos_iniciado = True
+        clave = (verbo, objetivo)
+        r = self.requisitos.get(clave)
+        if exito and delta:
+            nuevo = r is None
+            if r is None:
+                r = self.requisitos[clave] = Requisito(verbo, objetivo, {}, set(), fuente="experiencia")
+            r.exitos += 1
+            r.efecto = dict(delta)
+            for k, d in delta.items():
+                if d < 0 and not nuevo:
+                    r.requiere_inventario[k] = -d   # lo consumido es la cantidad exacta (corrige estimaciones por fallos)
+            if cerca_despues is not None:
+                r.aparece |= set(cerca_despues) - set(cerca)
+            for c in r.requiere_cerca:
+                if c in distancias:
+                    r.cerca_ok.setdefault(c, set()).add(distancias[c])
+                    r.cerca_fallida.get(c, set()).discard(distancias[c])
+            if delante:
+                r.requiere_delante.add(delante)
+                r.delante_fallido.discard(delante)
+            fallidos = [f for f in self.intentos.pop(clave, []) if r.cumple_inventario(f)]   # sin causa conocida
+            if fallidos:                          # 5.2 a: inducción por diferencia
+                for k, v in antes.items():
+                    if v >= 1 and k not in r.requiere_inventario and all(f.get(k, 0.0) < 1 for f in fallidos):
+                        r.requiere_inventario[k] = 1
+            self.fallos_seguidos.pop(clave, None)
+            r.confianza = acotar(r.confianza + self.PASO_CONFIANZA_REQUISITO)
+            return
+        lista = self.intentos.setdefault(clave, [])
+        lista.append({k: v for k, v in antes.items() if v})
+        del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
+        self.fallos_seguidos[clave] = self.fallos_seguidos.get(clave, 0) + 1
+        if r is not None and r.cumple_inventario(antes):
+            for c in r.requiere_cerca:
+                dc = distancias.get(c)
+                if dc is not None and sum(dc) > 1 and dc not in r.cerca_ok.get(c, set()):
+                    r.cerca_fallida.setdefault(c, set()).add(dc)
+        if r is not None and delante and delante not in r.requiere_delante:
+            r.delante_fallido.add(delante)
+        if r is not None and r.cumple(antes, cerca):
+            r.fallos += 1
+            for k, n in list(r.requiere_inventario.items()):
+                if r.efecto.get(k, 0) < 0:
+                    continue
+                if n is None or n <= antes.get(k, 0.0):
+                    r.requiere_inventario[k] = int(antes.get(k, 0.0)) + 1
+            r.confianza = acotar(r.confianza - self.PASO_CONFIANZA_REQUISITO)
+
+    def registrar_meta(
+        self,
+        verbo: Verbo,
+        objetivo: str,
+        exito: bool,
+        inv_antes: Optional[Dict[str, float]],
+        inv_despues: Optional[Dict[str, float]],
+        delta_vitales: Dict[str, float],
+    ) -> bool:
+        """Paso 5 (5.0): una meta se consigue con el primer ``Efecto`` con éxito de su verbo sobre su objetivo
+        que además cambia algo: el inventario de objetos o alguna constante vital que sube (beber, comer,
+        descansar). Devuelve si se ha conseguido ahora."""
+        meta = self.metas.get((verbo, objetivo))
+        if meta is None or meta.conseguida or not exito:
+            return False
+        cambio_inv = inv_antes is not None and inv_despues is not None and self._objetos(inv_antes) != self._objetos(inv_despues)
+        if cambio_inv or any(float(v) > 0.0 for v in delta_vitales.values()):
+            meta.conseguida = True
+            return True
+        return False
+
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:
-        """Lo que pasa al linaje: lo demostrado y la memoria colectiva de S1 (recuerdos agregados)."""
-        return {
+        """Lo que pasa al linaje: lo demostrado, la memoria colectiva de S1 (recuerdos agregados) y los
+        requisitos que la experiencia ha visto cumplirse al menos una vez."""
+        legado: Dict[str, Any] = {
             "proposiciones": [
                 {"sujeto": p.sujeto, "relacion": p.relacion.name, "confianza": round(p.confianza, 3)}
                 for p in self.saber.values()
@@ -835,6 +1308,15 @@ class Memoria:
                 if r.n >= 2
             ],
         }
+        requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
+        if requisitos:
+            legado["requisitos"] = requisitos
+        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube, "esperado": round(s.esperado, 4)}
+                     for s in self.satisface.values() if s.n >= 2]       # paso 0b: solo lo vivido (el manual se vuelve a leer)
+        if satisface:
+            legado["satisface"] = satisface
+            legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
+        return legado
 
     def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
         """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo.
@@ -844,22 +1326,49 @@ class Memoria:
             return 0
         proposiciones = list(legado.get("proposiciones", []))
         registros = list(legado.get("registros", []))
+        requisitos = list(legado.get("requisitos", []))
         if tasa < 1.0:
             def parte(xs: List[Dict[str, Any]], clave: str) -> List[Dict[str, Any]]:
                 k = math.ceil(max(0.0, tasa) * len(xs))
                 return sorted(xs, key=lambda d: -float(d[clave]))[:k]
             proposiciones = parte(proposiciones, "confianza")
             registros = parte(registros, "n")
+            requisitos = parte(requisitos, "exitos")
         n = 0
         for d in proposiciones:
+            clave = (d["sujeto"], Relacion[d["relacion"]])
+            existente = self.saber.get(clave)
             p = Proposicion(d["sujeto"], Relacion[d["relacion"]], confianza=float(d["confianza"]) * 0.8)
             p.confirmaciones = Proposicion.CONFIRMACIONES_MINIMAS - 1
             p.heredada = True
-            self.saber[(p.sujeto, p.relacion)] = p
+            if existente is not None and existente.c_aut is not None:   # lo del manual se conserva como autoridad
+                p.c_aut, p.w_aut = existente.c_aut, existente.w_aut
+            self.saber[clave] = p
             n += 1
         for d in registros:
             r = Registro(n=max(1, int(d["n"]) // 2))
             r.suma = float(d["media"]) * r.n
             self.registros[(Verbo[d["verbo"]], d["clase"])] = r
             n += 1
+        for d in requisitos:   # lo heredado sustituye a lo del manual: la experiencia del linaje lo ha corregido
+            req = Requisito(
+                Verbo[d["verbo"]], str(d["objetivo"]),
+                {str(k): (None if v is None else int(v)) for k, v in d.get("requiere_inventario", {}).items()},
+                {str(c) for c in d.get("requiere_cerca", [])},
+                {str(k): int(v) for k, v in d.get("efecto", {}).items()},
+                fuente=str(d.get("fuente", "experiencia")), confianza=float(d.get("confianza", 0.5)) * 0.8,
+                exitos=max(1, int(d.get("exitos", 1)) // 2), fallos=int(d.get("fallos", 0)) // 2, heredado=True,
+            )
+            self.requisitos[(req.verbo, req.objetivo)] = req
+            n += 1
+        for d in legado.get("satisface", []):   # paso 0b: como los registros, con la mitad de la evidencia
+            s = self.satisface.setdefault((str(d["clase"]), str(d["necesidad"])), Satisface(str(d["clase"]), str(d["necesidad"])))
+            veces = max(1, int(d["n"]) // 2)
+            s.n += veces
+            s.sube += round(veces * int(d["sube"]) / max(1, int(d["n"])))
+            s.esperado += veces * float(d.get("esperado", 0.0)) / max(1, int(d["n"]))
+            n += 1
+        for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
+            if necesidad not in self.linea_base:
+                self.linea_base[necesidad] = float(base)
         return n

@@ -1,0 +1,54 @@
+{
+  "pasos": 100000,
+  "episodios": 384,
+  "tiempo_segundos": 1273.99,
+  "ms_por_paso": 12.74,
+  "score": 11.7,
+  "score_ci_95": [
+    10.86,
+    12.41
+  ],
+  "tasas_logros": {
+    "collect_coal": 8.33,
+    "collect_diamond": 0.0,
+    "collect_drink": 80.99,
+    "collect_iron": 0.0,
+    "collect_sapling": 68.75,
+    "collect_stone": 35.94,
+    "collect_wood": 91.15,
+    "defeat_skeleton": 0.26,
+    "defeat_zombie": 39.84,
+    "eat_cow": 68.75,
+    "eat_plant": 0.52,
+    "make_iron_pickaxe": 0.0,
+    "make_iron_sword": 0.0,
+    "make_stone_pickaxe": 6.25,
+    "make_stone_sword": 0.52,
+    "make_wood_pickaxe": 61.46,
+    "make_wood_sword": 38.54,
+    "place_furnace": 17.45,
+    "place_plant": 66.67,
+    "place_stone": 31.77,
+    "place_table": 86.46,
+    "wake_up": 18.75
+  },
+  "causas_muerte": {
+    "zombi": 264,
+    "sed": 38,
+    "esqueleto": 37,
+    "hambre": 31,
+    "desgaste": 12,
+    "lava": 1,
+    "cortado por presupuesto": 1
+  },
+  "perfil": "Equilibrado",
+  "semilla_base": 31,
+  "vista": "oficial",
+  "sin_estrategias_propias": true,
+  "sin_herencia": true,
+  "manual": "estricto",
+  "mecanismos": [
+    "alostasis",
+    "proteger"
+  ]
+}
