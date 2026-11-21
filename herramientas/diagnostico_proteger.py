@@ -57,6 +57,8 @@ def main() -> int:
     p.add_argument("--mecanismos", nargs="*", default=[])
     p.add_argument("--propuestas", type=int, default=20, help="propuestas de Proteger que se muestran en un anochecer")
     p.add_argument("--salida", default=None, help="JSON con el resumen por episodio")
+    p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
+                   help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     args = p.parse_args()
     import evaluar_crafter as ev
     from ida.core import latido
@@ -108,6 +110,8 @@ def main() -> int:
     latido.Organismo.vivir = vivir   # type: ignore[method-assign]
     kw: Dict[str, Any] = {"vista": "oficial", "sin_herencia": True, "quiet": True, "manual": args.manual,
                           "sin_estrategias_propias": args.sin_estrategias_propias, "mecanismos": args.mecanismos}
+    if args.plazo_logico:
+        kw["plazo_logico"] = args.plazo_logico
     res = ev.evaluar(args.pasos, args.semilla, **kw)
 
     noches = [x for e in eps for x in e["noches"]]

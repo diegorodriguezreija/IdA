@@ -55,6 +55,30 @@ def test_guillotina_por_tiempo():
         onda.control_vital(1)
 
 
+def test_guillotina_por_plazo_logico_ignora_el_reloj():
+    """Con ``ops_por_ms`` el plazo se mide en operaciones (llamadas a ``control_vital``), no en reloj."""
+    reloj = RelojFalso()
+    onda = Onda(1, 100, 2.0, ops_por_ms=1.5, reloj=reloj)     # plazo: 2 ms × 1,5 = 3 operaciones
+    reloj.t = 10.0                                              # el reloj no cuenta
+    for _ in range(3):
+        onda.control_vital(0)
+    assert onda.operaciones == 3 and onda.ms_transcurridos() == 2.0
+    with pytest.raises(LatidoAgotado):
+        onda.control_vital(0)
+
+
+def test_plazo_logico_no_cuenta_el_core_exento():
+    onda = Onda(1, 100, 1.0, ops_por_ms=1.0)
+    onda.exento = True
+    for _ in range(5):
+        onda.control_vital(0)
+    onda.exento = False
+    assert onda.operaciones == 0
+    onda.control_vital(0)
+    with pytest.raises(LatidoAgotado):
+        onda.control_vital(0)
+
+
 def test_modulo_exento_no_paga_ni_se_corta():
     reloj = RelojFalso()
     onda = Onda(1, 0, 10.0, reloj=reloj)

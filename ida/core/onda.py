@@ -24,6 +24,14 @@ La guillotina es cooperativa y solo mira el plazo: cada operación pasa por ``co
 mira el reloj. Si se supera, salta ``LatidoAgotado``; el latido corta los componentes que faltan y el
 Tribunal decide con lo que ya haya en ``acc``.
 
+Plazo lógico (opcional, para evaluaciones reproducibles): con ``ops_por_ms`` el plazo deja de medirse en reloj de
+pared y se mide en operaciones. Una operación es una llamada a ``control_vital`` fuera del Core exento:
+la entrada a cada sistema, el turno de cada componente y cada pieza que se cobra. Es la unidad natural
+porque son exactamente los puntos donde la guillotina cooperativa puede cortar. El plazo del latido
+pasa a ser ``frecuencia_ms × ops_por_ms`` operaciones, así que el marcapasos lo sigue acortando con
+peligro. Con plazo lógico, la misma semilla da la misma vida aunque la máquina esté cargada. Por defecto
+(``None``) todo sigue igual: plazo de reloj.
+
 ``fases`` apunta cuándo empieza y termina cada fase del latido (reloj de pared, en ns). Es un
 registro pasivo: el núcleo no llama a nadie; la observabilidad externa lo lee después.
 
@@ -105,6 +113,7 @@ class Onda:
         ef_anterior: Optional[Canales] = None,
         potencia_max: Optional[float] = None,
         estrategias: Optional[Dict[str, Pieza]] = None,
+        ops_por_ms: Optional[float] = None,
         reloj: Callable[[], float] = time.perf_counter,
     ):
         self.ciclo = ciclo
@@ -121,6 +130,8 @@ class Onda:
         self.reactiva = DimensionReactiva(ef_anterior)
         self._reloj = reloj
         self._t0 = reloj()
+        self.ops_por_ms = ops_por_ms     # plazo lógico: None = reloj de pared
+        self.operaciones = 0             # llamadas a ``control_vital`` fuera del Core exento
         self.exento = False            # True mientras corren los módulos del Core (sin peaje)
         self.guillotina = False
         self.motivo_guillotina = ""
@@ -140,6 +151,9 @@ class Onda:
 
     # --- presupuesto -------------------------------------------------------
     def ms_transcurridos(self) -> float:
+        """Milisegundos del latido: de reloj, o lógicos (operaciones / ``ops_por_ms``) con plazo lógico."""
+        if self.ops_por_ms:
+            return self.operaciones / self.ops_por_ms
         return (self._reloj() - self._t0) * 1000.0
 
     def ms_restantes(self) -> float:
@@ -160,6 +174,7 @@ class Onda:
         """Cobra amplitud y comprueba el plazo. Lanza ``LatidoAgotado`` si se supera algo."""
         if self.exento:
             return
+        self.operaciones += 1
         if self.ms_transcurridos() > self.frecuencia_ms:
             raise LatidoAgotado(f"plazo de {self.frecuencia_ms:.0f} ms superado en {donde or '?'}")
         if coste > 0:

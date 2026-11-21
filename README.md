@@ -46,7 +46,7 @@ Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA 
 
 Opciones comunes: `--latidos`, `--semilla`, `--generaciones`, `--ver` (panel), `--otel` (OpenTelemetry), `--sin-experiencia` (apaga las dimensiones activa y proactiva para comparar), `--tabula-rasa` (borra el linaje), `--cada N` y `--opcion clave=valor`. Los datos se guardan en `datos/<mundo>/`.
 
-Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto` ([método](docs/MEDICION_OFICIAL.md), [resultados](docs/MEDICION_PASO6.md)).
+Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([método](docs/MEDICION_OFICIAL.md), [resultados](docs/MEDICION_PASO6.md)).
 
 > **Nota sobre Snake.** Este mundo juega en [playsnake.org](https://playsnake.org/), un sitio de terceros sin relación con este proyecto, controlando un navegador con Playwright. Es un mundo de demostración: juega una partida cada vez, no usa credenciales ni recoge datos del sitio. Si lo usas, respeta sus condiciones de uso. Si el sitio cambia o deja de estar disponible, este mundo dejará de funcionar; los demás no dependen de internet.
 
@@ -108,7 +108,7 @@ Este repositorio es el framework: sirve para ejecutar y ver vivir a los individu
 
 ## Honestidad
 
-Es un prototipo personal, no un estudio. La mayoría de las mediciones usan pocas vidas y pocas semillas. Las de Crafter siguen el protocolo oficial, pero con 100 000 pasos (unos 380 episodios) en lugar del millón completo. Como cada episodio empieza sin legado, la cifra no depende de la duración del presupuesto; aun así, la evaluación completa con semillas reservadas se publicará al cerrar la fase de generalización. Son reproducibles con semilla: repetir una medición da exactamente el mismo resultado. La única excepción posible es un latido que supere el plazo de 100 ms y se corte; cada medición registra cuántos lo hacen (como mucho 6 de 100 000 en las publicadas). Los nombres biológicos son inspiración, no equivalencia. Las cifras se publican tal como salieron, también cuando son malas. Gran parte del código se escribió con agentes de IA bajo la dirección y la revisión del autor.
+Es un prototipo personal, no un estudio. La mayoría de las mediciones usan pocas vidas y pocas semillas. Las de Crafter siguen el protocolo oficial, pero con 100 000 pasos (unos 380 episodios) en lugar del millón completo. Como cada episodio empieza sin legado, la cifra no depende de la duración del presupuesto; aun así, la evaluación completa con semillas reservadas se publicará al cerrar la fase de generalización. Son reproducibles con semilla. Con --plazo-logico, la guillotina cuenta operaciones en vez de milisegundos, y el resultado es idéntico aunque la máquina esté cargada. Las mediciones publicadas hasta el paso 6 se hicieron con reloj y registran sus latidos cortados (como mucho 6 de 100 000). Los nombres biológicos son inspiración, no equivalencia. Las cifras se publican tal como salieron, también cuando son malas. Gran parte del código se escribió con agentes de IA bajo la dirección y la revisión del autor.
 
 ## Licencia
 

@@ -4,64 +4,39 @@ Lista de asuntos detectados durante el encargo C (`docs/ENCARGO_CRAFTER_C.md`) q
 
 ---
 
-## 1. `RefugioNocturno` hace casi todo
+Las deudas 1 a 8 son del encargo C, cuando Crafter tenía estrategias propias. Desde el paso 6d `estrategias_propias()` de Crafter devuelve `{}` (`docs/FASE_GENERALIZACION_CRAFTER.md`, «Pilar 1»), y casi todas dependían de código ya borrado. Se conserva el título y el motivo del cierre; el texto original está en el historial de git (`f26c243`).
 
-- **Qué pasa:** es una estrategia de S2 para el impulso «cobijo». Pero hoy también reúne madera y herramientas, bebe y come antes de sellar, se abastece por la mañana, patrulla (C.3b) y caza vacas (C.3d). Lo ha ido absorbiendo porque guarda la memoria del mapa y de las vacas.
-- **Por qué importa:**
-  - Se aleja de los tres sistemas: comer y beber son de S1, y aquí se resuelven dentro de S2, puenteando a `alimentarse`.
-  - El fichero crece mucho y cada sesión de un modelo cuesta más.
-- **Propuesta, como refactorización medida que no cambie la conducta** (arnés y benchmark iguales dentro del ruido):
-  - un mapa cognitivo compartido del mundo (lo percibido y recordado: materiales, vacas, agua, recintos), legible por varios componentes;
-  - el forrajeo y el abastecimiento en un componente propio de S1;
-  - la madera y las herramientas, en `PlanTecnologico`;
-  - `RefugioNocturno`, limitado a elegir, construir, ocupar y abrir el refugio.
+## 1. `RefugioNocturno` hace casi todo — resuelta
 
-## 2. La intensidad del impulso no llega al Tribunal (base)
+- **Estado:** `RefugioNocturno` se borró en el paso 3 (`docs/ENCARGO_PASO3_PROTEGER.md`, «Resultado»), y lo que absorbía pasó a la base: mapa cognitivo (paso 1), planificador sobre requisitos (paso 5) y `Proteger` (paso 3). Hoy no aparece en `ida/` ni en `herramientas/`.
 
-- **Qué pasa:** en calma, el Tribunal decide casi solo por la confianza. Las estrategias propias de Crafter lo compensan fijando su arousal y su confianza según la urgencia: `_motivacion` en `RefugioNocturno`, la urgencia de C.0c-1 y el hueco gástrico de C.3d. Es un apaño declarado.
-- **Propuesta:** decidir en la base cómo modula la intensidad del impulso (déficit de S1) la puntuación, y si S2 (valor y emoción) interviene. Después, retirar los apaños del mundo y medir.
+## 2. La intensidad del impulso no llega al Tribunal — resuelta
 
-## 3. Vaivén en campo abierto
+- **Estado:** los apaños del mundo (`_motivacion`, urgencia de C.0c-1, hueco gástrico de C.3d) se borraron con las estrategias propias; en la base, el paso 0 probó la urgencia local (0a, retirada sin efecto) y dejó la aliestesia (0b) (`docs/PROPUESTA_PASO0.md`, «Resultado»).
 
-- **Qué pasa:** en 12 de 20 vidas (semillas 11–30) el individuo va y viene más de 20 latidos entre 2 casillas, sobre todo al alternar `huir`, `sobresalto` y `alimentarse` (`INFORME_C.md`, 2.11). El arreglo de C.0c-2 solo resolvió el caso de chocar contra la roca.
-- **Propuesta:** un diagnóstico de qué estrategias alternan y con qué puntuaciones. Probablemente es cosa del Tribunal (continuidad o histéresis), así que se cruza con el punto 2.
+## 3. Vaivén en campo abierto — obsoleta
 
-## 4. Grupo Reactivo: muertes por sed
+- **Estado:** se midió con `huir`, `sobresalto` y `alimentarse` de las estrategias propias del encargo C, que ya no existen. No se ha medido en la línea general; si reaparece, irá como deuda nueva con su diagnóstico.
 
-- **Qué pasa:** en los benchmarks completos (`c3b_completo`, `c3d_completo`), Reactivo tiene 10–11 de 30 muertes por sed, frente a 4–7 en los demás grupos, y es el único que no mejora en latidos frente a `ref_c0` (−23,9 ± 97,7).
-- **Propuesta:** diagnosticar qué hace distinto ese perfil con el agua (¿no usa `RefugioNocturno` igual? ¿no llega a `provisiones`?).
+## 4. Grupo Reactivo: muertes por sed — obsoleta
 
-## 5. Piezas mantenidas provisionalmente
+- **Estado:** salía de los benchmarks `c3b_completo` y `c3d_completo`, con `RefugioNocturno` y `provisiones`, borrados. La línea general no se ha medido por perfiles en Crafter.
 
-- **C.3b (patrulla, visitadas que caducan) y C.3d (caza oportunista):** no confirmaron del todo su hipótesis. Su efecto es pequeño, en la dirección buena en evaluación, y no significativo.
-- **Propuesta:** reevaluarlas cuando C.4 esté cerrado. Si no aportan nada medible junto al huerto, retirarlas para simplificar.
+## 5. Piezas mantenidas provisionalmente (C.3b y C.3d) — resuelta
 
-## 6. Casos residuales del primer día
+- **Estado:** la patrulla (C.3b) y la caza oportunista (C.3d) eran partes de `RefugioNocturno` y se fueron con él.
 
-- **Sin roca a la vista** (2 de 40 vidas; semilla 35, roca a 25 casillas).
-- **Candidatos lejanos que desvían de una roca cercana** (semilla 16 en C.1).
-- **Flechas al anochecer antes de cerrar** (2 de 20 en el arnés largo).
+## 6. Casos residuales del primer día — obsoleta
 
-Son pocos casos; solo si siguen pesando tras C.4.
+- **Estado:** eran casos de la elección de roca de `RefugioNocturno` y de C.1; el sitio para protegerse lo elige hoy `Recinto`, cuyos problemas están en la deuda 11.
 
-## 7. Herramientas de diagnóstico
+## 7. Herramientas de diagnóstico — obsoleta
 
-- **Qué pasa:** hay varios scripts de diagnóstico parecidos (`diagnostico_crafter_c0b.py`, `diagnostico_vacas_c3b.py`, `diagnostico_vacas_c3c.py`, `diagnostico_c3d_d_e.py`) y el arnés ha crecido.
-- **Propuesta:** unificar en el arnés un registro por latido reutilizable (fase, ganador del Tribunal, vitales, posición) y que los diagnósticos sean consultas sobre ese registro.
+- **Estado:** los scripts citados (`diagnostico_crafter_c0b.py`, `diagnostico_vacas_c3b.py`, `diagnostico_vacas_c3c.py`, `diagnostico_c3d_d_e.py`) ya no existen. Los diagnósticos actuales (`herramientas/diagnostico_*.py`) reutilizan `evaluar_crafter.evaluar`; el registro por latido unificado no se hizo.
 
-## 8. Rediseño del huerto (C.4 descartada)
+## 8. Rediseño del huerto (C.4 descartada) — obsoleta
 
-- **Qué pasó:** C.4 (huecos cerrados junto al refugio, rama `wip/c4-argon`) activó la regla de parada: selladas el día 1, 29/40; mediana del arnés largo, 401,5 frente a 417 (`INFORME_C.md`, apartado 8). Cuando el huerto llega a funcionar, alarga mucho la vida (semillas 11 y 20: 1040 y 1168 latidos), pero el diseño falla por tres motivos:
-  - plantar el día 1 compite con sellar;
-  - abrir el hueco para cosechar lo deja expuesto si una huida interrumpe el cierre (semilla 11, L724–L821);
-  - el código añadido a `RefugioNocturno` (~1200 líneas) empeora la conducta aunque casi no se use.
-- **Propuesta para un encargo futuro:**
-  - plantas en nichos que den al **interior** del refugio, que se comen desde dentro sin abrir nada;
-  - plantar a partir del **día 2**;
-  - un **componente separado y pequeño**, después de la refactorización del punto 1;
-  - medir primero con una sola planta.
-- **Aprovechable de la rama WIP:** el arreglo de salida en `amanecer` (no quedarse atascado en la galería; semilla 17) y la separación entre plantas vistas como obstáculo y plantas propias como pared. Cada uno, con su propia medición.
-
+- **Estado:** el diseño dependía de `RefugioNocturno` (rama `wip/c4-argon`). El huerto pasa al paso 4 del plan (proteger X: forrajeo y huerto), en la base y sin ese código.
 
 ## 9. Aliestesia (paso 0b) sin condición
 
@@ -99,8 +74,15 @@ Son pocos casos; solo si siguen pesando tras C.4.
   - corregirlo en la base, sin umbrales para un mundo.
 - **Cuidado:** las muertes por zombi + desgaste no han subido. Luchar más no debe subirlas (riesgo «luchar de más» del encargo).
 
-## 13. Guillotina lógica para evaluaciones reproducibles
+## 13. Guillotina lógica para evaluaciones reproducibles — resuelta
+
+- **Estado:** `evaluar_crafter.py --plazo-logico OPS` (y los `diagnostico_*.py` que llaman a `evaluar`) mide el plazo del latido en operaciones (llamadas a `Onda.control_vital`) en vez de en ms. Por defecto sigue el reloj. Calibración y comprobaciones en `docs/METODO_MEDICION.md`.
 
 - **Qué pasa:** la guillotina corta por reloj, así que un solo latido cortado cambia una trayectoria; para las evaluaciones, conviene un plazo lógico (en operaciones) en lugar de en milisegundos.
 - **Dónde se vio:** en la comprobación de equivalencia del 6d (`paso6_D4.json`, semilla 31), un único latido cortado en el episodio 64 cambió la causa de muerte de ese episodio de flecha a zombi (167 pasos frente a 169), aunque la Score, el IC, los episodios y los 22 logros fueron idénticos a D2.
 
+## 14. Cadena de herramientas
+
+- **Qué pasa:** pico de madera 64-72 % y espada 43-47 % en la línea general, frente a 92-96 % en la procedimental.
+- **Datos de la línea general:** `make_wood_pickaxe` 62,40 % y 71,51 %, `make_wood_sword` 42,56 % y 47,12 % (D2 y D3, `docs/MEDICION_PASO6.md`).
+- **Datos de la procedimental:** `make_wood_pickaxe` 95,45 %, 96,41 % y 96,40 %, `make_wood_sword` 92,42 %, 92,43 % y 91,73 % (`techo_main.json`, `techo_c3d.json` y `main_sin_herencia.json`, semilla 31).

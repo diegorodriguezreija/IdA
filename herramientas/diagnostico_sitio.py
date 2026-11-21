@@ -29,6 +29,8 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--pasos", type=int, default=3000)
     p.add_argument("--semilla", type=int, default=31)
+    p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
+                   help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     args = p.parse_args()
     import evaluar_crafter as ev
     from ida.sistemas import proteger as P
@@ -63,7 +65,8 @@ def main() -> int:
         return r
 
     P.Recinto._requisitos = envuelto   # type: ignore[method-assign]
-    ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto", sin_estrategias_propias=True)
+    ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto", sin_estrategias_propias=True,
+                **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
     print(f"## semilla {args.semilla} · {args.pasos} pasos · latidos con luz < 0,5 en que _requisitos no devuelve nada")
     for k, v in razones.most_common():
         print(f"- {k}: {v}")

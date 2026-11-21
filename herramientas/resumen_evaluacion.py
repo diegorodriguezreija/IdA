@@ -1,14 +1,22 @@
 """Genera las tablas de resultados y comparativas de evaluación de Crafter.
 
 Soporta tanto la medición de referencia oficial como la evaluación de Paso 5 y Paso 0.
+
+``--pareada A.json B.json`` compara dos evaluaciones de la misma semilla base episodio a episodio: el episodio i
+ocurre en el mismo mundo en las dos (su semilla solo depende de i), así que se emparejan los primeros min(n1, n2)
+episodios y se da la diferencia de Score y de cada logro (A − B) con su IC 95 % por bootstrap pareado
+(remuestreando índices de episodio). Necesita ``por_episodio`` en los JSON (``evaluar_crafter.py`` lo guarda desde
+la deuda 13).
 """
 
 import argparse
 import json
+import math
 import os
+import random
 import statistics
 import sys
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS_DIR = os.path.join(RAIZ, "datos", "evaluacion")
@@ -28,6 +36,93 @@ def formatear_float_es(valor: float, decimales: int = 2) -> str:
 def se_solapan(ic1: Tuple[float, float], ic2: Tuple[float, float]) -> bool:
     """Determina si dos intervalos cerrados [a, b] y [c, d] se solapan."""
     return max(ic1[0], ic2[0]) <= min(ic1[1], ic2[1])
+
+
+# =====================================================================
+# Comparación pareada episodio a episodio
+# =====================================================================
+
+def _score(tasas: List[float]) -> float:
+    """Crafter Score (como ``evaluar_crafter.calcular_crafter_score``) con las tasas en %."""
+    return math.exp(sum(math.log(1.0 + max(0.0, t)) for t in tasas) / len(tasas)) - 1.0 if tasas else 0.0
+
+
+def _percentiles(valores: List[float], alpha: float) -> Tuple[float, float]:
+    v = sorted(valores)
+    n = len(v)
+    return v[int((alpha / 2.0) * n)], v[min(n - 1, int((1.0 - alpha / 2.0) * n))]
+
+
+def comparar_pareado(a: Dict[str, Any], b: Dict[str, Any], n_boot: int = 2000, alpha: float = 0.05,
+                     semilla: int = 42) -> Dict[str, Any]:
+    """Diferencia A − B de la Score y de cada logro sobre los primeros min(n1, n2) episodios, con su IC por
+    bootstrap pareado: cada réplica remuestrea con reemplazo índices de episodio y usa el mismo índice en A y en B.
+
+    Las diferencias van en puntos porcentuales. Lanza ``ValueError`` si los JSON no son de la misma semilla base
+    o no guardan ``por_episodio``."""
+    if a.get("semilla_base") != b.get("semilla_base"):
+        raise ValueError(f"semillas base distintas: {a.get('semilla_base')} y {b.get('semilla_base')}")
+    for nombre, d in (("A", a), ("B", b)):
+        if "por_episodio" not in d:
+            raise ValueError(f"{nombre} no guarda los logros por episodio (falta 'por_episodio'); guarda: {sorted(d)}")
+    n = min(len(a["por_episodio"]), len(b["por_episodio"]))
+    logros = sorted(set(a["tasas_logros"]) | set(b["tasas_logros"]))
+    # matrices 0/1 por logro y episodio
+    ma = [[1 if lg in set(ep["logros"]) else 0 for ep in a["por_episodio"][:n]] for lg in logros]
+    mb = [[1 if lg in set(ep["logros"]) else 0 for ep in b["por_episodio"][:n]] for lg in logros]
+
+    def medir(idx: List[int]) -> Tuple[float, List[float]]:
+        ta = [100.0 * sum(fila[i] for i in idx) / len(idx) for fila in ma]
+        tb = [100.0 * sum(fila[i] for i in idx) / len(idx) for fila in mb]
+        return _score(ta) - _score(tb), [x - y for x, y in zip(ta, tb, strict=True)]
+
+    d_score, d_logros = medir(list(range(n)))
+    rnd = random.Random(semilla)
+    boot_score: List[float] = []
+    boot_logros: List[List[float]] = [[] for _ in logros]
+    for _ in range(n_boot):
+        idx = [rnd.randrange(n) for _ in range(n)]
+        ds, dl = medir(idx)
+        boot_score.append(ds)
+        for k, v in enumerate(dl):
+            boot_logros[k].append(v)
+
+    def fila(dif: float, boot: List[float]) -> Dict[str, Any]:
+        ic = _percentiles(boot, alpha)
+        return {"diferencia": dif, "ic": ic, "excluye_cero": ic[0] > 0.0 or ic[1] < 0.0}
+
+    return {
+        "episodios_pareados": n,
+        "episodios": (len(a["por_episodio"]), len(b["por_episodio"])),
+        "semilla_base": a.get("semilla_base"),
+        "n_boot": n_boot,
+        "score": {**fila(d_score, boot_score), "a": _score([100.0 * sum(f) / n for f in ma]),
+                  "b": _score([100.0 * sum(f) / n for f in mb])},
+        "logros": {lg: fila(d_logros[k], boot_logros[k]) for k, lg in enumerate(logros)},
+    }
+
+
+def generar_tabla_pareada(nombre_a: str, nombre_b: str, res: Dict[str, Any]) -> str:
+    """Tabla markdown de ``comparar_pareado``: diferencia A − B, IC 95 % pareado y si excluye el 0."""
+    f = formatear_float_es
+    s = res["score"]
+    lineas = [
+        f"### {nombre_a} frente a {nombre_b} (semilla base {res['semilla_base']}, {res['episodios_pareados']} episodios "
+        f"pareados de {res['episodios'][0]} y {res['episodios'][1]}, {res['n_boot']} réplicas)",
+        "",
+        f"Score en los episodios pareados: {f(s['a'])} % frente a {f(s['b'])} %.",
+        "",
+        "| Medida | Diferencia (pp) | IC 95 % pareado (pp) | ¿Excluye el 0? |",
+        "|---|---|---|---|",
+    ]
+
+    def linea(etiqueta: str, x: Dict[str, Any]) -> str:
+        return (f"| {etiqueta} | {f(x['diferencia'])} | [{f(x['ic'][0])}, {f(x['ic'][1])}] | "
+                f"{'**Sí**' if x['excluye_cero'] else 'No'} |")
+
+    lineas.append(linea("**Score**", s))
+    lineas += [linea(f"`{lg}`", x) for lg, x in res["logros"].items()]
+    return "\n".join(lineas) + "\n"
 
 
 # =====================================================================
@@ -1522,6 +1617,13 @@ def main() -> int:
         help="Genera las secciones 3 a 6 para MEDICION_OFICIAL.md",
     )
     parser.add_argument(
+        "--pareada",
+        nargs=2,
+        metavar=("A", "B"),
+        default=None,
+        help="Compara episodio a episodio dos JSON de la misma semilla base (diferencia A - B con IC pareado)",
+    )
+    parser.add_argument(
         "--salida",
         type=str,
         default=None,
@@ -1529,7 +1631,19 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.oficial:
+    if args.pareada:
+        datos = []
+        for ruta in args.pareada:
+            with open(ruta, encoding="utf-8") as fh:
+                datos.append(json.load(fh))
+        try:
+            res = comparar_pareado(datos[0], datos[1])
+        except ValueError as exc:
+            print(f"No se puede comparar: {exc}")
+            return 1
+        nombres = [os.path.splitext(os.path.basename(r))[0] for r in args.pareada]
+        salida = generar_tabla_pareada(nombres[0], nombres[1], res)
+    elif args.oficial:
         salida = generar_markdown_oficial()
     elif args.paso5_paso0:
         salida = generar_informe_paso5_paso0()

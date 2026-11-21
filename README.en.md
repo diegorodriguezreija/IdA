@@ -36,7 +36,7 @@ Or, with nothing installed: `docker compose up --build`.
 
 > **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
 
-Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto` ([method](docs/MEDICION_OFICIAL.md), [results](docs/MEDICION_PASO6.md)).
+Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([method](docs/MEDICION_OFICIAL.md), [results](docs/MEDICION_PASO6.md)).
 
 ## What's inside
 
@@ -87,7 +87,7 @@ This repository is the framework: it is for running IdA and watching its individ
 
 ## Honesty
 
-A personal prototype, not a study. Most measurements use few lives and few seeds. The Crafter evaluations follow the official protocol, but with 100,000 steps (about 380 episodes) instead of the full 1 million. Because each episode starts without legacy, the score does not depend on the total budget duration; nevertheless, the full evaluation with held-out seeds will be published at the end of the generalization phase. They are reproducible with a seed: repeating a measurement yields the exact same result. The only possible exception is a heartbeat that exceeds the 100 ms deadline and is cut; each measurement records how many do so (at most 6 out of 100,000 in those published). Biological names are inspiration, not equivalence. Figures are published as they came out, also when bad. Much of the code was written with AI agents under the author's direction and review.
+A personal prototype, not a study. Most measurements use few lives and few seeds. The Crafter evaluations follow the official protocol, but with 100,000 steps (about 380 episodes) instead of the full 1 million. Because each episode starts without legacy, the score does not depend on the total budget duration; nevertheless, the full evaluation with held-out seeds will be published at the end of the generalization phase. They are reproducible with a seed. With --plazo-logico, the guillotine counts operations instead of milliseconds, and the result is identical even when the machine is loaded. The measurements published up to step 6 were taken with a clock and record their cut heartbeats (at most 6 out of 100,000). Biological names are inspiration, not equivalence. Figures are published as they came out, also when bad. Much of the code was written with AI agents under the author's direction and review.
 
 ## License
 

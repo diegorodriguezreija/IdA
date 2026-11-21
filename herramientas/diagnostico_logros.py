@@ -33,6 +33,8 @@ def main() -> int:
     p.add_argument("--manual", default=None, help="manual de Crafter (solo ramas con paso 2)")
     p.add_argument("--raiz", default=RAIZ, help="raíz del repositorio que se ejecuta")
     p.add_argument("--salida", default=None, help="JSON con la traza por episodio")
+    p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
+                   help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     args = p.parse_args()
     sys.path.insert(0, args.raiz)
     sys.path.insert(0, os.path.join(args.raiz, "herramientas"))
@@ -79,6 +81,8 @@ def main() -> int:
     kw: Dict[str, Any] = {"vista": "oficial", "sin_herencia": True, "quiet": True}
     if args.manual:
         kw["manual"] = args.manual
+    if args.plazo_logico:
+        kw["plazo_logico"] = args.plazo_logico
     res = ev.evaluar(args.pasos, args.semilla, **kw)
 
     t: Counter = Counter()
