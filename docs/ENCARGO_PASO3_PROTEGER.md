@@ -181,3 +181,45 @@ L2 queda 2,17 puntos por debajo de C2, en el límite del criterio 2 de la secci�
 **Causa:** `RefugioNocturno` hacía también lo que no es protegerse. En su fase «herramientas» fabricaba el pico y la espada de madera con urgencias fijas de 0,92 a 0,98. Con la espada, `DefensaArmada` lucha en vez de huir. Sin él, la cadena de herramientas depende solo de `PerseguirMetas`: el pico cae del 92 % al 61 % y la espada del 85 % al 38 %, en las mismas cifras que en la línea sin estrategias propias (C1: 62 % y 40 %). Con menos espadas hay menos zombis abatidos y más muertes por zombi.
 
 Se acepta porque aquella conducta era conocimiento de Crafter cableado en el mundo. El diagnóstico de la cadena de herramientas está en [`docs/DIAGNOSTICO_PASO3.md`](DIAGNOSTICO_PASO3.md).
+
+### Filtro de orientación en la búsqueda de sitio: resultado negativo, revertido
+
+`candidatos()` descartaba, antes de ordenar por coste, los sitios que el modelo del cuerpo aprendido no deja cerrar (`orientable`): por ejemplo, 1 casilla con accesos libres. Encarecía el cálculo, así que se añadió un tope de planes por evaluación y un presupuesto de 2 planes exactos por latido. Commits `5663772` y `86629d3`.
+
+**Diagnóstico** (`docs/DIAGNOSTICO_PASO3.md`, «Tercera ronda»; semillas 31, 32 y 33, 10 000 pasos, en serie, 0 latidos cortados), con el material desde el mapa local también aplicado:
+
+| Métrica | Sin el filtro (`80f5352`) | Con el filtro (`5e0aa98`) |
+|---|---|---|
+| Score (31 / 32 / 33) | 12,73 / 13,16 / 9,44 | 10,78 / 10,89 / 9,25 |
+| No encuentra sitio | 54,8 % | 24,8 % |
+| No lo completa a tiempo | 28,7 % | 53,6 % (falta material 36, tiempo 18, herramienta 13) |
+| Muere antes de anochecer | 1 | 5 |
+| Pasa la noche dentro | 11 | 14 |
+
+En la semilla 31 con 3000 pasos, solo el filtro bajaba la Score de 14,95 a 9,16.
+
+**Causa:** los sitios que ahora se encuentran piden material, tiempo o herramienta, y Proteger los persigue al anochecer sin llegar a completarlos.
+
+**Decisión:** se revierte (`d69d3d6`, `70ae63e`). Antes de volver a probarlo hay que decidir cuándo perseguir un sitio (deuda 11 de `docs/DEUDA_TECNICA_CRAFTER.md`).
+
+### Material desde el mapa local: sin ventaja, revertido
+
+El planificador comparaba también ir a la casilla recordada del mapa local para coger o comer (commit `8833f62`). Se midió con el diagnóstico completo, sin el filtro de orientación, con y sin este cambio (semillas 31, 32 y 33, 10 000 pasos, en serie):
+
+| Métrica | Con el mapa local | Sin él |
+|---|---|---|
+| Score (31 / 32 / 33) | 12,09 / 11,42 / 11,66 | 12,73 / 13,16 / 9,44 |
+| Score total | 35,17 | 35,33 |
+| Episodios | 119 | 115 |
+| Latidos cortados | 1 (semilla 31, episodio 6) | 0 |
+| No encuentra sitio | 56 (47,1 %) | 63 (54,8 %) |
+| No lo completa a tiempo | 35 (29,4 %) | 33 (28,7 %) |
+| Muere antes de anochecer | 4 | 1 |
+| Pasa la noche dentro | 15 (12,6 %) | 11 (9,6 %) |
+| Pico tras la mesa | 80,6 % | 73,7 % |
+
+**El latido cortado de la semilla 31 se repite** con la vida sola: al relanzarla da el mismo corte y la misma Score (12,09). Es un latido que pasa de 100 ms, no una interferencia de otros procesos.
+
+**Decisión:** sin el cambio, la Score total es igual o mayor (35,33 frente a 35,17), así que se revierte (`803dc3b`).
+
+El código de `ida/` queda como en `80f5352`, y la condición «sin él» reproduce exactamente su diagnóstico.

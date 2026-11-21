@@ -76,3 +76,14 @@ Son pocos casos; solo si siguen pesando tras C.4.
 - **Referencias para medirlo,** en `docs/DIAGNOSTICO_G3.md`:
   - el contrafactual con los peligros graduados de `main` (zombi 0,8, esqueleto 0,7, flecha 0,5, lava 1,0): `defeat_skeleton` pasa de 1/27 a 6/29 episodios (`main`: 7/24), con las semillas 31-33 y 3000 pasos, sin subir la Score;
   - `herramientas/diagnostico_logros.py`, que cuenta los latidos que gana «huir de flecha» y «acortar distancia a esqueleto» y los ATACAR al esqueleto, para comparar con las mismas semillas.
+
+## 11. Cuándo perseguir un sitio para protegerse (y después, el filtro de orientación)
+
+- **Qué pasa:** `Recinto` propone el sitio más barato que puede completar o cuyos requisitos se pueden conseguir. No compara ese coste completo (ir, conseguir material o herramienta, cavar y cerrar) con el tiempo que queda hasta la oscuridad.
+- **El filtro de orientación** (`orientable`, commit `5663772`, revertido en `70ae63e`) descartaba los sitios que el modelo del cuerpo no deja cerrar, y con ello aparecían muchos más sitios posibles:
+  - «no encuentra sitio» bajaba del 54,8 % al 24,8 %;
+  - pero «no lo completa a tiempo» subía del 28,7 % al 53,6 %, sobre todo por falta de material;
+  - la Score bajaba en las tres semillas (`docs/DIAGNOSTICO_PASO3.md`, «Tercera ronda»).
+- **Lo pendiente:**
+  1. Decidir cuándo perseguir un sitio comparando su coste completo con el tiempo hasta la oscuridad (la tendencia del cobijo, que ya estima la alostasis). Un sitio que no se puede completar antes de lo oscuro no se persigue.
+  2. Después, reintroducir el filtro de orientación, con su presupuesto de planes por latido (commit `86629d3`, revertido en `d69d3d6`), y medirlo con el diagnóstico completo.
