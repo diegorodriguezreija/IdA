@@ -13,8 +13,8 @@ Con ``Perfil.mecanismos.peligro_aprendido``, y solo en un mundo que da posicione
   una instancia a su alcance). Son los que usa la valoración de una lucha (``Afrontar``);
 - **emisor**, por contingencia (como la de ``Satisface``): la clase X emite la clase Y si las Y que aparecen (un id
   nuevo) lo hacen junto a una X más de lo que tocaría por azar. ΔP = (junto − esperado) / n, con ``esperado`` la suma,
-  en cada aparición, de la fracción de casillas a la vista que están junto a alguna X. Un emisor hereda el daño de lo
-  que emite;
+  en cada aparición, de la fracción de casillas a la vista que están junto a alguna X. Hace falta ΔP ≥ ``EMISION_MINIMA``
+  y al menos ``JUNTO_MINIMO`` apariciones junto a una X. Un emisor hereda el daño de lo que emite;
 - **alcance**: 1 (contacto) para el daño propio; para un emisor, la mediana de la distancia recorrida desde él por lo que
   emite (más el contacto), de las últimas ``MAX_RECORRIDOS`` (el máximo lo marca lo que sale de la vista);
 - **eficacia de ataque**: golpes (ATACAR o COMER sobre una instancia adyacente) hasta que la instancia desaparece
@@ -56,8 +56,8 @@ VENTANA = 20                                 # media móvil: los últimos ~20 da
 TASA_PREVIA = 0.5                            # daños por latido de exposición, sin datos (pesimista)
 PESO_TASA = 2.0                              # peso (en latidos) del previo de la tasa
 GOLPES_PREVIO = 10.0                         # golpes para derribar algo sin datos (pesimista: así no se lucha)
-EMISION_MINIMA = 0.5                         # ΔP a partir del cual X emite Y
-N_EMISION_MINIMA = 2                         # apariciones de Y mínimas para decidirlo
+EMISION_MINIMA = 0.6                         # ΔP a partir del cual X emite Y
+JUNTO_MINIMO = 3                             # apariciones de Y junto a una X mínimas para decidirlo
 MAX_RECORRIDOS = 10
 MAX_DERRIBOS = 30
 MARGEN_REDUCTOR = 0.15                       # razón de golpes con / sin el objeto por debajo de 1 − margen: reduce
@@ -134,7 +134,7 @@ class Peligros:
     # --- estimaciones ---------------------------------------------------------
     def emitidas(self, x: str) -> List[str]:
         """Las clases que emite ``x``."""
-        return sorted(y for (a, y), e in self.emision.items() if a == x and e.n >= N_EMISION_MINIMA and e.contingencia() >= EMISION_MINIMA)
+        return sorted(y for (a, y), e in self.emision.items() if a == x and e.junto >= JUNTO_MINIMO and e.contingencia() >= EMISION_MINIMA)
 
     def alcance_emision(self, x: str) -> int:
         r = sorted(self.recorridos.get(x, []))

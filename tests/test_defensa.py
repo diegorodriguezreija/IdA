@@ -115,8 +115,9 @@ def test_un_lugar_dentro_del_alcance_de_un_emisor_es_peligroso():
 
 
 def test_el_legado_lleva_lo_aprendido_con_dos_observaciones():
+    """Se hereda con la mitad de la evidencia: con 6 lanzamientos quedan 3 «junto», lo justo para seguir siendo emisor."""
     p = pel.Peligros()
-    _lanzamientos(p, 4, 5)
+    _lanzamientos(p, 6, 5)
     q = pel.Peligros()
     q.heredar(p.legado())
     assert q.emitidas("torre") == ["pua"] and q.alcance_emision("torre") == p.alcance_emision("torre")
@@ -377,3 +378,32 @@ def test_no_se_pide_un_objeto_que_no_se_distingue():
     assert mem.peligros.distinguibles() == {"baston", "cuerda"}
     onda = _organismo(mundo, ("peligro_aprendido", "afrontar", "arma_instrumental"), mem).latir()
     assert set(onda.ef("Peticion")) == {"peticion:baston"}
+
+
+# --- Revisión: umbrales del emisor y clases que se afrontan ----------------------------------------------
+def test_el_emisor_pide_tres_veces_junto_y_contingencia():
+    p = pel.Peligros()
+    _lanzamientos(p, 2, 3)
+    assert p.emision[("torre", "pua")].junto == 2 and p.emitidas("torre") == []      # dos veces junto no bastan
+    _lanzamientos(p, 1, 3)
+    assert p.emitidas("torre") == ["pua"]
+    # Tres veces junto pero muchas apariciones lejos: ΔP < 0,6
+    q = pel.Peligros()
+    _lanzamientos(q, 3, 3)
+    q.emision[("torre", "pua")].n += 3
+    assert q.emision[("torre", "pua")].contingencia() < pel.EMISION_MINIMA and q.emitidas("torre") == []
+
+
+def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
+    """Con una tasa de daño muy baja la lucha saldría favorable incluso con el previo de golpes; aun así, sin derribos de la
+    clase ni meta del manual, Afrontar no la considera. Con la meta, sí."""
+    from ida.core.memoria import Meta
+    for meta in (False, True):
+        mundo = MundoErizos(quieto=True, salud=100.0)
+        mundo.erizo = (5, 6)
+        mem = _memoria_con_experiencia(mundo, {}, eventos=0)
+        mem.peligros.expuestos["erizo"] = 1000
+        if meta:
+            mem.metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
+        _, activas = _decisiones(mundo, ("peligro_aprendido", "afrontar"), mem, latidos=1)
+        assert any("afrontar" in x for x in activas) == meta

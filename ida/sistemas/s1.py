@@ -278,13 +278,17 @@ def _objetos_llevados(ctx: Contexto) -> FrozenSet[str]:
 
 
 def objetos_peligrosos(ctx: Contexto) -> List[Pieza]:
-    """Los Objetos con peligro (orden estable)."""
-    return sorted((o for o in objetos(ctx) if o.rasgo("peligro") > 0.0), key=lambda o: o.id)
+    """Los Objetos con peligro que se pueden afrontar (orden estable): los de una clase cuyo derribo se ha observado o que el
+    manual declara meta de ATACAR. Atacar algo que nunca se ha visto caer y que nada pide derribar no es luchar."""
+    mem = ctx.memoria
+    return sorted((o for o in objetos(ctx) if o.rasgo("peligro") > 0.0
+                   and (mem.peligros.derribos.get(o.clase) or (Verbo.ATACAR, o.clase) in mem.metas)), key=lambda o: o.id)
 
 
 class Afrontar(Definicion):
     """Seguridad (paso 6b, ``Perfil.mecanismos.afrontar``): luchar o huir por evaluación, con lo aprendido en 6a
-    (``ida.core.peligro``). Para cada amenaza percibida (un Objeto con peligro y posición):
+    (``ida.core.peligro``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
+    observado o que el manual declara meta de ATACAR):
 
     - golpes para derribarla con lo que se lleva (aprendido; previo pesimista sin datos), pasos hasta el contacto
       (distancia − 1) y exposición = golpes + pasos;
