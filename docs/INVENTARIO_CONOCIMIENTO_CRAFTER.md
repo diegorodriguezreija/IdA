@@ -120,3 +120,23 @@ Lista de cada constante, umbral o regla de `ida/mundos/crafter.py` que codifica 
 - **Quién lo hace ahora:** el refugio nocturno lo da la base: `Recinto` y `Proteger` (`ida/sistemas/proteger.py`), con el mapa local de la memoria, el modelo del cuerpo y la alostasis del cobijo. Siempre activos, sin interruptor. El material y las herramientas para cerrar o cavar se piden a `PerseguirMetas` como metas instrumentales.
 - **Lo que el mundo da para eso:** solo percepción. Es `cuerpo["casillas"]`, la clase de cada casilla a la vista, con los mismos nombres que las entidades y que `SUELOS`.
 - **Lo que queda en el mundo:** `DefensaArmada` y `CerrarDistancia` (sección 2, paso 6).
+
+## 8. Estado tras el paso 6 (rama `feature/defensa`, subpaso 6d)
+
+- **Conducta escrita para Crafter: ninguna.** `estrategias_propias()` devuelve `{}`, y un test (`tests/test_defensa.py::test_crafter_no_escribe_conducta`) comprueba que ninguna clase de `ida/mundos/crafter.py` hereda de `Definicion`, `Plan` ni `ConPropuestas`.
+- **Borrado:**
+  - `DefensaArmada` y `CerrarDistancia` (sección 2) y lo que solo usaban ellas: `ESPADAS`, `_salud`, `_tiene_espada` y `_posicion`;
+  - `PELIGRO_MANUAL` (el 0,8 de lo que el manual declara PELIGROSO, líneas 250 y 264 de la tabla 1);
+  - el peligro de las casillas, con alcance 4 (línea 264);
+  - la atribución del daño por geometría, a ≤ 1 casilla y a ≤ 4 si es esqueleto (línea 353).
+- **Quién lo hace ahora:** la base.
+  - El peligro lo aprende `ida/core/peligro.py`: daño por golpe (despierto y dormido), tasa por latido de exposición, emisores por contingencia y su alcance, y golpes por derribo según lo que se lleva.
+  - Luchar o huir lo decide `Afrontar` (S1).
+  - El arma la pide `Afrontar` a `PerseguirMetas` como meta instrumental.
+  - Todo siempre activo, sin interruptor.
+- **Lo que el mundo da para eso:** solo percepción.
+  - la posición de cada cosa;
+  - si se mueve (`agente`);
+  - la causa de un daño, que es lo peligroso en contacto con la casilla propia (`_contacto`), sin geometría de alcance;
+  - qué es peligroso, que viene del manual (`PELIGROSO`) y solo da el previo.
+- **Lo que queda en el mundo:** percepción, forma de actuar y el manual declarativo, incluidos los rasgos que lee del manual (`RECURSO_MANUAL`, `NUTRITIVO_MANUAL`).

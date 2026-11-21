@@ -131,3 +131,44 @@ def valorar(self, ctx, amenaza):
 - **Atribución por contacto con proyectiles rápidos:** si la flecha desaparece en el mismo paso en que daña, hay que atribuir a la flecha vista en el latido anterior junto a la casilla propia. Comprobarlo en `objects.py`.
 - **Coste por latido:** la valoración es barata (una amenaza cada vez); hay que medirlo igualmente.
 - **Que `Afrontar` pierda en el Tribunal frente a `Huir`:** las dos usan la intensidad de seguridad. Si pierde, se diagnostica antes de tocar constantes.
+
+## Resultado
+
+Mediciones oficiales en [`docs/MEDICION_PASO6.md`](MEDICION_PASO6.md) (rama `feature/defensa`, código `027062e`; 100 000 pasos, vista oficial, sin herencia, manual estricto, `--sin-estrategias-propias`; datos en `datos/evaluacion/`). Referencias F1, F2 y F3 en [`docs/MEDICION_CIERRE_PASO3.md`](MEDICION_CIERRE_PASO3.md).
+
+| Condición | Score (%) [IC 95 %] | `defeat_zombie` (%) | `defeat_skeleton` (%) | Zombi + desgaste | Latidos cortados |
+|---|---|---|---|---|---|
+| F1: cierre del paso 3, semilla 31 | 12,82 [11,76, 13,79] | 38,42 | 0,53 | 272 (71,6 %) | 4 |
+| D1: 6a, semilla 31 | 12,47 [11,52, 13,24] | 38,30 | 0,26 | 283 (72,8 %) | 0 |
+| D2: 6a+6b+6c, semilla 31 | 14,04 [12,92, 15,06] | 40,21 | 7,83 | 272 (71,0 %) | 0 |
+| F2: cierre del paso 3, semilla 32 | 13,58 [12,52, 14,47] | 37,63 | 0,00 | 275 (72,4 %) | 6 |
+| D3: 6a+6b+6c, semilla 32 | 15,45 [14,18, 16,53] | 40,27 | 5,21 | 253 (69,3 %) | 0 |
+| F3: cierre del paso 3, con `DefensaArmada` y `CerrarDistancia`, semilla 31 | 13,80 [12,65, 14,82] | 54,19 | 1,68 | — | 1 |
+
+La causa de muerte no se cuenta igual en F y en D: en F el daño se atribuye por geometría (esqueleto a ≤ 4 casillas, el resto a ≤ 1); en D, por contacto en cada paso del entorno. Por eso las muertes por «esqueleto» pasan de 36 y 35 a 0 y las de «flecha» de 1 a 32, 27 y 27, y «desgaste» casi desaparece. Se compara «zombi + desgaste».
+
+**Criterios de la sección 5:**
+
+1. **Pilar 1: cumplido.** `estrategias_propias()` de Crafter devuelve `{}` y el test de frontera (`tests/test_defensa.py::test_crafter_no_escribe_conducta`) pasa.
+2. **Pilar 3: cumplido.** No queda en `ida/mundos/crafter.py` ningún número de daño, alcance ni golpes. Los previos (2/9 de la vitalidad por golpe, 10 golpes por derribo, tasa 0,5) están en `ida/core/peligro.py` y no nombran ningún mundo.
+3. **Línea general:**
+   - Score no peor: cumplido. D1 −0,35 puntos frente a F1; D2 +1,22 frente a F1; D3 +1,87 frente a F2. En los tres casos los intervalos se solapan.
+   - `defeat_skeleton` > 2 %: cumplido (7,83 % y 5,21 %, frente a 0,53 % y 0,00 %).
+   - `defeat_zombie` ≥ 50 %: **no cumplido** (40,21 % y 40,27 %; F3 llegaba al 54,19 %).
+   - Proporción de muertes por zombi + desgaste: baja 0,6 puntos en D2 y 3,1 en D3; en la práctica no cambia.
+4. **D4 frente a F3:** pendiente. D2, sin estrategias propias, ya da 14,04 % frente al 13,80 % de F3, con los intervalos solapados.
+5. **Invariancia:** OK en mínimo, archivos y ajedrez, con los interruptores apagados y encendidos y tras el 6d.
+6. **Tests con un mundo de juguete:** en `tests/test_defensa.py`, todos en verde.
+
+**Lectura del criterio no cumplido.** `Afrontar` es más prudente que `DefensaArmada`:
+
+- `DefensaArmada` atacaba a cualquier zombi o esqueleto adyacente si llevaba espada y tenía salud ≥ 4.
+- `Afrontar` solo lucha si el margen estimado (salud menos daño por golpe × exposición × tasa, todo aprendido) supera la reserva de 3/9. Sin datos de derribos usa el previo pesimista de 10 golpes.
+- Lucha menos y abate menos zombis (40 % frente a 54 %), pero muere lo mismo por zombi que sin luchar y gana en Score por los esqueletos.
+- Afinar cuándo merece la pena luchar queda como deuda ([`docs/DEUDA_TECNICA_CRAFTER.md`](DEUDA_TECNICA_CRAFTER.md), punto 12).
+
+### 6d: `DefensaArmada` y `CerrarDistancia` borradas, mecanismos siempre activos
+
+Se aprobó a la vista de D2. Se borran `DefensaArmada`, `CerrarDistancia` y lo que solo usaban ellas, `PELIGRO_MANUAL`, el peligro de las casillas y la atribución del daño por geometría. Se quitan los interruptores `peligro_aprendido`, `afrontar` y `arma_instrumental`. La base calcula el peligro solo si el mundo no da el suyo, así que mínimo, archivos y ajedrez no cambian (invariancia OK).
+
+**Conducta sin cambios.** `evaluar_crafter.py --pasos 3000 --semilla 31 --vista oficial --sin-herencia --manual estricto` produce el mismo JSON con el código de `027062e` (con los tres interruptores y `--sin-estrategias-propias`) que con el del 6d (sin opciones). Solo cambian los tiempos y los dos campos que registran las opciones (`mecanismos`, `sin_estrategias_propias`). Ficheros en `datos/diagnostico/paso6/`.
