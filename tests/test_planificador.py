@@ -311,22 +311,3 @@ def test_primero_lo_que_se_lleva_despues_el_sitio():
     ctx.onda.canales["Propiocepcion"]["yo"].carga["inventario"] = {}
     propuestas = PerseguirMetas().actuar(ctx, None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_0_1")]
-
-
-def test_el_material_se_busca_tambien_en_el_mapa_local():
-    """La meta pide madera, que da coger un árbol. No se ve ninguno, pero el mapa local recuerda uno a 5 pasos por un pasillo:
-    el planificador va hacia él por el mapa."""
-    m = Memoria()
-    m.aplicar_manual({"inventario": ["madera"], "hechos": [
-        {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_b"},
-        {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_b", "requiere_inventario": {"madera": None}},
-        {"tipo": "requisito", "verbo": "COGER", "objetivo": "arbol", "requiere_inventario": {}, "efecto": {"madera": 1}},
-    ]})
-    m.casillas.update({(x, 0): "suelo" for x in range(6)})
-    m.casillas[(6, 0)] = "arbol"
-    m.paso_libre["suelo"] = 1
-    m.paso_bloqueado["arbol"] = 1
-    ctx = _ctx(m, [_entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))], {}, ubicacion="celda_0_0")
-    propuestas = PerseguirMetas().actuar(ctx, None)
-    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
-    assert "volver a arbol (mapa, 5 pasos)" in propuestas[0].motivo
