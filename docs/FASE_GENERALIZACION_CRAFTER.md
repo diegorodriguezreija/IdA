@@ -384,16 +384,30 @@ Actualizado el 21/11/2026.
 | C3 | Igual que C1 | 32 | 11,05 [10,21, 11,72] | 1,89 | `cierre0_C3.json` | `MEDICION_CIERRE_PASO0.md` |
 | L1a | Paso 3a: proteger X | 31 | 11,95 [11,01, 12,76] | 18,49 | `paso3_L1a.json` | `MEDICION_PASO3.md` |
 | L1c | Paso 3a: proteger X | 32 | 12,41 [11,42, 13,24] | 18,35 | `paso3_L1c.json` | `MEDICION_PASO3.md` |
+| F1 | Cierre del paso 3 | 31 | 12,82 [11,76, 13,79] | 20,53 | `paso3_F1.json` | `MEDICION_CIERRE_PASO3.md` |
+| F2 | Cierre del paso 3 | 32 | 13,58 [12,52, 14,47] | 21,32 | `paso3_F2.json` | `MEDICION_CIERRE_PASO3.md` |
+| D1 | Paso 6a: peligro aprendido | 31 | 12,47 [11,52, 13,24] | 18,25 | `paso6_D1.json` | `MEDICION_PASO6.md` |
+| D2 | Paso 6: peligro aprendido, `Afrontar` y arma instrumental | 31 | 14,04 [12,92, 15,06] | 20,63 | `paso6_D2.json` | `MEDICION_PASO6.md` |
+| D3 | Igual que D2 | 32 | 15,45 [14,18, 16,53] | 23,56 | `paso6_D3.json` | `MEDICION_PASO6.md` |
 
 **Lectura:**
 - Del suelo a C1, la Score pasa de 1,45 a 11,29 con el planificador y la aliestesia en la base.
 - `proteger` (L1a y L1c) multiplica `wake_up` por unas 5 (semilla 31) y 10 (semilla 32) frente a C1 y C3.
 - La Score sube +0,66 y +1,36 puntos, pero en las dos semillas los intervalos se solapan.
+- La defensa general (D2 y D3) sube la Score +1,22 y +1,87 puntos frente a F1 y F2, con los intervalos solapados.
+  - `defeat_skeleton` pasa del 0,53 % y el 0,00 % al 7,83 % y el 5,21 %.
+  - `defeat_zombie` solo llega al 40 %; el criterio era ≥ 50 % (`docs/ENCARGO_PASO6_DEFENSA.md`, «Resultado»).
+
+**Pilar 1 (frontera limpia): cumplido** con el paso 6d (rama `feature/defensa`).
+- `estrategias_propias()` de Crafter devuelve `{}` y ya no queda conducta escrita para Crafter (`docs/INVENTARIO_CONOCIMIENTO_CRAFTER.md`, sección 8).
+- El test de frontera (`tests/test_defensa.py::test_crafter_no_escribe_conducta`) comprueba que ninguna clase de `ida/mundos/crafter.py` hereda de `Definicion`, `Plan` ni `ConPropuestas`.
+- Desde el 6d la línea general y la línea con estrategias propias son la misma.
 
 **Línea con las estrategias propias del mundo:**
 - C2 (cierre del paso 0, con `RefugioNocturno`, semilla 31) da 15,29 [14,00, 16,30].
 - L2 (con `Proteger` en su lugar) da 13,12 [11,96, 14,12]: −2,17 puntos.
 - Es la pérdida aceptada al borrar `RefugioNocturno`, explicada en `docs/ENCARGO_PASO3_PROTEGER.md`, «Resultado».
+- F3 (cierre del paso 3, con `DefensaArmada` y `CerrarDistancia`, semilla 31) da 13,80 [12,65, 14,82]. D2, ya sin estrategias propias, lo iguala (14,04). La comparación tras el 6d (D4) está pendiente.
 
 **Pasos retirados:**
 

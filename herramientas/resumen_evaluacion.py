@@ -25,6 +25,297 @@ def formatear_float_es(valor: float, decimales: int = 2) -> str:
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
+def se_solapan(ic1: Tuple[float, float], ic2: Tuple[float, float]) -> bool:
+    """Determina si dos intervalos cerrados [a, b] y [c, d] se solapan."""
+    return max(ic1[0], ic2[0]) <= min(ic1[1], ic2[1])
+
+
+# =====================================================================
+# Informe Paso 6: La defensa general
+# =====================================================================
+
+CONDICIONES_PASO6 = [
+    {
+        "id": "F1",
+        "nombre": "F1",
+        "columna": "F1",
+        "archivo": "paso3_F1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "D1",
+        "nombre": "D1",
+        "columna": "D1",
+        "archivo": "paso6_D1.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos peligro_aprendido"
+        ),
+    },
+    {
+        "id": "D2",
+        "nombre": "D2",
+        "columna": "D2",
+        "archivo": "paso6_D2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos peligro_aprendido afrontar arma_instrumental"
+        ),
+    },
+    {
+        "id": "D4",
+        "nombre": "D4",
+        "columna": "D4",
+        "archivo": "paso6_D4.json",
+        "opciones": (
+            "--pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto"
+        ),
+    },
+    {
+        "id": "F2",
+        "nombre": "F2",
+        "columna": "F2",
+        "archivo": "paso3_F2.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--sin-estrategias-propias --manual estricto"
+        ),
+    },
+    {
+        "id": "D3",
+        "nombre": "D3",
+        "columna": "D3",
+        "archivo": "paso6_D3.json",
+        "opciones": (
+            "--pasos 100000 --semilla 32 --vista oficial --sin-herencia "
+            "--manual estricto --sin-estrategias-propias --mecanismos peligro_aprendido afrontar arma_instrumental"
+        ),
+    },
+]
+
+
+def cargar_datos_paso6() -> Dict[str, Dict[str, Any]]:
+    datos = {}
+    for c in CONDICIONES_PASO6:
+        ruta = os.path.join(DATOS_DIR, c["archivo"])
+        with open(ruta, "r", encoding="utf-8") as f:
+            datos[c["id"]] = json.load(f)
+    return datos
+
+
+def generar_tabla_general_paso6(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO6]
+    ids = [c["id"] for c in CONDICIONES_PASO6]
+
+    scores = [f"**{formatear_float_es(datos[cid]['score'])}**" for cid in ids]
+    ics = [
+        f"[{formatear_float_es(datos[cid]['score_ci_95'][0])}, {formatear_float_es(datos[cid]['score_ci_95'][1])}]"
+        for cid in ids
+    ]
+    episodios = [str(datos[cid]["episodios"]) for cid in ids]
+    pasos_ep = [
+        formatear_float_es(datos[cid]["pasos"] / datos[cid]["episodios"], 1)
+        for cid in ids
+    ]
+    ms_paso = [formatear_float_es(datos[cid]["ms_por_paso"]) for cid in ids]
+    cort = [cortados(datos[cid]) for cid in ids]
+
+    lineas = [
+        "## 1. Tabla general",
+        "",
+        f"| Métrica | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+        f"| **Score (%)** | {' | '.join(scores)} |",
+        f"| **IC 95 % (%)** | {' | '.join(ics)} |",
+        f"| **Episodios** | {' | '.join(episodios)} |",
+        f"| **Pasos por episodio** | {' | '.join(pasos_ep)} |",
+        f"| **ms por paso** | {' | '.join(ms_paso)} |",
+        f"| **Latidos cortados** | {' | '.join(cort)} |",
+    ]
+    return "\n".join(lineas)
+
+
+def generar_tasas_logros_paso6(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO6]
+    lineas = [
+        "## 2. Tasas por logro (%)",
+        "",
+        "Porcentaje de episodios donde se obtuvo cada uno de los 22 logros oficiales de Crafter:",
+        "",
+        f"| Logro | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todos_logros = sorted(datos["F1"]["tasas_logros"].keys())
+    ids = [c["id"] for c in CONDICIONES_PASO6]
+    for logro in todos_logros:
+        valores = [formatear_float_es(datos[cid]["tasas_logros"].get(logro, 0.0)) for cid in ids]
+        lineas.append(f"| `{logro}` | {' | '.join(valores)} |")
+    return "\n".join(lineas)
+
+
+def generar_causas_muerte_paso6(datos: Dict[str, Dict[str, Any]]) -> str:
+    columnas = [c["columna"] for c in CONDICIONES_PASO6]
+    lineas = [
+        "## 3. Causas de muerte por condición",
+        "",
+        "Número de episodios y porcentaje sobre el total de episodios de cada condición:",
+        "",
+        f"| Causa | {' | '.join(columnas)} |",
+        f"|---|{'---|' * len(columnas)}",
+    ]
+    todas_causas = sorted(
+        {causa for d in datos.values() for causa in d["causas_muerte"]},
+        key=lambda x: (x == "cortado por presupuesto", x),
+    )
+    ids = [c["id"] for c in CONDICIONES_PASO6]
+    for causa in todas_causas:
+        cols = []
+        for cid in ids:
+            d = datos[cid]
+            n = d["causas_muerte"].get(causa, 0)
+            pct = formatear_float_es((n / d["episodios"]) * 100.0, 1)
+            cols.append(f"{n} ({pct} %)")
+        lineas.append(f"| `{causa}` | {' | '.join(cols)} |")
+        if causa == "zombi":
+            # Fila combinada zombi + desgaste
+            cols_zd = []
+            for cid in ids:
+                d = datos[cid]
+                n_zd = d["causas_muerte"].get("zombi", 0) + d["causas_muerte"].get("desgaste", 0)
+                pct_zd = formatear_float_es((n_zd / d["episodios"]) * 100.0, 1)
+                cols_zd.append(f"{n_zd} ({pct_zd} %)")
+            lineas.append(f"| `zombi + desgaste` | {' | '.join(cols_zd)} |")
+
+    totales = [str(datos[cid]["episodios"]) for cid in ids]
+    lineas.append(f"| **Total episodios** | **{'** | **'.join(totales)}** |")
+    return "\n".join(lineas)
+
+
+def generar_comparaciones_paso6(datos: Dict[str, Dict[str, Any]]) -> str:
+    lineas = [
+        "## 4. Comparaciones",
+        "",
+        "Diferencias de Crafter Score (en puntos porcentuales), comprobación de solapamiento de intervalos de confianza al 95 % "
+        "y diferencias en logros clave de combate (`defeat_zombie` y `defeat_skeleton`):",
+        "",
+    ]
+
+    def comparar(nom_a: str, id_a: str, nom_b: str, id_b: str) -> str:
+        da, db = datos[id_a], datos[id_b]
+        diff = da["score"] - db["score"]
+        signo = "+" if diff >= 0 else ""
+        diff_str = f"{signo}{formatear_float_es(diff)} pp"
+        ic_a = (da["score_ci_95"][0], da["score_ci_95"][1])
+        ic_b = (db["score_ci_95"][0], db["score_ci_95"][1])
+        solapa = se_solapan(ic_a, ic_b)
+        solapa_str = "Sí" if solapa else "No"
+        ic_a_str = f"[{formatear_float_es(ic_a[0])}, {formatear_float_es(ic_a[1])}] %"
+        ic_b_str = f"[{formatear_float_es(ic_b[0])}, {formatear_float_es(ic_b[1])}] %"
+
+        z_a = da["tasas_logros"].get("defeat_zombie", 0.0)
+        z_b = db["tasas_logros"].get("defeat_zombie", 0.0)
+        diff_z = z_a - z_b
+        signo_z = "+" if diff_z >= 0 else ""
+        diff_z_str = f"{signo_z}{formatear_float_es(diff_z)} pp"
+
+        sk_a = da["tasas_logros"].get("defeat_skeleton", 0.0)
+        sk_b = db["tasas_logros"].get("defeat_skeleton", 0.0)
+        diff_sk = sk_a - sk_b
+        signo_sk = "+" if diff_sk >= 0 else ""
+        diff_sk_str = f"{signo_sk}{formatear_float_es(diff_sk)} pp"
+
+        return (
+            f"- **{nom_a} frente a {nom_b}**:\n"
+            f"  - Score {nom_a}: {formatear_float_es(da['score'])} % (IC 95 %: {ic_a_str})\n"
+            f"  - Score {nom_b}: {formatear_float_es(db['score'])} % (IC 95 %: {ic_b_str})\n"
+            f"  - Diferencia de Score ({nom_a} - {nom_b}): {diff_str}\n"
+            f"  - ¿Se solapan los IC 95 %?: **{solapa_str}**\n"
+            f"  - `defeat_zombie`: {formatear_float_es(z_a)} % frente a {formatear_float_es(z_b)} % ({diff_z_str})\n"
+            f"  - `defeat_skeleton`: {formatear_float_es(sk_a)} % frente a {formatear_float_es(sk_b)} % ({diff_sk_str})"
+        )
+
+    # 1. D1 frente a F1
+    lineas.append("### D1 frente a F1 (semilla 31, peligro aprendido)")
+    lineas.append(comparar("D1", "D1", "F1", "F1"))
+    lineas.append("")
+
+    # 2. D2 frente a F1 y a D1
+    lineas.append("### D2 frente a F1 y a D1 (semilla 31, defensa completa)")
+    lineas.append(comparar("D2", "D2", "F1", "F1"))
+    lineas.append("")
+    lineas.append(comparar("D2", "D2", "D1", "D1"))
+    lineas.append("")
+
+    # 3. D3 frente a F2
+    lineas.append("### D3 frente a F2 (semilla 32, defensa completa)")
+    lineas.append(comparar("D3", "D3", "F2", "F2"))
+    lineas.append("")
+
+    # 4. D4 frente a D2
+    lineas.append("### D4 frente a D2 (semilla 31, comprobación de equivalencia del paso 6d)")
+    lineas.append(comparar("D4", "D4", "D2", "D2"))
+    lineas.append("")
+    lineas.append(
+        "**Resultado de la comprobación de equivalencia del 6d:**\n"
+        "Se comprobó que borrar `DefensaArmada` y `CerrarDistancia` y retirar los interruptores de `Perfil` "
+        "no altera la conducta de Crafter. Al comparar `paso6_D4.json` con `paso6_D2.json` "
+        "(ignorando `tiempo_segundos`, `ms_por_paso`, `mecanismos` y `sin_estrategias_propias`), "
+        "**todos los campos son idénticos** (Score 14,04 %, IC 95 % [12,92, 15,06] %, 383 episodios, 100.000 pasos "
+        "y las tasas de los 22 logros oficiales de Crafter) salvo una única causa de muerte:\n"
+        "- En D2: 27 muertes por flecha y 271 por zombi (0 latidos cortados).\n"
+        "- En D4: 26 muertes por flecha y 272 por zombi (1 latido cortado).\n"
+        "Esta divergencia de un solo caso se debe exclusivamente a que en D4 la guillotina cortó 1 latido por reloj (> 100 ms) "
+        "en el episodio 64: dicho episodio duró 167 pasos muriendo por zombi (en vez de 169 pasos muriendo por flecha en D2). "
+        "Todos los demás episodios siguieron trayectorias idénticas, dándose por buena la equivalencia."
+    )
+    lineas.append("")
+
+    return "\n".join(lineas)
+
+
+def generar_informe_paso6() -> str:
+    datos = cargar_datos_paso6()
+    cabecera = [
+        "# Medición Oficial: Paso 6 — La defensa general (Crafter)",
+        "",
+        "Evaluación oficial en Crafter (100.000 pasos, vista oficial, sin herencia, manual estricto, sin estrategias propias) "
+        "en la rama `feature/defensa` (commit `027062e` para D1-D3; commit `b9daf9c` para D4). "
+        "Evalúa el paso 6: la defensa general (peligro aprendido, afrontar —luchar o huir— y arma como meta instrumental) "
+        "y la retirada de las estrategias propias de Crafter (paso 6d, pilar 1).",
+        "",
+        "Ficheros de datos utilizados (en `datos/evaluacion/`):",
+        "- `paso3_F1.json`: F1 (Referencia Paso 3, semilla 31, sin estrategias propias)",
+        "- `paso6_D1.json`: D1 (Paso 6a, semilla 31, mecanismo `peligro_aprendido`)",
+        "- `paso6_D2.json`: D2 (Paso 6 completo, semilla 31, mecanismos `peligro_aprendido`, `afrontar`, `arma_instrumental`)",
+        "- `paso6_D4.json`: D4 (Paso 6d en base, semilla 31, sin estrategias propias ni mecanismos)",
+        "- `paso3_F2.json`: F2 (Referencia Paso 3, semilla 32, sin estrategias propias)",
+        "- `paso6_D3.json`: D3 (Paso 6 completo, semilla 32, mecanismos `peligro_aprendido`, `afrontar`, `arma_instrumental`)",
+        "",
+        "### Control de latidos cortados (guillotina de 100 ms)",
+        "",
+        "Criterio de validez: una medición es válida si registra 10 latidos cortados o menos "
+        "(menos del 0,01 % de los latidos). En las mediciones evaluadas:",
+        "- **F1**: 4 latidos cortados en 4 episodios (0,004 % de los latidos).",
+        "- **D1**: 0 latidos cortados.",
+        "- **D2**: 0 latidos cortados.",
+        "- **D4**: 1 latido cortado en 1 episodio (episodio 64; 0,001 % de los latidos).",
+        "- **F2**: 6 latidos cortados en 4 episodios (0,006 % de los latidos).",
+        "- **D3**: 0 latidos cortados.",
+        "",
+    ]
+    partes = [
+        "\n".join(cabecera),
+        generar_tabla_general_paso6(datos),
+        generar_tasas_logros_paso6(datos),
+        generar_causas_muerte_paso6(datos),
+        generar_comparaciones_paso6(datos),
+    ]
+    return "\n\n---\n\n".join(partes) + "\n"
+
+
 # =====================================================================
 # Informe Cierre Paso 3: Proteger X (refugio general en base)
 # =====================================================================
@@ -960,11 +1251,6 @@ def generar_causas_muerte(datos: Dict[str, Dict[str, Any]]) -> str:
     return "\n".join(lineas)
 
 
-def se_solapan(ic1: Tuple[float, float], ic2: Tuple[float, float]) -> bool:
-    """Determina si dos intervalos cerrados [a, b] y [c, d] se solapan."""
-    return max(ic1[0], ic2[0]) <= min(ic1[1], ic2[1])
-
-
 def generar_comparaciones(datos: Dict[str, Dict[str, Any]]) -> str:
     lineas = [
         "## 4. Comparaciones",
@@ -1206,9 +1492,14 @@ def generar_markdown_oficial() -> str:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--paso6",
+        action="store_true",
+        help="Genera el informe del Paso 6 (MEDICION_PASO6.md, por defecto)",
+    )
+    parser.add_argument(
         "--cierre-paso3",
         action="store_true",
-        help="Genera el informe de cierre del Paso 3 (MEDICION_CIERRE_PASO3.md, por defecto)",
+        help="Genera el informe de cierre del Paso 3 (MEDICION_CIERRE_PASO3.md)",
     )
     parser.add_argument(
         "--paso3",
@@ -1246,8 +1537,10 @@ def main() -> int:
         salida = generar_informe_cierre_paso0()
     elif args.paso3:
         salida = generar_informe_paso3()
-    else:
+    elif args.cierre_paso3:
         salida = generar_informe_cierre_paso3()
+    else:
+        salida = generar_informe_paso6()
 
     if args.salida:
         os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)

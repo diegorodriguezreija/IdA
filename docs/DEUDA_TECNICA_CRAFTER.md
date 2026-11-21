@@ -69,7 +69,9 @@ Son pocos casos; solo si siguen pesando tras C.4.
 - **Lo más limpio** sería que 0b actuara siempre.
 - **Requisito para quitar la condición:** benchmark pareado (N = 10) de mínimo y archivos, con el criterio de la sección e de `docs/PROPUESTA_PASO0.md`: ninguna diferencia significativa en contra en latidos ni en fitness, ni más muertes por hambre en archivos, y un coste por latido como mucho un 10 % mayor.
 
-## 10. Peligro sin gradaciones (para el paso 6)
+## 10. Peligro sin gradaciones (para el paso 6) — resuelto en el paso 6
+
+- **Estado:** desde el paso 6 el adaptador no da `peligro`. Lo calcula la base con el daño aprendido (`ida/core/peligro.py`), y `defeat_skeleton` sube al 7,83 % y al 5,21 % (`docs/MEDICION_PASO6.md`).
 
 - **Qué pasa:** con el manual estricto, el adaptador da el mismo peligro (`PELIGRO_MANUAL` = 0,8) a todo lo que el manual declara PELIGROSO, flecha incluida. IdA huye de las flechas y casi nunca se enfrenta al esqueleto: `defeat_skeleton` cae del 43,17 % al 7,39 % (`docs/DIAGNOSTICO_G3.md`).
 - **Lo correcto:** aprender cuánto daño hace cada clase. La experiencia ya registra la causa de cada daño (`Efecto.causa`). Pertenece al paso 6 (defensa general).
@@ -87,3 +89,18 @@ Son pocos casos; solo si siguen pesando tras C.4.
 - **Lo pendiente:**
   1. Decidir cuándo perseguir un sitio comparando su coste completo con el tiempo hasta la oscuridad (la tendencia del cobijo, que ya estima la alostasis). Un sitio que no se puede completar antes de lo oscuro no se persigue.
   2. Después, reintroducir el filtro de orientación, con su presupuesto de planes por latido (commit `86629d3`, revertido en `d69d3d6`), y medirlo con el diagnóstico completo.
+
+## 12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada)
+
+- **Qué pasa:** con `Afrontar` (paso 6), `defeat_zombie` queda en el 40,21 % (D2) y el 40,27 % (D3), frente al 54,19 % de F3, que aún tenía `DefensaArmada`. El criterio del paso 6 pedía ≥ 50 % (`docs/ENCARGO_PASO6_DEFENSA.md`, «Resultado»).
+- **Lectura:** `Afrontar` es más prudente. Lucha solo si el margen estimado supera la reserva de 3/9, y sin datos usa un previo pesimista de 10 golpes por derribo. `DefensaArmada` atacaba siempre que tenía espada y salud ≥ 4.
+- **Pendiente:**
+  - diagnosticar en qué encuentros `Afrontar` huye y la lucha habría salido bien: reserva, previo de golpes y tasa de daño por latido de exposición;
+  - corregirlo en la base, sin umbrales para un mundo.
+- **Cuidado:** las muertes por zombi + desgaste no han subido. Luchar más no debe subirlas (riesgo «luchar de más» del encargo).
+
+## 13. Guillotina lógica para evaluaciones reproducibles
+
+- **Qué pasa:** la guillotina corta por reloj, así que un solo latido cortado cambia una trayectoria; para las evaluaciones, conviene un plazo lógico (en operaciones) en lugar de en milisegundos.
+- **Dónde se vio:** en la comprobación de equivalencia del 6d (`paso6_D4.json`, semilla 31), un único latido cortado en el episodio 64 cambió la causa de muerte de ese episodio de flecha a zombi (167 pasos frente a 169), aunque la Score, el IC, los episodios y los 22 logros fueron idénticos a D2.
+

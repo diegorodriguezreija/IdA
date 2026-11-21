@@ -1,0 +1,56 @@
+Episodio   1 (semilla 33000100):   212 pasos (   212/3000),  6 logros, muerto (zombi) · 1.7s
+Episodio   2 (semilla 33000101):   187 pasos (   399/3000),  7 logros, muerto (zombi) · 1.1s
+Episodio   3 (semilla 33000102):   175 pasos (   574/3000),  4 logros, muerto (zombi) · 1.3s
+Episodio   4 (semilla 33000103):   205 pasos (   779/3000),  7 logros, muerto (zombi) · 1.3s
+Episodio   5 (semilla 33000104):   186 pasos (   965/3000),  8 logros, muerto (zombi) · 1.2s
+Episodio   6 (semilla 33000105):   214 pasos (  1179/3000),  7 logros, muerto (zombi) · 1.3s
+Episodio   7 (semilla 33000106):   265 pasos (  1444/3000),  2 logros, muerto (zombi) · 1.3s
+Episodio   8 (semilla 33000107):   183 pasos (  1627/3000),  1 logros, muerto (flecha) · 0.9s
+Episodio   9 (semilla 33000108):   239 pasos (  1866/3000), 10 logros, muerto (zombi) · 1.7s
+Episodio  10 (semilla 33000109):   263 pasos (  2129/3000),  8 logros, muerto (hambre) · 1.8s
+Episodio  11 (semilla 33000110):   443 pasos (  2572/3000),  8 logros, muerto (hambre) · 2.5s
+Episodio  12 (semilla 33000111):   237 pasos (  2809/3000),  2 logros, muerto (zombi) · 1.8s
+Episodio  13 (semilla 33000112):   191 pasos (  3000/3000),  6 logros, vivo · 1.6s
+
+=================================================================
+ EVALUACIÓN OFICIAL CRAFTER · IdA
+=================================================================
+Configuración: Perfil Equilibrado · Vista oficial · SIN estrategias propias (suelo) · SIN herencia
+Mecanismos:    peligro_aprendido
+Presupuesto:   3000 pasos en 13 episodios (semilla base 33)
+Rendimiento:   39.0 s total (12.99 ms/paso)
+Guillotina:    0 latidos cortados en 0 episodios
+-----------------------------------------------------------------
+Score sin herencia      : 5.95 %  (IC 95 %: [4.22, 6.71] %)
+-----------------------------------------------------------------
+Tasa de éxito por logro (22 oficiales):
+  collect_drink           92.31 %  ██████████████████
+  collect_wood            84.62 %  ████████████████
+  place_table             76.92 %  ███████████████
+  make_wood_pickaxe       69.23 %  █████████████
+  collect_sapling         46.15 %  █████████
+  eat_cow                 46.15 %  █████████
+  make_wood_sword         46.15 %  █████████
+  place_plant             46.15 %  █████████
+  defeat_zombie           38.46 %  ███████
+  collect_stone           23.08 %  ████
+  place_stone             15.38 %  ███
+  collect_coal             0.00 %  
+  collect_diamond          0.00 %  
+  collect_iron             0.00 %  
+  defeat_skeleton          0.00 %  
+  eat_plant                0.00 %  
+  make_iron_pickaxe        0.00 %  
+  make_iron_sword          0.00 %  
+  make_stone_pickaxe       0.00 %  
+  make_stone_sword         0.00 %  
+  place_furnace            0.00 %  
+  wake_up                  0.00 %  
+-----------------------------------------------------------------
+Causas de muerte / finalización:
+  zombi                     9 episodios ( 69.2 %)
+  hambre                    2 episodios ( 15.4 %)
+  flecha                    1 episodios (  7.7 %)
+  cortado por presupuesto    1 episodios (  7.7 %)
+=================================================================
+
