@@ -57,6 +57,7 @@ class Organismo:
             self.verbos.add(Verbo.LEER)
 
         self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
+        self.ops_por_ms: Optional[float] = None   # plazo lógico de la guillotina (``Onda``); None = reloj
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
         actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
@@ -115,7 +116,8 @@ class Organismo:
         if obs.dormido is not None:
             soma.dormido = obs.dormido
         frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
-        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias)
+        onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias,
+                    ops_por_ms=self.ops_por_ms)
         ctx = Contexto(
             onda,
             soma,
