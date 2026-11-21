@@ -1,0 +1,64 @@
+{
+  "pasos": 3000,
+  "episodios": 11,
+  "tiempo_segundos": 37.04,
+  "ms_por_paso": 12.35,
+  "score": 11.82,
+  "score_ci_95": [
+    7.55,
+    13.45
+  ],
+  "tasas_logros": {
+    "collect_coal": 18.18,
+    "collect_diamond": 0.0,
+    "collect_drink": 81.82,
+    "collect_iron": 0.0,
+    "collect_sapling": 54.55,
+    "collect_stone": 36.36,
+    "collect_wood": 90.91,
+    "defeat_skeleton": 0.0,
+    "defeat_zombie": 36.36,
+    "eat_cow": 72.73,
+    "eat_plant": 9.09,
+    "make_iron_pickaxe": 0.0,
+    "make_iron_sword": 0.0,
+    "make_stone_pickaxe": 0.0,
+    "make_stone_sword": 0.0,
+    "make_wood_pickaxe": 63.64,
+    "make_wood_sword": 45.45,
+    "place_furnace": 18.18,
+    "place_plant": 54.55,
+    "place_stone": 36.36,
+    "place_table": 81.82,
+    "wake_up": 27.27
+  },
+  "causas_muerte": {
+    "zombi": 7,
+    "sed": 2,
+    "hambre": 1,
+    "cortado por presupuesto": 1
+  },
+  "perfil": "Equilibrado",
+  "semilla_base": 32,
+  "vista": "oficial",
+  "sin_estrategias_propias": true,
+  "sin_herencia": true,
+  "manual": "estricto",
+  "mecanismos": [
+    "peligro_aprendido"
+  ],
+  "latidos_cortados": 0,
+  "latidos_cortados_por_episodio": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ]
+}
