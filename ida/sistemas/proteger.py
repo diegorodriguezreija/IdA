@@ -46,6 +46,7 @@ PROFUNDIDAD_PLAN = 30     # acciones máximas del plan local de un sitio (cavar,
 MAX_ESTADOS = 6000        # coste de cálculo: estados máximos por búsqueda
 CANDIDATOS_EXACTOS = 6    # sitios más baratos por la estimación rápida que se planifican del todo
 PLANES_POR_EVALUACION = 3 # tope declarado de planes exactos por evaluación: se baja por la lista hasta el primero que cierra
+PLANES_POR_LATIDO = 2     # planes exactos nuevos (fuera de la caché) por latido, entre elegir y requisitos (guillotina)
 CADA_EVALUACION = 5       # latidos entre evaluaciones completas de sitios (entretanto se replanifica el actual)
 MARGEN_SITIO = 0.25       # histéresis: otro sitio sustituye al actual si cuesta al menos un 25 % menos...
 MARGEN_SITIO_MIN = 3.0    # ...y al menos 3 pasos menos
@@ -491,7 +492,8 @@ def orientable(modelo: Modelo, interior: Iterable[Pos], accesos: Iterable[Pos]) 
 
 
 def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
-              previo: Dict[Pos, Pos], hogar: Optional[Pos], cache: Optional[Dict[Any, Optional[List[Accion]]]] = None) -> bool:
+              previo: Dict[Pos, Pos], hogar: Optional[Pos], cache: Optional[Dict[Any, Optional[List[Accion]]]] = None,
+              presupuesto: Optional[List[int]] = None) -> bool:
     """Plan local exacto del sitio y su coste. Si ``aqui`` está en el entorno del sitio, el plan empieza aquí (y no sale del
     entorno, así que el latido siguiente también); si no, en la entrada, llegando por la ruta más corta (con la orientación de
     llegada que da el modelo del cuerpo)."""
@@ -507,7 +509,11 @@ def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist
     clave = (inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos, modelo.firma)
     if cache is not None and clave in cache:
         plan = cache[clave]
+    elif presupuesto is not None and presupuesto[0] <= 0:
+        return False        # sin presupuesto de cálculo en este latido: no se planifica (ni se guarda como fallido)
     else:
+        if presupuesto is not None:
+            presupuesto[0] -= 1
         plan = planificar(modelo, inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos)
         if cache is not None:
             cache[clave] = plan
@@ -554,6 +560,7 @@ class Recinto(Componente):
         self._sel_requisitos: Optional[Dict[str, Any]] = None
         self._inventario: Dict[str, float] = {}
         self._planes: Dict[Any, Optional[List[Accion]]] = {}     # caché de planes locales (coste de cálculo)
+        self._presupuesto: List[int] = [PLANES_POR_LATIDO]
         self._planificador = PerseguirMetas()
 
     def reactiva(self, ctx: Contexto) -> None:
@@ -562,6 +569,7 @@ class Recinto(Componente):
         aqui = posicion(ctx)
         if aqui is None or not ctx.memoria.casillas:
             return
+        self._presupuesto = [PLANES_POR_LATIDO]
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
             self._ultimo_requisitos, self._sel_requisitos, self._planificador = -10**9, None, PerseguirMetas()
@@ -656,7 +664,7 @@ class Recinto(Componente):
             if planes >= PLANES_POR_EVALUACION or (elegido is not None and anterior is None and previa is None):
                 break
             planes += 1
-            if not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes):
+            if not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto):
                 continue
             requiere: Dict[str, float] = {}
             for clase in clases:
@@ -687,7 +695,7 @@ class Recinto(Componente):
         actual: Optional[Sitio] = None
         if self._sitio is not None:
             actual = self._reconstruir(modelo, self._sitio, dist, hogar)
-            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes):
+            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto):
                 actual = None
         perdido = self._sitio is not None and actual is None
         if ctx.latido - self._ultima < CADA_EVALUACION and not perdido:
@@ -701,7 +709,7 @@ class Recinto(Componente):
             if planes >= PLANES_POR_EVALUACION or mejor is not None:
                 break           # el primero que cierra, bajando por la lista (tope declarado)
             planes += 1
-            if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes):
+            if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto):
                 mejor = s
         if actual is not None and (mejor is None or mejor.coste > actual.coste - max(MARGEN_SITIO_MIN, MARGEN_SITIO * actual.coste)):
             mejor = actual
