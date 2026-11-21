@@ -296,7 +296,10 @@ class Afrontar(Definicion):
     contacto; si no y su alcance es mayor que el contacto (un emisor: huir no lo reduce y acercarse acorta la
     exposición), MOVER al lugar que más acerca; si daña solo por contacto, no se huye: se espera (ESPERAR) cuando le
     falta un paso para el contacto y, más lejos, no se propone nada.
-    Solo con el peligro calculado por la base (``ctx.extra["peligro_aprendido"]``).
+    Con ``arma_instrumental`` (6c), si ninguna lucha es favorable pero lo sería con un objeto que reduce los golpes
+    (aprendido por contingencia, ``Peligros.reductores``), fase ``armarse``: pide ese objeto al planificador con la
+    intensidad de Seguridad (``Definicion.pedir``) y, mientras tanto, hace lo que haría ``Huir`` (o ``Defenderse`` sin
+    salida). Solo con el peligro calculado por la base (``ctx.extra["peligro_aprendido"]``).
 
     Compite con ``Huir`` por el impulso de Seguridad: la elige ``Estrategia`` por su prioridad cuando es elegible, es
     decir, cuando la evaluación es favorable."""
@@ -304,7 +307,7 @@ class Afrontar(Definicion):
     nombre = "afrontar"
     impulsos = (SEGURIDAD,)
     prioridad = 50
-    LUCHAR = "luchar"
+    LUCHAR, ARMARSE = "luchar", "armarse"
 
     @staticmethod
     def _valorar(ctx: Contexto, o: Pieza, aqui: Tuple[int, int], salud: float, llevados: FrozenSet[str],
@@ -339,6 +342,15 @@ class Afrontar(Definicion):
             if favorables:
                 v = max(favorables, key=lambda v: (v["beneficio"], -v["d"], v["pieza"].id))
                 res = {"fase": self.LUCHAR, "valoracion": v, "objeto": None}
+            elif ctx.perfil.mecanismos.arma_instrumental and valoradas:
+                principal = max(valoradas, key=lambda v: (v["pieza"].rasgo("peligro"), v["pieza"].id))
+                elegido: Optional[Tuple[str, Dict[str, Any]]] = None
+                for x in sorted(set(reductores) - llevados):
+                    w = self._valorar(ctx, principal["pieza"], aqui, salud, llevados | {x}, reductores)
+                    if w is not None and w["margen"] > RESERVA and (elegido is None or w["golpes"] < elegido[1]["golpes"]):
+                        elegido = (x, w)
+                if elegido is not None:
+                    res = {"fase": self.ARMARSE, "valoracion": principal, "objeto": elegido[0], "con_objeto": elegido[1]}
         ctx.extra["afrontar"] = res
         return res
 
@@ -363,6 +375,14 @@ class Afrontar(Definicion):
         intensidad = _peligro(ctx)
         urgencia = acotar(0.75 + 0.25 * intensidad)      # la misma escala que Huir y Defenderse
         cifras = f"golpes {v['golpes']:.1f}, margen {v['margen']:.0f}, beneficio {v['beneficio']:.2f}"
+        if e["fase"] == self.ARMARSE:
+            for alternativa in (Huir(), Defenderse()):
+                if alternativa.elegible(ctx, SEGURIDAD, intensidad):
+                    p = alternativa.actuar(ctx, estrategia)
+                    if p is not None:
+                        p.motivo = f"afrontar (armarse: {e['objeto']}): {p.motivo}"
+                        return p
+            return None
         if v["d"] <= 1:
             return Propuesta(Verbo.ATACAR, o.id, urgencia, self._confianza(v), f"afrontar: atacar {o.clase} ({cifras})", clase=o.clase)
         if v["alcance"] <= 1:
@@ -382,6 +402,13 @@ class Afrontar(Definicion):
         lugar = min(cerca, key=lambda x: x[:3])[3]
         return Propuesta(Verbo.MOVER, lugar.id, urgencia, self._confianza(v),
                          f"afrontar: acercarse a {o.clase} (alcance {v['alcance']}, {cifras})", clase=lugar.clase)
+
+    def pedir(self, ctx: Contexto, estrategia: Pieza) -> List[Dict[str, Any]]:
+        e = self.evaluar(ctx)
+        if e is None or e["fase"] != self.ARMARSE:
+            return []
+        return [{"objeto": e["objeto"], "cantidad": 1.0, "urgencia": _peligro(ctx),
+                 "motivo": f"afrontar: {e['objeto']} para {e['valoracion']['pieza'].clase}"}]
 
 
 class Sobresalto(Definicion):

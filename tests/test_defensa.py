@@ -273,3 +273,49 @@ def test_sin_el_interruptor_no_hay_afrontar():
     mundo.erizo = (5, 6)
     _, activas = _decisiones(mundo, ("peligro_aprendido",), _memoria_con_experiencia(mundo, {NADA: 3}))
     assert not any("afrontar" in x for x in activas)
+
+
+# --- 6c: el arma como meta instrumental --------------------------------------------------------------------
+def _derribar(p: pel.Peligros, ident: str, golpes: int, objetos: frozenset) -> None:
+    aqui, junto = (5, 5), (5, 6)
+    p.aprender(aqui, {ident: ("erizo", junto)}, set(), objetos, None, "", None, 0.0, _peligrosa)
+    for k in range(golpes):
+        vivo = {ident: ("erizo", junto)} if k < golpes - 1 else {}
+        p.aprender(aqui, vivo, set(), objetos, "ATACAR", ident, None, 0.0, _peligrosa)
+
+
+def test_la_eficacia_depende_del_objeto_llevado():
+    p = pel.Peligros()
+    baston = frozenset({"baston", "palo"})
+    palo = frozenset({"palo"})
+    _derribar(p, "e1", 5, palo)
+    _derribar(p, "e2", 5, palo)
+    _derribar(p, "e3", 2, baston)
+    _derribar(p, "e4", 2, baston)
+    assert p.derribos["erizo"] == [(palo, 5), (palo, 5), (baston, 2), (baston, 2)]
+    assert set(p.reductores()) == {"baston"}          # el palo se llevaba siempre: no explica nada
+    assert p.golpes("erizo", palo)[0] == 5.0 and p.golpes("erizo", baston)[0] == 2.0
+    assert p.golpes("erizo", frozenset())[0] == 5.0
+    assert p.golpes("otra_clase", baston)[0] == pel.GOLPES_PREVIO
+
+
+def test_se_pide_el_arma_de_forma_instrumental():
+    """Con 70 de salud, sin bastón la lucha no deja margen (5 golpes) y con él sí (2): se pide el bastón y se huye."""
+    for mecanismos, pide in ((("peligro_aprendido", "afrontar", "arma_instrumental"), True), (("peligro_aprendido", "afrontar"), False)):
+        mundo = MundoErizos(quieto=True, salud=70.0)
+        mundo.erizo = (5, 6)
+        mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+        onda = _organismo(mundo, mecanismos, mem).latir()
+        peticion = onda.ef("Peticion").get("peticion:baston")
+        assert (peticion is not None) == pide
+        if pide:
+            assert peticion.carga["origen"] == "afrontar" and peticion.carga["cantidad"] == 1.0
+            assert any(p.carga["nombre"] == "afrontar" and p.carga["paso"] == "armarse" for p in onda.estrategias.values())
+
+
+def test_con_el_arma_ya_no_se_pide_y_se_lucha():
+    mundo = MundoErizos(baston=True, salud=100.0)
+    mundo.erizo = (5, 6)
+    mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+    acciones, _ = _decisiones(mundo, ("peligro_aprendido", "afrontar", "arma_instrumental"), mem, latidos=10)
+    assert any(a["verbo"] == Verbo.ATACAR and a["motivo"].startswith("afrontar: atacar") for a in acciones)
