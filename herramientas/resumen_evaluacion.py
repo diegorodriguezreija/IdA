@@ -14,6 +14,11 @@ RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS_DIR = os.path.join(RAIZ, "datos", "evaluacion")
 
 
+def cortados(d: Dict[str, Any]) -> str:
+    """Latidos cortados por la guillotina; «no registrado» en los datos anteriores a que ``evaluar_crafter`` los guardara."""
+    return str(d["latidos_cortados"]) if "latidos_cortados" in d else "no registrado"
+
+
 def formatear_float_es(valor: float, decimales: int = 2) -> str:
     """Formatea un float con punto de miles y coma decimal estilo español (p. ej. 1.379,2)."""
     s = f"{valor:,.{decimales}f}"
@@ -119,6 +124,7 @@ def generar_tabla_general_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
         for cid in ids
     ]
     ms_paso = [formatear_float_es(datos[cid]["ms_por_paso"]) for cid in ids]
+    cort = [cortados(datos[cid]) for cid in ids]
 
     lineas = [
         "## 1. Tabla general",
@@ -130,6 +136,7 @@ def generar_tabla_general_paso3(datos: Dict[str, Dict[str, Any]]) -> str:
         f"| **Episodios** | {' | '.join(episodios)} |",
         f"| **Pasos por episodio** | {' | '.join(pasos_ep)} |",
         f"| **ms por paso** | {' | '.join(ms_paso)} |",
+        f"| **Latidos cortados** | {' | '.join(cort)} |",
     ]
     return "\n".join(lineas)
 
@@ -358,8 +365,8 @@ def generar_tabla_general_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
     lineas = [
         "## 1. Tabla general",
         "",
-        "| Condición | Opciones exactas | Score (%) | IC 95 % (%) | Episodios | Pasos / ep. | Rendimiento (ms/paso) |",
-        "|---|---|---|---|---|---|---|",
+        "| Condición | Opciones exactas | Score (%) | IC 95 % (%) | Episodios | Pasos / ep. | Rendimiento (ms/paso) | Latidos cortados |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for c in CONDICIONES_CIERRE_PASO0:
         cid = c["id"]
@@ -370,7 +377,7 @@ def generar_tabla_general_cierre0(datos: Dict[str, Dict[str, Any]]) -> str:
         pasos_ep = formatear_float_es(d["pasos"] / ep, 1)
         ms_paso = formatear_float_es(d["ms_por_paso"])
         lineas.append(
-            f"| **{c['nombre']}** | `{c['opciones']}` | **{score_str}** | {ic_str} | {ep} | {pasos_ep} | {ms_paso} |"
+            f"| **{c['nombre']}** | `{c['opciones']}` | **{score_str}** | {ic_str} | {ep} | {pasos_ep} | {ms_paso} | {cortados(d)} |"
         )
     return "\n".join(lineas)
 
@@ -592,8 +599,8 @@ def generar_tabla_general(datos: Dict[str, Dict[str, Any]]) -> str:
     lineas = [
         "## 1. Tabla general",
         "",
-        "| Condición | Opciones exactas | Score (%) | IC 95 % (%) | Episodios | Pasos / ep. | Rendimiento (ms/paso) |",
-        "|---|---|---|---|---|---|---|",
+        "| Condición | Opciones exactas | Score (%) | IC 95 % (%) | Episodios | Pasos / ep. | Rendimiento (ms/paso) | Latidos cortados |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for c in CONDICIONES_PASO5_PASO0:
         cid = c["id"]
@@ -604,7 +611,7 @@ def generar_tabla_general(datos: Dict[str, Dict[str, Any]]) -> str:
         pasos_ep = formatear_float_es(d["pasos"] / ep, 1)
         ms_paso = formatear_float_es(d["ms_por_paso"])
         lineas.append(
-            f"| **{c['nombre']}** | `{c['opciones']}` | **{score_str}** | {ic_str} | {ep} | {pasos_ep} | {ms_paso} |"
+            f"| **{c['nombre']}** | `{c['opciones']}` | **{score_str}** | {ic_str} | {ep} | {pasos_ep} | {ms_paso} | {cortados(d)} |"
         )
     return "\n".join(lineas)
 

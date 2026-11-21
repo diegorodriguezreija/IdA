@@ -4,8 +4,14 @@ Ejecuta episodios sucesivos bajo un linaje continuo hasta acumular N pasos (--pa
 Calcula la Crafter Score oficial, la tasa de éxito por logro, la puntuación de la primera vida,
 el intervalo de confianza del 95 % por remuestreo de episodios (bootstrap) y el desglose de causas de muerte.
 
+Reproducibilidad: el Core corta un latido que pasa de ``Perfil.frecuencia_ms`` en tiempo de reloj (guillotina); con la
+máquina cargada (varias evaluaciones a la vez) se cortan latidos que solos no se cortarían y la vida cambia. El JSON
+guarda los latidos cortados (``latidos_cortados`` y por episodio) y el resumen los imprime. ``--verificar-determinismo N``
+ejecuta dos veces los primeros N pasos y falla si las decisiones difieren.
+
 Uso:
     python herramientas/evaluar_crafter.py --pasos 10000 --semilla 31
+    python herramientas/evaluar_crafter.py --verificar-determinismo 2000 --semilla 31 --sin-herencia --sin-estrategias-propias
     python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial
     python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --sin-estrategias-propias
 """
@@ -93,7 +99,9 @@ def evaluar(
     manual: str = "estricto",
     quiet: bool = False,
     mecanismos: Optional[List[str]] = None,
+    traza: Optional[List[Tuple[int, int, str, str]]] = None,
 ) -> Dict[str, Any]:
+    """``traza``: si se da, se le añade (episodio, latido, verbo, objetivo) de cada acción ejecutada."""
     import crafter.constants
 
     logros_oficiales = sorted(crafter.constants.achievements)
@@ -149,7 +157,14 @@ def evaluar(
             org.al_dormir = lambda o: persistencia.volcar(o.memoria, o.arquetipo.id, o.ciclo)
 
             t0_ep = time.perf_counter()
-            vividos = org.vivir(max_latidos_ep)
+            if traza is None:
+                vividos = org.vivir(max_latidos_ep)
+            else:
+                def anotar(o: Any, onda: Any, ep: int = g + 1) -> None:
+                    a = onda.reactiva.ef.get("Accion", {}).get("Accion")
+                    traza.append((ep, o.ciclo, str(getattr(a.carga.get("verbo"), "value", "")) if a else "",
+                                  str(a.carga.get("objetivo", "")) if a else ""))
+                vividos = org.vivir(max_latidos_ep, al_latir=anotar)
             t_ep = time.perf_counter() - t0_ep
             pasos_acumulados += vividos
 
@@ -183,6 +198,7 @@ def evaluar(
                 "causa_muerte": causa_muerte,
                 "logros": logros_ep,
                 "t_segundos": t_ep,
+                "latidos_cortados": org.contadores["guillotinas"],
             }
             episodios.append(ep_info)
 
@@ -237,6 +253,8 @@ def evaluar(
         "sin_herencia": sin_herencia,
         "manual": manual,
         "mecanismos": sorted(mecanismos or []),
+        "latidos_cortados": sum(ep["latidos_cortados"] for ep in episodios),
+        "latidos_cortados_por_episodio": [ep["latidos_cortados"] for ep in episodios],
     }
 
 
@@ -250,6 +268,10 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
     print(f"Mecanismos:    {', '.join(res.get('mecanismos') or []) or 'ninguno'}")
     print(f"Presupuesto:   {res['pasos']} pasos en {res['episodios']} episodios (semilla base {res['semilla_base']})")
     print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms/paso)")
+    cortados = res.get("latidos_cortados", 0)
+    con_cortes = sum(1 for n in res.get("latidos_cortados_por_episodio", []) if n)
+    print(f"Guillotina:    {cortados} latidos cortados en {con_cortes} episodios"
+          + ("" if not cortados else "  ⚠ resultado no reproducible: repetir sin otros procesos"))
     print("-" * 65)
     etiqueta_score = "Score sin herencia" if res["sin_herencia"] else "Score con linaje"
     print(f"{etiqueta_score:<24}: {res['score']:.2f} %  (IC 95 %: [{res['score_ci_95'][0]:.2f}, {res['score_ci_95'][1]:.2f}] %)")
@@ -264,6 +286,33 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
         pct = (n / res["episodios"]) * 100.0
         print(f"  {causa:<22} {n:4d} episodios ({pct:5.1f} %)")
     print("=" * 65 + "\n")
+
+
+def verificar_determinismo(args: argparse.Namespace) -> int:
+    """Dos ejecuciones de los primeros N pasos: deben dar la misma secuencia de acciones (episodio, latido, verbo, objetivo).
+    Devuelve 0 si coinciden y 1 si no, con el primer latido distinto y los latidos cortados de cada ejecución."""
+    trazas: List[List[Tuple[int, int, str, str]]] = []
+    cortados: List[int] = []
+    for _ in range(2):
+        traza: List[Tuple[int, int, str, str]] = []
+        res = evaluar(args.verificar_determinismo, args.semilla, perfil=args.perfil, vista=args.vista, longitud_episodio=args.longitud,
+                      sin_estrategias_propias=args.sin_estrategias_propias, sin_herencia=args.sin_herencia, manual=args.manual,
+                      quiet=True, mecanismos=args.mecanismos, traza=traza)
+        trazas.append(traza)
+        cortados.append(int(res["latidos_cortados"]))
+    a, b = trazas
+    distinto = next((i for i, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), None)
+    if distinto is None and len(a) != len(b):
+        distinto = min(len(a), len(b))
+    print(f"Determinismo ({args.verificar_determinismo} pasos, semilla {args.semilla}): {len(a)} y {len(b)} acciones; "
+          f"latidos cortados {cortados[0]} y {cortados[1]}")
+    if distinto is None:
+        print("OK: las dos ejecuciones coinciden.")
+        return 0
+    x = a[distinto] if distinto < len(a) else None
+    y = b[distinto] if distinto < len(b) else None
+    print(f"DIFIEREN en la acción {distinto}: {x} frente a {y}")
+    return 1
 
 
 def main() -> int:
@@ -281,7 +330,11 @@ def main() -> int:
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
     parser.add_argument("--mecanismos", nargs="*", default=[],
                         help="Interruptores de Perfil.mecanismos que se encienden (bloques E y F)")
+    parser.add_argument("--verificar-determinismo", type=int, default=None, metavar="N",
+                        help="Ejecuta dos veces los primeros N pasos con la misma configuración y falla si las decisiones difieren")
     args = parser.parse_args()
+    if args.verificar_determinismo is not None:
+        return verificar_determinismo(args)
 
     res = evaluar(
         pasos_objetivo=args.pasos,
