@@ -15,7 +15,8 @@ import evaluar_crafter as ev  # noqa: E402
 
 def _args() -> argparse.Namespace:
     return argparse.Namespace(verificar_determinismo=10, semilla=31, perfil="Equilibrado", vista="oficial", longitud=10000,
-                              sin_estrategias_propias=True, sin_herencia=True, manual="estricto", mecanismos=[])
+                              sin_estrategias_propias=True, sin_herencia=True, manual="estricto", mecanismos=[],
+                              plazo_logico=None)
 
 
 def _falso(trazas: List[List[Any]]) -> Any:

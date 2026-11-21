@@ -312,7 +312,8 @@ def ejecutar(args: argparse.Namespace) -> int:
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
     res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual=args.manual,
-                     sin_estrategias_propias=args.sin_estrategias_propias)
+                     sin_estrategias_propias=args.sin_estrategias_propias,
+                     **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
     datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "episodios": [e.resumen() for e in eps]}
     with open(args.salida, "w", encoding="utf-8") as f:
         json.dump(datos, f, ensure_ascii=False)
@@ -498,6 +499,8 @@ def main() -> int:
     p.add_argument("--manual", default="estricto")
     p.add_argument("--con-estrategias-propias", dest="sin_estrategias_propias", action="store_false")
     p.add_argument("--salida", default="diagnostico_paso3.json")
+    p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
+                   help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     p.add_argument("--resumir", nargs="*", default=None, help="JSON de varias semillas: imprime las tablas")
     args = p.parse_args()
     if args.resumir:
