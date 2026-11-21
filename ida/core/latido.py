@@ -22,6 +22,7 @@ from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
+from ida.core import peligro as pel
 from ida.core.pieza import Episodio, Pieza
 from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
@@ -128,6 +129,8 @@ class Organismo:
             biblioteca=self.biblioteca,
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
+        if self.perfil.mecanismos.peligro_aprendido:
+            self._peligro_aprendido(ctx)
 
         # 3. Sentir
         with onda.fase("sentir"):
@@ -235,6 +238,36 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
+
+    def _peligro_aprendido(self, ctx: Contexto) -> None:
+        """Paso 6a (``ida.core.peligro``): en un mundo que da posiciones y no da su propio rasgo ``peligro``, aprende del
+        latido (daño, exposición, golpes, derribos y apariciones) y escribe el ``peligro`` de cada entidad antes de Sentir.
+        Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``)."""
+        obs = ctx.observacion
+        aqui = pos_de(obs.ubicacion) if obs is not None else None
+        if obs is None or aqui is None or any("peligro" in e.rasgos for e in obs.entidades):
+            return
+        con_pos = [e for e in obs.entidades if isinstance(e.datos.get("pos"), (list, tuple)) and len(e.datos["pos"]) == 2]
+        if not con_pos:
+            return
+        mem = self.memoria
+        if self.con_experiencia and mem.activa:
+            agentes = {e.id: (e.clase, (int(e.datos["pos"][0]), int(e.datos["pos"][1]))) for e in con_pos
+                       if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("agente", 0.0) >= 0.5}
+            crudas = (obs.cuerpo or {}).get("casillas")
+            if isinstance(crudas, dict) and crudas:
+                visibles = {(int(k[0]), int(k[1])) for k in crudas}
+            else:
+                visibles = {(int(e.datos["pos"][0]), int(e.datos["pos"][1])) for e in con_pos}
+            objetos = frozenset(k for k, v in mem._objetos(dict(obs.inventario or {})).items() if v >= 1.0)
+            previa = ctx.onda.ei("Accion").get("Accion")
+            c = previa.carga if previa is not None else {}
+            verbo = c.get("verbo")
+            golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
+            mem.peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
+                                  c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa)
+        pel.estimar(obs.entidades, aqui, mem.peligros, self.soma.vitalidad, mem.peligrosa)
+        ctx.extra["peligro_aprendido"] = True
 
     def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
         """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior

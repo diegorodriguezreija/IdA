@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.biblioteca import RegistroLectura
+from ida.core.peligro import Peligros
 from ida.core.pieza import Episodio, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 
@@ -392,6 +393,8 @@ class Memoria:
         self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
         self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
         self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
+        # Paso 6 (peligro aprendido): daño, alcance, emisores y eficacia de ataque, desde la experiencia.
+        self.peligros = Peligros()
 
     @property
     def activa(self) -> bool:
@@ -1316,7 +1319,16 @@ class Memoria:
         if satisface:
             legado["satisface"] = satisface
             legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
+        peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (con el interruptor encendido)
+        if peligros:
+            legado["peligros"] = peligros
         return legado
+
+    def peligrosa(self, clase: str) -> bool:
+        """Paso 6: si la memoria tiene la clase por peligrosa (``Relacion.PELIGROSO`` del manual o de la experiencia, no
+        refutada). Es lo que da el previo de su daño."""
+        p = self.saber.get((clase, Relacion.PELIGROSO))
+        return p is not None and p.estado(0) != EstadoSaber.REFUTADA and p.confianza >= 0.5
 
     def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
         """Lo heredado entra como hipótesis fuerte: hace falta experiencia propia para demostrarlo.
@@ -1371,4 +1383,6 @@ class Memoria:
         for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
             if necesidad not in self.linea_base:
                 self.linea_base[necesidad] = float(base)
+        if legado.get("peligros"):
+            n += self.peligros.heredar(legado["peligros"])
         return n

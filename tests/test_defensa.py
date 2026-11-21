@@ -1,0 +1,211 @@
+"""Paso 6 de la fase de generalización: la defensa general (docs/ENCARGO_PASO6_DEFENSA.md, sección 5.6).
+
+Mundos de juguete en cuadrícula, sin nada de Crafter:
+- un **erizo** que daña por contacto;
+- una **torre** que lanza **púas**: cada púa aparece junto a la torre, avanza en línea recta y se deshace al tocar a alguien;
+- un **bastón** que, llevado, hace que un erizo caiga con menos golpes.
+Nada de eso se le dice a IdA: el daño, el emisor, su alcance y la eficacia del bastón los aprende de lo que percibe.
+"""
+
+from dataclasses import replace
+from typing import Any, Dict, List, Optional, Tuple
+
+from ida.core import peligro as pel
+from ida.core.azar import Azar
+from ida.core.latido import Organismo
+from ida.core.linaje import Arquetipo
+from ida.core.memoria import Memoria
+from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil
+from ida.core.vocabulario import Relacion, Verbo
+from ida.sistemas import crear_sistemas
+
+Pos = Tuple[int, int]
+NADA = frozenset()
+
+
+def _peligrosa(clase: str) -> bool:
+    return clase in ("erizo", "torre", "pua")
+
+
+# --- 6a: peligro aprendido -------------------------------------------------------------------------
+def test_se_aprende_el_dano_por_contacto():
+    p = pel.Peligros()
+    aqui = (5, 5)
+    assert p.dano_propio("erizo", True) == pel.DANO_PREVIO          # sin experiencia, el previo declarado
+    for _ in range(6):     # seis encuentros: un erizo llega, daña 30 dos veces y se va
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa)
+        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa)
+    assert p.dano["erizo"].n == 6 and abs(p.dano["erizo"].media - 60.0) < 1e-9
+    assert abs(p.dano_por_golpe("erizo", _peligrosa) - (2 * pel.DANO_PREVIO + 12 * 30.0) / 14) < 1e-9
+    assert p.dano_propio("erizo", True) > 50.0                         # la experiencia corrige el previo
+    assert p.alcance("erizo", _peligrosa) == 1                           # solo por contacto
+    # El peligro de un erizo pegado depende de la salud: con poca, más
+    comps = p.componentes("erizo", _peligrosa)
+    assert p.peligro_a(comps, 1, 100.0) < p.peligro_a(comps, 1, 60.0)
+    assert p.peligro_a(comps, 4, 100.0) < p.peligro_a(comps, 1, 100.0)
+    # Lo que no es peligroso ni ha dañado no tiene peligro
+    assert p.componentes("piedra", _peligrosa) == []
+
+
+def _lanzamientos(p: pel.Peligros, n: int, recorrido: int, aqui: Pos = (0, 0)) -> None:
+    """La torre en (10, 0); cada púa aparece en (9, 0) y avanza hacia la izquierda ``recorrido`` casillas antes de deshacerse."""
+    visibles = {(x, y) for x in range(-1, 12) for y in range(-4, 5)}
+    k = 0
+    for _ in range(n):
+        k += 1
+        p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
+        for paso in range(recorrido):
+            p.aprender(aqui, {"t": ("torre", (10, 0)), f"p{k}": ("pua", (9 - paso, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
+    p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
+
+
+def test_se_aprende_un_emisor_y_su_alcance():
+    p = pel.Peligros()
+    _lanzamientos(p, 4, 5)
+    assert p.emitidas("torre") == ["pua"]
+    assert p.emision[("torre", "pua")].contingencia() > 0.8
+    assert p.alcance("torre", _peligrosa) == 6         # de (10, 0) a (5, 0), y el contacto
+    # El emisor hereda el daño de lo que emite, con su alcance: a 5 casillas, la torre es tan peligrosa como pegada
+    comps = p.componentes("torre", _peligrosa)
+    assert p.peligro_a(comps, 5, 100.0) == p.peligro_a(comps, 1, 100.0)
+    # Aparecer junto a algo una vez no lo hace emisor
+    q = pel.Peligros()
+    _lanzamientos(q, 1, 3)
+    assert q.emitidas("torre") == []
+
+
+def test_un_lugar_dentro_del_alcance_de_un_emisor_es_peligroso():
+    p = pel.Peligros()
+    _lanzamientos(p, 4, 5)
+    cerca = Entidad("celda_6_0", "suelo", {"lugar": 1.0}, {"pos": (6, 0)})
+    lejos = Entidad("celda_0_0", "suelo", {"lugar": 1.0}, {"pos": (0, 0)})
+    torre = Entidad("t", "torre", {"agente": 1.0}, {"pos": (10, 0)})
+    pel.estimar([cerca, lejos, torre], (1, 0), p, 100.0, _peligrosa)
+    assert cerca.rasgos["peligro"] > lejos.rasgos["peligro"] > 0.0
+    assert torre.rasgos["peligro"] > 0.0
+
+
+def test_el_legado_lleva_lo_aprendido_con_dos_observaciones():
+    p = pel.Peligros()
+    _lanzamientos(p, 4, 5)
+    q = pel.Peligros()
+    q.heredar(p.legado())
+    assert q.emitidas("torre") == ["pua"] and q.alcance_emision("torre") == p.alcance_emision("torre")
+
+
+# --- Mundo de juguete para el Organismo ------------------------------------------------------------------
+class MundoErizos(Mundo):
+    """Cuadrícula abierta de 11 × 11. Un erizo (5 de vida) se acerca y daña 20 de vitalidad cada 3 latidos en contacto.
+    ATACAR quita 1 de vida al erizo, 2 con el bastón. Cuando cae, aparece otro lejos. Con ``da_peligro`` el mundo da su propio
+    rasgo ``peligro``; si no, lo calcula la base. El bastón está en el inventario si ``baston``."""
+
+    nombre = "erizos"
+    perfil = Perfil(vitales_propios=True, duerme=False, amplitud=200,
+                    necesidades=(Necesidad("salud", ("vitalidad",), 100.0), Necesidad("hambre", ("comida",), 95.0, "nutritivo")))
+
+    def __init__(self, baston: bool = False, salud: float = 100.0, quieto: bool = False):
+        self.pos: Pos = (5, 5)
+        self.erizo: Optional[Pos] = (5, 8)
+        self.vida, self.n, self.enfriamiento = 5, 1, 0
+        self.salud = salud
+        self.inv = {"baston": 1.0 if baston else 0.0, "palo": 1.0}
+        self.quieto = quieto
+        self.da_peligro = False
+        self.t = 0
+
+    def reiniciar(self, semilla: Optional[int]) -> None:
+        pass
+
+    def verbos(self):
+        return {Verbo.MOVER, Verbo.ATACAR, Verbo.ESPERAR}
+
+    def observar(self) -> Observacion:
+        ent: List[Entidad] = []
+        if self.erizo is not None:
+            d = abs(self.erizo[0] - self.pos[0]) + abs(self.erizo[1] - self.pos[1])
+            r = {"proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / 9), "agente": 1.0}
+            if self.da_peligro:
+                r["peligro"] = 0.8
+            ent.append(Entidad(f"erizo_{self.n}", "erizo", r, {"pos": self.erizo}))
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            c = (self.pos[0] + dx, self.pos[1] + dy)
+            if 0 <= c[0] < 11 and 0 <= c[1] < 11 and c != self.erizo:
+                r = {"lugar": 1.0, "proximidad": 1.0, "novedad": 0.3}
+                if self.da_peligro:
+                    r["peligro"] = 0.0
+                ent.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", r, {"pos": c}))
+        return Observacion(ubicacion=f"celda_{self.pos[0]}_{self.pos[1]}", entidades=ent,
+                           vitales={"vitalidad": self.salud, "comida": 100.0}, inventario=dict(self.inv))
+
+    def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
+        """El erizo actúa primero (se acerca y, pegado, daña), después el individuo."""
+        self.t += 1
+        antes = self.salud
+        causa = None
+        if self.erizo is not None:
+            if not self.quieto:
+                dx, dy = self.pos[0] - self.erizo[0], self.pos[1] - self.erizo[1]
+                if abs(dx) + abs(dy) > 1:
+                    paso = (1 if dx > 0 else -1, 0) if abs(dx) >= abs(dy) else (0, 1 if dy > 0 else -1)
+                    self.erizo = (self.erizo[0] + paso[0], self.erizo[1] + paso[1])
+            if abs(self.erizo[0] - self.pos[0]) + abs(self.erizo[1] - self.pos[1]) <= 1:
+                if self.enfriamiento == 0:
+                    self.salud -= 20.0
+                    causa = "erizo"
+                    self.enfriamiento = 3
+                else:
+                    self.enfriamiento -= 1
+        elif self.t % 8 == 0:
+            self.erizo = (0, 0) if self.pos != (0, 0) else (10, 10)
+        if verbo == Verbo.MOVER and objetivo.startswith("celda_"):
+            _, x, y = objetivo.split("_")
+            self.pos = (int(x), int(y))
+        elif verbo == Verbo.ATACAR and self.erizo is not None and objetivo == f"erizo_{self.n}":
+            self.vida -= 2 if self.inv["baston"] else 1
+            if self.vida <= 0:
+                self.erizo, self.vida, self.n, self.enfriamiento = None, 5, self.n + 1, 0
+        return Efecto(True, {"vitalidad": self.salud - antes} if self.salud != antes else {}, causa=causa, muerte=self.salud <= 0)
+
+    def terminado(self) -> bool:
+        return self.salud <= 0
+
+    def manual(self) -> Dict[str, Any]:
+        return {"hechos": [{"tipo": "proposicion", "sujeto": "erizo", "relacion": "PELIGROSO"}], "inventario": ["baston", "palo"]}
+
+
+def _organismo(mundo: MundoErizos, mecanismos: Tuple[str, ...], mem: Optional[Memoria] = None) -> Organismo:
+    mundo.perfil = replace(MundoErizos.perfil, mecanismos=MecanismosMemoria(**dict.fromkeys(mecanismos, True)))
+    if mem is None:
+        mem = Memoria()
+        mem.aplicar_manual(mundo.manual())
+    return Organismo(mundo, crear_sistemas(), Arquetipo(), mem, Azar(1), con_experiencia=True)
+
+
+def test_la_base_calcula_el_peligro_si_el_mundo_no_lo_da():
+    mundo = MundoErizos()
+    org = _organismo(mundo, ("peligro_aprendido",))
+    onda = org.latir()
+    erizo = onda.ev("Exterocepcion")["erizo_1"]
+    assert 0.0 < erizo.rasgo("peligro") < 1.0
+    assert mundo.perfil.mecanismos.peligro_aprendido
+    # Si el mundo da su propio peligro, la base no lo toca
+    mundo2 = MundoErizos()
+    mundo2.da_peligro = True
+    onda2 = _organismo(mundo2, ("peligro_aprendido",)).latir()
+    assert onda2.ev("Exterocepcion")["erizo_1"].rasgo("peligro") == 0.8
+
+
+def test_viviendo_se_aprende_el_dano_por_contacto():
+    mundo = MundoErizos(quieto=True)
+    mundo.erizo = (5, 6)
+    org = _organismo(mundo, ("peligro_aprendido",))
+    for _ in range(12):
+        if mundo.terminado():
+            break
+        org.latir()
+    mem = org.memoria
+    assert mem.peligros.dano_golpe["erizo"].n >= 1
+    assert abs(mem.peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
+    assert mem.proposicion("erizo", Relacion.PELIGROSO) is not None

@@ -12,6 +12,8 @@ Traducción al vocabulario común:
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
   ``manual``): lo que declara PELIGROSO tiene ``peligro`` 0,8 y lo que declara UTIL, ``recurso`` 0,6.
   Sus proposiciones y requisitos entran en la memoria al nacer (``manual()``).
+- Con ``Perfil.mecanismos.peligro_aprendido`` (paso 6a) el mundo no da ``peligro``: lo calcula la base con lo que aprende.
+  La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría de alcance.
 - Verbos: MOVER, COMER (beber agua, comer vaca o planta), ATACAR, COGER (talar, picar, recoger
   un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. Para
   interactuar con algo adyacente, el mundo primero gira hacia ello y después hace ``do``.
@@ -175,6 +177,7 @@ class MundoCrafter(Mundo):
         mundo.reset = reset_ordenado
         self.env.reset()
         self.visitas, self.t, self.fin = {}, 0, False
+        self._causa_contacto: Optional[str] = None
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
         self._ids: Dict[object, str] = {}
@@ -313,15 +316,19 @@ class MundoCrafter(Mundo):
         cosas = self._cosas()
         cosas.sort(key=lambda c: (c[1] not in self.peligrosos, _dist(pos, c[2])))
         entidades: List[Entidad] = []
+        aprendido = self.perfil.mecanismos.peligro_aprendido     # paso 6a: el peligro lo calcula la base
         for cid, clase, cpos, obj in cosas[:14]:
             d = _dist(pos, cpos)
-            entidades.append(Entidad(cid, clase, {
+            rasgos = {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
                 "nutritivo": self._nutritivo(clase, obj),
                 "peligro": PELIGRO_MANUAL if clase in self.peligrosos else 0.0,
                 "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
-            }, {"pos": cpos}))
+            }
+            if aprendido:
+                del rasgos["peligro"]
+            entidades.append(Entidad(cid, clase, rasgos, {"pos": cpos}))
         deseables = [(c, self._nutritivo(c[1], c[3])) for c in cosas if self._nutritivo(c[1], c[3]) > 0.1]
         hostiles = [c for c in cosas if c[1] in self.peligrosos]
         w = self.env._world
@@ -332,15 +339,17 @@ class MundoCrafter(Mundo):
             mat, obj = w[c]
             if mat not in self.constantes.walkable or obj is not None:
                 continue
-            peligro = max([PELIGRO_MANUAL * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
+            peligro = 0.0 if aprendido else max([PELIGRO_MANUAL * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
             nutritivo = 0.0
             for (_, _, dpos, _), valor in deseables:
                 if _dist(c, dpos) < _dist(pos, dpos):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
-            entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro,
-                                                                       "nutritivo": nutritivo, "novedad": novedad}, {"pos": c}))
+            celda = {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro, "nutritivo": nutritivo, "novedad": novedad}
+            if aprendido:
+                del celda["peligro"]
+            entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", celda, {"pos": c}))
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
@@ -352,9 +361,42 @@ class MundoCrafter(Mundo):
         return {Verbo.MOVER, Verbo.COMER, Verbo.ATACAR, Verbo.COGER, Verbo.USAR, Verbo.DORMIR, Verbo.ESPERAR}
 
     def _paso(self, accion: str) -> None:
+        contacto = self.perfil.mecanismos.peligro_aprendido
+        if contacto:
+            salud, antes = self.jugador.health, self._peligrosos_cerca(2)
         _, _, terminado, _ = self.env.step(self.acciones[accion])
         self.t += 1
         self.fin = self.fin or terminado
+        if contacto and self.jugador.health < salud:
+            causa = self._contacto(antes)
+            if causa is not None:
+                self._causa_contacto = causa
+
+    def _peligrosos_cerca(self, radio: int) -> Dict[Any, Tuple[str, Pos]]:
+        """Lo que el manual declara peligroso a ``radio`` casillas o menos (se ve): objeto -> (clase, posición)."""
+        w, (px, py) = self.env._world, self.jugador.pos
+        cerca: Dict[Any, Tuple[str, Pos]] = {}
+        for x in range(px - radio, px + radio + 1):
+            for y in range(py - radio, py + radio + 1):
+                if (x, y) == (px, py) or _dist((px, py), (x, y)) > radio or not (0 <= x < w.area[0] and 0 <= y < w.area[1]):
+                    continue
+                mat, obj = w[(int(x), int(y))]
+                clase = OBJETOS.get(type(obj).__name__) if obj is not None else MATERIALES.get(str(mat))
+                if clase in self.peligrosos:
+                    cerca[obj if obj is not None else (int(x), int(y))] = (str(clase), (int(x), int(y)))
+        return cerca
+
+    def _contacto(self, antes: Dict[Any, Tuple[str, Pos]]) -> Optional[str]:
+        """Paso 6a: la causa de un daño es lo peligroso **en contacto**: lo que estaba junto a la casilla propia antes del
+        paso y ya no está (un proyectil se deshace al dañar, en el mismo paso: ``Arrow.update`` de ``crafter/objects.py``),
+        o, si no, lo que está junto a ella ahora (el zombi daña a distancia 1). Sin geometría de alcance."""
+        pos = tuple(self.jugador.pos)
+        ahora = self._peligrosos_cerca(3)
+        desaparecidos = sorted((c, p) for o, (c, p) in antes.items() if o not in ahora and _dist(pos, p) <= 1)
+        if desaparecidos:
+            return desaparecidos[0][0]
+        junto = sorted((c, p) for o, (c, p) in ahora.items() if _dist(pos, p) <= 1)
+        return junto[0][0] if junto else None
 
     def _posicion(self, objetivo: str) -> Optional[Pos]:
         partes = objetivo.rsplit("_", 2)
@@ -380,6 +422,7 @@ class MundoCrafter(Mundo):
         antes = {"salud": p.health, **dict(p.inventory)}
         logros_antes = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
         exito = True
+        self._causa_contacto = None
         if verbo == Verbo.MOVER:
             destino = self._posicion(objetivo)
             pos = tuple(p.pos)
@@ -420,7 +463,9 @@ class MundoCrafter(Mundo):
             delta["alimentacion"] = max(delta["alimentacion"], (max(inv["food"] - antes["food"], inv["drink"] - antes["drink"])) * escala)
         delta = {k: round(v, 2) for k, v in delta.items() if v}
         causa = None
-        if delta.get("vitalidad", 0) < 0:
+        if self.perfil.mecanismos.peligro_aprendido:
+            causa = self._causa_contacto if delta.get("vitalidad", 0) < 0 else None
+        elif delta.get("vitalidad", 0) < 0:
             cerca = [c for c in self._cosas() if c[1] in self.peligrosos and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
             if cerca:
                 causa = cerca[0][1]
