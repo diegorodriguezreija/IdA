@@ -286,7 +286,7 @@ def objetos_peligrosos(ctx: Contexto) -> List[Pieza]:
 
 
 class Afrontar(Definicion):
-    """Seguridad (paso 6b, ``Perfil.mecanismos.afrontar``): luchar o huir por evaluación, con lo aprendido en 6a
+    """Seguridad (paso 6b): luchar o huir por evaluación, con lo aprendido en 6a
     (``ida.core.peligro``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
     observado o que el manual declara meta de ATACAR):
 
@@ -300,7 +300,7 @@ class Afrontar(Definicion):
     contacto; si no y su alcance es mayor que el contacto (un emisor: huir no lo reduce y acercarse acorta la
     exposición), MOVER al lugar que más acerca; si daña solo por contacto, no se huye: se espera (ESPERAR) cuando le
     falta un paso para el contacto y, más lejos, no se propone nada.
-    Con ``arma_instrumental`` (6c), si ninguna lucha es favorable pero lo sería con un objeto que reduce los golpes
+    Paso 6c: si ninguna lucha es favorable pero lo sería con un objeto que reduce los golpes
     (aprendido por contingencia, ``Peligros.reductores``, y que se distingue de los demás en los derribos: si dos se
     llevaron siempre juntos no se pide ninguno), fase ``armarse``: pide ese objeto al planificador con la
     intensidad de Seguridad (``Definicion.pedir``) y, mientras tanto, hace lo que haría ``Huir`` (o ``Defenderse`` sin
@@ -338,7 +338,7 @@ class Afrontar(Definicion):
             return cast(Optional[Dict[str, Any]], ctx.extra["afrontar"])
         res: Optional[Dict[str, Any]] = None
         aqui = _yo(ctx)
-        if ctx.perfil.mecanismos.afrontar and ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
+        if ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
             salud = float(ctx.soma.vitalidad)
             llevados = _objetos_llevados(ctx)
             reductores = ctx.memoria.peligros.reductores()
@@ -347,7 +347,7 @@ class Afrontar(Definicion):
             if favorables:
                 v = max(favorables, key=lambda v: (v["beneficio"], -v["d"], v["pieza"].id))
                 res = {"fase": self.LUCHAR, "valoracion": v, "objeto": None}
-            elif ctx.perfil.mecanismos.arma_instrumental and valoradas:
+            elif valoradas:
                 principal = max(valoradas, key=lambda v: (v["pieza"].rasgo("peligro"), v["pieza"].id))
                 elegido: Optional[Tuple[str, Dict[str, Any]]] = None
                 for x in sorted((set(reductores) - llevados) & ctx.memoria.peligros.distinguibles()):

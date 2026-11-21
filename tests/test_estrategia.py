@@ -243,25 +243,6 @@ def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
     assert sobresalto(0.1, 0.35, umbral_miedo=0.35)
 
 
-def test_defensa_armada_de_crafter_lee_la_percepcion():
-    from ida.core.pieza import Pieza
-    from ida.mundos.crafter import DefensaArmada
-
-    def eleccion(vitalidad, inventario):
-        onda = Onda(1, 100, 1e9)
-        ctx = _ctx(onda)
-        onda.percibir("Interocepcion", Pieza("vitalidad", "Interocepcion", carga={"valor": vitalidad}))
-        onda.percibir("Propiocepcion", Pieza("yo", "Propiocepcion", carga={"ubicacion": "celda_5_5", "inventario": inventario}))
-        onda.percibir("Exterocepcion", Pieza("z1", "Exterocepcion", carga={"clase": "zombi", "rasgos": {"proximidad": 0.95, "peligro": 0.8}}))
-        d = DefensaArmada()
-        return d.elegible(ctx, "seguridad", 0.8), d.actuar(ctx, None)
-
-    ok, propuesta = eleccion(6 / 9 * 100, {"wood_sword": 1})
-    assert ok and propuesta.verbo == Verbo.ATACAR and propuesta.arousal == 0.96
-    assert eleccion(6 / 9 * 100, {})[0] is False                  # sin espada en el inventario percibido
-    assert eleccion(3 / 9 * 100, {"wood_sword": 1})[0] is False   # salud 3 < 4
-
-
 def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
     from ida.core.pieza import Pieza
     from ida.sistemas.s1 import Estrategia, SeguirEnMovimiento

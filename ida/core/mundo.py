@@ -101,10 +101,6 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
-    # Paso 6 de la fase de generalización (docs/ENCARGO_PASO6_DEFENSA.md), durante su implementación:
-    peligro_aprendido: bool = False   # 6a: daño, alcance y emisores aprendidos; la base calcula el rasgo ``peligro``
-    afrontar: bool = False            # 6b: luchar o huir por evaluación (estrategia ``Afrontar`` de S1)
-    arma_instrumental: bool = False   # 6c: pedir al planificador lo que haría favorable una lucha
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).

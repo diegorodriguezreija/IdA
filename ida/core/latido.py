@@ -129,8 +129,7 @@ class Organismo:
             biblioteca=self.biblioteca,
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
-        if self.perfil.mecanismos.peligro_aprendido:
-            self._peligro_aprendido(ctx)
+        self._peligro_aprendido(ctx)
 
         # 3. Sentir
         with onda.fase("sentir"):
@@ -240,7 +239,8 @@ class Organismo:
             ctx.onda.notas["aprendizaje"] = ap.textos
 
     def _peligro_aprendido(self, ctx: Contexto) -> None:
-        """Paso 6a (``ida.core.peligro``): en un mundo que da posiciones y no da su propio rasgo ``peligro``, aprende del
+        """Paso 6 (``ida.core.peligro``), siempre activo: en un mundo que da posiciones y no da su propio rasgo ``peligro``
+        (los que lo dan no cambian), aprende del
         latido (daño, exposición, golpes, derribos y apariciones) y escribe el ``peligro`` de cada entidad antes de Sentir.
         Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``)."""
         obs = ctx.observacion

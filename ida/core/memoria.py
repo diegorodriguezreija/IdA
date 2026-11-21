@@ -1319,7 +1319,7 @@ class Memoria:
         if satisface:
             legado["satisface"] = satisface
             legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
-        peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (con el interruptor encendido)
+        peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (mundos sin peligro propio)
         if peligros:
             legado["peligros"] = peligros
         return legado

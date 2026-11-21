@@ -8,12 +8,14 @@ Traducción al vocabulario común:
   esqueletos y plantas. **Aliestesia:** el ``nutritivo`` del agua crece con la sed y el de la
   vaca o la planta madura, con el hambre.
 - Lugares: las casillas vecinas transitables, con ``nutritivo`` (cuánto acercan a lo que el
-  cuerpo necesita), ``peligro`` (lo peligroso cerca) y ``novedad``.
+  cuerpo necesita) y ``novedad``.
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
-  ``manual``): lo que declara PELIGROSO tiene ``peligro`` 0,8 y lo que declara UTIL, ``recurso`` 0,6.
-  Sus proposiciones y requisitos entran en la memoria al nacer (``manual()``).
-- Con ``Perfil.mecanismos.peligro_aprendido`` (paso 6a) el mundo no da ``peligro``: lo calcula la base con lo que aprende.
-  La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría de alcance.
+  ``manual``): lo que declara UTIL tiene ``recurso`` 0,6. Sus proposiciones y requisitos entran en la memoria al nacer
+  (``manual()``).
+- El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.core.peligro``), con el previo de
+  lo que el manual declara PELIGROSO. La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría
+  de alcance.
+- Sin estrategias propias (paso 6d): la conducta de Crafter es la general de la base.
 - Verbos: MOVER, COMER (beber agua, comer vaca o planta), ATACAR, COGER (talar, picar, recoger
   un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. Para
   interactuar con algo adyacente, el mundo primero gira hacia ello y después hace ``do``.
@@ -32,16 +34,12 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.arquitectura import Contexto
-from ida.core.estrategia import Definicion, Propuesta
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
-from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}
 OBJETOS = {"Cow": "vaca", "Zombie": "zombi", "Skeleton": "esqueleto", "Plant": "planta", "Arrow": "flecha"}
-PELIGRO_MANUAL = 0.8   # peligro de lo que el manual declara PELIGROSO (paso 2: sin gradaciones, ninguna fuente las da)
 RECURSO_MANUAL = 0.6   # recurso de lo que el manual declara UTIL
 NUTRITIVO_MANUAL = 0.6   # paso 0b (aliestesia en la base): nutritivo de lo que el manual declara NUTRITIVO, constante
 SUELOS = {"grass": "hierba", "sand": "arena", "path": "camino"}   # solo para lo de delante (no son entidades)
@@ -316,21 +314,16 @@ class MundoCrafter(Mundo):
         cosas = self._cosas()
         cosas.sort(key=lambda c: (c[1] not in self.peligrosos, _dist(pos, c[2])))
         entidades: List[Entidad] = []
-        aprendido = self.perfil.mecanismos.peligro_aprendido     # paso 6a: el peligro lo calcula la base
         for cid, clase, cpos, obj in cosas[:14]:
             d = _dist(pos, cpos)
             rasgos = {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
                 "nutritivo": self._nutritivo(clase, obj),
-                "peligro": PELIGRO_MANUAL if clase in self.peligrosos else 0.0,
                 "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }
-            if aprendido:
-                del rasgos["peligro"]
             entidades.append(Entidad(cid, clase, rasgos, {"pos": cpos}))
         deseables = [(c, self._nutritivo(c[1], c[3])) for c in cosas if self._nutritivo(c[1], c[3]) > 0.1]
-        hostiles = [c for c in cosas if c[1] in self.peligrosos]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():
             c = (pos[0] + dx, pos[1] + dy)
@@ -339,16 +332,13 @@ class MundoCrafter(Mundo):
             mat, obj = w[c]
             if mat not in self.constantes.walkable or obj is not None:
                 continue
-            peligro = 0.0 if aprendido else max([PELIGRO_MANUAL * max(0.0, 1.0 - _dist(c, h[2]) / 4.0) for h in hostiles] or [0.0])
             nutritivo = 0.0
             for (_, _, dpos, _), valor in deseables:
                 if _dist(c, dpos) < _dist(pos, dpos):
                     nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
             ultima = self.visitas.get(c)
             novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
-            celda = {"lugar": 1.0, "proximidad": 1.0, "peligro": peligro, "nutritivo": nutritivo, "novedad": novedad}
-            if aprendido:
-                del celda["peligro"]
+            celda = {"lugar": 1.0, "proximidad": 1.0, "nutritivo": nutritivo, "novedad": novedad}
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", celda, {"pos": c}))
 
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
@@ -361,13 +351,11 @@ class MundoCrafter(Mundo):
         return {Verbo.MOVER, Verbo.COMER, Verbo.ATACAR, Verbo.COGER, Verbo.USAR, Verbo.DORMIR, Verbo.ESPERAR}
 
     def _paso(self, accion: str) -> None:
-        contacto = self.perfil.mecanismos.peligro_aprendido
-        if contacto:
-            salud, antes = self.jugador.health, self._peligrosos_cerca(2)
+        salud, antes = self.jugador.health, self._peligrosos_cerca(2)
         _, _, terminado, _ = self.env.step(self.acciones[accion])
         self.t += 1
         self.fin = self.fin or terminado
-        if contacto and self.jugador.health < salud:
+        if self.jugador.health < salud:
             causa = self._contacto(antes)
             if causa is not None:
                 self._causa_contacto = causa
@@ -466,13 +454,7 @@ class MundoCrafter(Mundo):
         if inv["food"] > antes["food"] or inv["drink"] > antes["drink"]:   # comer o beber alimenta aunque la otra necesidad siga baja
             delta["alimentacion"] = max(delta["alimentacion"], (max(inv["food"] - antes["food"], inv["drink"] - antes["drink"])) * escala)
         delta = {k: round(v, 2) for k, v in delta.items() if v}
-        causa = None
-        if self.perfil.mecanismos.peligro_aprendido:
-            causa = self._causa_contacto if delta.get("vitalidad", 0) < 0 else None
-        elif delta.get("vitalidad", 0) < 0:
-            cerca = [c for c in self._cosas() if c[1] in self.peligrosos and _dist(tuple(p.pos), c[2]) <= (4 if c[1] == "esqueleto" else 1)]
-            if cerca:
-                causa = cerca[0][1]
+        causa = self._causa_contacto if delta.get("vitalidad", 0) < 0 else None
         ganados = [INVENTARIO.get(k, k) for k in inv if inv[k] > antes.get(k, 0) and k not in ("health", "food", "drink", "energy")]
         logros = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
         nuevos = sorted(logros - logros_antes)
@@ -489,8 +471,9 @@ class MundoCrafter(Mundo):
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
 
     def estrategias_propias(self) -> Dict[str, list]:
-        """El refugio nocturno lo da la base (``Proteger``, paso 3); el mundo solo añade la defensa con espada."""
-        return {"S1": [DefensaArmada(), CerrarDistancia()]}
+        """Ninguna (paso 6d): el refugio lo da ``Proteger`` (paso 3), la tecnología ``PerseguirMetas`` (paso 5) y la
+        defensa ``Afrontar`` (paso 6), todas de la base."""
+        return {}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
@@ -504,89 +487,3 @@ class MundoCrafter(Mundo):
             filas.append("".join("@" if (x, y) == pos else mapa.get((x, y), ".") for x in range(pos[0] - rx, pos[0] + rx + 1)))
         inv = {k: v for k, v in self.jugador.inventory.items() if v}
         return "\n".join(filas) + f"\nluz {self.env._world.daylight:.2f} · {inv}\nlogros ({len(self.logros())}/{LOGROS}): {', '.join(self.logros())}"
-
-
-ESPADAS = ("iron_sword", "stone_sword", "wood_sword")
-
-
-def _salud(ctx: Contexto) -> int:
-    """Salud de Crafter (0-9) desde la interocepción (``vitalidad`` = salud / 9 × 100)."""
-    vit = ctx.onda.ev("Interocepcion").get("vitalidad")
-    return int(round(float(vit.carga["valor"]) * 9 / 100)) if vit is not None else 0
-
-
-def _tiene_espada(ctx: Contexto) -> bool:
-    """Desde el inventario percibido (propiocepción), no desde el estado del juego."""
-    yo = ctx.onda.ev("Propiocepcion").get("yo")
-    inv = yo.carga.get("inventario", {}) if yo is not None else {}
-    return any(inv.get(k, 0) >= 1 for k in ESPADAS)
-
-
-def _posicion(ctx: Contexto) -> Optional[Pos]:
-    """Posición propia desde la ubicación percibida (``celda_x_y``)."""
-    yo = ctx.onda.ev("Propiocepcion").get("yo")
-    partes = str(yo.carga.get("ubicacion", "")).split("_") if yo is not None else []
-    return (int(partes[1]), int(partes[2])) if len(partes) == 3 and partes[0] == "celda" else None
-
-
-class DefensaArmada(Definicion):
-    """Estrategia de S1 propia de Crafter para Seguridad: con espada y salud ≥ 4, abatir al zombi o
-    esqueleto adyacente (2-3 golpes) en vez de huir. Sin espada o con poca salud, luchar es suicidio
-    y quedan las estrategias genéricas. Lee la salud por interocepción y la espada por el inventario
-    percibido."""
-
-    nombre = "defensa_armada"
-    impulsos = ("seguridad",)
-    prioridad = 50
-
-    @staticmethod
-    def _hostil(ctx: Contexto) -> Optional[Pieza]:
-        if not _tiene_espada(ctx) or _salud(ctx) < 4:
-            return None
-        return next((p for p in ctx.onda.ev("Exterocepcion").values()
-                     if p.clase in ("zombi", "esqueleto") and p.rasgo("proximidad") >= 0.9), None)
-
-    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return self._hostil(ctx) is not None
-
-    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
-        amenaza = self._hostil(ctx)
-        if amenaza is None:
-            return None
-        urgencia = 0.96 if _salud(ctx) >= 6 else 0.88
-        return Propuesta(Verbo.ATACAR, amenaza.id, urgencia, 0.95, f"defensa armada: abatir {amenaza.clase}", clase=amenaza.clase)
-
-
-class CerrarDistancia(Definicion):
-    """Estrategia de S1 propia de Crafter para Seguridad: con espada y salud ≥ 5, acercarse a un
-    esqueleto que dispara desde 2-3 casillas (solo tiene 3 de vitalidad) en vez de ser diezmado en
-    campo abierto."""
-
-    nombre = "cerrar_distancia"
-    impulsos = ("seguridad",)
-    prioridad = 40
-
-    @staticmethod
-    def _paso(ctx: Contexto) -> Optional[Pieza]:
-        if not _tiene_espada(ctx) or _salud(ctx) < 5:
-            return None
-        pos = _posicion(ctx)
-        esq = next((p for p in ctx.onda.ev("Exterocepcion").values()
-                    if p.clase == "esqueleto" and 0.4 <= p.rasgo("proximidad") < 0.9), None)
-        if esq is None or pos is None:
-            return None
-        pos_esq = esq.carga["datos"]["pos"]
-        lugares = [p for p in ctx.onda.ev("Exterocepcion").values() if p.rasgo("lugar") >= 0.5 and p.rasgo("peligro") < 0.5]
-        mejor = min(lugares, key=lambda lugar: _dist(lugar.carga["datos"]["pos"], pos_esq), default=None)
-        if mejor is None or _dist(mejor.carga["datos"]["pos"], pos_esq) >= _dist(pos, pos_esq):
-            return None
-        return mejor
-
-    def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return self._paso(ctx) is not None
-
-    def actuar(self, ctx: Contexto, estrategia: Pieza) -> Optional[Propuesta]:
-        mejor = self._paso(ctx)
-        if mejor is None:
-            return None
-        return Propuesta(Verbo.MOVER, mejor.id, 0.82, 0.85, "defensa armada: acortar distancia a esqueleto", clase=mejor.clase)

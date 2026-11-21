@@ -9,7 +9,7 @@ from ida.core.vocabulario import Verbo  # noqa: E402
 
 
 def test_crafter_lee_el_manual():
-    from ida.mundos.crafter import PELIGRO_MANUAL, MundoCrafter
+    from ida.mundos.crafter import MundoCrafter
 
     estricto = MundoCrafter(vista="oficial")
     assert estricto.peligrosos == {"zombi", "esqueleto", "flecha", "lava"}
@@ -25,8 +25,9 @@ def test_crafter_lee_el_manual():
     assert "health" not in (m.claves_inventario or set())
 
     estricto.reiniciar(1)
-    for e in estricto.observar().entidades:
-        if e.clase in estricto.peligrosos:
-            assert e.rasgos["peligro"] == pytest.approx(PELIGRO_MANUAL)
+    assert not any("peligro" in e.rasgos for e in estricto.observar().entidades)   # paso 6: lo calcula la base
+    m = Memoria()
+    m.aplicar_manual(estricto.manual())
+    assert all(m.peligrosa(c) for c in estricto.peligrosos)                       # el manual da el previo
     with pytest.raises(ValueError):
         MundoCrafter(manual="otro")
