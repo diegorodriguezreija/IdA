@@ -98,6 +98,18 @@ Evaluación con el protocolo oficial de Crafter: episodios de hasta 10 000 pasos
 python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia
 ```
 
+#### Línea general (sin conducta escrita para Crafter)
+
+| Hito | Score (IC 95 %) | `wake_up` | Fichero |
+|---|---|---|---|
+| Suelo, sin herencia | 1,45 % (1,37–1,50) | 6,2 % | `suelo_sin_herencia.json` |
+| Manual y planificador (pasos 2 y 5) | 8,81 % (7,91–9,57) | 5,9 % | `paso5_G1.json` |
+| Aprender qué satisface cada necesidad; arreglo del retoño (paso 0) | 11,29 % (10,44–12,01) | 3,9 % | `cierre0_C1.json` |
+| Refugio general (paso 3), semilla 31 | 12,82 % (11,76–13,79) | 20,5 % | `paso3_F1.json` |
+| Refugio general (paso 3), semilla 32 | 13,58 % (12,52–14,47) | 21,3 % | `paso3_F2.json` |
+
+#### Línea procedimental (etiqueta `crafter-procedimental-v1`)
+
 | Condición | Score Crafter (IC 95 %) | Episodios | Pasos / episodio | Rendimiento (ms/paso) | Tiempo total (s) |
 |---|---|---|---|---|---|
 | **Suelo (`main` sin estrategias)** | **1,46 %** [1,38, 1,52] % | 401 | 249,4 | 13,79 ms | 1.379,2 s |

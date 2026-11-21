@@ -26,6 +26,8 @@ Tras el bloque D la base (Core y sistemas) queda congelada como referencia ([`do
 - **Regla 4:** nada de secuencias de acciones cableadas para un fin concreto; una estrategia es una máquina de estados con fases que responde a lo percibido.
 - **Si una mejora necesita cambiar la base, se anota y no se hace.** Va a la lista de pendientes para el bloque E o posteriores.
 - **Cada mejora se mide** con `herramientas/benchmark.py` (N = 10, pareado) frente a la referencia congelada, y se publica también si empeora.
+- Mientras se mide, en la máquina no corre ningún otro proceso de IdA (ni tests ni pruebas rápidas). La guillotina corta por reloj, así que la carga cambia los resultados. Cada medición registra sus latidos cortados.
+- Los agentes no instalan paquetes sin permiso del autor.
 
 ## No negociables
 

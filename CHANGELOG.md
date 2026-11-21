@@ -4,6 +4,16 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Fase de generalización en Crafter (pasos 2, 5, 0 y 3)
+- **Manual declarativo** (`ida/mundos/crafter_manual.json`, estricto y ampliado) con citas verificadas por `herramientas/verificar_manual.py`.
+- **Requisitos de acción y planificador general** (`PerseguirMetas`, S3), con inducción de requisitos, metas instrumentales y reutilización de lo construido.
+- **Aliestesia aprendida por contingencia** (`Memoria.satisface`).
+- **Modelo del cuerpo, mapa local y refugio general** (`Proteger`, S1).
+- **Borradas de Crafter** `PlanTecnologico`, `RefugioNocturno`, `HOSTILES` y `_deseo`.
+- **Retirados por resultado nulo:** urgencia local en el Tribunal (0a) y alostasis de hambre y sed (3b).
+- **Línea general:** 12,8–13,6 % de Crafter Score (antes, 1,45 %). La línea procedimental (19,2 %) queda en la etiqueta `crafter-procedimental-v1`.
+- **`evaluar_crafter.py` registra los latidos cortados** y tiene la opción `--verificar-determinismo`.
+
 ### Corregido: métricas públicas de Crafter
 - **Logros por vida en Crafter: 9,30 ± 1,09, no 10,9.** `README.md`, `README.en.md` y `doc-repositorio/05_METRICAS_E_HITOS.md` publicaban 10,9 logros y 263,8 latidos (medido el 11/11/2026 con `python -m ida --mundo crafter --latidos 600 --semilla S`, S = 1..10). Ese comando no lleva `--tabula-rasa` y el directorio de datos se reutilizó entre semillas, así que cada vida heredaba arquetipo y legado de la anterior: no eran 10 vidas independientes.
 - **Nueva cifra:** protocolo aislado de [`docs/BENCHMARK_PERFILES_MUNDOS.md`](docs/BENCHMARK_PERFILES_MUNDOS.md) (12/11/2026, Python 3.15): semillas 1..10, directorio limpio por semilla, 3 generaciones por linaje (30 vidas), 600 latidos máximos, perfil inicial Equilibrado, IC 95 % con t de Student sobre los 10 linajes. En `5c8ae1e` da 9,30 ± 1,09 logros y 233,7 latidos de media. En `25e1303` (mismo árbol que `main` tras el PR #4) da 9,13 ± 1,42; la diferencia pareada, −0,17 ± 1,42, incluye el 0.

@@ -36,7 +36,7 @@ Or, with nothing installed: `docker compose up --build`.
 
 > **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
 
-Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia` ([method](docs/MEDICION_OFICIAL.md)).
+Crafter evaluation with the official protocol, general line (no behavior written for Crafter): `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --sin-estrategias-propias --manual estricto` ([method](docs/MEDICION_OFICIAL.md), [results](docs/MEDICION_CIERRE_PASO3.md)).
 
 ## What's inside
 
@@ -53,8 +53,14 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
 
 ## Milestones
 
-- **Crafter: 19.2% Crafter Score without any training.** Measured with the official protocol: episodes of up to 10,000 steps, 9×7 local view, and geometric mean of success rates across the 22 achievements. The measurement covers 278 episodes, each in a new world and with a newborn individual, without legacy (95% CI: 17.7–20.5%). With lineage between lives it rises to 20.3%. For reference, in the original Crafter paper, DreamerV2 achieves 10.0% and PPO 4.6% after training on 1M steps; random play scores 1.6%. IdA does not train: it plays from birth, and every decision can be inspected (which system proposed it, why, and why it won in the Tribunal). [Method and data (Spanish)](docs/MEDICION_OFICIAL.md).
-- **Where this number comes from, plainly.** It includes strategies written for Crafter (night shelter, defense, and technological plan) on top of the generic core. Without them, the core scores 1.46%, at the level of random play. This is why it is not presented as a like-for-like comparison with agents that learn from pixels, and it remains below SPRING (27.3%, GPT-4 reading the Crafter paper) and current top agents. The ongoing phase moves these capabilities into the core to evaluate IdA without world-specific behavior.
+- **Crafter: 12.8–13.6% Crafter Score without training and without any behavior written for Crafter.** The world only perceives, acts, and declares facts in a manual drawn from the Crafter paper and README, every fact with its verified citation. Everything else is provided by the generic core:
+  - a planner that chains requirements and learns what the manual does not state (quantities, tools, where each resource comes from);
+  - learning what satisfies each need;
+  - a general shelter that chooses, digs, and encloses an area to spend the night.
+
+  Measured with the official protocol (episodes of up to 10,000 steps, 9×7 local view, geometric mean of success rates across the 22 achievements), with two base seeds: 12.82% (95% CI: 11.8–13.8) and 13.58% (95% CI: 12.5–14.5), with 380 episodes each, each episode in a new world and with a newborn individual. For reference, in the original Crafter paper, DreamerV2 achieves 10.0% and PPO 4.6% after training on 1M steps; random play scores 1.6%. Every decision can be inspected: which system proposed it, why ("metas: make_stone_pickaxe ← falta piedra ← COGER piedra"), and why it won in the Tribunal.
+- **How it was achieved, measured step by step.** The core without Crafter behavior started at 1.45%, at the level of random play. The manual and planner brought it to 8.8%; learning what satisfies each need, to 11.3%; the general shelter, to 12.8–13.6%. Two mechanisms that did not help were removed and remain documented. Details in [`docs/FASE_GENERALIZACION_CRAFTER.md`](docs/FASE_GENERALIZACION_CRAFTER.md).
+- **The previous version, with behavior written for Crafter, remains as a reference.** With world-specific strategies (night shelter, defense, and technological plan), IdA achieved 19.2% (95% CI: 17.7–20.5). It is preserved in the `crafter-procedimental-v1` tag and is reproducible from it. The difference between the two lines measures what remains to be moved to the core. Neither is presented as a like-for-like comparison with agents that learn from pixels: IdA receives the scene symbolically. Both remain below SPRING (27.3%, GPT-4 reading the Crafter paper) and current top agents.
 - **The same core runs in five very different worlds**, and an AST test ensures it learns vocabulary from none of them.
 - **Improving only each world's own code:**
   - Snake goes from about 232 to 916 points on average at python level (record: 1,605).
@@ -64,8 +70,9 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
 - **Reproducible with a seed** in the minimal, file, Crafter, and chess worlds.
 - **What doesn't work is published too:**
   - Against the 3-ply chess bot, it loses.
-  - In Crafter, episodes last little more than one in-game day (about 360 steps on average; a day is 300), ending by zombies, skeletons, hunger and thirst.
-  - The five iron and diamond achievements remain at 0%, and eating a plant at 0.4%, even though it plants almost every episode.
+  - In Crafter, episodes last less than one in-game day (about 263 steps on average; a day is 300). Only in one out of five does the individual survive the night: most do not find a place to take shelter in time. 70% of episodes end by zombies.
+  - The five iron and diamond achievements remain practically at 0%, and eating a plant, below 1%, even though it plants almost every episode.
+  - In `main`, the Crafter adapter still retains two world-specific defense strategies. With them the Score is 13.8%; figures for the general line are measured without them (`--sin-estrategias-propias`).
 
 Figures, method and limits (Spanish): [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repositorio/05_METRICAS_E_HITOS.md). The previous Crafter metric (achievements per life: 9.30 ± 1.09) and its history remain there.
 
@@ -79,7 +86,7 @@ This repository is the framework: it is for running IdA and watching its individ
 
 ## Honesty
 
-A personal prototype, not a study. Most measurements use few lives and few seeds. The Crafter evaluation follows the official protocol, but with 100,000 steps (278 episodes) instead of the full 1 million. Because each episode starts without legacy, the score does not depend on the total budget duration; nevertheless, the full evaluation with held-out seeds will be published at the end of the generalization phase. Biological names are inspiration, not equivalence. Figures are published as they came out, also when bad. Much of the code was written with AI agents under the author's direction and review.
+A personal prototype, not a study. Most measurements use few lives and few seeds. The Crafter evaluations follow the official protocol, but with 100,000 steps (about 380 episodes) instead of the full 1 million. Because each episode starts without legacy, the score does not depend on the total budget duration; nevertheless, the full evaluation with held-out seeds will be published at the end of the generalization phase. They are reproducible with a seed: repeating a measurement yields the exact same result. The only possible exception is a heartbeat that exceeds the 100 ms deadline and is cut; each measurement records how many do so (at most 6 out of 100,000 in those published). Biological names are inspiration, not equivalence. Figures are published as they came out, also when bad. Much of the code was written with AI agents under the author's direction and review.
 
 ## License
 
