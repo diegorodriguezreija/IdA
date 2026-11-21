@@ -4,6 +4,11 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Método de medición
+- Guillotina lógica (--plazo-logico): plazo en operaciones en lugar de milisegundos; evaluaciones idénticas aunque la máquina esté cargada.
+- Comparación pareada episodio a episodio (resumen_evaluacion.py --pareada), con IC 95 % por bootstrap pareado.
+- evaluar_crafter.py guarda plazo_logico y por_episodio (pasos, causa de muerte, vivo y logros).
+
 ### Fase de generalización en Crafter: paso 6 (defensa general) y pilar 1
 - **Peligro aprendido** (`ida/core/peligro.py`):
   - daño por contacto y daño dormido;
