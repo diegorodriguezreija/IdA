@@ -59,3 +59,17 @@ Invariancia (`herramientas/invariancia.py`): OK en mínimo, archivos, Crafter y 
 **Qué guardaban los JSON.** Ninguno de los medidos hasta ahora guarda los logros por episodio. Guardan `pasos`, `episodios`, `tiempo_segundos`, `ms_por_paso`, `score`, `score_ci_95`, `tasas_logros` (agregadas), `causas_muerte` (agregadas), la configuración y `latidos_cortados_por_episodio`. Desde esta rama `evaluar_crafter.py` añade `por_episodio`: pasos, causa de muerte, si sigue vivo y los logros de cada episodio.
 
 **Reanálisis pedido (D2 frente a F1, D3 frente a F2, F1 frente a C1, C1 frente a G1): no se puede hacer** con los JSON actuales (`paso6_D2`, `paso3_F1`, `paso6_D3`, `paso3_F2`, `cierre0_C1`, `paso5_G1`: ninguno tiene `por_episodio`). La herramienta lo rechaza y lista lo que guarda el fichero. Para hacerlo hay que volver a medir cada condición en su commit con `por_episodio`, mejor con `--plazo-logico 40`.
+
+## 3. Referencia
+
+Medición de la referencia oficial de Crafter (100 000 pasos, vista oficial, sin herencia, manual estricto) con guillotina lógica (`--plazo-logico 40`) para fijar la línea base reproducible con `por_episodio`:
+
+| ID | Semilla | Fichero | Episodios | Score (%) | IC 95 % (%) | Latidos cortados |
+|---|---|---|---|---|---|---|
+| B31 | 31 | `datos/evaluacion/base_v2_31.json` | 383 | 14,04 | [12,92, 15,06] | 0 |
+| B32 | 32 | `datos/evaluacion/base_v2_32.json` | 365 | 15,45 | [14,18, 16,53] | 0 |
+
+**Comparación con D2 y D3 (reloj, paso 6):**
+- B31 frente a D2 (`datos/evaluacion/paso6_D2.json`): todos los campos son idénticos, ignorando `tiempo_segundos`, `ms_por_paso`, `plazo_logico`, `mecanismos`, `sin_estrategias_propias` y `por_episodio`.
+- B32 frente a D3 (`datos/evaluacion/paso6_D3.json`): todos los campos son idénticos, ignorando los mismos campos.
+
