@@ -473,40 +473,51 @@ def test_tiempo_disponible_y_holgura():
     assert tiempo_disponible(0.75, -0.01, 0.7) == 0.0                    # aunque baje
     assert tiempo_disponible(0.5, 0.0, 0.7) == float("inf")             # no sube
     assert holgura(20.0, 10.0) == pytest.approx(20.0 - 10.0 * (1 + MARGEN_TIEMPO))
-    assert umbral_peligro([]) == 0.7 and umbral_peligro([0.5]) == 0.7     # el previo pesa 2
-    assert umbral_peligro([0.5, 0.5]) == pytest.approx(0.6) and umbral_peligro([0.5, 0.5, 0.5]) == 0.5
+    assert umbral_peligro([]) == 1.0                                       # previo 1,0 con peso 1
+    assert umbral_peligro([0.6]) == pytest.approx(0.8) and umbral_peligro([0.6, 0.6]) == pytest.approx(0.6)
 
 
-def test_un_sitio_no_factible_no_se_persigue():
-    """El cobijo ya está en D* (déficit 0,75 ≥ 0,7): no queda tiempo, así que el sitio no se elige ni se piden cosas para
-    él. En el primer latido aún no hay impulso del latido anterior (tiempo infinito). Sin el interruptor, el mismo mundo
-    persigue el sitio y acaba dentro."""
-    mundo, mem = _lejos(25.0, 0.0)
-    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 20)
-    assert all(c.get("accion") is None and not c.get("requiere") and c.get("t_disponible") == 0.0 for c in cargas[1:]), cargas[1:3]
-    assert not any(m.startswith("proteger") for m in motivos[1:]), motivos
+def _sin_cuerpo(luz: float, bajada: float = 0.0) -> Tuple[MundoCueva, Memoria]:
+    """Como ``_lejos``, pero el modelo del cuerpo aún no se ha aprendido: en los primeros latidos no hay sitio (no se puede
+    planificar), y aparece cuando ya se ha aprendido a moverse."""
+    roca = {(x, y) for x in range(1, 4) for y in range(1, 10)}
+    mundo = MundoCueva(_campo(ancho=18, roca=roca), (13, 5), luz=luz, bajada=bajada)
+    mem = Memoria("completa")
+    mem.aplicar_manual(mundo.manual())
+    mem.paso_libre.update({"suelo": 1, "hueco": 1})
+    mem.paso_bloqueado["roca"] = 1
+    mem.aprender_transformacion(Verbo.COGER, "roca", "roca", "hueco")
+    mem.casillas.update(mundo.mapa)
+    return mundo, mem
+
+
+def test_un_sitio_no_factible_no_se_empieza():
+    """El cobijo está agotado (déficit 1 ≥ D* = 1): no queda tiempo. Cuando el sitio se puede planificar, no se empieza ni
+    se piden cosas para él, y se informa de que no se empieza por falta de tiempo. Sin el interruptor, el mismo mundo
+    lo persigue y acaba dentro."""
+    mundo, mem = _sin_cuerpo(0.0)
+    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 30)
+    assert all(c.get("accion") is None and not c.get("requiere") for c in cargas), cargas[:3]
+    assert any(c.get("sin_tiempo") == "sitio" for c in cargas), cargas
+    assert not any(m.startswith("proteger") for m in motivos), motivos
     assert not mundo.encerrado()
-    apagado, mem_apagado = _lejos(25.0, 0.0)
-    cargas_apagado, motivos_apagado = _recintos(apagado, mem_apagado, 20)
+    apagado, mem_apagado = _sin_cuerpo(0.0)
+    cargas_apagado, motivos_apagado = _recintos(apagado, mem_apagado, 30)
     assert "t_disponible" not in cargas_apagado[0]
-    assert sum(m.startswith("proteger") for m in motivos_apagado) > 10, motivos_apagado
+    assert any(m.startswith("proteger: ir") for m in motivos_apagado), motivos_apagado
     assert apagado.encerrado()
 
 
-def test_un_sitio_en_curso_se_abandona_cuando_su_holgura_pasa_a_negativa():
-    """La luz baja 2 por latido desde 50 (déficit 0,5): al principio hay tiempo y el sitio se persigue; antes de completarlo,
-    el tiempo disponible baja del coste que le queda (con el margen) y, sin otro sitio factible, se abandona."""
-    mundo, mem = _lejos(50.0, 2.0)
-    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 20)
-    abandonos = [i for i, c in enumerate(cargas) if c.get("abandono") == "sitio"]
-    assert abandonos, cargas
-    i = abandonos[0]
-    assert all(c.get("accion") is not None for c in cargas[:i]), cargas[:i]
-    assert all(c["holgura"] >= 0 for c in cargas[:i] if c["holgura"] is not None)
-    assert 0 < cargas[i - 1]["coste"] < 15                  # se abandona a medio camino, con el coste que le queda
-    assert all(c.get("accion") is None and not c.get("requiere") for c in cargas[i:]), cargas[i:]
-    assert not any(m.startswith("proteger") for m in motivos[i:]), motivos[i:]
-    assert not mundo.encerrado()
+def test_un_sitio_en_curso_no_se_abandona_por_tiempo():
+    """La luz baja 4 por latido desde 40 y el sitio cuesta 15 pasos: se empieza con tiempo (D* = 1) y, aunque el tiempo
+    disponible acabe por debajo de lo que le queda, se sigue hasta cerrarlo."""
+    mundo, mem = _lejos(40.0, 4.0)
+    cargas, motivos = _recintos(_con(mundo, factibilidad_temporal=True), mem, 30)
+    assert cargas[2]["accion"] is not None and cargas[2]["holgura"] >= 0
+    assert any(c.get("holgura") is not None and c["holgura"] < 0 for c in cargas), cargas
+    assert not any(c.get("sin_tiempo") for c in cargas)
+    assert any(m.startswith("proteger: cerrar") for m in motivos), motivos
+    assert mundo.encerrado(), mundo.pos
 
 
 class MundoCuevaDanina(MundoCueva):
@@ -524,8 +535,8 @@ class MundoCuevaDanina(MundoCueva):
 
 
 def test_d_estrella_se_aprende_de_los_primeros_danos():
-    """Una observación por subida del cobijo: el déficit del primer daño atribuido (luz < 40, déficit ≈ 0,6). Tras dos
-    noches, D* = mediana(0,7, 0,7, o1, o2)."""
+    """Una observación por subida del cobijo: el déficit del primer daño atribuido (luz < 40, déficit ≈ 0,6). Con el previo
+    1,0 de peso 1, tras la primera noche D* = (1 + o1) / 2, y tras la segunda, mediana(1, o1, o2)."""
     from ida.sistemas.proteger import umbral_peligro
     mapa = {(x, y): "muro" for x in range(12) for y in range(10)}
     mapa.update({(x, y): "suelo" for x in range(1, 11) for y in range(1, 9)})
@@ -534,12 +545,13 @@ def test_d_estrella_se_aprende_de_los_primeros_danos():
     mem.paso_bloqueado["muro"] = 1
     cargas, _ = _recintos(mundo, mem, 85)
     d = [c["d_estrella"] for c in cargas if "d_estrella" in c]
-    assert d[0] == 0.7
+    assert d[0] == 1.0
     cambios = [x for i, x in enumerate(d) if i and x != d[i - 1]]
-    assert len(cambios) == 1, cambios                     # la 1.ª observación no mueve la mediana; la 2.ª, sí
-    o = 2 * cambios[0] - 0.7                              # mediana de (0,7, 0,7, o1, o2) con o1 ≈ o2 < 0,7
-    assert 0.5 < cambios[0] < 0.7 and 0.3 < o < 0.7, (cambios, o)
-    assert umbral_peligro([0.62, 0.62]) == pytest.approx(0.66)
+    assert len(cambios) == 2, cambios                     # una observación por noche
+    o1 = 2 * cambios[0] - 1.0
+    assert 0.5 < o1 < 0.7, cambios
+    assert 0.5 < cambios[1] < 0.7, cambios                # mediana(1, o1, o2): domina lo observado
+    assert umbral_peligro([0.62, 0.6]) == pytest.approx(0.62)
 
 
 # --- deuda 11b: el sitio se elige según si se puede cerrar con la orientación del cuerpo (filtro_orientacion) --
