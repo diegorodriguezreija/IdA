@@ -63,3 +63,50 @@ Semillas 31, 32 y 33, 10 000 pasos cada una (vista oficial, sin herencia, manual
 **Conclusión:** los datos apoyan las hipótesis 1 y 2, que son las que atacan 14.2 (reunir el material del lote antes de ir) y 14.3 (hacer junto a la mesa lo que ya se puede). La 3 se matiza: no hace falta acortar la vuelta, sino volver con el material. Se sigue con 14.2 y 14.3.
 
 **Lo que no explica este diagnóstico:** por qué PerseguirMetas no propone meta en la mitad de los latidos tras la mesa (otra estrategia activa para el impulso, peticiones de Proteger o ninguna meta resoluble). No se ha investigado.
+
+---
+
+# Con 14.2 y 14.3 (22/11/2026)
+
+Código `6f7078f`. Mismo comando y mismas semillas, en serie, con `--mecanismos lote_estacion` (14.2) y `--mecanismos lote_estacion aprovechar_estacion` (14.2+14.3). «Apagados» es el de la sección anterior. Resúmenes: `datos/diagnostico/deuda14/resumen_{apagados,lote,lote_aprovechar}.md`. 0 latidos cortados en las tres condiciones; el latido más lento, 4,3 ms de reloj en las tres.
+
+**Desviaciones del pseudocódigo en 14.2** (explicadas en el commit `52d7ecc`):
+- Se evalúan los lotes de todas las estaciones de las metas pendientes, no solo cuando la meta suelta elegida pide «cerca de X». El criterio de elección es el del encargo: coste por meta menor que el de la meta suelta más barata.
+- Un lote elegido **sigue en curso** hasta tener todo su material junto a la estación, o hasta que deja de valer. Sin eso, en la traza de la semilla 31, con 1 de madera junto a la mesa el pico suelto volvía a ser más barato (coste 0 frente a 1,5 por meta), gastaba la madera y la espada quedaba pendiente.
+- Si la estación hay que colocarla, su material entra en el del lote.
+
+## Tabla por semilla
+
+Tasas sobre todos los episodios de cada corrida (no solo los que tienen mesa).
+
+| Semilla | Condición | Episodios | Score | Pico | Espada | `wake_up` | Muertes por zombi |
+|---|---|---|---|---|---|---|---|
+| 31 | apagados | 36 | 15,05 | 63,89 | 38,89 | 22,22 | 25 |
+| 31 | 14.2 | 37 | 16,25 | 62,16 | 43,24 | 24,32 | 25 |
+| 31 | 14.2+14.3 | 37 | 16,25 | 62,16 | 43,24 | 24,32 | 25 |
+| 32 | apagados | 33 | 17,00 | 66,67 | 48,48 | 30,30 | 18 |
+| 32 | 14.2 | 36 | 15,49 | 69,44 | 55,56 | 25,00 | 23 |
+| 32 | 14.2+14.3 | 36 | 15,32 | 69,44 | 55,56 | 25,00 | 23 |
+| 33 | apagados | 43 | 10,60 | 67,44 | 44,19 | 6,98 | 37 |
+| 33 | 14.2 | 42 | 10,93 | 69,05 | 47,62 | 9,52 | 36 |
+| 33 | 14.2+14.3 | 42 | 10,93 | 69,05 | 47,62 | 9,52 | 36 |
+
+| Métrica (3 semillas) | Apagados | 14.2 | 14.2+14.3 |
+|---|---|---|---|
+| Score total | 42,65 | 42,67 | 42,50 |
+| Episodios | 112 | 115 | 115 |
+| Con mesa | 95 (84,8 %) | 99 (86,1 %) | 99 (86,1 %) |
+| Pico tras la mesa; latidos (mediana) | 77,9 %; 8 | 77,8 %; 10 | 77,8 %; 10 |
+| Espada tras la mesa; latidos (mediana) | 51,6 %; 16 | 56,6 %; 16 | 56,6 %; 16 |
+| Muertes por zombi | 80 | 84 | 84 |
+| Tiempo de las 3 corridas (s) | 365,1 | 366,8 | 369,1 |
+
+## Lectura
+
+1. **14.2 sube la espada en las tres semillas:** +4,35, +7,08 y +3,43 puntos. El pico cambia −1,73, +2,77 y +1,61. Tras la mesa, la espada pasa del 51,6 % al 56,6 %.
+2. **La Score no sube de forma clara:** +1,20, −1,51 y +0,33 puntos; en total, igual (42,65 frente a 42,67). En la semilla 32 bajan `wake_up` (30,30 → 25,00) y suben las muertes por zombi (18 → 23). Es el riesgo 1 del encargo (acopiar y quedarse sin tiempo de día), pero con una semilla no se puede separar del ruido.
+3. **14.3 no añade casi nada:** las semillas 31 y 33 dan exactamente lo mismo que 14.2 y la 32 baja 0,17 puntos. Con el lote en curso, la situación de 14.3 (junto a la mesa, con el material de una meta pendiente y sin lote) es rara.
+4. **Lo que el lote no resuelve:** en los episodios que siguen sin pico, la madera está a 0 en el 95 % de los latidos con la mesa al alcance (antes, 74 %). El lote propone ir por madera (23 % de los latidos tras la mesa), pero en esos episodios no llega. Y cuando hay mesa y madera sin fabricar (42 latidos), gana huir o defenderse de un zombi el 43 %.
+5. **Coste de cálculo:** +0,5 % y +1,1 % de tiempo total; ningún latido pasa de 4,3 ms.
+
+**Para las mediciones de 100 000 pasos:** el diagnóstico anticipa que el criterio 1 (espada) puede cumplirse con 14.2, y que el criterio 3 (Score > 0 en las dos semillas) está en duda por la semilla 32.
