@@ -666,6 +666,7 @@ class PerseguirMetas(ConPropuestas):
         self._seguimiento: Tuple[str, Optional[int], int] = ("", None, 0)   # destino, mejor distancia, propuestas sin bajar
         self._costes_unidad: Dict[Tuple[int, str], float] = {}           # (latido, objeto) -> pasos para una unidad
         self._lote_en_curso: Optional[Tuple[str, frozenset]] = None       # 14.2: (estación, metas) del lote elegido
+        self._rutas_mapa: Dict[Tuple[int, str, frozenset], Optional[Paso]] = {}   # (latido, clase, aparcados) -> paso por el mapa
 
     def _excluir(self, ctx: Contexto) -> frozenset:
         return frozenset(d for d, hasta in self._aparcados.items() if ctx.latido < hasta)
@@ -796,7 +797,7 @@ class PerseguirMetas(ConPropuestas):
             # reponer lo que consume. Así no se coloca una nueva mientras ir a la conocida cueste menos.
             colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
             confianza = r.confianza if r else 0.5
-            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), ir_por_el_mapa(ctx, clase, confianza, self._excluir(ctx))]
+            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), self._por_el_mapa(ctx, clase, confianza)]
             opciones += [self._con_consumo(ctx, k, self._resolver(ctx, k, inv, visitado, prof + 1), inv, visitado, prof)
                          for k in colocadoras]
             p = mejor_de(opciones, f"falta cerca {clase}")
@@ -931,6 +932,16 @@ class PerseguirMetas(ConPropuestas):
                     return True
         return False
 
+    def _por_el_mapa(self, ctx: Contexto, clase: str, confianza: float) -> Optional[Paso]:
+        """``ir_por_el_mapa`` con caché por latido (el planificador la pide muchas veces por latido). Devuelve una copia."""
+        clave = (ctx.latido, clase, self._excluir(ctx))
+        if clave not in self._rutas_mapa:
+            if len(self._rutas_mapa) > 200:
+                self._rutas_mapa.clear()
+            self._rutas_mapa[clave] = ir_por_el_mapa(ctx, clase, 0.5, clave[2])
+        q = self._rutas_mapa[clave]
+        return None if q is None else Paso(q.verbo, q.objetivo, q.clase, q.coste, confianza, list(q.motivo), dict(q.datos), q.destino, q.distancia)
+
     def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
         verbo, objetivo = accion
         confianza = float(r.confianza) if r is not None else 0.5
@@ -954,7 +965,11 @@ class PerseguirMetas(ConPropuestas):
         if cerca:
             p = max(cerca, key=lambda q: q.rasgo("proximidad"))
             return Paso(verbo, p.id, objetivo, penal, confianza, [texto])
-        ir = acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx))
+        # Deuda 11c: ir a por ello a lo visible, a lo que recuerda la memoria topológica o a una casilla recordada del mapa
+        # local de la que sale (p. ej. el material de un cierre o de un lote), la de menor coste.
+        opciones = [q for q in (acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx)),
+                                self._por_el_mapa(ctx, objetivo, confianza)) if q is not None]
+        ir = min(opciones, key=lambda q: q.coste) if opciones else None
         if ir is not None:
             ir.coste += penal
             ir.motivo.insert(0, texto)

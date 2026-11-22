@@ -109,8 +109,9 @@ def ejecutar(args: argparse.Namespace) -> int:
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
     res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto",
-                     sin_estrategias_propias=True, plazo_logico=args.plazo_logico)
+                     sin_estrategias_propias=True, plazo_logico=args.plazo_logico, mecanismos=args.mecanismos or None)
     datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "episodios": res["episodios"],
+             "mecanismos": sorted(args.mecanismos or []),
              "latidos_cortados": res["latidos_cortados"], "filas": filas}
     os.makedirs(os.path.dirname(os.path.abspath(args.salida)), exist_ok=True)
     with open(args.salida, "w", encoding="utf-8") as f:
@@ -127,7 +128,8 @@ def resumir(rutas: List[str]) -> int:
     corridas = [json.load(open(r, encoding="utf-8")) for r in rutas]
     print(f"Semillas {', '.join(str(c['semilla']) for c in corridas)} · {', '.join(str(c['pasos']) for c in corridas)} pasos · "
           f"episodios {', '.join(str(c['episodios']) for c in corridas)} · score {', '.join(str(c['score']) for c in corridas)} · "
-          f"latidos cortados {sum(c['latidos_cortados'] for c in corridas)}\n")
+          f"latidos cortados {sum(c['latidos_cortados'] for c in corridas)} · "
+          f"mecanismos: {', '.join(corridas[0].get('mecanismos') or []) or 'ninguno'}\n")
     for titulo, filtro in ((f"Los {VENTANA} latidos tras la primera mesa", lambda f: 1 <= f["k"] <= VENTANA),
                            ("Todos los latidos desde la primera mesa", lambda f: f["k"] >= 1)):
         filas = [f for c in corridas for f in c["filas"] if filtro(f)]
@@ -171,6 +173,7 @@ def main() -> int:
     p.add_argument("--pasos", type=int, default=3000)
     p.add_argument("--semilla", type=int, default=31)
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS")
+    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden")
     p.add_argument("--salida", default="diagnostico_sin_meta.json")
     p.add_argument("--resumir", nargs="*", default=None)
     args = p.parse_args()

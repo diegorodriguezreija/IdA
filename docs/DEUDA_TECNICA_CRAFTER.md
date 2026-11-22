@@ -64,6 +64,13 @@ Las deudas 1 a 8 son del encargo C, cuando Crafter tenía estrategias propias. D
 - **Lo pendiente:**
   1. Decidir cuándo perseguir un sitio comparando su coste completo con el tiempo hasta la oscuridad (la tendencia del cobijo, que ya estima la alostasis). Un sitio que no se puede completar antes de lo oscuro no se persigue.
   2. Después, reintroducir el filtro de orientación, con su presupuesto de planes por latido (commit `86629d3`, revertido en `d69d3d6`), y medirlo con el diagnóstico completo.
+- 11c se vuelve a medir solo, sobre 14.2 (rama `feature/material-mapa`).
+- **11c solo, sobre 14.2, cumple los criterios fijados antes de medir y se queda, siempre activo** (`docs/MEDICION_MATERIAL_MAPA.md`; 100 000 pasos, semillas 31 y 32, `--plazo-logico 40`, 0 latidos cortados):
+  - Score 15,86 % y 17,34 % (antes, 14,83 % y 15,98 %). Comparación pareada conjunta: +1,08 [0,17; 2,10]; por semilla, +0,97 y +1,28, sin que ningún IC excluya el 0;
+  - `wake_up` +1,63 [−1,90; 5,56] (no empeora);
+  - invariancia OK en mínimo, archivos y ajedrez;
+  - gana piedra, carbón y las herramientas de madera (`collect_stone` +7,73, `make_wood_pickaxe` +6,92, `make_wood_sword` +4,48); pierde retoño, plantar y vaca (`collect_sapling` −7,33, `place_plant` −6,51, `eat_cow` −4,61), y suben las muertes por flecha (de 22 a 31 y de 21 a 34 episodios).
+  - 11a y 11b siguen cerrados con resultado negativo.
 
 ## 12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada)
 

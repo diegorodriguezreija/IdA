@@ -8,6 +8,7 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from ida.core.memoria import Memoria
+from ida.core.mundo import Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.sistemas.s3 import PerseguirMetas
@@ -52,7 +53,7 @@ def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1,
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=m, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion="aqui_0_0"), verbos=set(Verbo))
+                           observacion=SimpleNamespace(ubicacion="aqui_0_0"), verbos=set(Verbo), perfil=Perfil())
 
 
 def _propuesta(ctx: Any) -> Optional[Any]:

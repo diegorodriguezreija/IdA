@@ -67,6 +67,8 @@ Invariancia (`herramientas/invariancia.py`): OK en mínimo, archivos, Crafter y 
 
 **Regla desde la deuda 14:** los criterios de aceptación de un encargo se escriben sobre la comparación conjunta de las semillas, y se fijan antes de medir (qué semillas, qué medidas y qué umbral). La comparación por semilla se sigue publicando al lado. En la deuda 14 la conjunta se hizo después de medir y no contó para los criterios (`docs/ENCARGO_DEUDA14_HERRAMIENTAS.md`, «Resultado»).
 
+**El humo de 3000 pasos no sirve para decidir:** en el 11c anunciaba −4,66 en la semilla 32 (13,58 % → 8,92 %, 10 y 12 episodios; `datos/diagnostico/material_mapa/`), y la medición de 100 000 pasos dio +1,28 (`docs/MEDICION_MATERIAL_MAPA.md`). Sirve para comprobar que dos versiones dan el mismo JSON, no para estimar un efecto.
+
 **Qué guardaban los JSON.** Ninguno de los medidos hasta ahora guarda los logros por episodio. Guardan `pasos`, `episodios`, `tiempo_segundos`, `ms_por_paso`, `score`, `score_ci_95`, `tasas_logros` (agregadas), `causas_muerte` (agregadas), la configuración y `latidos_cortados_por_episodio`. Desde esta rama `evaluar_crafter.py` añade `por_episodio`: pasos, causa de muerte, si sigue vivo y los logros de cada episodio.
 
 **Reanálisis pedido (D2 frente a F1, D3 frente a F2, F1 frente a C1, C1 frente a G1): no se puede hacer** con los JSON actuales (`paso6_D2`, `paso3_F1`, `paso6_D3`, `paso3_F2`, `cierre0_C1`, `paso5_G1`: ninguno tiene `por_episodio`). La herramienta lo rechaza y lista lo que guarda el fichero. Para hacerlo hay que volver a medir cada condición en su commit con `por_episodio`, mejor con `--plazo-logico 40`.
