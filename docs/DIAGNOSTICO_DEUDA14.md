@@ -146,7 +146,7 @@ PerseguirMetas calcula su meta, pero la pieza no llega a los candidatos: `Onda.p
 | Consumo de S3 (mediana) | 3 | 16 |
 | Peligro del soma (mediana) | 0,15 | 0,13 |
 
-S3 corre el último. Cuando S1 gasta el doble de lo normal (23 frente a 12) y la amplitud es menor (44 frente a 54), S1 y S2 se gastan toda la amplitud y la propuesta de S3 no cabe. La amplitud baja con la energía (`Marcapasos.ritmo`: 120 × 0,45 × (0,5 + 0,5 × energía)). No es el peligro: su mediana es casi la misma (0,15 frente a 0,13). En 235 de esos 360 latidos estaba pendiente el pico o la espada de madera. Es la escasez de atención calibrada en la base (`docs/CALIBRACION_ATENCION.md`, «S3 se queda sin recursos»), no un fallo del planificador.
+S3 corre el último. Cuando S1 gasta el doble de lo normal (23 frente a 12) y la amplitud es menor (44 frente a 54), S1 y S2 se gastan toda la amplitud y la propuesta de S3 no cabe. La amplitud baja con la energía (`Marcapasos.ritmo`: 120 × 0,45 × (0,5 + 0,5 × energía)). No es el peligro: su mediana es casi la misma (0,15 frente a 0,13). En 235 de esos 360 latidos estaba pendiente el pico o la espada de madera. Es la escasez de atención calibrada en la base (`ida/core/marcapasos.py`, docstring: «S3 se queda sin recursos más a menudo con peligro»; cifras en `docs/CALIBRACION_ATENCION.md`), no un fallo del planificador.
 
 ## 2. Ningún plan: el material solo se busca en lo que se ve
 
