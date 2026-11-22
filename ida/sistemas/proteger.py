@@ -47,6 +47,8 @@ MAX_PASOS_POSTURA = 12    # buscador de 3.1: «qué secuencia de MOVER me deja e
 PROFUNDIDAD_PLAN = 30     # acciones máximas del plan local de un sitio (cavar, moverse, cerrar)
 MAX_ESTADOS = 6000        # coste de cálculo: estados máximos por búsqueda
 CANDIDATOS_EXACTOS = 6    # sitios más baratos por la estimación rápida que se planifican del todo
+PLANES_POR_EVALUACION = 3 # 11b: tope declarado de planes exactos por evaluación: se baja por la lista hasta el primero que cierra
+PLANES_POR_LATIDO = 2     # 11b: planes exactos nuevos (fuera de la caché) por latido, entre elegir y requisitos (guillotina)
 CADA_EVALUACION = 5       # latidos entre evaluaciones completas de sitios (entretanto se replanifica el actual)
 MARGEN_SITIO = 0.25       # histéresis: otro sitio sustituye al actual si cuesta al menos un 25 % menos...
 MARGEN_SITIO_MIN = 3.0    # ...y al menos 3 pasos menos
@@ -425,9 +427,11 @@ class Sitio:
 
 
 def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[Pos],
-               coste_unidad: Optional[float] = None) -> List[Sitio]:
+               coste_unidad: Optional[float] = None, orientar: bool = False) -> List[Sitio]:
     """Sitios posibles con su coste estimado (sin orientación), del más barato al más caro. Con ``coste_unidad`` (pasos para
-    conseguir el material de un cierre más), también los sitios a los que les falta material, con ese coste añadido."""
+    conseguir el material de un cierre más), también los sitios a los que les falta material, con ese coste añadido. Con
+    ``orientar`` (deuda 11b, interruptor ``filtro_orientacion``), sin los que el modelo del cuerpo no deja cerrar
+    (``orientable``)."""
     celdas: Set[Pos] = set(dist)
     for _ in range(2):          # casillas cavables hasta 2 pasos dentro de lo no transitable
         celdas |= {v for p in list(celdas) for v in _vecinas(p) if modelo.rinde(v) is not None}
@@ -455,6 +459,8 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
             accesos = frozenset(v for x in partes for v in x or ()) - set(interior)     # = accesos_de(modelo, interior)
             if accesos & no_cerrables:
                 continue
+            if orientar and not orientable(modelo, interior, accesos):
+                continue         # con el modelo del cuerpo no se puede quedar mirando al último acceso desde dentro
             falta = max(0, len(accesos) - modelo.unidades(excavar))
             if falta and coste_unidad is None:
                 continue
@@ -470,8 +476,33 @@ def candidatos(modelo: Modelo, aqui: Pos, dist: Dict[Pos, int], hogar: Optional[
     return sitios
 
 
+def _primero_el_previo(lista: List["Sitio"], previo: Optional[List[Pos]]) -> List["Sitio"]:
+    """La lista de candidatos con el sitio elegido antes delante, si está: así la histéresis no depende del tope de planes."""
+    if previo is None:
+        return lista
+    clave = tuple(tuple(p) for p in previo)
+    return sorted(lista, key=lambda s: tuple(s.interior) != clave)
+
+
+def orientable(modelo: Modelo, interior: Iterable[Pos], accesos: Iterable[Pos]) -> bool:
+    """Condición necesaria, del modelo del cuerpo aprendido, para poder cerrar el último acceso estando dentro.
+
+    Si moverse hacia una casilla libre hace avanzar y mirar hacia ella (``mover_libre`` = avanza y mira), solo se queda
+    mirando a un acceso libre ``a`` desde la casilla interior ``p`` llegando a ``p`` desde la casilla opuesta a ``a``. Cuando se
+    cierra el último acceso, todos los demás ya están cerrados, así que esa casilla tiene que ser interior. Sin esa
+    geometría el sitio no se puede cerrar, y se descarta antes de ordenarlo por coste (es el caso de 1 casilla con
+    accesos libres). Con otro modelo del cuerpo, o sin modelo, no se descarta nada: lo decide el plan exacto."""
+    accesos = list(accesos)
+    m = modelo.mover_libre
+    if not accesos or m is None or not (m[0] and m[1]):
+        return True
+    dentro = set(interior)
+    return any((2 * p[0] - a[0], 2 * p[1] - a[1]) in dentro for a in accesos for p in _vecinas(a) if p in dentro)
+
+
 def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist: Dict[Pos, int],
-              previo: Dict[Pos, Pos], hogar: Optional[Pos], cache: Optional[Dict[Any, Optional[List[Accion]]]] = None) -> bool:
+              previo: Dict[Pos, Pos], hogar: Optional[Pos], cache: Optional[Dict[Any, Optional[List[Accion]]]] = None,
+              presupuesto: Optional[List[int]] = None) -> bool:
     """Plan local exacto del sitio y su coste. Si ``aqui`` está en el entorno del sitio, el plan empieza aquí (y no sale del
     entorno, así que el latido siguiente también); si no, en la entrada, llegando por la ruta más corta (con la orientación de
     llegada que da el modelo del cuerpo)."""
@@ -487,7 +518,11 @@ def completar(modelo: Modelo, sitio: Sitio, aqui: Pos, cara: Optional[Pos], dist
     clave = (inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos, modelo.firma)
     if cache is not None and clave in cache:
         plan = cache[clave]
+    elif presupuesto is not None and presupuesto[0] <= 0:
+        return False        # sin presupuesto de cálculo en este latido: no se planifica (ni se guarda como fallido)
     else:
+        if presupuesto is not None:
+            presupuesto[0] -= 1
         plan = planificar(modelo, inicio, cara0, sitio.interior, sitio.excavar, sitio.accesos)
         if cache is not None:
             cache[clave] = plan
@@ -570,6 +605,7 @@ class Recinto(Componente):
         self._sel_requisitos: Optional[Dict[str, Any]] = None
         self._inventario: Dict[str, float] = {}
         self._planes: Dict[Any, Optional[List[Accion]]] = {}     # caché de planes locales (coste de cálculo)
+        self._presupuesto: Optional[List[int]] = None     # 11b: planes exactos nuevos que quedan en este latido
         self._planificador = PerseguirMetas()
         # Deuda 11a: D* de esta vida (observaciones, sin herencia) y el tiempo disponible de este latido.
         self._umbrales: List[float] = []
@@ -608,6 +644,7 @@ class Recinto(Componente):
         aqui = posicion(ctx)
         if aqui is None or not ctx.memoria.casillas:
             return
+        self._presupuesto = [PLANES_POR_LATIDO] if ctx.perfil.mecanismos.filtro_orientacion else None
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
             self._ultimo_requisitos, self._sel_requisitos, self._planificador = -10**9, None, PerseguirMetas()
@@ -709,9 +746,20 @@ class Recinto(Componente):
         elegido: Optional[Tuple[Sitio, Dict[str, float]]] = None
         anterior: Optional[Tuple[Sitio, Dict[str, float]]] = None
         previa_infactible = False
-        for s in candidatos(con_herramientas, aqui, dist, hogar, cierre[0] if cierre else None)[:CANDIDATOS_EXACTOS]:
+        filtro = ctx.perfil.mecanismos.filtro_orientacion
+        lista = candidatos(con_herramientas, aqui, dist, hogar, cierre[0] if cierre else None, orientar=filtro)[:CANDIDATOS_EXACTOS]
+        if filtro:
+            lista = _primero_el_previo(lista, previa["interior"] if previa is not None else None)
+        planes = 0
+        for s in lista:
             clases = sorted({modelo.casillas[p] for p in s.excavar if modelo.casillas.get(p) in coste_cavar})
-            if (s.falta == 0 and not clases) or not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes):
+            if s.falta == 0 and not clases:
+                continue
+            if filtro:     # 11b: se baja por la lista hasta el primero que cierra, con un tope de planes
+                if planes >= PLANES_POR_EVALUACION or (elegido is not None and anterior is None and previa is None):
+                    break
+                planes += 1
+            if not completar(previsto, s, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto):
                 continue
             requiere: Dict[str, float] = {}
             for clase in clases:
@@ -748,7 +796,7 @@ class Recinto(Componente):
         actual: Optional[Sitio] = None
         if self._sitio is not None:
             actual = self._reconstruir(modelo, self._sitio, dist, hogar)
-            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes):
+            if actual is not None and not completar(modelo, actual, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto):
                 actual = None
         abandonado = False
         if actual is not None and not self._factible(actual.coste):
@@ -758,10 +806,17 @@ class Recinto(Componente):
             return actual          # sin sitio, tampoco se busca otro hasta la próxima evaluación
         self._ultima = ctx.latido
         mejor: Optional[Sitio] = None
-        for s in candidatos(modelo, aqui, dist, hogar)[:CANDIDATOS_EXACTOS]:
+        planes = 0
+        filtro = ctx.perfil.mecanismos.filtro_orientacion
+        for s in candidatos(modelo, aqui, dist, hogar, orientar=filtro)[:CANDIDATOS_EXACTOS]:
             if actual is not None and s.interior == actual.interior:
                 continue
-            if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes) and (mejor is None or s.coste < mejor.coste):
+            if filtro:
+                if planes >= PLANES_POR_EVALUACION or mejor is not None:
+                    break           # 11b: el primero que cierra, bajando por la lista (tope declarado)
+                planes += 1
+            if completar(modelo, s, aqui, cara, dist, previo, hogar, self._planes, self._presupuesto) and \
+                    (mejor is None or s.coste < mejor.coste):
                 mejor = s
         if mejor is not None and not self._factible(mejor.coste):
             mejor = None          # 11a, regla 1: el más barato no llega a tiempo, así que ninguno

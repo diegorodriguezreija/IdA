@@ -540,3 +540,38 @@ def test_d_estrella_se_aprende_de_los_primeros_danos():
     o = 2 * cambios[0] - 0.7                              # mediana de (0,7, 0,7, o1, o2) con o1 ≈ o2 < 0,7
     assert 0.5 < cambios[0] < 0.7 and 0.3 < o < 0.7, (cambios, o)
     assert umbral_peligro([0.62, 0.62]) == pytest.approx(0.66)
+
+
+# --- deuda 11b: el sitio se elige según si se puede cerrar con la orientación del cuerpo (filtro_orientacion) --
+def _pasillo_con_nichos() -> Tuple[MundoCueva, Memoria]:
+    """Un pasillo (y = 5) en un muro que no se puede cavar, con nichos de 1 casilla (x = 2-8) y uno de 2 al fondo (x = 11).
+    Los nichos de 1 casilla y la casilla de partida son los sitios más baratos por la estimación, pero ninguno se puede
+    cerrar: se entra mirando hacia dentro y no se puede quedar mirando al acceso sin salir. Con 2 rocas para cerrar."""
+    mapa = {(x, y): "muro" for x in range(14) for y in range(9)}
+    mapa.update({(x, 5): "suelo" for x in range(1, 13)})
+    mapa.update({(x, 4): "suelo" for x in range(2, 9)})
+    mapa.update({(11, 4): "suelo", (11, 3): "suelo"})
+    mundo = _con(MundoCueva(mapa, (1, 5), cara=(1, 0), luz=10.0, rocas=2), filtro_orientacion=True)
+    mem = _memoria(mundo, aprendida=True)
+    mem.paso_bloqueado["muro"] = 1
+    mem.casillas.update(mapa)
+    return mundo, mem
+
+
+def test_no_elige_un_sitio_de_una_casilla_que_no_se_puede_cerrar():
+    from ida.sistemas.proteger import orientable
+    mundo, mem = _pasillo_con_nichos()
+    m = Modelo(mem, {"roca": 2.0}, set())
+    assert not orientable(m, [(3, 4)], [(3, 5)])                      # nicho de 1 casilla, 1 acceso
+    assert not orientable(m, [(9, 5)], [(8, 5), (10, 5)])              # 1 casilla de pasillo, 2 accesos libres
+    assert orientable(m, [(11, 3), (11, 4)], [(11, 5)])               # nicho de 2: se entra hasta el fondo y se vuelve
+    interiores: List[Tuple] = []
+
+    def al_latir(o, onda):
+        r = onda.reactiva.ef.get("Recinto", {}).get("recinto")
+        if r is not None and r.carga.get("interior"):
+            interiores.append(tuple(map(tuple, r.carga["interior"])))
+
+    _vivir(mundo, mem, 40, al_latir)
+    assert interiores and all(len(i) == 2 for i in interiores), interiores[:5]
+    assert mundo.encerrado(), mundo.pos
