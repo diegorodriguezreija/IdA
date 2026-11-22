@@ -56,6 +56,17 @@ Invariancia (`herramientas/invariancia.py`): OK en mínimo, archivos, Crafter y 
 - Empareja los primeros min(n1, n2) episodios.
 - Da la diferencia A − B de la Score y de cada logro, en puntos, con su IC 95 % por bootstrap pareado: 2000 réplicas que remuestrean índices de episodio con reemplazo y usan el mismo índice en A y en B (semilla del bootstrap 42).
 
+### Comparación conjunta de varias semillas (desde la deuda 14)
+
+`resumen_evaluacion.py --pareada-conjunta A1 B1 A2 B2 ...` (función `comparar_pareado_conjunto`):
+
+- Cada par (A, B) es de la misma `semilla_base` y se empareja como en `--pareada` (los primeros min(n1, n2) episodios).
+- La Score y las tasas de cada logro se calculan con los episodios emparejados de todas las semillas juntos.
+- El IC 95 % sale de un bootstrap pareado **estratificado por semilla**: en cada una de las 2000 réplicas (semilla del bootstrap 42) se remuestrean con reemplazo, dentro de cada semilla, tantos índices como episodios emparejados tiene, con el mismo índice en A y en B.
+- Con un solo par da lo mismo que `--pareada`.
+
+**Regla desde la deuda 14:** los criterios de aceptación de un encargo se escriben sobre la comparación conjunta de las semillas, y se fijan antes de medir (qué semillas, qué medidas y qué umbral). La comparación por semilla se sigue publicando al lado. En la deuda 14 la conjunta se hizo después de medir y no contó para los criterios (`docs/ENCARGO_DEUDA14_HERRAMIENTAS.md`, «Resultado»).
+
 **Qué guardaban los JSON.** Ninguno de los medidos hasta ahora guarda los logros por episodio. Guardan `pasos`, `episodios`, `tiempo_segundos`, `ms_por_paso`, `score`, `score_ci_95`, `tasas_logros` (agregadas), `causas_muerte` (agregadas), la configuración y `latidos_cortados_por_episodio`. Desde esta rama `evaluar_crafter.py` añade `por_episodio`: pasos, causa de muerte, si sigue vivo y los logros de cada episodio.
 
 **Reanálisis pedido (D2 frente a F1, D3 frente a F2, F1 frente a C1, C1 frente a G1): no se puede hacer** con los JSON actuales (`paso6_D2`, `paso3_F1`, `paso6_D3`, `paso3_F2`, `cierre0_C1`, `paso5_G1`: ninguno tiene `por_episodio`). La herramienta lo rechaza y lista lo que guarda el fichero. Para hacerlo hay que volver a medir cada condición en su commit con `por_episodio`, mejor con `--plazo-logico 40`.

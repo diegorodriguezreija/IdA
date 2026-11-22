@@ -620,6 +620,12 @@ def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir
     return None
 
 
+def _cantidad(r: Any, objeto: str) -> float:
+    """Unidades de ``objeto`` que gasta o pide la acción: lo que pide (``None``: 1) o lo que su efecto aprendido resta."""
+    n = r.requiere_inventario.get(objeto)
+    return float(max(n if n is not None else 1, -r.efecto.get(objeto, 0)))
+
+
 def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
     """Posición propia si la ubicación lleva coordenadas al final (``<nombre>_x_y``); si no, None."""
     partes = str(ctx.observacion.ubicacion if ctx.observacion else "").rsplit("_", 2)
@@ -659,6 +665,7 @@ class PerseguirMetas(ConPropuestas):
         self._aparcados: Dict[str, int] = {}          # destino -> latido hasta el que no se elige
         self._seguimiento: Tuple[str, Optional[int], int] = ("", None, 0)   # destino, mejor distancia, propuestas sin bajar
         self._costes_unidad: Dict[Tuple[int, str], float] = {}           # (latido, objeto) -> pasos para una unidad
+        self._lote_en_curso: Optional[Tuple[str, frozenset]] = None       # 14.2: (estación, metas) del lote elegido
 
     def _excluir(self, ctx: Contexto) -> frozenset:
         return frozenset(d for d, hasta in self._aparcados.items() if ctx.latido < hasta)
@@ -704,12 +711,28 @@ class PerseguirMetas(ConPropuestas):
         inv = inventario(ctx)
         mejor_paso: Optional[Paso] = None
         meta_mejor = ""
+        resueltas: List[Tuple[Verbo, str]] = []
         for meta in ctx.memoria.metas.values():
             if meta.conseguida or meta.verbo not in self.VERBOS_PLAN:
                 continue
             paso = self._resolver(ctx, (meta.verbo, meta.objetivo), inv, frozenset(), 0)
-            if paso is not None and (mejor_paso is None or paso.coste < mejor_paso.coste):
+            if paso is None:
+                continue
+            resueltas.append((meta.verbo, meta.objetivo))
+            if mejor_paso is None or paso.coste < mejor_paso.coste:
                 mejor_paso, meta_mejor = paso, meta.objetivo
+        if mejor_paso is not None:
+            # Deuda 14.2: un lote en curso sigue hasta tener todo su material junto a la estación (o hasta dejar de valer);
+            # uno nuevo se elige si su coste por meta es menor que el de la meta suelta más barata.
+            lote = self._mejor_lote(ctx, resueltas, inv, self._lote_en_curso) if self._lote_en_curso else None
+            if lote is None:
+                self._lote_en_curso = None
+                lote = self._mejor_lote(ctx, resueltas, inv)
+                if lote is not None and lote[1] >= mejor_paso.coste:
+                    lote = None
+            if lote is not None:
+                mejor_paso, meta_mejor = lote[0], lote[2]
+                self._lote_en_curso = lote[3]
         if mejor_paso is not None:
             self._vigilar(ctx, mejor_paso)
             motivo = "metas: " + meta_mejor + "".join(f" ← {m}" for m in mejor_paso.motivo)
@@ -810,6 +833,103 @@ class PerseguirMetas(ConPropuestas):
             pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
             self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
         return self._costes_unidad[clave]
+
+    # --- deuda 14.2: metas que comparten una estación, planificadas en lote ---------------------------------------
+    def _mejor_lote(self, ctx: Contexto, resueltas: List[Tuple[Verbo, str]], inv: Dict[str, float],
+                    solo: Optional[Tuple[str, frozenset]] = None) -> Optional[Tuple[Paso, float, str, Tuple[str, frozenset]]]:
+        """El lote más barato por meta (paso, coste por meta, nombre, (estación, metas)). Un lote son las metas resueltas
+        que piden estar cerca de una misma clase X y de ninguna otra, y cuyo material se consigue sin estar cerca de nada.
+        Su coste es conseguir todo el material del lote, más ir a X (o colocarla, con su material), más una acción por
+        meta; se reparte entre las metas. El primer paso es el material («primero lo que se lleva»); con todo, ir a X o
+        colocarla; con todo y junto a X, ninguno (lo hacen las metas sueltas). ``solo``: el lote en curso (su estación
+        y, de sus metas, las que siguen valiendo)."""
+        mem = ctx.memoria
+        estaciones = sorted({c for k in resueltas if (r := mem.requisitos.get(k)) is not None for c in r.requiere_cerca})
+        if solo is not None:
+            estaciones = [x for x in estaciones if x == solo[0]]
+        mejor_lote: Optional[Tuple[Paso, float, str, Tuple[str, frozenset]]] = None
+        for x in estaciones:
+            lote = [k for k in resueltas if (r := mem.requisitos.get(k)) is not None and r.requiere_cerca == {x}
+                    and (solo is None or k in solo[1])
+                    and all(inv.get(i, 0.0) >= _cantidad(r, i) or self._de_campo(ctx, i, inv, 0) for i in r.requiere_inventario)]
+            if len(lote) < 2:
+                continue
+            material: Dict[str, float] = {}
+            for k in lote:
+                r = mem.requisitos[k]
+                for i in r.requiere_inventario:
+                    material[i] = material.get(i, 0.0) + _cantidad(r, i)
+            r0 = mem.requisitos[lote[0]]
+            cerca_ya = any(r0.cerca_basta(x, d) for d in desplazamientos_a_clase(ctx, x))
+            # Opciones para la estación: (paso si ya se tiene el material, coste, material propio).
+            opciones: List[Tuple[Optional[Paso], float, Dict[str, float]]] = []
+            if cerca_ya:
+                opciones.append((None, 0.0, {}))
+            else:
+                excluir = self._excluir(ctx)
+                for ir in (acercarse_a_clase(ctx, x, r0.confianza, excluir), ir_por_el_mapa(ctx, x, r0.confianza, excluir)):
+                    if ir is not None:
+                        opciones.append((ir, ir.coste, {}))
+                for k in sorted((k for k, q in mem.requisitos.items() if x in q.aparece), key=lambda k: (k[0].value, k[1])):
+                    rk = mem.requisitos[k]
+                    if rk.requiere_cerca or mem.bloqueada(*k):
+                        continue
+                    propio = {i: _cantidad(rk, i) for i in rk.requiere_inventario}
+                    opciones.append((self._colocar(ctx, k, inv, propio, material), 1.0 / max(mem.tasa_estimada(*k), 1e-6), propio))
+            for paso_est, coste_est, propio in opciones:
+                total = dict(material)
+                for i, n in propio.items():
+                    total[i] = total.get(i, 0.0) + n
+                conseguir = self._coste_material(ctx, total, inv)
+                if conseguir is None:
+                    continue
+                coste_mat, primero = conseguir
+                paso = primero if primero is not None else paso_est
+                if paso is None:              # todo a mano y junto a X: lo hace la meta suelta, que es más barata
+                    continue
+                por_meta = (coste_mat + coste_est + len(lote)) / len(lote)
+                if mejor_lote is None or por_meta < mejor_lote[1]:
+                    nombre = f"lote {x} ({', '.join(k[1] for k in lote)})"
+                    mejor_lote = (Paso(paso.verbo, paso.objetivo, paso.clase, por_meta, paso.confianza, list(paso.motivo),
+                                       dict(paso.datos), paso.destino, paso.distancia), por_meta, nombre, (x, frozenset(lote)))
+        return mejor_lote
+
+    def _colocar(self, ctx: Contexto, accion: Tuple[Verbo, str], inv: Dict[str, float], propio: Dict[str, float],
+                 material: Dict[str, float]) -> Optional[Paso]:
+        """El paso de colocar la estación, solo si ya se lleva su material y el del lote (si no, primero el material)."""
+        if any(inv.get(i, 0.0) < propio.get(i, 0.0) + material.get(i, 0.0) for i in set(propio) | set(material)):
+            return None
+        return self._resolver(ctx, accion, inv, frozenset(), 0)
+
+    def _coste_material(self, ctx: Contexto, total: Dict[str, float],
+                        inv: Dict[str, float]) -> Optional[Tuple[float, Optional[Paso]]]:
+        """Coste de reunir ``total`` (la primera unidad que falta de cada objeto por su mejor plan, el resto por el coste
+        de una unidad) y el primer paso: el plan más barato de lo que falta. None si algo no se sabe conseguir."""
+        coste, primero = 0.0, None
+        for i in sorted(total):
+            falta = total[i] - inv.get(i, 0.0)
+            if falta <= 0:
+                continue
+            plan = self.conseguir(ctx, i, inv)
+            if plan is None:
+                return None
+            coste += plan.coste + 1.0 + (falta - 1.0) * self._coste_unidad(ctx, i, inv, frozenset(), 0)
+            if primero is None or plan.coste < primero.coste:
+                primero = plan
+                primero.motivo.insert(0, f"falta {i}")
+        return coste, primero
+
+    def _de_campo(self, ctx: Contexto, objeto: str, inv: Dict[str, float], prof: int) -> bool:
+        """Si ``objeto`` se consigue sin estar cerca de nada: alguna acción que lo da no pide cercanía y lo que pide se lleva
+        o es también de campo (hasta 3 niveles)."""
+        if prof > 3:
+            return False
+        for q in ctx.memoria.requisitos.values():
+            if q.efecto.get(objeto, 0) > 0 and not q.requiere_cerca and not ctx.memoria.bloqueada(q.verbo, q.objetivo):
+                if all(inv.get(i, 0.0) >= _cantidad(q, i) or (i != objeto and self._de_campo(ctx, i, inv, prof + 1))
+                       for i in q.requiere_inventario):
+                    return True
+        return False
 
     def _ejecutar(self, ctx: Contexto, accion: Tuple[Verbo, str], r: Any) -> Optional[Paso]:
         verbo, objetivo = accion

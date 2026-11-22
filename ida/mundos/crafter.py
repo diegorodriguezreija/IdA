@@ -131,7 +131,9 @@ def _sujetos(manual: Dict[str, Any], relacion: str) -> Set[str]:
 
 class MundoCrafter(Mundo):
     nombre = "crafter"
-    perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
+    # Deuda 14.0: Crafter es por turnos (el entorno espera a que el individuo decida), así que declara un plazo base
+    # generoso. El marcapasos lo sigue acortando con el peligro y ``--plazo-logico`` escala con él.
+    perfil = Perfil(tiempo_real=False, frecuencia_ms=1000.0, amplitud=120, memoria="completa", duerme=True, hogar=True,
                     peso_experiencia=0.15, vitales_propios=True,
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
