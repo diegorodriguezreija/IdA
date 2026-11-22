@@ -18,6 +18,13 @@ que cree IdA.
 **b)** Episodios que pasan la noche dentro: causa de muerte, latidos vividos desde el final de lo oscuro, y comida y
 bebida (0-9) en el primer latido fuera del recinto.
 
+**a3) Factibilidad en el tiempo** (deuda 11a, solo con ``--mecanismos factibilidad_temporal``): en la primera noche,
+``T_disponible`` y la holgura del sitio en el primer latido desde el ocaso con un sitio elegido (con plan o con
+requisitos), D* en el ocaso y los abandonos (latido desde el ocaso y coste que le quedaba al sitio abandonado).
+
+**Latidos lentos:** en cada latido, los ms de reloj de pared de la cognición (desde que se percibe hasta que se actúa, lo
+que mira la guillotina por reloj), también con ``--plazo-logico``. El resumen cuenta los que pasan de 100 ms.
+
 **c) Cadena de herramientas:** en los episodios que colocan la mesa, fracción que fabrica después el pico y la espada
 de madera y latidos desde la mesa. Cuando no se fabrica: estrategias y motivos que ganan desde la mesa hasta el final,
 la mejor propuesta de ``PerseguirMetas`` en cada latido (sus metas y las peticiones que atiende) (gane o no), en qué se gasta la madera (acciones USAR con
@@ -133,6 +140,18 @@ def _formas(modelo: Any, dist: Dict[Tuple[int, int], int]) -> Dict[str, int]:
     return dict(razones)
 
 
+LENTO_MS = 100.0     # plazo de reloj por defecto del latido (``Perfil.frecuencia_ms``)
+
+
+def _ms_reloj(onda: Any) -> float:
+    """Ms de reloj de pared de la cognición del latido: del final de percibir al principio de actuar (``Onda.fases``)."""
+    fases = {nombre: (ini, fin) for nombre, ini, fin in onda.fases}
+    if "percibir" not in fases:
+        return 0.0
+    fin = fases["actuar"][0] if "actuar" in fases else max(f for _, f in fases.values())
+    return (fin - fases["percibir"][1]) / 1e6
+
+
 def _mesa_cerca(world: Any, pos: Tuple[int, int]) -> bool:
     mats, _ = world.nearby(pos, 1)
     return "table" in mats
@@ -171,10 +190,19 @@ class Episodio:
         self.causa: Optional[str] = None
         self.vivo = False
         self.guillotinas = 0
+        self.ms_reloj: List[float] = []               # latidos de más de LENTO_MS: sus ms de reloj de cognición
+        self.ms_max = 0.0
+        self.factibilidad: Dict[str, Any] = {}        # a3) deuda 11a en la primera noche
+        self.abandonos: List[Dict[str, Any]] = []
+        self.coste_previo: Optional[float] = None
 
     def latido(self, org: Any, onda: Any) -> None:
         self.n += 1
         n = self.n
+        ms = _ms_reloj(onda)
+        self.ms_max = max(self.ms_max, ms)
+        if ms > LENTO_MS:
+            self.ms_reloj.append(round(ms, 1))
         w, jug = org.mundo.env._world, org.mundo.jugador
         luz = float(w.daylight)
         pos = (int(jug.pos[0]), int(jug.pos[1]))
@@ -212,6 +240,7 @@ class Episodio:
                 self.latidos_oscuro_fuera_antes_de_entrar += 1
             if self.fase == "oscuro":
                 self.dentro_al_final_oscuro = dentro
+        self._factibilidad(onda, n)
         if self.fase == "oscuro" and luz >= OSCURO:
             self.fase, self.t_fin_noche = "despues", n
         if self.fase == "despues" and self.salida_tras_noche is None and dentro and self.dentro_al_final_oscuro:
@@ -256,6 +285,24 @@ class Episodio:
                 if mejor_metas is not None:
                     self.metas[clave][_motivo(str(mejor_metas.get("motivo", "")))] += 1
 
+    def _factibilidad(self, onda: Any, n: int) -> None:
+        """a3) Deuda 11a, en la ventana de la primera noche (del ocaso al final de lo oscuro)."""
+        r = onda.reactiva.ef.get("Recinto", {}).get("recinto")
+        c = r.carga if r is not None else {}
+        if "t_disponible" not in c:
+            return
+        coste_previo = self.coste_previo
+        self.coste_previo = None if c.get("coste") is None or c.get("dentro") else float(c["coste"])
+        if self.fase not in ("ocaso", "oscuro"):
+            return
+        f = self.factibilidad
+        f.setdefault("d_estrella_ocaso", c.get("d_estrella"))
+        if "t_elegir" not in f and c.get("coste") is not None and not c.get("dentro"):
+            f.update(t_elegir=c.get("t_disponible"), holgura_elegir=c.get("holgura"), latido_elegir=n - (self.t_ocaso or n))
+        if c.get("abandono"):
+            self.abandonos.append({"latido": n - (self.t_ocaso or n), "oscuro": self.fase == "oscuro", "de": c["abandono"],
+                                   "coste_restante": coste_previo})
+
     def causa_noche(self) -> Tuple[str, str]:
         if self.t_oscuro is None:
             return ("muere antes de anochecer" if not self.vivo else "cortado por presupuesto"), str(self.causa)
@@ -271,6 +318,8 @@ class Episodio:
         e = self.estado_oscuro
         if e is None:
             return "no encuentra sitio", "sin pieza recinto"
+        if not e["accion"] and not e["requiere"] and not e["dentro"] and any(not a["oscuro"] for a in self.abandonos):
+            return "no encuentra sitio", "abandona el sitio antes de lo oscuro (11a)"
         if e["dentro"]:
             return "no lo completa a tiempo", "cree estar dentro"
         if e["accion"]:
@@ -292,7 +341,8 @@ class Episodio:
                 "usar_sin_efecto": dict(self.usar_sin_efecto), "cavable": self.cavable, "retencion": dict(self.retencion),
                 "retencion_proteger": dict(self.retencion_proteger),
                 "retencion_impulsos": self.retencion_impulsos, "guillotinas": self.guillotinas,
-                "aperturas": self.aperturas}
+                "aperturas": self.aperturas, "ms_reloj_lentos": self.ms_reloj, "ms_reloj_max": round(self.ms_max, 1),
+                "factibilidad": self.factibilidad, "abandonos": self.abandonos}
 
 
 def ejecutar(args: argparse.Namespace) -> int:
@@ -312,9 +362,10 @@ def ejecutar(args: argparse.Namespace) -> int:
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
     res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual=args.manual,
-                     sin_estrategias_propias=args.sin_estrategias_propias,
+                     sin_estrategias_propias=args.sin_estrategias_propias, mecanismos=args.mecanismos,
                      **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
-    datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "episodios": [e.resumen() for e in eps]}
+    datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "mecanismos": sorted(args.mecanismos),
+             "plazo_logico": args.plazo_logico, "episodios": [e.resumen() for e in eps]}
     with open(args.salida, "w", encoding="utf-8") as f:
         json.dump(datos, f, ensure_ascii=False)
     print(f"semilla {args.semilla}: {len(eps)} episodios, score {res['score']} → {args.salida}")
@@ -329,13 +380,25 @@ def _med(xs: List[float]) -> str:
     return f"{statistics.median(xs):.0f}" if xs else "—"
 
 
+def _cuartiles(xs: List[float]) -> str:
+    if len(xs) < 4:
+        return "—"
+    q = statistics.quantiles(xs, n=4)
+    return f"{q[0]:.0f}-{q[2]:.0f}"
+
+
 def resumir(rutas: List[str]) -> int:
     corridas = [json.load(open(r, encoding="utf-8")) for r in rutas]
     eps = [e for c in corridas for e in c["episodios"]]
     sem = [c["semilla"] for c in corridas]
     print(f"Semillas {', '.join(map(str, sem))} · {', '.join(str(c['pasos']) for c in corridas)} pasos · "
           f"{len(eps)} episodios · score {', '.join(str(c['score']) for c in corridas)} · "
-          f"latidos cortados por la guillotina: {sum(e.get('guillotinas', 0) for e in eps)}\n")
+          f"latidos cortados por la guillotina: {sum(e.get('guillotinas', 0) for e in eps)} · "
+          f"mecanismos: {', '.join(corridas[0].get('mecanismos') or []) or 'ninguno'}\n")
+    if eps and "ms_reloj_max" in eps[0]:
+        por_semilla = [sum(len(e.get("ms_reloj_lentos") or []) for e in c["episodios"]) for c in corridas]
+        print(f"Latidos de más de {LENTO_MS:.0f} ms de reloj (cognición): {sum(por_semilla)} "
+              f"({', '.join(map(str, por_semilla))} por semilla); máximo {max(e['ms_reloj_max'] for e in eps):.1f} ms.\n")
 
     # a)
     print("### a) Primera noche de cada episodio\n")
@@ -356,6 +419,28 @@ def resumir(rutas: List[str]) -> int:
     entran = [e["oscuro_fuera_antes_de_entrar"] for e in eps if e["oscuro_fuera_antes_de_entrar"] is not None]
     print(f"\nLatidos oscuros fuera antes de entrar (episodios que entran): mediana {_med(entran)}, "
           f"máximo {max(entran) if entran else '—'}, n = {len(entran)}.")
+
+    # a3) deuda 11a
+    con_f = [e for e in eps if e.get("factibilidad")]
+    if con_f:
+        print("\n### a3) Factibilidad en el tiempo en la primera noche (deuda 11a)\n")
+        eleg = [e["factibilidad"] for e in con_f if "t_elegir" in e["factibilidad"]]
+        finitos = [f["t_elegir"] for f in eleg if f["t_elegir"] is not None]
+        hol = [f["holgura_elegir"] for f in eleg if f["holgura_elegir"] is not None]
+        print(f"- Episodios con datos: {len(con_f)}; con un sitio elegido en la ventana: {len(eleg)} "
+              f"(T infinito: {sum(f['t_elegir'] is None for f in eleg)}).")
+        print(f"- T_disponible al elegir: mediana {_med(finitos)} (p25-p75 {_cuartiles(finitos)}); "
+              f"holgura: mediana {_med(hol)} (p25-p75 {_cuartiles(hol)}).")
+        print(f"- D* en el ocaso: {dict(Counter(e['factibilidad'].get('d_estrella_ocaso') for e in con_f).most_common())}.")
+        ab = [e for e in eps if e.get("abandonos")]
+        primeros = [e["abandonos"][0] for e in ab]
+        print(f"- Episodios con abandono en la primera noche: {_pct(len(ab), len(eps))}; abandonos: "
+              f"{sum(len(e['abandonos']) for e in ab)} ({dict(Counter(a['de'] for e in ab for a in e['abandonos']))}); "
+              f"el primero, antes de lo oscuro en {sum(not a['oscuro'] for a in primeros)}.")
+        restantes = [a["coste_restante"] for a in primeros if a["coste_restante"] is not None]
+        print(f"- Latidos desde el ocaso hasta el primer abandono: mediana {_med([a['latido'] for a in primeros])}; "
+              f"coste que le quedaba al sitio: mediana {_med(restantes)}, 3 pasos o menos en {sum(1 for x in restantes if x <= 3)}.")
+        print(f"- Causa de la primera noche de los que abandonan: {dict(Counter(e['noche'] for e in ab).most_common())}.")
 
     # b)
     pasan = [e for e in eps if e["noche"] == "pasa la noche dentro"]
@@ -501,6 +586,7 @@ def main() -> int:
     p.add_argument("--salida", default="diagnostico_paso3.json")
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
                    help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
+    p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos (p. ej. factibilidad_temporal)")
     p.add_argument("--resumir", nargs="*", default=None, help="JSON de varias semillas: imprime las tablas")
     args = p.parse_args()
     if args.resumir:
