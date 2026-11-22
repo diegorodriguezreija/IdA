@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 import pytest
 
 from ida.core.memoria import Memoria
+from ida.core.mundo import MecanismosMemoria, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.sistemas.s3 import PerseguirMetas
@@ -38,11 +39,11 @@ def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0, pos: O
 
 
 def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float], delante: Optional[Dict[str, str]] = None,
-         latido: int = 1, ubicacion: str = "aqui") -> Any:
+         latido: int = 1, ubicacion: str = "aqui", perfil: Optional[Perfil] = None) -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion=ubicacion), verbos=set(Verbo))
+                           observacion=SimpleNamespace(ubicacion=ubicacion), verbos=set(Verbo), perfil=perfil or Perfil())
 
 
 def test_planificador_encadena_hacia_atras():
@@ -311,3 +312,25 @@ def test_primero_lo_que_se_lleva_despues_el_sitio():
     ctx.onda.canales["Propiocepcion"]["yo"].carga["inventario"] = {}
     propuestas = PerseguirMetas().actuar(ctx, None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_0_1")]
+
+
+def test_el_material_se_busca_tambien_en_el_mapa_local():
+    """Deuda 11c (interruptor ``material_mapa``). La meta pide madera, que da coger un árbol. No se ve ninguno, pero el mapa
+    local recuerda uno a 5 pasos por un pasillo: el planificador va hacia él por el mapa. Sin el interruptor, no."""
+    m = Memoria()
+    m.aplicar_manual({"inventario": ["madera"], "hechos": [
+        {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_b"},
+        {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_b", "requiere_inventario": {"madera": None}},
+        {"tipo": "requisito", "verbo": "COGER", "objetivo": "arbol", "requiere_inventario": {}, "efecto": {"madera": 1}},
+    ]})
+    m.casillas.update({(x, 0): "suelo" for x in range(6)})
+    m.casillas[(6, 0)] = "arbol"
+    m.paso_libre["suelo"] = 1
+    m.paso_bloqueado["arbol"] = 1
+    entidades = [_entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
+    con_mapa = Perfil(mecanismos=MecanismosMemoria(material_mapa=True))
+    propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", perfil=con_mapa), None)
+    assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
+    assert "volver a arbol (mapa, 5 pasos)" in propuestas[0].motivo
+    sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0"), None)
+    assert not any("(mapa," in p.motivo for p in sin_mapa), [p.motivo for p in sin_mapa]
