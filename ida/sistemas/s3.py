@@ -797,9 +797,7 @@ class PerseguirMetas(ConPropuestas):
             # reponer lo que consume. Así no se coloca una nueva mientras ir a la conocida cueste menos.
             colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
             confianza = r.confianza if r else 0.5
-            por_mapa = self._por_el_mapa(ctx, clase, confianza) if ctx.perfil.mecanismos.material_mapa else \
-                ir_por_el_mapa(ctx, clase, confianza, self._excluir(ctx))
-            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), por_mapa]
+            opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), self._por_el_mapa(ctx, clase, confianza)]
             opciones += [self._con_consumo(ctx, k, self._resolver(ctx, k, inv, visitado, prof + 1), inv, visitado, prof)
                          for k in colocadoras]
             p = mejor_de(opciones, f"falta cerca {clase}")
@@ -935,8 +933,7 @@ class PerseguirMetas(ConPropuestas):
         return False
 
     def _por_el_mapa(self, ctx: Contexto, clase: str, confianza: float) -> Optional[Paso]:
-        """``ir_por_el_mapa`` con caché por latido (el planificador la pide muchas veces por latido). Devuelve una copia.
-        Solo con el interruptor ``material_mapa`` (deuda 11c)."""
+        """``ir_por_el_mapa`` con caché por latido (el planificador la pide muchas veces por latido). Devuelve una copia."""
         clave = (ctx.latido, clase, self._excluir(ctx))
         if clave not in self._rutas_mapa:
             if len(self._rutas_mapa) > 200:
@@ -968,14 +965,11 @@ class PerseguirMetas(ConPropuestas):
         if cerca:
             p = max(cerca, key=lambda q: q.rasgo("proximidad"))
             return Paso(verbo, p.id, objetivo, penal, confianza, [texto])
-        if ctx.perfil.mecanismos.material_mapa:
-            # Deuda 11c: ir a por ello a lo visible, a lo que recuerda la memoria topológica o a una casilla recordada del
-            # mapa local de la que sale (p. ej. el material de un cierre), la de menor coste.
-            opciones = [q for q in (acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx)),
-                                    self._por_el_mapa(ctx, objetivo, confianza)) if q is not None]
-            ir = min(opciones, key=lambda q: q.coste) if opciones else None
-        else:
-            ir = acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx))
+        # Deuda 11c: ir a por ello a lo visible, a lo que recuerda la memoria topológica o a una casilla recordada del mapa
+        # local de la que sale (p. ej. el material de un cierre o de un lote), la de menor coste.
+        opciones = [q for q in (acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx)),
+                                self._por_el_mapa(ctx, objetivo, confianza)) if q is not None]
+        ir = min(opciones, key=lambda q: q.coste) if opciones else None
         if ir is not None:
             ir.coste += penal
             ir.motivo.insert(0, texto)
