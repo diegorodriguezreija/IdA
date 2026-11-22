@@ -8,7 +8,6 @@ from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
 from ida.core.memoria import Memoria
-from ida.core.mundo import MecanismosMemoria
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.sistemas.s3 import PerseguirMetas
@@ -41,9 +40,9 @@ def _entidad(id_: str, clase: str, proximidad: float, pos: tuple, lugar: float =
                                                        "datos": {"pos": pos}})
 
 
-def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1, **mecanismos: bool) -> Any:
+def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1, manual: Optional[Dict[str, Any]] = None) -> Any:
     m = Memoria()
-    m.aplicar_manual(MANUAL)
+    m.aplicar_manual(manual or MANUAL)
     entidades: List[Pieza] = [
         _entidad("c_1", "c", 1.0, (0, -1)),
         _entidad("taller_1", "taller", 1.0 if max(abs(taller[0]), abs(taller[1])) <= 1 else 0.2, taller),
@@ -52,8 +51,7 @@ def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1,
     ]
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
-    perfil = SimpleNamespace(mecanismos=MecanismosMemoria(**mecanismos))
-    return SimpleNamespace(memoria=m, onda=onda, con_experiencia=True, latido=latido, perfil=perfil,
+    return SimpleNamespace(memoria=m, onda=onda, con_experiencia=True, latido=latido,
                            observacion=SimpleNamespace(ubicacion="aqui_0_0"), verbos=set(Verbo))
 
 
@@ -63,62 +61,40 @@ def _propuesta(ctx: Any) -> Optional[Any]:
 
 
 def test_se_elige_un_lote_cuando_comparte_estacion():
-    p = _propuesta(_ctx({}, lote_estacion=True))
+    p = _propuesta(_ctx({}))
     assert p is not None and p.motivo.startswith("metas: lote taller (hacer_a, hacer_b)")
     assert (p.verbo, p.objetivo) == (Verbo.COGER, "c_1")
 
 
 def test_se_reune_el_material_antes_de_ir():
-    """Con una unidad basta para una meta suelta, que va ya al taller; el lote coge antes la segunda."""
-    sin = _propuesta(_ctx({"m": 1.0}))
+    """Con una unidad basta para una meta suelta, que va ya al taller (mundo con una sola meta); el lote coge antes la segunda."""
+    una = {"inventario": ["m"], "hechos": [h for h in MANUAL["hechos"] if h.get("objetivo") != "hacer_b"]}
+    sin = _propuesta(_ctx({"m": 1.0}, manual=una))
     assert sin is not None and sin.verbo == Verbo.MOVER and "lote" not in sin.motivo
-    con = _propuesta(_ctx({"m": 1.0}, lote_estacion=True))
+    con = _propuesta(_ctx({"m": 1.0}))
     assert con is not None and (con.verbo, con.objetivo) == (Verbo.COGER, "c_1") and "lote taller" in con.motivo
 
 
 def test_con_todo_el_material_el_lote_va_a_la_estacion():
-    p = _propuesta(_ctx({"m": 2.0}, lote_estacion=True))
+    p = _propuesta(_ctx({"m": 2.0}))
     assert p is not None and p.verbo == Verbo.MOVER and p.objetivo == "suelo_1_0"
 
 
 def test_junto_a_la_estacion_con_material_hace_la_meta_suelta():
-    p = _propuesta(_ctx({"m": 2.0}, taller=(1, 1), lote_estacion=True))
+    p = _propuesta(_ctx({"m": 2.0}, taller=(1, 1)))
     assert p is not None and p.verbo == Verbo.USAR and "lote" not in p.motivo
 
 
 def test_el_lote_en_curso_sigue_hasta_tener_el_material():
     """Junto al taller con una unidad, la meta suelta es más barata (la gastaría); si el lote ya está en curso, sigue
     reuniendo el material de las dos."""
-    suelta = _propuesta(_ctx({"m": 1.0}, taller=(1, 1), lote_estacion=True))
+    suelta = _propuesta(_ctx({"m": 1.0}, taller=(1, 1)))
     assert suelta is not None and suelta.verbo == Verbo.USAR and "lote" not in suelta.motivo
     plan = PerseguirMetas()
-    primero = plan.actuar(_ctx({}, latido=1, lote_estacion=True), None)[0]
+    primero = plan.actuar(_ctx({}, latido=1), None)[0]
     assert "lote taller" in primero.motivo
-    sigue = plan.actuar(_ctx({"m": 1.0}, taller=(1, 1), latido=2, lote_estacion=True), None)[0]
+    sigue = plan.actuar(_ctx({"m": 1.0}, taller=(1, 1), latido=2), None)[0]
     assert (sigue.verbo, sigue.objetivo) == (Verbo.COGER, "c_1") and "lote taller" in sigue.motivo
-    hecho = plan.actuar(_ctx({"m": 2.0}, taller=(1, 1), latido=3, lote_estacion=True), None)[0]
+    hecho = plan.actuar(_ctx({"m": 2.0}, taller=(1, 1), latido=3), None)[0]
     assert hecho.verbo == Verbo.USAR and "lote" not in hecho.motivo
 
-
-def test_junto_a_la_estacion_se_hace_lo_pendiente_que_ya_se_puede():
-    """Coger «d» (al lado, sin estación) y hacer «hacer_a» junto al taller cuestan lo mismo ahora; la primera meta
-    declarada gana el empate. Con ``aprovechar_estacion``, hacer_a cuenta lo que costaría volver al taller y gana."""
-    manual = {"inventario": ["m"], "hechos": [
-        {"tipo": "meta", "verbo": "COGER", "objetivo": "d"},
-        {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_a"},
-        {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_a", "requiere_inventario": {"m": None}, "requiere_cerca": ["taller"]},
-    ]}
-
-    def ctx(**mecanismos: bool) -> Any:
-        c = _ctx({"m": 1.0}, taller=(1, 1), **mecanismos)
-        c.memoria = Memoria()
-        c.memoria.aplicar_manual(manual)
-        c.onda.canales["Exterocepcion"]["d_1"] = _entidad("d_1", "d", 1.0, (0, 1))
-        return c
-
-    sin = _propuesta(ctx())
-    assert sin is not None and (sin.verbo, sin.objetivo) == (Verbo.COGER, "d_1")
-    con = _propuesta(ctx(aprovechar_estacion=True))
-    assert con is not None and (con.verbo, con.objetivo) == (Verbo.USAR, "hacer_a")
-    lejos = _ctx({"m": 1.0}, aprovechar_estacion=True)      # lejos del taller no hay ahorro: nada cambia
-    assert _propuesta(lejos) == _propuesta(_ctx({"m": 1.0}))

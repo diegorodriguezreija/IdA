@@ -101,8 +101,6 @@ class MecanismosMemoria:
     tasa_herencia: float = 1.0    # E7: fracción de lo aprendido que se hereda (1 = como base-v2.0)
     expectativa: bool = False     # F1: expectativas de S1 y S2 sobre el latido siguiente, contrastadas por el Core
     plan: bool = False            # F2: estrategias como cadena de pasos (Plan)
-    lote_estacion: bool = False   # deuda 14.2: planificar en lote las metas que comparten una estación (S3)
-    aprovechar_estacion: bool = False   # deuda 14.3: junto a la estación, lo que ya se puede hacer cuenta lo que costaría volver (S3)
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).
