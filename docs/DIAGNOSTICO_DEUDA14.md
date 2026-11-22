@@ -110,3 +110,54 @@ Tasas sobre todos los episodios de cada corrida (no solo los que tienen mesa).
 5. **Coste de cálculo:** +0,5 % y +1,1 % de tiempo total; ningún latido pasa de 4,3 ms.
 
 **Para las mediciones de 100 000 pasos:** el diagnóstico anticipa que el criterio 1 (espada) puede cumplirse con 14.2, y que el criterio 3 (Score > 0 en las dos semillas) está en duda por la semilla 32.
+
+---
+
+# Por qué PerseguirMetas no propone ninguna meta tras la mesa (22/11/2026)
+
+Pista del diagnóstico 14.1: en la mitad de los latidos tras la mesa, PerseguirMetas no proponía ninguna meta. Código `b4c73e9` (14.2 siempre activo). Solo diagnóstico, sin cambiar la conducta.
+
+```bash
+.venv\Scripts\python.exe herramientas\diagnostico_sin_meta.py --pasos 3000 --semilla S --plazo-logico 40 --salida datos\diagnostico\deuda14\sin_meta_semillaS.json
+.venv\Scripts\python.exe herramientas\diagnostico_sin_meta.py --resumir datos\diagnostico\deuda14\sin_meta_semilla3{1,2,3}.json
+```
+
+Semillas 31, 32 y 33, 3000 pasos cada una, en serie; 33 episodios y 0 latidos cortados. La herramienta envuelve `PerseguirMetas.actuar` y `_explorar_efectos` sin cambiar lo que devuelven. La Score de la semilla 31 (12,77) es la del humo sin herramienta. Clasifica cada latido desde la primera mesa en una sola causa (cabecera de la herramienta). Resumen completo: `datos/diagnostico/deuda14/resumen_sin_meta.md`.
+
+| Causa | 50 latidos tras la mesa (1284) | Todos los latidos tras la mesa (5697) |
+|---|---|---|
+| Sin cognición (dormía al empezar el latido) | 16 (1,2 %) | 639 (11,2 %) |
+| Guillotina | 0 | 0 |
+| Estrategia `perseguir_metas` no activa | 0 | 0 |
+| **Propuesta rechazada por amplitud** | **360 (28,0 %)** | **1411 (24,8 %)** |
+| **Ningún plan para ninguna meta pendiente** | **196 (15,3 %)** | **1813 (31,8 %)** |
+| Solo peticiones / sin metas pendientes | 0 | 0 |
+| Propone meta | 712 (55,5 %) | 1834 (32,2 %) |
+
+## 1. Propuesta rechazada por amplitud: la economía de atención
+
+PerseguirMetas calcula su meta, pero la pieza no llega a los candidatos: `Onda.proponer` la rechaza porque no queda amplitud (en el 98,6 % de esos latidos la amplitud del latido está agotada).
+
+| En los 50 latidos tras la mesa | Rechazada por amplitud (360) | Propone meta (712) |
+|---|---|---|
+| Amplitud máxima del latido (mediana) | 44 | 54 |
+| Consumo de S1 (mediana) | 23 | 12 |
+| Consumo de S1 + S2 (mediana) | 44 | 33 |
+| Consumo de S3 (mediana) | 3 | 16 |
+| Peligro del soma (mediana) | 0,15 | 0,13 |
+
+S3 corre el último. Cuando S1 gasta el doble de lo normal (23 frente a 12) y la amplitud es menor (44 frente a 54), S1 y S2 se gastan toda la amplitud y la propuesta de S3 no cabe. La amplitud baja con la energía (`Marcapasos.ritmo`: 120 × 0,45 × (0,5 + 0,5 × energía)). No es el peligro: su mediana es casi la misma (0,15 frente a 0,13). En 235 de esos 360 latidos estaba pendiente el pico o la espada de madera. Es la escasez de atención calibrada en la base (`docs/CALIBRACION_ATENCION.md`, «S3 se queda sin recursos»), no un fallo del planificador.
+
+## 2. Ningún plan: el material solo se busca en lo que se ve
+
+PerseguirMetas corre, pero `_resolver` no encuentra plan para ninguna meta pendiente, y queda la exploración de efectos.
+- En la ventana de 50 latidos, 110 de esos 196 latidos tenían pendiente el pico o la espada de madera. En esos 110, había un árbol a la vista en 20 y **en el mapa local en los 110**.
+- En todos los latidos tras la mesa (1813), la amplitud estaba agotada en la mitad (899). En los otros 914, las metas pendientes son sobre todo carbón, hierro, diamante y las herramientas de piedra y hierro. El árbol está en el mapa local en el 100 % y a la vista en el 36 %; el carbón, en el mapa en el 58 % y a la vista en el 0 %.
+
+**Causa en el código:** para conseguir material, `PerseguirMetas._ejecutar` va a lo que se ve o a lo que recuerda la memoria topológica (`acercarse_a_clase`, `memoria.donde_esta`). El mapa local de casillas (`ir_por_el_mapa`) solo se usa para los requisitos de cercanía (`_resolver`, «falta cerca»). Así que un árbol recordado en el mapa, pero fuera de la vista y sin entrada en `donde`, no da plan. Con la noche el radio de visión baja a 2: en el 41 % de los latidos «sin plan» sin árbol a la vista, la luz era < 0,3.
+
+## Lectura y propuestas (sin implementar)
+
+- **Las dos causas son de la base, no de Crafter,** y ninguna es «ninguna meta elegible»: siempre hay metas pendientes y la estrategia siempre está activa cuando hay cognición.
+- **Amplitud:** cualquier cambio toca la calibración de la atención (`FACTOR_AMPLITUD`, el orden S1 → S2 → S3), que vale para todos los mundos. Necesitaría su propio encargo y el benchmark de los otros mundos.
+- **Material desde el mapa local:** es lo que hacía 11c (`material_mapa`, rama `feature/deuda11`, commit `782909c`). Solo se midió combinado con 11a y 11b, que bajaban la Score (`docs/DIAGNOSTICO_DEUDA11.md`). Con el lote de 14.2, que necesita material antes de ir a la estación, podría ayudar más que entonces. Merece medirse solo, sobre 14.2.
