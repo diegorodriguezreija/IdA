@@ -105,6 +105,7 @@ class MecanismosMemoria:
     # Deuda 11 (docs/ENCARGO_DEUDA11_SITIO.md): cuándo merece la pena perseguir un sitio para protegerse (``Recinto``).
     factibilidad_temporal: bool = False   # 11a: solo se persigue un sitio que se completa antes de que llegue el peligro
     filtro_orientacion: bool = False      # 11b: sin los sitios que el modelo del cuerpo no deja cerrar, con tope de planes
+    material_mapa: bool = False           # 11c: el planificador busca el material también en el mapa local
 
 
 # Mecanismos de los bloques E y F (docs/MEDICIONES_E.md, docs/MEDICIONES_F.md, docs/VEREDICTO_E_F.md).
