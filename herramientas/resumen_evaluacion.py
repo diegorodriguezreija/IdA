@@ -7,6 +7,10 @@ ocurre en el mismo mundo en las dos (su semilla solo depende de i), así que se 
 episodios y se da la diferencia de Score y de cada logro (A − B) con su IC 95 % por bootstrap pareado
 (remuestreando índices de episodio). Necesita ``por_episodio`` en los JSON (``evaluar_crafter.py`` lo guarda desde
 la deuda 13).
+
+``--pareada-conjunta A1 B1 A2 B2 ...`` junta los episodios emparejados de varias semillas (cada par con su misma
+semilla base): la Score y las tasas se calculan con todos juntos y el IC sale de un bootstrap pareado estratificado
+por semilla (cada réplica remuestrea dentro de cada semilla tantos episodios como tiene).
 """
 
 import argparse
@@ -59,29 +63,56 @@ def comparar_pareado(a: Dict[str, Any], b: Dict[str, Any], n_boot: int = 2000, a
     bootstrap pareado: cada réplica remuestrea con reemplazo índices de episodio y usa el mismo índice en A y en B.
 
     Las diferencias van en puntos porcentuales. Lanza ``ValueError`` si los JSON no son de la misma semilla base
-    o no guardan ``por_episodio``."""
-    if a.get("semilla_base") != b.get("semilla_base"):
-        raise ValueError(f"semillas base distintas: {a.get('semilla_base')} y {b.get('semilla_base')}")
-    for nombre, d in (("A", a), ("B", b)):
-        if "por_episodio" not in d:
-            raise ValueError(f"{nombre} no guarda los logros por episodio (falta 'por_episodio'); guarda: {sorted(d)}")
-    n = min(len(a["por_episodio"]), len(b["por_episodio"]))
-    logros = sorted(set(a["tasas_logros"]) | set(b["tasas_logros"]))
-    # matrices 0/1 por logro y episodio
-    ma = [[1 if lg in set(ep["logros"]) else 0 for ep in a["por_episodio"][:n]] for lg in logros]
-    mb = [[1 if lg in set(ep["logros"]) else 0 for ep in b["por_episodio"][:n]] for lg in logros]
+    o no guardan ``por_episodio``. Es ``comparar_pareado_conjunto`` con un solo par."""
+    res = comparar_pareado_conjunto([(a, b)], n_boot=n_boot, alpha=alpha, semilla=semilla)
+    par = res["por_semilla"][0]
+    return {**res, "episodios": par["episodios"], "semilla_base": par["semilla_base"]}
+
+
+def comparar_pareado_conjunto(pares: List[Tuple[Dict[str, Any], Dict[str, Any]]], n_boot: int = 2000, alpha: float = 0.05,
+                              semilla: int = 42) -> Dict[str, Any]:
+    """Comparación pareada que junta varias semillas. Cada par (A, B) es de la misma semilla base y se empareja como en
+    ``comparar_pareado`` (los primeros min(n1, n2) episodios). La Score y las tasas se calculan sobre todos los episodios
+    emparejados juntos. El IC es por bootstrap pareado estratificado: cada réplica remuestrea con reemplazo, dentro de
+    cada semilla, tantos índices como episodios emparejados tiene, y usa el mismo índice en A y en B.
+
+    Las diferencias van en puntos porcentuales. Lanza ``ValueError`` si un par no es de la misma semilla base o no guarda
+    ``por_episodio``."""
+    if not pares:
+        raise ValueError("hace falta al menos un par")
+    for a, b in pares:
+        if a.get("semilla_base") != b.get("semilla_base"):
+            raise ValueError(f"semillas base distintas: {a.get('semilla_base')} y {b.get('semilla_base')}")
+        for nombre, d in (("A", a), ("B", b)):
+            if "por_episodio" not in d:
+                raise ValueError(f"{nombre} no guarda los logros por episodio (falta 'por_episodio'); guarda: {sorted(d)}")
+    logros = sorted({lg for a, b in pares for lg in (*a["tasas_logros"], *b["tasas_logros"])})
+    # matrices 0/1 por logro y episodio, con los episodios emparejados de todas las semillas uno tras otro
+    estratos: List[Tuple[int, int]] = []        # (desde, n) de cada semilla
+    eps_a: List[set] = []
+    eps_b: List[set] = []
+    for a, b in pares:
+        n = min(len(a["por_episodio"]), len(b["por_episodio"]))
+        estratos.append((len(eps_a), n))
+        eps_a += [set(ep["logros"]) for ep in a["por_episodio"][:n]]
+        eps_b += [set(ep["logros"]) for ep in b["por_episodio"][:n]]
+    total = len(eps_a)
+    if total == 0:
+        raise ValueError("ningún episodio emparejado")
+    ma = [[1 if lg in ep else 0 for ep in eps_a] for lg in logros]
+    mb = [[1 if lg in ep else 0 for ep in eps_b] for lg in logros]
 
     def medir(idx: List[int]) -> Tuple[float, List[float]]:
         ta = [100.0 * sum(fila[i] for i in idx) / len(idx) for fila in ma]
         tb = [100.0 * sum(fila[i] for i in idx) / len(idx) for fila in mb]
         return _score(ta) - _score(tb), [x - y for x, y in zip(ta, tb, strict=True)]
 
-    d_score, d_logros = medir(list(range(n)))
+    d_score, d_logros = medir(list(range(total)))
     rnd = random.Random(semilla)
     boot_score: List[float] = []
     boot_logros: List[List[float]] = [[] for _ in logros]
     for _ in range(n_boot):
-        idx = [rnd.randrange(n) for _ in range(n)]
+        idx = [desde + rnd.randrange(n) for desde, n in estratos for _ in range(n)]
         ds, dl = medir(idx)
         boot_score.append(ds)
         for k, v in enumerate(dl):
@@ -92,12 +123,13 @@ def comparar_pareado(a: Dict[str, Any], b: Dict[str, Any], n_boot: int = 2000, a
         return {"diferencia": dif, "ic": ic, "excluye_cero": ic[0] > 0.0 or ic[1] < 0.0}
 
     return {
-        "episodios_pareados": n,
-        "episodios": (len(a["por_episodio"]), len(b["por_episodio"])),
-        "semilla_base": a.get("semilla_base"),
+        "episodios_pareados": total,
+        "por_semilla": [{"semilla_base": a.get("semilla_base"), "episodios_pareados": n,
+                         "episodios": (len(a["por_episodio"]), len(b["por_episodio"]))}
+                        for (a, b), (_, n) in zip(pares, estratos, strict=True)],
         "n_boot": n_boot,
-        "score": {**fila(d_score, boot_score), "a": _score([100.0 * sum(f) / n for f in ma]),
-                  "b": _score([100.0 * sum(f) / n for f in mb])},
+        "score": {**fila(d_score, boot_score), "a": _score([100.0 * sum(f) / total for f in ma]),
+                  "b": _score([100.0 * sum(f) / total for f in mb])},
         "logros": {lg: fila(d_logros[k], boot_logros[k]) for k, lg in enumerate(logros)},
     }
 
@@ -109,6 +141,33 @@ def generar_tabla_pareada(nombre_a: str, nombre_b: str, res: Dict[str, Any]) -> 
     lineas = [
         f"### {nombre_a} frente a {nombre_b} (semilla base {res['semilla_base']}, {res['episodios_pareados']} episodios "
         f"pareados de {res['episodios'][0]} y {res['episodios'][1]}, {res['n_boot']} réplicas)",
+        "",
+        f"Score en los episodios pareados: {f(s['a'])} % frente a {f(s['b'])} %.",
+        "",
+        "| Medida | Diferencia (pp) | IC 95 % pareado (pp) | ¿Excluye el 0? |",
+        "|---|---|---|---|",
+    ]
+
+    def linea(etiqueta: str, x: Dict[str, Any]) -> str:
+        return (f"| {etiqueta} | {f(x['diferencia'])} | [{f(x['ic'][0])}, {f(x['ic'][1])}] | "
+                f"{'**Sí**' if x['excluye_cero'] else 'No'} |")
+
+    lineas.append(linea("**Score**", s))
+    lineas += [linea(f"`{lg}`", x) for lg, x in res["logros"].items()]
+    return "\n".join(lineas) + "\n"
+
+
+def generar_tabla_pareada_conjunta(nombres: List[Tuple[str, str]], res: Dict[str, Any]) -> str:
+    """Tabla markdown de ``comparar_pareado_conjunto``."""
+    f = formatear_float_es
+    s = res["score"]
+    pares = "; ".join(f"{a} frente a {b} (semilla base {p['semilla_base']}, {p['episodios_pareados']} pareados de "
+                      f"{p['episodios'][0]} y {p['episodios'][1]})" for (a, b), p in zip(nombres, res["por_semilla"], strict=True))
+    lineas = [
+        f"### Comparación pareada conjunta ({res['episodios_pareados']} episodios pareados, {res['n_boot']} réplicas "
+        f"estratificadas por semilla)",
+        "",
+        f"Pares: {pares}.",
         "",
         f"Score en los episodios pareados: {f(s['a'])} % frente a {f(s['b'])} %.",
         "",
@@ -1624,6 +1683,14 @@ def main() -> int:
         help="Compara episodio a episodio dos JSON de la misma semilla base (diferencia A - B con IC pareado)",
     )
     parser.add_argument(
+        "--pareada-conjunta",
+        nargs="+",
+        metavar="JSON",
+        default=None,
+        help="Pares A1 B1 A2 B2 ... (cada par de la misma semilla base): diferencia A - B con los episodios pareados de "
+             "todas las semillas juntos e IC por bootstrap pareado estratificado por semilla",
+    )
+    parser.add_argument(
         "--salida",
         type=str,
         default=None,
@@ -1631,7 +1698,22 @@ def main() -> int:
     )
     args = parser.parse_args()
 
-    if args.pareada:
+    if args.pareada_conjunta:
+        if len(args.pareada_conjunta) % 2:
+            print("No se puede comparar: --pareada-conjunta necesita pares A B")
+            return 1
+        datos = []
+        for ruta in args.pareada_conjunta:
+            with open(ruta, encoding="utf-8") as fh:
+                datos.append(json.load(fh))
+        try:
+            res = comparar_pareado_conjunto([(datos[i], datos[i + 1]) for i in range(0, len(datos), 2)])
+        except ValueError as exc:
+            print(f"No se puede comparar: {exc}")
+            return 1
+        nombres = [os.path.splitext(os.path.basename(r))[0] for r in args.pareada_conjunta]
+        salida = generar_tabla_pareada_conjunta([(nombres[i], nombres[i + 1]) for i in range(0, len(nombres), 2)], res)
+    elif args.pareada:
         datos = []
         for ruta in args.pareada:
             with open(ruta, encoding="utf-8") as fh:
