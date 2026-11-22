@@ -4,6 +4,14 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Deuda 14: cadena de herramientas (cumplida en parte)
+- **Lote por estación (14.2, `PerseguirMetas`, S3):** las metas que piden la misma estación de trabajo se planifican juntas. Primero se reúne todo su material (también el de colocar la estación) y después se va a la estación; el lote sigue en curso hasta tener el material. Siempre activo.
+- **Retirado 14.3** («aprovechar la estación mientras está al alcance»): en el diagnóstico no añadía nada sobre 14.2.
+- **Crafter declara su ritmo** por turnos, con un plazo base de 1000 ms (14.0); el JSON de 3000 pasos no cambia.
+- **`resumen_evaluacion.py --pareada-conjunta`:** comparación pareada que junta varias semillas, con bootstrap estratificado por semilla. Desde ahora los criterios se fijan sobre ella antes de medir.
+- **Cifras** (100 000 pasos, semillas 31 y 32, frente a `base_v2`): Score 14,83 % y 15,98 % (antes, 14,04 % y 15,45 %); diferencia pareada +0,76 y +0,57 puntos, sin que ningún IC excluya el 0; conjunta, +0,64 [0,04; 1,29] (no prevista de antemano). `make_wood_sword` +5,50 y +7,12, y el pico y la espada de piedra suben, todos con IC que excluyen el 0. Coste: `collect_drink` −3,40 en la semilla 31 y `eat_cow` −2,28 en el conjunto. El pico de madera baja −0,27 en la semilla 32 (criterio 2 sin cumplir).
+- **Diagnósticos:** `herramientas/diagnostico_deuda14.py` y `herramientas/diagnostico_sin_meta.py` (`docs/DIAGNOSTICO_DEUDA14.md`).
+
 ### Método de medición
 - Guillotina lógica (--plazo-logico): plazo en operaciones en lugar de milisegundos; evaluaciones idénticas aunque la máquina esté cargada.
 - Comparación pareada episodio a episodio (resumen_evaluacion.py --pareada), con IC 95 % por bootstrap pareado.
