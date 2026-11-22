@@ -111,3 +111,32 @@ Si ninguna combinación cumple el criterio 1, se documenta como resultado negati
 - **D\* mal aprendido con pocas noches:** el previo (0,7, con peso 2) lo protege al principio de cada vida. Sin herencia, cada episodio vuelve a empezar desde el previo, y eso se declara.
 - **Abandono en falso al principio de una noche larga:** la regla 2 usa el coste restante. Hay que vigilar en la traza que no abandona un sitio casi terminado.
 - **Coste de cálculo:** 11a solo añade una resta por candidato. 11b y 11c ya se midieron, con sus latidos lentos y su arreglo.
+
+## Resultado
+
+**Resultado negativo; la deuda 11 se cierra sin mediciones de 100 000 pasos.** Rama `feature/deuda11`. Diagnóstico completo en [`docs/DIAGNOSTICO_DEUDA11.md`](DIAGNOSTICO_DEUDA11.md): 3 semillas (31, 32 y 33) × 10 000 pasos, en serie, `--plazo-logico 40`, 0 latidos cortados.
+
+**Primera ronda (11a tal como está en la sección 3):**
+- «Pasa la noche dentro» cae de 13 a 0 episodios y la Score total de 42,65 a 36,95 (38,04 con 11b y 34,07 con 11c).
+- **Causa:** D\* vale el previo 0,7 en todos los ocasos, y 0,7 es luz 0,3, justo el umbral de «oscuro». Así que todo sitio sin terminar se abandona al oscurecer. Pero los refugios que funcionan se completan de noche: 28 latidos oscuros fuera antes de entrar, en mediana, con los interruptores apagados.
+
+**Segunda ronda (11a′):**
+- **Cambios:** el previo de D\* pasa a 1,0 con peso 1, y el sitio en curso ya no se abandona por tiempo. La factibilidad se aplica solo a empezar un sitio nuevo y a pedir material o herramientas.
+- **Regla de cierre, decidida de antemano:** superar a «apagados» en la Score total y en las noches dentro.
+
+| Condición | Score total | Pasa la noche dentro |
+|---|---|---|
+| Apagados | 42,65 | 13 |
+| 11a′ | 40,33 | 5 |
+| 11a′+11b | 38,71 | 4 |
+| 11a′+11b+11c | 34,44 | 4 |
+
+Ninguna combinación cumple la regla de cierre.
+
+**Criterios de la sección 6:**
+- El 1 y el 2 no se han medido: la regla de cierre lo hace innecesario.
+- El 3 no se cumple: «muere antes de anochecer» pasa de 1 a 2, 4 y 7.
+- El 4 se cumple: invariancia OK en mínimo, archivos y ajedrez con los tres interruptores.
+- El 5 se cumple: los tests de juguete están en `tests/test_proteger.py`.
+
+**Estado del código:** 11a′, 11b y 11c quedan en `feature/deuda11` tras sus interruptores (`factibilidad_temporal`, `filtro_orientacion` y `material_mapa`), apagados por defecto. El encargo dice que, con un resultado negativo, «se quita todo»; queda pendiente decidir si se quitan de la rama o la rama no se fusiona.

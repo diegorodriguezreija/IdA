@@ -76,3 +76,59 @@ No medir E1-E3 a 100 000 pasos tal como están: el diagnóstico anticipa que nin
 - La tendencia para T_disponible podría usar una ventana más corta que la de la alostasis.
 
 Cualquiera de las tres cambia el diseño de 11a, así que es una decisión del autor.
+
+---
+
+# Segunda ronda: 11a′ (22/11/2026)
+
+Código `7a8cf4a` (11a′) y `3f54020` (herramienta). Mismo comando y mismas semillas; «apagados» es el de la primera ronda.
+
+**Qué cambia en 11a′:**
+- **D\*:** el previo pasa a 1,0 con peso 1, así que la primera observación de daño domina. La observación no cambia.
+- **El sitio en curso no se abandona por tiempo:** solo, como antes, si se pierde o deja de poder completarse.
+- **Dónde se aplica la factibilidad** (coste completo × 1,2 ≤ T_disponible): solo a empezar un sitio nuevo y a pedir material o herramientas.
+
+**Regla de cierre, decidida antes de medir:** si ninguna combinación supera a «apagados» en la Score total de las 3 semillas y en las noches pasadas dentro, resultado negativo y se cierra.
+
+| Métrica | Apagados | 11a′ | 11a′+11b | 11a′+11b+11c |
+|---|---|---|---|---|
+| Score por semilla (31 / 32 / 33) | 15,05 / 17,00 / 10,60 | 12,68 / 16,63 / 11,02 | 10,64 / 15,56 / 12,51 | 12,36 / 10,58 / 11,50 |
+| **Score total** | **42,65** | 40,33 | 38,71 | 34,44 |
+| Episodios | 112 | 117 | 121 | 126 |
+| Pasos por episodio (media) | 267,9 | 256,4 | 247,9 | 238,1 |
+| Episodios con `wake_up` | 21 | 16 | 13 | 11 |
+| Latidos cortados (guillotina lógica) | 0 | 0 | 0 | 0 |
+| Latidos de más de 100 ms de reloj; máximo | 0; 52,3 ms | 0; 74,0 ms | 4 (0, 3, 1); 504,7 ms | 0; 98,3 ms |
+| **Primera noche** | | | | |
+| Muere antes de anochecer | 1 | 2 | 4 | 7 |
+| No encuentra sitio | 57 (50,9 %) | 89 (76,1 %) | 88 (72,7 %) | 93 (73,8 %) |
+| No lo completa a tiempo | 34 (30,4 %) | 14 (12,0 %) | 17 (14,0 %) | 17 (13,5 %) |
+| Sale antes del amanecer | 4 | 4 | 6 | 3 |
+| **Pasa la noche dentro** | **13 (11,6 %)** | 5 (4,3 %) | 4 (3,3 %) | 4 (3,2 %) |
+| Latidos oscuros fuera antes de entrar (mediana; n) | 28; 17 | 16; 9 | 12; 10 | 21; 7 |
+| **11a′** | | | | |
+| Sitios no empezados o peticiones no hechas por falta de tiempo: episodios (evaluaciones; sitio / requisitos) | — | 80 (530; 195 / 335) | 92 (855; 191 / 664) | 102 (1029; 185 / 844) |
+| — de esos, antes de lo oscuro | — | 37 | 59 | 69 |
+| «No encuentra sitio» con ese motivo | — | 35 | 55 | 66 |
+| T_disponible al elegir (mediana, p25-p75) | — | 30 (15-80) | 37 (20-87) | 39 (22-86) |
+| Holgura al elegir (mediana) | — | 16 | 15 | 18 |
+| D\* en el ocaso = 1,0 (previo) / aprendido | — | 31 / 83 | 23 / 96 | 26 / 96 |
+| Error de T_disponible: previsto − real hasta el primer daño (mediana, p25-p75; n) | — | 21 (−4-41); 26 | 23 (6-52); 38 | 23 (1-38); 57 |
+| — previsto / real (medianas) | — | 36 / 24 | 39 / 20 | 37 / 18 |
+| **Cadena de herramientas** | | | | |
+| Pico tras la mesa | 77,9 % | 76,8 % | 76,5 % | 80,0 % |
+| Espada tras la mesa | 51,6 % | 52,5 % | 52,0 % | 45,7 % |
+
+«Real hasta el primer daño» es el número de latidos desde la elección hasta la primera bajada de salud dentro de la ventana de la primera noche, sea cual sea la causa. Los episodios sin daño en la ventana quedan fuera (censurados: 7, 7 y 8).
+
+## Lectura
+
+1. **No se cumple la regla de cierre.** Ninguna combinación supera a «apagados» ni en la Score total (40,33, 38,71 y 34,44, frente a 42,65) ni en las noches pasadas dentro (5, 4 y 4, frente a 13). Es un resultado negativo.
+2. **11a′ recupera parte de lo que perdía 11a** (noches dentro: de 0 a 5; Score total: de 36,95 a 40,33), pero sigue por debajo. El 68-81 % de los episodios tiene al menos una evaluación sin empezar sitio o sin pedir material por falta de tiempo. En 35-66 de ellos la primera noche acaba en «no encuentra sitio» por ese motivo. Lo que se deja de hacer son sobre todo peticiones (requisitos).
+3. **D\* se aprende antes de la primera noche** en 83-96 episodios, con valores de 0,52 a 0,74 en el ocaso. Es decir, el primer daño atribuido o el primer peligro por encima del umbral de miedo llegan ya con déficits de 0,5-0,7, a menudo de día o al empezar el ocaso.
+4. **La estimación sobrestima el tiempo:** T_disponible al elegir vale una mediana de 36-39 latidos, y el primer daño llega a los 18-24. El error mediano es de 21-23 latidos. Aun así, restringir lo que se empieza o se pide empeora el resultado, así que una ventana más corta (T más pequeño) restringiría más. El diagnóstico no apoya probarla.
+5. **Coste de cálculo:** con 11a′+11b, 4 latidos pasan de 100 ms de reloj (3 en la semilla 32 y 1 en la 33; máximo 504,7 ms). Con `--plazo-logico` no cambian el resultado, pero con el plazo de reloj por defecto se cortarían. En las otras dos condiciones no hay ninguno.
+
+## Decisión
+
+Se cierra la deuda 11 con resultado negativo, sin mediciones de 100 000 pasos (regla de cierre). Con los datos de las dos rondas, en la línea general de hoy no ayuda poner condiciones de tiempo a la búsqueda de sitio, ni recuperar el filtro de orientación o el material desde el mapa local. Sin ellas, Proteger completa más refugios, muchos ya de noche. El código de 11a′, 11b y 11c queda en `feature/deuda11` tras sus interruptores, apagados por defecto.
