@@ -20,7 +20,10 @@ bebida (0-9) en el primer latido fuera del recinto.
 
 **a3) Factibilidad en el tiempo** (deuda 11a, solo con ``--mecanismos factibilidad_temporal``): en la primera noche,
 ``T_disponible`` y la holgura del sitio en el primer latido desde el ocaso con un sitio elegido (con plan o con
-requisitos), D* en el ocaso y los abandonos (latido desde el ocaso y coste que le quedaba al sitio abandonado).
+requisitos), D* en el ocaso, los abandonos (11a original: latido desde el ocaso y coste que le quedaba al sitio), los
+sitios no empezados y las peticiones no hechas por falta de tiempo (11a': carga ``sin_tiempo``), y el error de la
+estimación: ``T_disponible`` al elegir frente a los latidos que pasan hasta el primer daño real (la salud baja) dentro de
+la ventana (sin daño en la ventana, censurado).
 
 **Latidos lentos:** en cada latido, los ms de reloj de pared de la cognición (desde que se percibe hasta que se actúa, lo
 que mira la guillotina por reloj), también con ``--plazo-logico``. El resumen cuenta los que pasan de 100 ms.
@@ -194,7 +197,9 @@ class Episodio:
         self.ms_max = 0.0
         self.factibilidad: Dict[str, Any] = {}        # a3) deuda 11a en la primera noche
         self.abandonos: List[Dict[str, Any]] = []
+        self.sin_tiempo: List[Dict[str, Any]] = []
         self.coste_previo: Optional[float] = None
+        self.salud_previa: Optional[int] = None
 
     def latido(self, org: Any, onda: Any) -> None:
         self.n += 1
@@ -240,7 +245,7 @@ class Episodio:
                 self.latidos_oscuro_fuera_antes_de_entrar += 1
             if self.fase == "oscuro":
                 self.dentro_al_final_oscuro = dentro
-        self._factibilidad(onda, n)
+        self._factibilidad(onda, n, int(jug.health))
         if self.fase == "oscuro" and luz >= OSCURO:
             self.fase, self.t_fin_noche = "despues", n
         if self.fase == "despues" and self.salida_tras_noche is None and dentro and self.dentro_al_final_oscuro:
@@ -285,8 +290,10 @@ class Episodio:
                 if mejor_metas is not None:
                     self.metas[clave][_motivo(str(mejor_metas.get("motivo", "")))] += 1
 
-    def _factibilidad(self, onda: Any, n: int) -> None:
+    def _factibilidad(self, onda: Any, n: int, salud: int) -> None:
         """a3) Deuda 11a, en la ventana de la primera noche (del ocaso al final de lo oscuro)."""
+        dano = self.salud_previa is not None and salud < self.salud_previa
+        self.salud_previa = salud
         r = onda.reactiva.ef.get("Recinto", {}).get("recinto")
         c = r.carga if r is not None else {}
         if "t_disponible" not in c:
@@ -298,7 +305,12 @@ class Episodio:
         f = self.factibilidad
         f.setdefault("d_estrella_ocaso", c.get("d_estrella"))
         if "t_elegir" not in f and c.get("coste") is not None and not c.get("dentro"):
-            f.update(t_elegir=c.get("t_disponible"), holgura_elegir=c.get("holgura"), latido_elegir=n - (self.t_ocaso or n))
+            f.update(t_elegir=c.get("t_disponible"), holgura_elegir=c.get("holgura"), latido_elegir=n - (self.t_ocaso or n),
+                     n_elegir=n, hasta_dano=None)
+        if dano and "n_elegir" in f and f.get("hasta_dano") is None:
+            f["hasta_dano"] = n - f["n_elegir"]
+        if c.get("sin_tiempo"):
+            self.sin_tiempo.append({"latido": n - (self.t_ocaso or n), "oscuro": self.fase == "oscuro", "de": c["sin_tiempo"]})
         if c.get("abandono"):
             self.abandonos.append({"latido": n - (self.t_ocaso or n), "oscuro": self.fase == "oscuro", "de": c["abandono"],
                                    "coste_restante": coste_previo})
@@ -320,6 +332,8 @@ class Episodio:
             return "no encuentra sitio", "sin pieza recinto"
         if not e["accion"] and not e["requiere"] and not e["dentro"] and any(not a["oscuro"] for a in self.abandonos):
             return "no encuentra sitio", "abandona el sitio antes de lo oscuro (11a)"
+        if not e["accion"] and not e["requiere"] and not e["dentro"] and any(not a["oscuro"] for a in self.sin_tiempo):
+            return "no encuentra sitio", "no empieza o no pide por falta de tiempo (11a')"
         if e["dentro"]:
             return "no lo completa a tiempo", "cree estar dentro"
         if e["accion"]:
@@ -342,7 +356,7 @@ class Episodio:
                 "retencion_proteger": dict(self.retencion_proteger),
                 "retencion_impulsos": self.retencion_impulsos, "guillotinas": self.guillotinas,
                 "aperturas": self.aperturas, "ms_reloj_lentos": self.ms_reloj, "ms_reloj_max": round(self.ms_max, 1),
-                "factibilidad": self.factibilidad, "abandonos": self.abandonos}
+                "factibilidad": self.factibilidad, "abandonos": self.abandonos, "sin_tiempo": self.sin_tiempo}
 
 
 def ejecutar(args: argparse.Namespace) -> int:
@@ -432,15 +446,28 @@ def resumir(rutas: List[str]) -> int:
         print(f"- T_disponible al elegir: mediana {_med(finitos)} (p25-p75 {_cuartiles(finitos)}); "
               f"holgura: mediana {_med(hol)} (p25-p75 {_cuartiles(hol)}).")
         print(f"- D* en el ocaso: {dict(Counter(e['factibilidad'].get('d_estrella_ocaso') for e in con_f).most_common())}.")
+        st = [e for e in eps if e.get("sin_tiempo")]
+        print(f"- Sitios no empezados o peticiones no hechas por falta de tiempo: {_pct(len(st), len(eps))} episodios; "
+              f"{sum(len(e['sin_tiempo']) for e in st)} evaluaciones "
+              f"({dict(Counter(a['de'] for e in st for a in e['sin_tiempo']))}); antes de lo oscuro en "
+              f"{sum(1 for e in st if any(not a['oscuro'] for a in e['sin_tiempo']))} episodios.")
+        if st:
+            print(f"- Causa de la primera noche de esos episodios: {dict(Counter(e['noche'] for e in st).most_common())}.")
+        err = [(f["t_elegir"], f["hasta_dano"]) for f in eleg if f.get("t_elegir") is not None and f.get("hasta_dano") is not None]
+        cens = [f for f in eleg if f.get("t_elegir") is not None and "hasta_dano" in f and f["hasta_dano"] is None]
+        print(f"- Error de T_disponible (previsto − latidos reales hasta el primer daño en la ventana): mediana "
+              f"{_med([t - r for t, r in err])} (p25-p75 {_cuartiles([t - r for t, r in err])}), n = {len(err)}; "
+              f"previsto {_med([t for t, _ in err])}, real {_med([r for _, r in err])}; sin daño en la ventana: {len(cens)}.")
         ab = [e for e in eps if e.get("abandonos")]
         primeros = [e["abandonos"][0] for e in ab]
-        print(f"- Episodios con abandono en la primera noche: {_pct(len(ab), len(eps))}; abandonos: "
-              f"{sum(len(e['abandonos']) for e in ab)} ({dict(Counter(a['de'] for e in ab for a in e['abandonos']))}); "
-              f"el primero, antes de lo oscuro en {sum(not a['oscuro'] for a in primeros)}.")
-        restantes = [a["coste_restante"] for a in primeros if a["coste_restante"] is not None]
-        print(f"- Latidos desde el ocaso hasta el primer abandono: mediana {_med([a['latido'] for a in primeros])}; "
-              f"coste que le quedaba al sitio: mediana {_med(restantes)}, 3 pasos o menos en {sum(1 for x in restantes if x <= 3)}.")
-        print(f"- Causa de la primera noche de los que abandonan: {dict(Counter(e['noche'] for e in ab).most_common())}.")
+        if ab:
+            print(f"- Episodios con abandono en la primera noche: {_pct(len(ab), len(eps))}; abandonos: "
+                  f"{sum(len(e['abandonos']) for e in ab)} ({dict(Counter(a['de'] for e in ab for a in e['abandonos']))}); "
+                  f"el primero, antes de lo oscuro en {sum(not a['oscuro'] for a in primeros)}.")
+            restantes = [a["coste_restante"] for a in primeros if a["coste_restante"] is not None]
+            print(f"- Latidos desde el ocaso hasta el primer abandono: mediana {_med([a['latido'] for a in primeros])}; "
+                  f"coste que le quedaba al sitio: mediana {_med(restantes)}, 3 pasos o menos en {sum(1 for x in restantes if x <= 3)}.")
+            print(f"- Causa de la primera noche de los que abandonan: {dict(Counter(e['noche'] for e in ab).most_common())}.")
 
     # b)
     pasan = [e for e in eps if e["noche"] == "pasa la noche dentro"]
