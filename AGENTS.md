@@ -11,29 +11,33 @@ La base (Core y sistemas S1, S2, S3) se está rediseñando. Antes de cualquier c
 
 Implementa solo el bloque que te encarguen. Lo que el borrador describe para otros bloques queda fuera de alcance aunque parezca relacionado. No empieces un bloque si el anterior no cumple su condición de paso.
 
-## Fase de mejora de los mundos
+Los bloques A a F están terminados. Donde [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) decide algo distinto, manda ese documento.
 
-Tras el bloque D la base (Core y sistemas) queda congelada como referencia ([`docs/REFERENCIA_BASE.md`](docs/REFERENCIA_BASE.md)). Mientras dure esta fase:
+## Fase actual: reorganización por Componentes
 
-- **Solo se tocan `ida/mundos/` y sus tests.** Ni `ida/core/` ni `ida/sistemas/`, sin excepción.
-- **Las mejoras son estrategias, impulsos, percepción o interpretación del mundo:**
-  - **Componentes propios del mundo** (`Mundo.componentes_propios`, por etapa: `"CORE.Sentir"`, `"S1.Interpretar"`, `"S3.Reaccionar"`...) para percepción, interpretación e impulsos, **siempre produciendo piezas de su propio tipo** (un tipo nuevo del mundo, nunca uno de un componente de la base).
-  - **Estrategias propias** (`Mundo.estrategias_propias`, que pueden sustituir a una genérica con su mismo nombre).
-  - Necesidades e intenciones declaradas en el `Perfil`, y rasgos y datos que el sensor entrega.
-- **Las acciones, solo mediante estrategias del mundo** (`estrategias_propias`). Ningún componente propio propone acciones directamente.
-- **Mecanismos de memoria (bloques E y F):** están en el código, apagados en todos los mundos. Un mundo solo los activa en su `Perfil` (`mecanismos`) si un benchmark pareado (N = 10) demuestra su valor frente a la referencia ([`docs/VEREDICTO_E_F.md`](docs/VEREDICTO_E_F.md)).
-- **Regla 3:** las estrategias leen solo la percepción (piezas de la Onda), no el estado interno del mundo.
-- **Regla 4:** nada de secuencias de acciones cableadas para un fin concreto; una estrategia es una máquina de estados con fases que responde a lo percibido.
-- **Si una mejora necesita cambiar la base, se anota y no se hace.** Va a la lista de pendientes para el bloque E o posteriores.
-- **Cada mejora se mide** con `herramientas/benchmark.py` (N = 10, pareado) frente a la referencia congelada, y se publica también si empeora.
-- Mientras se mide, en la máquina no corre ningún otro proceso de IdA (ni tests ni pruebas rápidas). La guillotina corta por reloj, así que la carga cambia los resultados. Cada medición registra sus latidos cortados.
+Desde el 22/11/2026 el trabajo sigue [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) (decisiones D1 a D17) y su plan (fases A y B). La etapa en la que la base estaba congelada y solo se tocaba `ida/mundos/` terminó con la fase de generalización de Crafter.
+
+- **Implementa solo el paso que te encarguen** (A1, A2...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
+- **Fase A: mismo resultado.** Con `--plazo-logico 40`, el JSON de `evaluar_crafter.py` (3000 pasos, semillas 31 y 32) debe ser idéntico al de `main`, `invariancia.py` debe dar OK y los tests deben pasar. Si algo cambia, para y explica por qué antes de seguir.
+- **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir.
+- **Componentes de mundo:**
+  - se declaran en el registro del mundo (`añade` o `sustituye`), nunca por el nombre de un fichero;
+  - pueden emitir y modificar piezas de un tipo de la base si son de ese tipo (propiedad por tipo);
+  - solo los Componentes `Accion` proponen acciones.
+- **La Observación solo la leen los sensores del Core** y los del mundo en `core/sentir/`. Los datos en bruto no llevan valoración: `nutritivo`, `peligro`, `recurso` y `novedad` los interpreta el organismo. Si un mundo los entrega hechos, lo declara en `Perfil.rasgos_declarados`.
+- **Preatención:** solo modifica las piezas de los sensores, no crea piezas, no propone acciones y su coste es lineal en lo percibido.
+- **Estrategias:** se activan por piezas de la Onda (nunca por el paso, el reloj ni el estado interno del mundo), pueden omitirse, compiten en el Tribunal y sus umbrales son parámetros o se aprenden. Pueden tener fases con esas condiciones.
+- **Las constantes de escala** van en el `Perfil` del mundo o en los parámetros de su cuerpo, no en los Componentes generales.
+- **Lo aprendido es de cada mundo:** no pasa de un mundo a otro.
+- **Mecanismos de memoria (bloques E y F):** siguen apagados por defecto; un mundo los activa en su `Perfil` si un benchmark pareado demuestra su valor ([`docs/VEREDICTO_E_F.md`](docs/VEREDICTO_E_F.md)).
+- Mientras se mide, en la máquina no corre ningún otro proceso de IdA (ni tests ni pruebas rápidas). Cada medición registra sus latidos cortados.
 - Los agentes no instalan paquetes sin permiso del autor.
 
 ## No negociables
 
 1. **No debilites los tests.** No quites palabras de `PALABRAS_DE_MUNDO` ni imports de `IMPORTS_PROHIBIDOS` en `tests/test_pureza.py`, no añadas excepciones y no relajes aserciones ni umbrales para que algo pase. Si un test falla, di qué falla y por qué.
 2. **No metas conocimiento de un mundo en `ida/core/` ni en `ida/sistemas/`**, ni directamente ni con trucos que el test no ve (cadenas construidas en ejecución, imports dinámicos, umbrales afinados para un mundo). Va en `ida/mundos/<mundo>`.
-3. **El mundo percibe; IdA piensa.** No mejores un mundo haciendo que su sensor calcule por el individuo (búsquedas, planes, oráculos externos). Mejora su percepción o sus componentes propios.
+3. **El mundo percibe; IdA piensa.** No mejores un mundo haciendo que su sensor calcule o valore por el individuo (búsquedas, planes, oráculos externos, rasgos valorados). Mejora su percepción en bruto o sus Componentes propios.
 4. **Harness engineering: consistencia biológica sin atajos ni trucos rígidos.**
    - Las conductas adaptativas deben apoyarse en principios biológicos plausibles: mapas cognitivos/hipocampales, aliestesia homeostática, asimetrías lucha/huida reguladas por el estado somático y equipamiento, o aprendizaje de contingencias.
    - Prohibido parchear comportamientos mediante autómatas deterministas rígidos, "trampas" de juego, secuencias de acciones cableadas para un fin específico o saltos que ignoren el arbitraje del Tribunal.

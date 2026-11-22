@@ -2,6 +2,8 @@
 
 Estado tras el rediseño de la base (bloques A a D de [`docs/PLAN_IMPLEMENTACION.md`](../docs/PLAN_IMPLEMENTACION.md); diseño en [`docs/REDISENO_BASE.md`](../docs/REDISENO_BASE.md)).
 
+> **En migración (22/11/2026).** Las secciones 1 a 6 describen el código actual (`crafter-general-v4`). El diseño objetivo, al que se migra sin cambiar la conducta, está resumido en la sección 7 y decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md).
+
 ## 1. El Latido Vital: La Unidad Fundamental del Tiempo
 
 En IdA, la vida discurre a través de una sucesión de **latidos** rítmicos (`ida/core/latido.py`). Cada latido es un ciclo completo de sentir, interpretar, reaccionar, actuar y cerrar.
@@ -52,7 +54,7 @@ Cada sistema tiene las mismas etapas y una meta propia. **Un impulso** es el por
 | Reaccionar | `Reflejo` (solo ante saltos bruscos del peligro), `Impulso` (una necesidad por constante vital del mundo y Seguridad), `Feedback` (bajan los déficits), `Estrategia` | `Exteriorizacion`, `Impulso` (Exploración), `Feedback` (placer y estrés), `Estrategia` | `Intencion` (saber y las del mundo), `Impulso` (control gradual según la certeza), `Feedback` (error de predicción), `Estrategia` |
 | Actuar | `Accion` | `Accion` | `Accion` |
 
-- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y solo cede ante otra que la supere con un margen claro. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/sistemas`; las propias de cada mundo, en `ida/mundos/<mundo>` (`Mundo.estrategias_propias`).
+- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y solo cede ante otra que la supere con un margen claro. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/sistemas`; las propias de cada mundo, en `ida/mundos/<mundo>` (`Mundo.estrategias_propias`). Un mundo puede añadir también Componentes en cualquier etapa (`Mundo.componentes_propios`, por destino: `"CORE.Sentir"`, `"S1.Interpretar"`...).
 - **Acciones:** solo los componentes `Accion` proponen acciones, y cada una lleva su origen (impulso y estrategia).
 - **Propiedad:** cada componente solo emite y modifica piezas de su tipo, a través de la Onda, que lo comprueba y lo anota en el registro de la pieza. Los `Impulso` de S2 y S3 modulan piezas `Impulso`, no acciones.
 
@@ -114,3 +116,32 @@ $$\text{Puntuación}_i = \text{Arousal}^{*}_i \cdot \text{Estrés} + \text{Confi
 
 1. **Mundos de tiempo real (Snake):** el reloj del entorno no espera. Si el plazo es de 100 ms y la mente pensó 8 ms, se esperan los 92 restantes para acompasar el ritmo con el mundo.
 2. **Mundos por turnos (Archivos, Crafter, Ajedrez):** el mundo espera la decisión, pero cada latido mantiene su plazo (guillotina) para evitar el sobrepensamiento.
+
+---
+
+## 7. Diseño objetivo: Componentes generales y de cada mundo
+
+Decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md). Se migra en dos fases: la A (reorganización con el mismo resultado, campo a campo) y la B (cambios de conducta medidos uno a uno).
+
+**El latido, en ocho pasos:**
+1. **Onda:** copia de la anterior; la anterior pasa a la memoria a corto plazo (cola de ondas, de la que salen los episodios).
+2. **Sentir (Core):** solo datos en bruto, sin valorar. La Observación del mundo solo la leen los sensores.
+3. **Preatención (S1 · Sentir):** saliencia y valoración rápida de lo sentido. No paga atención y corre también dormido (vigilancia). Solo modifica las piezas de los sensores; no crea piezas ni propone acciones.
+4. **Plasticidad:** cada Componente que aprende lo hace del efecto de la acción anterior, sin pagar atención.
+5. **Regulación (Core):** reglas instantáneas que fijan frecuencia, amplitud y potencia.
+6. **S1 → S2 → S3:** Sentir, Interpretar, Reaccionar y Actuar, con la guillotina por plazo. Dormido, parálisis.
+7. **Actuar (Core):** el Tribunal acepta una Actuación y el Core ejecuta su primitiva (las teclas del mundo). La Actuación lleva la primitiva y la intención.
+8. **Cierre:** marcar qué guardar (arousal y feedback), episodios e indicadores.
+
+**Organización:**
+- `ida/nucleo/`: mecánica (Onda, piezas, Componentes, latido, Memoria como almacén).
+- `ida/core/`, `ida/s1/`, `ida/s2/`, `ida/s3/`: una carpeta por módulo y un fichero por Componente.
+- `ida/cuerpos/<familia>/`: lo compartido por los mundos con el mismo cuerpo (geometría, capa motora, modelo del cuerpo, mapa métrico).
+- `ida/mundos/<mundo>/`: adaptador, perfil, manual, registro y Componentes propios, con la misma estructura.
+
+**Reglas:**
+- **Registro declarado:** un mundo declara qué Componentes añade o sustituye y en qué módulo. Nada se activa por el nombre de un fichero ni por una condición dentro de un Componente general.
+- **Propiedad por tipo:** un Componente emite y modifica piezas de su tipo, sea general o del mundo; cada cambio queda en el registro de la pieza.
+- **Estrategias:** las generales hablan de intenciones; la capa motora del cuerpo las traduce a primitivas. Pueden tener fases si las transiciones las disparan piezas de la Onda, nunca el reloj del mundo.
+- **Memoria:** un solo almacén, con una sección por dueño. Lo aprendido y el legado son de cada mundo.
+- **Lo que un mundo sabe por diseño se mide:** Componentes registrados, sustituciones y rasgos que el mundo entrega ya valorados.
