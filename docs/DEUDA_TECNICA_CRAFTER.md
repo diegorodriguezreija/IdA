@@ -64,6 +64,7 @@ Las deudas 1 a 8 son del encargo C, cuando Crafter tenía estrategias propias. D
 - **Lo pendiente:**
   1. Decidir cuándo perseguir un sitio comparando su coste completo con el tiempo hasta la oscuridad (la tendencia del cobijo, que ya estima la alostasis). Un sitio que no se puede completar antes de lo oscuro no se persigue.
   2. Después, reintroducir el filtro de orientación, con su presupuesto de planes por latido (commit `86629d3`, revertido en `d69d3d6`), y medirlo con el diagnóstico completo.
+- 11c se vuelve a medir solo, sobre 14.2 (rama `feature/material-mapa`).
 
 ## 12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada)
 
