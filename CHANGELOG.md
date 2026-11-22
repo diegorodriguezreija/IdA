@@ -4,6 +4,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### Material desde el mapa local (11c, sobre 14.2)
+- **`PerseguirMetas` (S3) busca el material también en el mapa local:** para un COGER o un COMER compara ir a lo visible o a lo que recuerda la memoria topológica con ir a la casilla recordada de esa clase (`ir_por_el_mapa`, con caché por latido), y se queda con la más barata. Siempre activo. Es el 11c de la deuda 11, medido ahora solo, sin 11a ni 11b.
+- **Cifras** (100 000 pasos, semillas 31 y 32, frente a la versión anterior): Score 15,86 % y 17,34 % (antes, 14,83 % y 15,98 %). Comparación pareada conjunta, fijada antes de medir: Score +1,08 [0,17; 2,10]; `wake_up` +1,63 [−1,90; 5,56]. Por semilla: +0,97 y +1,28, sin que ningún IC excluya el 0.
+- **Gana** (conjunta, IC que excluye el 0): `collect_stone` +7,73, `place_stone` +7,19, `make_wood_pickaxe` +6,92, `make_wood_sword` +4,48, `collect_coal` +4,07, `place_table` +2,85, `collect_wood` +1,90.
+- **Pierde** (conjunta, IC que excluye el 0): `collect_sapling` −7,33, `place_plant` −6,51 y `eat_cow` −4,61. Las muertes por flecha suben de 22 a 31 y de 21 a 34 episodios.
+- El humo de 3000 pasos anunciaba −4,66 en la semilla 32; la medición dio +1,28 (`docs/METODO_MEDICION.md`).
+
 ### Deuda 14: cadena de herramientas (cumplida en parte)
 - **Lote por estación (14.2, `PerseguirMetas`, S3):** las metas que piden la misma estación de trabajo se planifican juntas. Primero se reúne todo su material (también el de colocar la estación) y después se va a la estación; el lote sigue en curso hasta tener el material. Siempre activo.
 - **Retirado 14.3** («aprovechar la estación mientras está al alcance»): en el diagnóstico no añadía nada sobre 14.2.

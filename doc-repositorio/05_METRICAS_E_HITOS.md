@@ -111,6 +111,8 @@ python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista ofici
 | Defensa general (paso 6), semilla 32 | 15,45 % (14,18–16,53) | 23,6 % | `paso6_D3.json` |
 | Lote por estación de trabajo (deuda 14), semilla 31 | 14,83 % (13,71–15,84) | 18,6 % | `deuda14_K1_31.json` |
 | Lote por estación de trabajo (deuda 14), semilla 32 | 15,98 % (14,81–16,96) | 22,8 % | `deuda14_K1_32.json` |
+| Material desde el mapa local (11c, sobre 14.2), semilla 31 | 15,86 % (14,58–17,07) | 19,4 % | `mapa_31.json` |
+| Material desde el mapa local (11c, sobre 14.2), semilla 32 | 17,34 % (16,06–18,47) | 25,6 % | `mapa_32.json` |
 
 Desde el paso 6, el adaptador de Crafter no tiene estrategias propias (`estrategias_propias()` vacío, test `test_crafter_no_escribe_conducta`): la línea general es la conducta por defecto de `main`.
 
