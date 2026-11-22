@@ -81,7 +81,9 @@ Las deudas 1 a 8 son del encargo C, cuando Crafter tenía estrategias propias. D
 - **Qué pasa:** la guillotina corta por reloj, así que un solo latido cortado cambia una trayectoria; para las evaluaciones, conviene un plazo lógico (en operaciones) en lugar de en milisegundos.
 - **Dónde se vio:** en la comprobación de equivalencia del 6d (`paso6_D4.json`, semilla 31), un único latido cortado en el episodio 64 cambió la causa de muerte de ese episodio de flecha a zombi (167 pasos frente a 169), aunque la Score, el IC, los episodios y los 22 logros fueron idénticos a D2.
 
-## 14. Cadena de herramientas
+## 14. Cadena de herramientas — cumplida en parte
+
+- **Estado:** el planificador reúne en lote el material de las metas que comparten una estación (14.2, siempre activo; 14.3 retirado). Frente a `base_v2`, la espada sube +5,50 y +7,12 puntos (IC que excluyen el 0) y el pico y la espada de piedra suben de forma significativa en las semillas 31 y 32. La Score sube +0,76 y +0,57 sin que ningún IC excluya el 0, y el pico baja −0,27 en la 32. Cuesta `collect_drink` (−3,40 en la 31) y `eat_cow`. Detalle en `docs/ENCARGO_DEUDA14_HERRAMIENTAS.md`, «Resultado».
 
 - **Qué pasa:** pico de madera 64-72 % y espada 43-47 % en la línea general, frente a 92-96 % en la procedimental.
 - **Datos de la línea general:** `make_wood_pickaxe` 62,40 % y 71,51 %, `make_wood_sword` 42,56 % y 47,12 % (D2 y D3, `docs/MEDICION_PASO6.md`).

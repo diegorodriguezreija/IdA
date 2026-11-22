@@ -112,3 +112,47 @@ Para la combinación que se quede, frente a `base_v2`, con la comparación parea
 - **Acopiar demasiado y quedarse sin tiempo de día:** el lote solo incluye metas con requisitos conseguibles, y su coste lo pondera. Hay que vigilar `wake_up` y las muertes por zombi en la comparación pareada.
 - **Que el lote compita con `Proteger` al anochecer:** el Tribunal decide, como ahora. Si `Proteger` pierde más que antes, se diagnostica.
 - **Coste de cálculo con el plazo generoso:** hay que medir el tiempo total por medición.
+
+---
+
+## Resultado (22/11/2026): 14.2 cumplido en parte; 14.3 retirado
+
+**Decisión del autor:** se queda 14.2 (`lote_estacion`) como «cumplido en parte» y siempre activo; 14.3 se retira.
+
+**Medición:** K1 (14.0 + `lote_estacion`), `docs/MEDICION_DEUDA14.md` (commit `b99a2be`; código `6f7078f`). 100 000 pasos, vista oficial, sin herencia, manual estricto, `--plazo-logico 40`, semillas 31 y 32, 0 latidos cortados. Comparación pareada con `base_v2` (`resumen_evaluacion.py --pareada`, 2000 réplicas). K0 (solo 14.0) y K2 (los dos interruptores) no se midieron: el humo de 3000 pasos de 14.0 dio el mismo JSON que `main`, y en el diagnóstico K2 salió igual que K1 o por debajo (`docs/DIAGNOSTICO_DEUDA14.md`).
+
+| Medida (K1 − `base_v2`, pp) | Semilla 31 (382 pares) | Semilla 32 (365 pares) |
+|---|---|---|
+| Score | +0,76 [−0,09; 1,57] | +0,57 [−0,30; 1,43] |
+| `make_wood_sword` | **+5,50 [1,83; 9,42]** | **+7,12 [3,01; 11,23]** |
+| `make_wood_pickaxe` | +1,31 [−1,57; 4,19] | −0,27 [−3,01; 2,74] |
+| `make_stone_pickaxe` | **+3,40 [1,31; 5,76]** | **+3,29 [0,27; 6,58]** |
+| `make_stone_sword` | **+3,66 [1,57; 6,02]** | **+4,11 [1,37; 7,12]** |
+| `collect_drink` | **−3,40 [−6,28; −0,79]** | 0,00 [−2,47; 2,47] |
+| `eat_cow` | −2,36 [−4,97; 0,26] | −2,19 [−5,21; 0,82] |
+| `wake_up` | −2,09 [−5,76; 1,31] | −0,55 [−4,11; 3,01] |
+| `defeat_zombie` | +3,66 [−0,52; 8,12] | +2,74 [−1,92; 7,40] |
+
+En negrita, los IC que excluyen el 0. Score de K1: 14,83 y 15,98 (`base_v2`: 14,04 y 15,45).
+
+**Criterios (sección 4):**
+1. **Espada: cumplido.** Diferencia > 0 en las dos semillas y el IC excluye el 0 en las dos.
+2. **Pico: no cumplido en la semilla 32** (−0,27, con un IC que incluye el 0). En la 31, +1,31.
+3. **Score: cumplido en dirección, no en significación.** Diferencia > 0 en las dos semillas (+0,76 y +0,57), pero ningún IC excluye el 0.
+4. **Otros mundos: cumplido.** Invariancia OK en mínimo, archivos y ajedrez, con el interruptor encendido y, tras quitarlo, con 14.2 siempre activo.
+5. **Tests de juguete: cumplido para 14.2** (se elige el lote, se reúne el material antes de ir; `tests/test_deuda14.py`). El tercero («junto a la estación se hace lo pendiente») era de 14.3 y se retira con él.
+
+La regla de cierre (criterios 1 y 3) no se cumple al pie de la letra: el 3 falla en significación.
+
+**Análisis conjunto de las dos semillas, NO previsto de antemano** (`resumen_evaluacion.py --pareada-conjunta`, bootstrap pareado estratificado por semilla, 747 pares; `datos/diagnostico/deuda14/conjunta_K1_base_v2.md`):
+- Score: +0,64 [0,04; 1,29], el IC excluye el 0. El autor citó [0,04; 1,24] con otro cálculo; con este método el extremo superior es 1,29.
+- `make_wood_sword` +6,29 [3,48; 8,97], `make_stone_pickaxe` +3,35 [1,47; 5,35], `make_stone_sword` +3,88 [2,14; 5,76] y `defeat_zombie` +3,21 [0,13; 6,43] excluyen el 0.
+- `eat_cow` −2,28 [−4,15; −0,40] también lo excluye, en contra. `collect_drink` −1,74 [−3,61; 0,00] queda en el límite.
+
+Como no estaba fijado antes de medir, este análisis no cuenta para el criterio 3; se publica como lectura complementaria.
+
+**Coste:** el lote cuesta tiempo de forrajeo. `collect_drink` baja 3,40 puntos en la semilla 31 (IC que excluye el 0) y `eat_cow` baja en las dos (−2,36 y −2,19), significativo solo en el conjunto. Es el riesgo 1 de la sección 5 (acopiar demasiado). `wake_up` baja en las dos semillas sin significación, y las muertes por zombi suben de 271 a 278 y de 253 a 276 episodios (`docs/MEDICION_DEUDA14.md`, sección 3).
+
+**Retirada de 14.3:** en el diagnóstico de 3 × 10 000 pasos, 14.2+14.3 dio exactamente lo mismo que 14.2 en las semillas 31 y 33, y 0,17 puntos menos de Score en la 32. Con un lote en curso, la situación que trata 14.3 es rara. Se borran el código (`PerseguirMetas._ahorro`), el interruptor `aprovechar_estacion` y su test (commit `53e2436`).
+
+**14.2 siempre activo:** se quita el interruptor `lote_estacion`. El humo de 3000 pasos (semilla 31) da el mismo JSON que con el interruptor encendido antes del cambio, y la invariancia da OK en mínimo, archivos y ajedrez. En Crafter la conducta cambia, como debe, y se regenera `datos/invariancia/referencia.json` (solo cambian `crafter:2` y `crafter:3`).
