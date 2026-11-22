@@ -717,14 +717,18 @@ class PerseguirMetas(ConPropuestas):
         mejor_paso: Optional[Paso] = None
         meta_mejor = ""
         resueltas: List[Tuple[Verbo, str]] = []
+        aprovechar = _mecanismo(ctx, "aprovechar_estacion")
+        mejor_coste = 0.0
         for meta in ctx.memoria.metas.values():
             if meta.conseguida or meta.verbo not in self.VERBOS_PLAN:
                 continue
             paso = self._resolver(ctx, (meta.verbo, meta.objetivo), inv, frozenset(), 0)
-            if paso is not None:
-                resueltas.append((meta.verbo, meta.objetivo))
-            if paso is not None and (mejor_paso is None or paso.coste < mejor_paso.coste):
-                mejor_paso, meta_mejor = paso, meta.objetivo
+            if paso is None:
+                continue
+            resueltas.append((meta.verbo, meta.objetivo))
+            coste = paso.coste - (self._ahorro(ctx, (meta.verbo, meta.objetivo), paso) if aprovechar else 0.0)
+            if mejor_paso is None or coste < mejor_coste:
+                mejor_paso, meta_mejor, mejor_coste = paso, meta.objetivo, coste
         if mejor_paso is not None and _mecanismo(ctx, "lote_estacion"):
             # Un lote en curso sigue hasta tener todo su material junto a la estación (o hasta dejar de valer); uno nuevo se
             # elige si su coste por meta es menor que el de la meta suelta más barata.
@@ -732,7 +736,7 @@ class PerseguirMetas(ConPropuestas):
             if lote is None:
                 self._lote_en_curso = None
                 lote = self._mejor_lote(ctx, resueltas, inv)
-                if lote is not None and lote[1] >= mejor_paso.coste:
+                if lote is not None and lote[1] >= mejor_coste:
                     lote = None
             if lote is not None:
                 mejor_paso, meta_mejor = lote[0], lote[2]
@@ -837,6 +841,17 @@ class PerseguirMetas(ConPropuestas):
             pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
             self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
         return self._costes_unidad[clave]
+
+    # --- deuda 14.3: aprovechar la estación mientras está al alcance --------------------------------------------
+    @staticmethod
+    def _ahorro(ctx: Contexto, accion: Tuple[Verbo, str], paso: Paso) -> float:
+        """Coste de oportunidad: si la meta pide estar cerca de algo, ya lo está y se puede hacer ahora (el paso es la propia
+        acción), alejarse obligaría a volver. ahorro = coste_si_se_aleja − coste_ahora = una ida y vuelta a lo recordado
+        (2 × ``COSTE_RECORDADO``) por cada clase que pide cerca. 0 en otro caso."""
+        r = ctx.memoria.requisitos.get(accion)
+        if r is None or not r.requiere_cerca or paso.verbo != accion[0] or paso.motivo != [f"{accion[0].value} {accion[1]}"]:
+            return 0.0
+        return 2.0 * COSTE_RECORDADO * len(r.requiere_cerca)
 
     # --- deuda 14.2: metas que comparten una estación, planificadas en lote ---------------------------------------
     def _mejor_lote(self, ctx: Contexto, resueltas: List[Tuple[Verbo, str]], inv: Dict[str, float],

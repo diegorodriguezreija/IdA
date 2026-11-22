@@ -98,3 +98,27 @@ def test_el_lote_en_curso_sigue_hasta_tener_el_material():
     assert (sigue.verbo, sigue.objetivo) == (Verbo.COGER, "c_1") and "lote taller" in sigue.motivo
     hecho = plan.actuar(_ctx({"m": 2.0}, taller=(1, 1), latido=3, lote_estacion=True), None)[0]
     assert hecho.verbo == Verbo.USAR and "lote" not in hecho.motivo
+
+
+def test_junto_a_la_estacion_se_hace_lo_pendiente_que_ya_se_puede():
+    """Coger «d» (al lado, sin estación) y hacer «hacer_a» junto al taller cuestan lo mismo ahora; la primera meta
+    declarada gana el empate. Con ``aprovechar_estacion``, hacer_a cuenta lo que costaría volver al taller y gana."""
+    manual = {"inventario": ["m"], "hechos": [
+        {"tipo": "meta", "verbo": "COGER", "objetivo": "d"},
+        {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_a"},
+        {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_a", "requiere_inventario": {"m": None}, "requiere_cerca": ["taller"]},
+    ]}
+
+    def ctx(**mecanismos: bool) -> Any:
+        c = _ctx({"m": 1.0}, taller=(1, 1), **mecanismos)
+        c.memoria = Memoria()
+        c.memoria.aplicar_manual(manual)
+        c.onda.canales["Exterocepcion"]["d_1"] = _entidad("d_1", "d", 1.0, (0, 1))
+        return c
+
+    sin = _propuesta(ctx())
+    assert sin is not None and (sin.verbo, sin.objetivo) == (Verbo.COGER, "d_1")
+    con = _propuesta(ctx(aprovechar_estacion=True))
+    assert con is not None and (con.verbo, con.objetivo) == (Verbo.USAR, "hacer_a")
+    lejos = _ctx({"m": 1.0}, aprovechar_estacion=True)      # lejos del taller no hay ahorro: nada cambia
+    assert _propuesta(lejos) == _propuesta(_ctx({"m": 1.0}))
