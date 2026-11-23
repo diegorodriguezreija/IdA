@@ -267,9 +267,15 @@ Al terminar la fase B se mide con semillas nuevas (V1: 41 y 42) para descartar e
 
 ## 5. Plan de trabajo
 
-Cada paso en su rama, con su PR y una fusión con commit de merge. Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación como criterio.
+Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación como criterio.
 
-### Fase A: reorganización, mismo JSON (`crafter-general-v5`)
+**Ramas.** `main` no recibe nada hasta que la medición confirme la Score: es la referencia fija (`eaeadaa`, `crafter-general-v4`) contra la que se compara todo.
+- La reorganización vive en la rama de integración **`reorg/componentes`**.
+- Cada paso sale de ella en su propia rama (`reorg/r0-inventario`, `reorg/a1-registro`…) y vuelve a ella con un PR y un commit de merge, nunca *squash*.
+- Las etiquetas intermedias (`reorg-a8`, `reorg-b1`…) se ponen en `reorg/componentes`.
+- Solo cuando se cumpla el criterio de D17 sobre la rama completa, `reorg/componentes` se fusiona en `main` con un único PR, y entonces se etiqueta `crafter-general-v5`.
+
+### Fase A: reorganización, mismo JSON (etiqueta `reorg-a8` en `reorg/componentes`)
 
 | Paso | Qué | Notas |
 |---|---|---|
@@ -281,7 +287,7 @@ Cada paso en su rama, con su PR y una fusión con commit de merge. Sustituye a R
 | A5 | Cuerpo cuadrícula y Actuar con primitivas (D9, D10), con `max_sinergia = 2` | El adaptador de Crafter ya no traduce ni juzga |
 | A6 | Crafter a su carpeta (D16); activaciones por registro y constantes al `Perfil` (D15) | Inventario completo de constantes |
 | A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia |
-| A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `crafter-general-v5` |
+| A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
 
 ### Fase B: cambios de conducta (uno por PR, criterio D17)
 
@@ -329,3 +335,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 |---|---|---|---|
 | 22/11/2026 | D1–D17 | Versión inicial | Sección 0 del plan; flujo de alto nivel del autor |
 | 23/11/2026 | D3, D7 | Especificación en `componentes.toml` con test; reglas de cambio (esta sección) | Que el diseño no se pervierta a la ligera y se actualice con los resultados |
+| 23/11/2026 | Sección 5 | Rama de integración `reorg/componentes`; nada entra en `main` hasta confirmar la Score | Decisión del autor |
