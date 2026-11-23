@@ -102,6 +102,11 @@ class Componente:
     def proactiva(self, ctx: Contexto) -> None:
         pass
 
+    # Plasticidad (D6): el Core lo llama en la fase «aprender» de cada latido (también dormido), después de
+    # ``Organismo._aprender`` y ``_contrastar``. Por defecto no aprende nada.
+    def aprender(self, ctx: Contexto) -> None:
+        pass
+
     # --- utilidades para producir piezas -------------------------------------
     def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None,
               decay: float = 0.0, fitness: Optional[float] = None, cost: Optional[float] = None) -> Pieza:

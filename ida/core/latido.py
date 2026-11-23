@@ -4,7 +4,8 @@ Orden de un latido:
 1. Soma: metabolismo. Observación del mundo. Regulación (D12): frecuencia, amplitud y potencia.
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
 3. Core · Sentir (exento de peaje).
-4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
+4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``); después, el gancho ``aprender`` de cada
+   Componente montado (plasticidad, D6).
 5. S1 → S2 → S3, con un único fondo de amplitud y potencia gastado en ese orden. La guillotina
    solo salta por plazo; si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
@@ -216,6 +217,7 @@ class Organismo:
             self._aprender(ctx)
             if self.con_experiencia and self.perfil.mecanismos.expectativa:
                 self._contrastar(ctx)
+            self._plasticidad(ctx)
 
         # 5. Cognición (o sueño)
         if soma.dormido:
@@ -272,6 +274,17 @@ class Organismo:
                   carga={"verbo": verbo, "objetivo": "", "clase": "", "motivo": motivo, "datos": {}},
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
         ctx.onda.proponer("Accion", p, autor=AutorCore("Accion"))
+
+    def montados(self) -> List[Componente]:
+        """Todos los Componentes montados, en orden determinista: Core (Sentir, Regulación, Actuar) y S1, S2 y S3
+        por módulos."""
+        return [*self.sentir.componentes, self.regulacion, *self.actuar.componentes,
+                *(c for s in self.sistemas for m in s.modulos for c in m.componentes)]
+
+    def _plasticidad(self, ctx: Contexto) -> None:
+        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``."""
+        for c in self.montados():
+            c.aprender(ctx)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""

@@ -7,7 +7,7 @@ orden, cada una en verde y con «EQUIVALENCIA: OK» por sí sola:
 | Etapa | Qué | Estado |
 |---|---|---|
 | E1 | Regulación (punto 5) | HECHA |
-| E2 | Gancho de plasticidad (punto 4) | pendiente |
+| E2 | Gancho de plasticidad (punto 4) | HECHA |
 | E3 | Mecanismo de preatención y Saliencia (puntos 1 y 2) | pendiente |
 | E4 | Amenaza (punto 3) | pendiente |
 | E5 | Especificación, test del mapa y tests restantes (punto 6) | pendiente |
@@ -19,7 +19,7 @@ Control antes de empezar (árbol 4ee65c2): `herramientas/equivalencia.py` → `E
 
 ## E1 · Regulación
 
-Estado: HECHA. Commit: «A3 E1: Regulacion sustituye a Marcapasos (D12)».
+Estado: HECHA. Commit d9558e6 «A3 E1: Regulacion sustituye a Marcapasos (D12)».
 
 Comprobación (última línea de cada una):
 
@@ -51,3 +51,30 @@ Decisiones:
   intervienen en `evaluar_crafter.py`); ruff, mypy y pytest se repitieron tras ese cambio.
 
 Pendiente: nada de E1.
+
+## E2 · Gancho de plasticidad
+
+Estado: HECHA. Commit: «A3 E2: gancho de plasticidad Componente.aprender (D6)».
+
+Comprobación (última línea de cada una):
+
+```
+All checks passed!
+Success: no issues found in 42 source files
+285 passed, 1 warning in 29.57s
+EQUIVALENCIA: OK
+```
+
+Decisiones:
+- `Componente.aprender(self, ctx)` en `ida/core/arquitectura.py`, vacío por defecto.
+- `Organismo.montados()` da todos los Componentes montados en orden determinista: Core (Sentir, `regulacion`,
+  Actuar) y S1, S2 y S3 por módulos. En E3 se añade la preatención entre el Core y S1.
+- `Organismo._plasticidad(ctx)` llama a `aprender` de cada uno, dentro de la fase «aprender», justo después de
+  `_aprender` y `_contrastar`. Se llama siempre (también sin experiencia y dormido): cada Componente decide con
+  `ctx.con_experiencia`. No se pone la Onda en exento: la plasticidad no debe emitir piezas; si alguna lo hiciera,
+  pagaría y se le comprobaría la propiedad como a cualquiera (no hay ningún implementador en A3).
+- No se apunta tiempo por Componente (no hay implementadores; el tiempo queda dentro de la fase «aprender»).
+- Tests en `tests/test_preatencion.py`: orden (`_aprender` y luego Core, S1, S2, S3 por módulos), dentro de la fase
+  «aprender» (ya terminó «sentir», aún no hay «S1»), y que corre dormido.
+
+Pendiente: nada de E2.
