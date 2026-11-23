@@ -9,7 +9,7 @@ from ida.core.estrategia import Definicion
 from ida.core.latido import DESTINOS_VALIDOS_COMPONENTES, Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Alta, Registro
+from ida.core.mundo import Alta, Cuerpo, Registro
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.s1 import crear_s1
@@ -258,13 +258,88 @@ def test_estrategia_sustituida_conserva_posicion_y_exige_mismo_nombre():
         _crear_organismo(MundoClaseNoExiste())
 
 
-def test_cuerpo_distinto_de_none_lanza_value_error():
+# --- Cuerpo (D10) -------------------------------------------------------------------------------------
+class _CompCuerpo(Componente):
+    """Componente de cuerpo de prueba: cuenta las llamadas a ``aprender``."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.llamadas = 0
+
+    def aprender(self, ctx: Contexto) -> None:
+        self.llamadas += 1
+
+
+class CuerpoActuar(_CompCuerpo):
+    pass
+
+
+class CuerpoInterpretar(_CompCuerpo):
+    pass
+
+
+class CuerpoPrueba(Cuerpo):
+    nombre = "prueba"
+
+    def __init__(self, destinos: Any) -> None:
+        self.destinos = destinos
+
+    def componentes(self) -> Any:
+        return self.destinos
+
+
+def test_cuerpo_se_monta_antes_que_lo_del_mundo_y_admite_core_actuar():
+    actuar, interpretar = CuerpoActuar(), CuerpoInterpretar()
+    del_mundo = _crear_clase_comp("DelMundo")()
+
     class MundoConCuerpo(MundoMinimo):
         def registro(self) -> Registro:
-            return Registro(cuerpo="cuadricula")
+            return Registro(componentes={"S1.Interpretar": Alta(añade=[del_mundo])},
+                            cuerpo=CuerpoPrueba({"CORE.Actuar": [actuar], "S1.Interpretar": [interpretar]}))
 
-    with pytest.raises(ValueError, match="En A1 solo se admite cuerpo=None"):
-        _crear_organismo(MundoConCuerpo())
+    org = _crear_organismo(MundoConCuerpo())
+    assert org.actuar.componentes[-1] is actuar and actuar.sistema == "CORE"
+    modulo = org._sistema("S1").modulo("Interpretar").componentes
+    assert modulo[-2:] == [interpretar, del_mundo] and interpretar.sistema == "S1"
+    for c in (actuar, interpretar):
+        assert c.de_cuerpo == "prueba" and c.propio_del_mundo is True
+    assert del_mundo.de_cuerpo == ""
+    assert org.componentes_cuerpo == [actuar, interpretar]
+    assert {"CuerpoActuar", "CuerpoInterpretar"} <= org.registrados
+
+
+def test_cuerpo_con_destino_no_valido_lanza_value_error():
+    class MundoCuerpoMalo(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(cuerpo=CuerpoPrueba({"CORE.Regulacion": [CuerpoActuar()]}))
+
+    with pytest.raises(ValueError, match="Destino no válido para un Componente del cuerpo 'prueba'"):
+        _crear_organismo(MundoCuerpoMalo())
+
+
+def test_cuerpo_y_mundo_no_pueden_repetir_clase():
+    class MundoRepite(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(componentes={"S1.Interpretar": Alta(añade=[CuerpoInterpretar()])},
+                            cuerpo=CuerpoPrueba({"S1.Interpretar": [CuerpoInterpretar()]}))
+
+    with pytest.raises(ValueError, match="Ya existe un componente 'CuerpoInterpretar'"):
+        _crear_organismo(MundoRepite())
+
+
+def test_componentes_del_cuerpo_aprenden_una_sola_vez_por_latido():
+    """Su ``aprender`` lo llama ``Organismo._aprender`` (donde estaba ``_aprender_mapa``), no el gancho general."""
+    actuar, interpretar = CuerpoActuar(), CuerpoInterpretar()
+
+    class MundoConCuerpo(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(cuerpo=CuerpoPrueba({"CORE.Actuar": [actuar], "S1.Interpretar": [interpretar]}))
+
+    org = _crear_organismo(MundoConCuerpo())
+    assert org.con_experiencia and org.memoria.activa
+    for n in (1, 2, 3):
+        org.latir()
+        assert (actuar.llamadas, interpretar.llamadas) == (n, n)
 
 
 def test_ctx_registrado_dice_true_para_lo_montado_y_false_para_lo_que_no():

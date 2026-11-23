@@ -34,6 +34,7 @@ DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
     for sis in ("S1", "S2", "S3")
     for etapa in ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 }
+DESTINOS_VALIDOS_CUERPO = DESTINOS_VALIDOS_COMPONENTES | {"CORE.Actuar"}
 SISTEMAS_VALIDOS_ESTRATEGIAS = {"S1", "S2", "S3"}
 
 
@@ -74,8 +75,21 @@ class Organismo:
 
         # Montaje declarado por el registro del mundo (D3)
         reg = mundo.registro()
+
+        # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
+        self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; su ``aprender`` lo llama ``_aprender``
         if reg.cuerpo is not None:
-            raise ValueError(f"En A1 solo se admite cuerpo=None ('{reg.cuerpo}' no admitido)")
+            for destino, comps in reg.cuerpo.componentes().items():
+                if destino not in DESTINOS_VALIDOS_CUERPO:
+                    raise ValueError(
+                        f"Destino no válido para un Componente del cuerpo '{reg.cuerpo.nombre}': '{destino}'. "
+                        f"Válidos: {sorted(DESTINOS_VALIDOS_CUERPO)}"
+                    )
+                modulo, preatencion, sistema_asignar = self._destino(destino)
+                for comp in comps:
+                    comp.de_cuerpo = reg.cuerpo.nombre
+                    self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
+                    self.componentes_cuerpo.append(comp)
 
         # Componentes del registro (por destino, en el orden declarado)
         for destino, alta in reg.componentes.items():
@@ -83,16 +97,7 @@ class Organismo:
                 raise ValueError(
                     f"Destino de componente no válido: '{destino}'. Válidos: {sorted(DESTINOS_VALIDOS_COMPONENTES)}"
                 )
-            if destino == "CORE.Sentir":
-                modulo = self.sentir
-                sistema_asignar = "MUNDO"
-            else:
-                sis, etapa = destino.split(".")
-                modulo = self._sistema(sis).modulo(etapa)
-                sistema_asignar = sis
-
-            # Preatención (D5): los preatentivos de S1.Sentir viven en ``Sistema.preatencion``, no en el módulo
-            preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
+            modulo, preatencion, sistema_asignar = self._destino(destino)
 
             # sustituye: busca en el módulo de destino (o en su preatención) el Componente general cuya clase se llame como la clave
             for nombre_clase, sustituto in alta.sustituye.items():
@@ -117,14 +122,7 @@ class Organismo:
 
             # añade: se añade al final del módulo (los preatentivos, al final de la preatención), en el orden declarado
             for comp in alta.añade:
-                if comp.preatentivo and preatencion is None:
-                    raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
-                lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
-                if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
-                    raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
-                comp.propio_del_mundo = True
-                comp.sistema = sistema_asignar
-                lista.append(comp)
+                self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
 
         # Estrategias del registro (por sistema)
         for sis, alta in reg.estrategias.items():
@@ -185,6 +183,28 @@ class Organismo:
         self._ubicacion_previa: Optional[str] = None
         self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
+
+    def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
+        """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""
+        if destino == "CORE.Sentir":
+            return self.sentir, None, "MUNDO"
+        if destino == "CORE.Actuar":
+            return self.actuar, None, "CORE"
+        sis, etapa = destino.split(".")
+        preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
+        return self._sistema(sis).modulo(etapa), preatencion, sis
+
+    @staticmethod
+    def _añadir(modulo: Modulo, preatencion: Optional[List[Componente]], destino: str, comp: Componente, sistema: str) -> None:
+        """``añade`` (D3): al final del módulo (un preatentivo, al final de la preatención), con nombre de clase único."""
+        if comp.preatentivo and preatencion is None:
+            raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
+        lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
+        if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
+            raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
+        comp.propio_del_mundo = True
+        comp.sistema = sistema
+        lista.append(comp)
 
     def _sistema(self, nombre: str) -> Sistema:
         for s in self.sistemas:
@@ -298,9 +318,11 @@ class Organismo:
                 *(c for s in self.sistemas for m in s.modulos for c in m.componentes)]
 
     def _plasticidad(self, ctx: Contexto) -> None:
-        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``."""
+        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``. Los del cuerpo
+        no: su ``aprender`` lo llama ``_aprender`` en su punto del latido."""
         for c in self.montados():
-            c.aprender(ctx)
+            if not c.de_cuerpo:
+                c.aprender(ctx)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -315,6 +337,8 @@ class Organismo:
         previa = ctx.onda.ei("Accion").get("Accion")
         if self.con_experiencia and self.memoria.activa:
             self._aprender_mapa(ctx, previa.carga if previa is not None else None)
+            for comp in self.componentes_cuerpo:   # cuerpo (D10): mapa local y modelo directo, en orden de montaje
+                comp.aprender(ctx)
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga

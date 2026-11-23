@@ -10,9 +10,12 @@ a través de su registro (``registro()``), declarado como tal.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.vocabulario import RASGOS, Verbo
+
+if TYPE_CHECKING:
+    from ida.core.arquitectura import Componente
 
 
 @dataclass
@@ -21,11 +24,25 @@ class Alta:
     sustituye: Dict[str, Any] = field(default_factory=dict) # nombre de CLASE del general -> sustituto
 
 
+class Cuerpo:
+    """Familia de cuerpos (D10): lo que comparten los mundos con el mismo tipo de cuerpo (p. ej. una cuadrícula 2D con
+    orientación). La implementa ``ida/cuerpos/<familia>`` y la registra el mundo (``Registro.cuerpo``): el Core recibe
+    el objeto y nunca importa ``ida/cuerpos`` (D2).
+
+    ``componentes()``: destino -> Componentes, en orden. Destinos válidos: los del registro y ``CORE.Actuar``. El Core
+    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre``."""
+
+    nombre: str = ""
+
+    def componentes(self) -> Dict[str, List["Componente"]]:
+        return {}
+
+
 @dataclass
 class Registro:
     componentes: Dict[str, Alta] = field(default_factory=dict)  # destino -> Alta
     estrategias: Dict[str, Alta] = field(default_factory=dict)  # "S1" | "S2" | "S3" -> Alta
-    cuerpo: Optional[str] = None
+    cuerpo: Optional[Cuerpo] = None                              # familia de cuerpos (D10), o ninguna
 
 
 @dataclass
