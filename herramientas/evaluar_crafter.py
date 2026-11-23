@@ -110,6 +110,7 @@ def evaluar(
     mecanismos: Optional[List[str]] = None,
     traza: Optional[List[Tuple[int, int, str, str]]] = None,
     plazo_logico: Optional[float] = None,
+    legado_salida: Optional[str] = None,
 ) -> Dict[str, Any]:
     """``traza``: si se da, se le añade (episodio, latido, verbo, objetivo) de cada acción ejecutada.
     ``plazo_logico``: operaciones por ms de plazo (guillotina lógica); ``None`` = plazo de reloj."""
@@ -139,6 +140,7 @@ def evaluar(
     g = 0
     vivencia: Optional[Dict[str, float]] = None
     p_params = PERFILES.get(perfil, PERFILES["Equilibrado"])
+    legados: Optional[List[Dict[str, Any]]] = [] if legado_salida else None
 
     try:
         while pasos_acumulados < pasos_objetivo:
@@ -200,7 +202,10 @@ def evaluar(
                 "puntuacion": m.puntuacion(),
                 "guillotinas": org.contadores["guillotinas"],
             }
-            linaje.registrar(arq, resumen, memoria.legado(org.ciclo))
+            legado_ep = memoria.legado(org.ciclo)
+            linaje.registrar(arq, resumen, legado_ep)
+            if legados is not None:
+                legados.append(legado_ep)
 
             ep_info = {
                 "episodio": g + 1,
@@ -248,6 +253,13 @@ def evaluar(
     for ep in episodios:
         c = ep["causa_muerte"] if ep["causa_muerte"] is not None else ("cortado por presupuesto" if ep["vivo"] else "desconocida")
         causas_conteo[c] = causas_conteo.get(c, 0) + 1
+
+    if legado_salida and legados is not None:
+        import json
+
+        os.makedirs(os.path.dirname(os.path.abspath(legado_salida)), exist_ok=True)
+        with open(legado_salida, "w", encoding="utf-8") as f:
+            json.dump(legados, f, indent=2)
 
     return {
         "pasos": pasos_acumulados,
@@ -343,6 +355,7 @@ def main() -> int:
     parser.add_argument("--manual", type=str, default="estricto", choices=["estricto", "ampliado"],
                         help="Manual declarativo de Crafter (paso 2)")
     parser.add_argument("--salida", type=str, default=None, help="Ruta de archivo JSON donde guardar el resultado")
+    parser.add_argument("--legado-salida", type=str, default=None, help="Ruta de archivo JSON donde guardar la lista de legados de cada vida")
     parser.add_argument("--quiet", action="store_true", help="Silencia el registro por episodio")
     parser.add_argument("--mecanismos", nargs="*", default=[],
                         help="Interruptores de Perfil.mecanismos que se encienden (bloques E y F)")
@@ -366,6 +379,7 @@ def main() -> int:
         quiet=args.quiet,
         mecanismos=args.mecanismos,
         plazo_logico=args.plazo_logico,
+        legado_salida=args.legado_salida,
     )
     imprimir_informe(res)
     if args.salida:
