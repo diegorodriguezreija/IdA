@@ -29,6 +29,12 @@ from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
 CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente"}
+DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
+    f"{sis}.{etapa}"
+    for sis in ("S1", "S2", "S3")
+    for etapa in ("Sentir", "Interpretar", "Reaccionar", "Actuar")
+}
+SISTEMAS_VALIDOS_ESTRATEGIAS = {"S1", "S2", "S3"}
 
 
 class Organismo:
@@ -65,24 +71,91 @@ class Organismo:
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
 
-        # Componentes propios del mundo: se añaden a la etapa indicada ("S3.Reaccionar", "CORE.Sentir"...)
-        for destino, componentes in mundo.componentes_propios().items():
-            sistema, etapa = destino.split(".")
-            for comp in componentes:
-                comp.propio_del_mundo = True
-                if sistema == "CORE" and etapa == "Sentir":
-                    comp.sistema = "MUNDO"
-                    self.sentir.componentes.append(comp)
-                else:
-                    self._sistema(sistema).añadir(etapa, comp)
+        # Montaje declarado por el registro del mundo (D3)
+        reg = mundo.registro()
+        if reg.cuerpo is not None:
+            raise ValueError(f"En A1 solo se admite cuerpo=None ('{reg.cuerpo}' no admitido)")
 
-        # Estrategias propias del mundo: al catálogo del componente Estrategia de cada sistema.
-        for sistema, definiciones in mundo.estrategias_propias().items():
-            elige: Any = next((c for c in self._sistema(sistema).componentes() if c.tipo == "Estrategia"), None)
+        # Componentes del registro (por destino, en el orden declarado)
+        for destino, alta in reg.componentes.items():
+            if destino not in DESTINOS_VALIDOS_COMPONENTES:
+                raise ValueError(
+                    f"Destino de componente no válido: '{destino}'. Válidos: {sorted(DESTINOS_VALIDOS_COMPONENTES)}"
+                )
+            if destino == "CORE.Sentir":
+                modulo = self.sentir
+                sistema_asignar = "MUNDO"
+            else:
+                sis, etapa = destino.split(".")
+                modulo = self._sistema(sis).modulo(etapa)
+                sistema_asignar = sis
+
+            # sustituye: busca en el módulo de destino el Componente general cuya clase se llame como la clave
+            for nombre_clase, sustituto in alta.sustituye.items():
+                idx = next((i for i, c in enumerate(modulo.componentes) if c.__class__.__name__ == nombre_clase), None)
+                if idx is None:
+                    raise ValueError(f"No existe componente general '{nombre_clase}' en {destino} para sustituir")
+                original = modulo.componentes[idx]
+                if sustituto.tipo != original.tipo:
+                    raise ValueError(
+                        f"El sustituto '{sustituto.__class__.__name__}' tiene tipo '{sustituto.tipo}', "
+                        f"pero '{nombre_clase}' tiene tipo '{original.tipo}'"
+                    )
+                sustituto.propio_del_mundo = True
+                sustituto.sistema = sistema_asignar
+                modulo.componentes[idx] = sustituto
+
+            # añade: se añade al final del módulo, en el orden declarado
+            for comp in alta.añade:
+                if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes):
+                    raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
+                comp.propio_del_mundo = True
+                comp.sistema = sistema_asignar
+                modulo.componentes.append(comp)
+
+        # Estrategias del registro (por sistema)
+        for sis, alta in reg.estrategias.items():
+            if sis not in SISTEMAS_VALIDOS_ESTRATEGIAS:
+                raise ValueError(
+                    f"Sistema no válido para estrategias: '{sis}'. Válidos: {sorted(SISTEMAS_VALIDOS_ESTRATEGIAS)}"
+                )
+            elige: Any = next((c for c in self._sistema(sis).componentes() if c.tipo == "Estrategia"), None)
             if elige is None:
-                raise ValueError(f"{sistema} no tiene componente Estrategia para las estrategias de {mundo.nombre}")
-            for d in definiciones:
-                elige.catalogo.añadir(d)
+                raise ValueError(f"{sis} no tiene componente Estrategia para las estrategias de {mundo.nombre}")
+            catalogo = elige.catalogo
+
+            # sustituye: clave es nombre de CLASE de la definición general; mismo atributo nombre; catalogo.añadir
+            for nombre_clase, sustituto in alta.sustituye.items():
+                original_def = next((d for d in catalogo.todas() if d.__class__.__name__ == nombre_clase), None)
+                if original_def is None:
+                    raise ValueError(f"No existe estrategia general de clase '{nombre_clase}' en {sis} para sustituir")
+                if sustituto.nombre != original_def.nombre:
+                    raise ValueError(
+                        f"El sustituto '{sustituto.__class__.__name__}' tiene nombre '{sustituto.nombre}', "
+                        f"pero la original '{nombre_clase}' tiene nombre '{original_def.nombre}'"
+                    )
+                catalogo.añadir(sustituto)
+
+            # añade: nombre o nombre de clase repetido -> ValueError; se añade con catalogo.añadir
+            for d in alta.añade:
+                if catalogo.get(d.nombre) is not None:
+                    raise ValueError(f"Ya existe una estrategia con nombre '{d.nombre}' en el catálogo de {sis}")
+                if any(existente.__class__.__name__ == d.__class__.__name__ for existente in catalogo.todas()):
+                    raise ValueError(f"Ya existe una estrategia de clase '{d.__class__.__name__}' en el catálogo de {sis}")
+                catalogo.añadir(d)
+
+        # Conjunto de nombres de clase de todo lo montado (Componentes Core y S1-S3, y definiciones de catálogos)
+        self.registrados: Set[str] = {
+            c.__class__.__name__ for c in self.sentir.componentes + self.actuar.componentes
+        } | {
+            c.__class__.__name__ for s in self.sistemas for m in s.modulos for c in m.componentes
+        } | {
+            d.__class__.__name__
+            for s in self.sistemas
+            for c in s.componentes()
+            if c.tipo == "Estrategia" and hasattr(c, "catalogo")
+            for d in c.catalogo.todas()
+        }
 
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
@@ -129,6 +202,7 @@ class Organismo:
             obs,
             self.con_experiencia,
             biblioteca=self.biblioteca,
+            registrados=self.registrados,
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
         self._peligro_aprendido(ctx)

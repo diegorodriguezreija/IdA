@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Set
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas.s1 import Alimentarse
@@ -71,7 +71,15 @@ def clase_de(nombre: str) -> str:
 
 class MundoArchivos(Mundo):
     nombre = "archivos"
-    perfil = Perfil(frecuencia_ms=100.0, amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
+    perfil = Perfil(
+        frecuencia_ms=100.0,
+        amplitud=100,
+        memoria="completa",
+        duerme=True,
+        hogar=True,
+        peso_experiencia=0.2,
+        rasgos_declarados=("peligro", "nutritivo", "recurso", "novedad"),
+    )
 
     def __init__(self, datos: str = "datos/archivos", **_):
         self.raiz = os.path.abspath(os.path.join(datos, "bioma"))
@@ -274,12 +282,15 @@ class MundoArchivos(Mundo):
             carpeta = self.azar.eleccion([d for d, _, _ in os.walk(self.raiz)])
             self._escribir(carpeta, f"brote_{self.t}.txt", "0101" * 64)
 
-    def componentes_propios(self) -> Dict[str, list]:
+    def registro(self) -> Registro:
         self._prudencia = Prudencia()          # la comparten su componente y su estrategia
-        return {"S3.Reaccionar": [self._prudencia]}
-
-    def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [Defensa(), AlimentarseConPrudencia()], "S3": [BuscarEnOtraCarpeta(self._prudencia)]}
+        return Registro(
+            componentes={"S3.Reaccionar": Alta(añade=[self._prudencia])},
+            estrategias={
+                "S1": Alta(añade=[Defensa()], sustituye={"Alimentarse": AlimentarseConPrudencia()}),
+                "S3": Alta(añade=[BuscarEnOtraCarpeta(self._prudencia)]),
+            },
+        )
 
     # --- resultados y vista --------------------------------------------------
     def puntuacion(self) -> Dict[str, Any]:

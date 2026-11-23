@@ -420,4 +420,4 @@ def test_crafter_no_escribe_conducta():
     clases = [c for _, c in inspect.getmembers(crafter, inspect.isclass) if c.__module__ == crafter.__name__]
     assert clases     # el adaptador existe
     assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
-    assert crafter.MundoCrafter().estrategias_propias() == {}
+    assert crafter.MundoCrafter().registro().estrategias == {}

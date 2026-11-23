@@ -41,6 +41,7 @@ from ida.core.azar import Azar  # noqa: E402
 from ida.core.latido import Organismo  # noqa: E402
 from ida.core.linaje import Arquetipo, Linaje  # noqa: E402
 from ida.core.memoria import Memoria  # noqa: E402
+from ida.core.mundo import Registro  # noqa: E402
 from ida.core.persistencia import Persistencia  # noqa: E402
 from ida.mundos import cargar  # noqa: E402
 from ida.sistemas import crear_sistemas  # noqa: E402
@@ -117,9 +118,9 @@ def evaluar(
     logros_oficiales = sorted(crafter.constants.achievements)
 
     clase_crafter = cargar("crafter")
-    estrategias_originales = clase_crafter.estrategias_propias
+    registro_original = clase_crafter.registro
     if sin_estrategias_propias:
-        clase_crafter.estrategias_propias = lambda self: {}
+        clase_crafter.registro = lambda self: Registro()
     perfil_original = clase_crafter.perfil
     if mecanismos:      # interruptores de Perfil.mecanismos (bloques E y F)
         from dataclasses import replace
@@ -225,7 +226,7 @@ def evaluar(
         m.cerrar()
         persistencia.cerrar()
         if sin_estrategias_propias:
-            clase_crafter.estrategias_propias = estrategias_originales
+            clase_crafter.registro = registro_original
         clase_crafter.perfil = perfil_original
         shutil.rmtree(temp_dir, ignore_errors=True)
 

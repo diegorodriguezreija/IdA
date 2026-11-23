@@ -310,7 +310,7 @@ def test_crafter_no_tiene_refugio_propio():
     from ida.mundos import crafter
     from ida.mundos.crafter import MundoCrafter
 
-    assert MundoCrafter().estrategias_propias() == {}
+    assert MundoCrafter().registro().estrategias == {}
     assert not hasattr(crafter, "RefugioNocturno")
 
 

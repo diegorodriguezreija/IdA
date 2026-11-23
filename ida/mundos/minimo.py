@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import Definicion, Propuesta
 from ida.core.azar import Azar
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
@@ -31,7 +31,15 @@ def _dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
 
 class MundoMinimo(Mundo):
     nombre = "minimo"
-    perfil = Perfil(frecuencia_ms=100.0, amplitud=100, memoria="completa", duerme=True, hogar=True, peso_experiencia=0.2)
+    perfil = Perfil(
+        frecuencia_ms=100.0,
+        amplitud=100,
+        memoria="completa",
+        duerme=True,
+        hogar=True,
+        peso_experiencia=0.2,
+        rasgos_declarados=("peligro", "nutritivo", "recurso", "novedad"),
+    )
 
     def __init__(self, **_):
         self.azar = Azar(0)
@@ -153,8 +161,8 @@ class MundoMinimo(Mundo):
             ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 8.0
             ef.causa = "lobo"
 
-    def estrategias_propias(self) -> Dict[str, list]:
-        return {"S1": [Defensa()]}
+    def registro(self) -> Registro:
+        return Registro(estrategias={"S1": Alta(añade=[Defensa()])})
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"bayas": self.comido["baya"], "setas": self.comido["seta"]}

@@ -60,7 +60,16 @@ def espacio_libre(inicio: Celda, ocupadas: Set[Celda], limite: int = 80) -> int:
 
 class MundoSnake(Mundo):
     nombre = "snake"
-    perfil = Perfil(tiempo_real=True, frecuencia_ms=60.0, amplitud=80, memoria="ligera", duerme=False, hogar=False, peso_experiencia=0.15)
+    perfil = Perfil(
+        tiempo_real=True,
+        frecuencia_ms=60.0,
+        amplitud=80,
+        memoria="ligera",
+        duerme=False,
+        hogar=False,
+        peso_experiencia=0.15,
+        rasgos_declarados=("peligro", "nutritivo"),
+    )
 
     def __init__(self, dificultad: Any = 0, ventana: Any = 0, ritmo: Any = 60, **_):
         self.dificultad = DIFICULTADES.get(str(dificultad).lower(), 0)

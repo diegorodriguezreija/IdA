@@ -5,7 +5,7 @@ Un mundo traduce su realidad al vocabulario común (``ida.core.vocabulario``):
 - ejecuta los verbos que declara y devuelve un ``Efecto``.
 
 El framework no sabe nada más del mundo. Si un mundo necesita razonamiento propio, lo aporta
-como componentes adicionales (``componentes_propios``), declarados como tales.
+a través de su registro (``registro()``), declarado como tal.
 """
 
 from abc import ABC, abstractmethod
@@ -13,6 +13,19 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.vocabulario import RASGOS, Verbo
+
+
+@dataclass
+class Alta:
+    añade: List[Any] = field(default_factory=list)        # en el orden declarado
+    sustituye: Dict[str, Any] = field(default_factory=dict) # nombre de CLASE del general -> sustituto
+
+
+@dataclass
+class Registro:
+    componentes: Dict[str, Alta] = field(default_factory=dict)  # destino -> Alta
+    estrategias: Dict[str, Alta] = field(default_factory=dict)  # "S1" | "S2" | "S3" -> Alta
+    cuerpo: Optional[str] = None
 
 
 @dataclass
@@ -134,6 +147,8 @@ class Perfil:
     gracia_estrategia: int = 10               # latidos antes de que una estrategia pueda agotarse
     ritmo_esperado_estrategia: float = 0.02   # progreso por latido esperado (por defecto, sin aprender)
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
+    # Rasgos valorados ("peligro", "nutritivo", "recurso", "novedad") entregados hechos por el mundo (D4)
+    rasgos_declarados: Tuple[str, ...] = ()
 
     @property
     def aliestesia(self) -> bool:
@@ -168,14 +183,9 @@ class Mundo(ABC):
         """El mundo ha terminado la vida (fin de partida, límite propio...)."""
         return False
 
-    def componentes_propios(self) -> Dict[str, list]:
-        """Componentes adicionales por destino, p. ej. ``{"S3.Reaccionar": [MiComponente()]}``."""
-        return {}
-
-    def estrategias_propias(self) -> Dict[str, list]:
-        """Estrategias propias del mundo por sistema (``Definicion`` de ``ida.core.estrategia``),
-        p. ej. ``{"S1": [MiDefensa()]}``. Se añaden al catálogo del componente ``Estrategia``."""
-        return {}
+    def registro(self) -> Registro:
+        """Registro declarado de Componentes, estrategias y cuerpo del mundo (decisión D3)."""
+        return Registro()
 
     def manual(self) -> Dict[str, Any]:
         """Hechos declarados del mundo (instrucciones), con su fuente. Por defecto, ninguno.

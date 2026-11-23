@@ -138,7 +138,8 @@ class MundoCrafter(Mundo):
                     necesidades=(Necesidad("hambre", ("comida",), 95.0, "nutritivo"), Necesidad("sed", ("agua",), 95.0, "nutritivo"),
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
-                    intenciones=("progresar",))
+                    intenciones=("progresar",),
+                    rasgos_declarados=("nutritivo", "recurso", "novedad"))
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
                  manual: str = "estricto", **_):
@@ -471,11 +472,6 @@ class MundoCrafter(Mundo):
     def logros(self) -> List[str]:
         a = self.jugador.achievements
         return sorted(k for k, v in a.items() if v) if isinstance(a, dict) else sorted(a)
-
-    def estrategias_propias(self) -> Dict[str, list]:
-        """Ninguna (paso 6d): el refugio lo da ``Proteger`` (paso 3), la tecnología ``PerseguirMetas`` (paso 5) y la
-        defensa ``Afrontar`` (paso 6), todas de la base."""
-        return {}
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
