@@ -89,6 +89,8 @@ class Componente:
     # Preatención (D5): un Componente preatentivo corre en la preatención de S1 (S1 · Sentir), justo después de
     # Core · Sentir, despierto o dormido, exento de atención; solo modifica piezas de los sensores del Core.
     preatentivo: bool = False
+    # Preatentivo integrador (D5): corre el último de la preatención, tras los que ponen rasgos (``Saliencia``).
+    integrador: bool = False
     # Componente de un cuerpo (D10): el nombre de su familia. El Core llama a su ``aprender`` en el punto del latido que
     # le corresponde (``Organismo._aprender``), no en el gancho general de plasticidad.
     de_cuerpo: str = ""

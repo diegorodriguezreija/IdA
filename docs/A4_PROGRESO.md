@@ -8,7 +8,7 @@ Componente preatentivo de Crafter (`ValoracionCrafter`). Rama `reorg/a4-observac
 | Etapa | Qué | Estado |
 |---|---|---|
 | E1 | Datos en bruto nuevos en el adaptador (`madura`, `vista` ampliada) | HECHA |
-| E2 | `ValoracionCrafter` y orden de la preatención (`Saliencia` la última) | pendiente |
+| E2 | `ValoracionCrafter` y orden de la preatención (`Saliencia` la última) | HECHA |
 | E3 | El adaptador deja de valorar y de apuntar visitas; `rasgos_declarados` vacío | pendiente |
 | E4 | Lectores a piezas y `ctx.observacion = None` tras Core · Sentir | pendiente |
 | E5 | Especificación, herramienta, documentación y tests restantes | pendiente |
@@ -35,3 +35,35 @@ Decisiones:
   `vista` cuya clase es nutritiva y que no lleven `madura = False`.
 
 Pendiente: nada de E1.
+
+## E2 · ValoracionCrafter y orden de la preatención
+
+Estado: HECHA.
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 50 source files` ·
+`325 passed, 1 warning in 51.86s` · `EQUIVALENCIA: OK`.
+
+Decisiones:
+- `ida/mundos/crafter_valoracion.py`: `ValoracionCrafter(nutritivas, utiles, cuerpo, valor_nutritivo, valor_recurso,
+  alcance_gradiente, olvido_novedad)`, preatentivo, tipo `Exterocepcion`. Fichero propio con el prefijo `crafter_` para
+  que `herramientas/conocimiento_mundo.py` lo cuente como de Crafter sin cambiarla. Crafter lo registra en
+  `S1.Sentir` (`añade`) con sus clases NUTRITIVO y UTIL, `NUTRITIVO_MANUAL`, `RECURSO_MANUAL`, `4 * radio` y el mismo
+  objeto `Cuadricula` que registra como cuerpo (así lee la cuenta del mismo Motor que usan los Actuadores).
+  `olvido_novedad` = 50 (el divisor de antes), por defecto.
+- Orden de lo que hace en cada latido: (a) si la Accion de `ei` fue MOVER con `primitivas` no vacías, apunta
+  `visitas[posición actual de «yo»] = cuenta`, donde cuenta = `sum(Motor.ejecutadas.values())`; (b) escribe los rasgos;
+  (c) reconstruye cada dict en el orden de antes (`ORDEN_COSA`, `ORDEN_LUGAR`) y deja después lo demás (`peligro`).
+- Una cosa es nutritiva si su clase es NUTRITIVO y no lleva `madura = False` (solo las plantas llevan `madura`): igual
+  que la regla de antes (`planta` solo madura). Lugar = pieza con `lugar >= 0,5`.
+- Orden de la preatención: atributo `Componente.integrador` (False por defecto; `Saliencia` lo pone a True). El montaje
+  (`Organismo.__init__`) ordena la preatención con `sorted(..., key=integrador)`, estable: los integradores al final,
+  el resto en su orden de registro. Resultado en Crafter: `Amenaza`, `ValoracionCrafter`, `Saliencia`. Línea literal
+  añadida a D5.
+- Adelantado de E5 por necesidad: `ValoracionCrafter` en `doc-repositorio/componentes.toml` (`hoy = "S1.Sentir"`,
+  `hoy_en = ["crafter"]`, sin `paso`, notas de ValoracionCrafter y MapaLocal) y mapa regenerado. Sin ello,
+  `test_mapa_componentes` falla en cuanto Crafter registra el Componente.
+- Comprobación de la cuenta: `tests/test_valoracion_crafter.py` comprueba en cada latido (semillas 3 y 31, hasta 500
+  latidos) `sum(Motor.ejecutadas.values()) == mundo.t`, y que los rasgos de las piezas tras la preatención son
+  idénticos (`==`, sin tolerancia) a los que entrega el adaptador, con el orden de claves de antes.
+
+Pendiente: nada de E2.

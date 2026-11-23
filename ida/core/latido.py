@@ -160,8 +160,9 @@ class Organismo:
                     raise ValueError(f"Ya existe una estrategia de clase '{d.__class__.__name__}' en el catálogo de {sis}")
                 catalogo.añadir(d)
 
-        # Preatención (D5): los preatentivos de S1 · Sentir, en un módulo exento que corre tras Core · Sentir
-        self.preatencion = Preatencion([c for s in self.sistemas for c in s.preatencion])
+        # Preatención (D5): los preatentivos de S1 · Sentir, en un módulo exento que corre tras Core · Sentir. Los
+        # integradores (``Saliencia``) corren siempre los últimos, sea cual sea el orden de registro (orden estable)
+        self.preatencion = Preatencion(sorted((c for s in self.sistemas for c in s.preatencion), key=lambda c: c.integrador))
 
         # Conjunto de nombres de clase de todo lo montado (Componentes Core, preatención y S1-S3, y definiciones de catálogos)
         self.registrados: Set[str] = {

@@ -135,6 +135,7 @@ Contenido:
 - **General:** la saliencia de `sentidos.py:57`, que pasa a calcularse aquí. `Exterocepcion` en el Core emite cada entidad en bruto, con arousal 0 (sin valorar), y la preatención le pone la saliencia con los rasgos interpretados. Valor final idéntico al de hoy.
 - **Amenaza** (S1, general, D7): estima el `peligro` de cada entidad con lo aprendido.
 - **Crafter (`ValoracionCrafter`):** `nutritivo`, `recurso` y `novedad` que hoy calcula el adaptador, con la misma fórmula, a partir de las piezas, el manual y la memoria.
+- **Orden:** `Saliencia` corre siempre la última de la preatención: integra los rasgos que ponen los demás preatentivos, generales o del mundo.
 
 Así se cumplen a la vez el punto 2 del autor (el Core no procesa), la nota B (no hay piezas nuevas que cuesten atención) y la nota D (dormido se sigue estimando el peligro, y la alarma funciona igual).
 

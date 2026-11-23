@@ -127,11 +127,11 @@ tipo = "componente"
 clase = "mundo"
 dueno = "crafter"
 destino = "S1.Sentir"
-hoy = "fuera:ida/mundos/crafter.py"
-paso = "A4"
+hoy = "S1.Sentir"
+hoy_en = ["crafter"]
 decision = "D4"
 preatentivo = true
-nota = "nutritivo, recurso y novedad; hoy los calcula el adaptador (crafter.py:290-344). Después de A5"
+nota = "ida/mundos/crafter_valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual"
 
 [[componente]]
 nombre = "Imagen"
@@ -193,7 +193,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 aprende = true
-nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7"
+nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter"
 
 [[componente]]
 nombre = "Reflejo"

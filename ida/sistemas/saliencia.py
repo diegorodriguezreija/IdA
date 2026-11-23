@@ -6,7 +6,8 @@ aquí, antes del cuello de botella de la atención y sin pagarla (como el colíc
 
     saliencia = max(peligro · max(proximidad, 0,3), nutritivo · proximidad, 0,4 · novedad)
 
-Corre después de ``Amenaza``, que es quien escribe el ``peligro`` aprendido. Coste lineal en lo percibido.
+Corre siempre la última de la preatención (``integrador``, D5): integra los rasgos que ponen los demás preatentivos,
+generales (``Amenaza``, el ``peligro`` aprendido) o del mundo. Coste lineal en lo percibido.
 """
 
 from ida.core.arquitectura import Componente, Contexto
@@ -15,6 +16,7 @@ from ida.core.arquitectura import Componente, Contexto
 class Saliencia(Componente):
     tipo = "Exterocepcion"
     preatentivo = True
+    integrador = True
 
     def reactiva(self, ctx: Contexto) -> None:
         for p in ctx.onda.ev("Exterocepcion").values():
