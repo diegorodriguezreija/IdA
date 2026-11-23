@@ -229,8 +229,7 @@ nombre = "Peticion"
 tipo = "componente"
 clase = "general"
 destino = "S1.Reaccionar"
-hoy = "S1.Actuar"
-paso = "A7"
+hoy = "S1.Reaccionar"
 decision = "D11"
 
 [[componente]]
@@ -437,8 +436,7 @@ nombre = "Peticion"
 tipo = "componente"
 clase = "general"
 destino = "S2.Reaccionar"
-hoy = "S2.Actuar"
-paso = "A7"
+hoy = "S2.Reaccionar"
 decision = "D11"
 
 [[componente]]

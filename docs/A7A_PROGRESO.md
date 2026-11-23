@@ -7,16 +7,16 @@ Encargo: equivalencia con herencia y legado frente a eaeadaa; Peticion a Reaccio
 
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
-| E1 | Equivalencia con herencia y línea base de legado | Hecha | ver `git log` |
-| E2 | Peticion a Reaccionar (D11) | Pendiente | - |
+| E1 | Equivalencia con herencia y línea base de legado | Hecha | `78ee258` |
+| E2 | Peticion a Reaccionar (D11) | Hecha | ver `git log` |
 | E3 | Memoria a corto plazo (D13) | Pendiente | - |
 
-### Últimas comprobaciones (E1)
+### Últimas comprobaciones (E2)
 
 ```
 ruff check .          All checks passed!
 mypy ida              Success: no issues found in 61 source files
-pytest -q             359 passed, 1 warning in 56.22s
+pytest -q             359 passed, 1 warning in 57.21s
 equivalencia.py:
   31: IDÉNTICO
   32: IDÉNTICO
@@ -40,3 +40,14 @@ equivalencia.py:
   - Generada la referencia `datos/equivalencia/legado_herencia_31.json` (13 legados) en el commit base `b3b6570` (`origin/reorg/componentes`), cuya conducta es idéntica a `eaeadaa`.
   - Anotada la procedencia del legado en `datos/equivalencia/base_ref.txt`.
   - `equivalencia.py` compara `base_herencia_31.json` y `legado_herencia_31.json` («31h: IDÉNTICO» y «31h legado: IDÉNTICO»).
+
+## E2 · Peticion a Reaccionar (D11)
+
+- Se comprueba que `Peticion` únicamente lee `ctx.onda.estrategias` y despacha a `Definicion.pedir(ctx, p)` (implementado solo en `Proteger` y `Afrontar`), sin leer propuestas en `acc`, piezas `Accion` ni piezas `Expectativa`.
+- En `ida/sistemas/s1.py` y `ida/sistemas/s2.py`:
+  - `Peticion(catalogo)` pasa del módulo `Actuar` al final del módulo `Reaccionar` (después de `Estrategia`).
+  - Actualizadas las tablas de los docstrings de ambos sistemas.
+- En `doc-repositorio/componentes.toml`:
+  - Actualizado `Peticion` de S1 y S2 con `hoy = "S1.Reaccionar"` y `hoy = "S2.Reaccionar"`, retirando `paso = "A7"`.
+- Regenerado `doc-repositorio/06_MAPA_DE_COMPONENTES.md` mediante `herramientas/mapa_componentes.py --escribir`.
+

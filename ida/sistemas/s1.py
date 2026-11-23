@@ -10,8 +10,8 @@
 | Reaccionar  | Impulso        | Impulso: uno por necesidad que declara el mundo, más Seguridad (intensidad cruda; la del cobijo, anticipada: alostasis) |
 | Reaccionar  | Feedback       | Feedback de S1: cuánto bajan los déficits del cuerpo y el peligro |
 | Reaccionar  | Estrategia     | Estrategia: elige, mantiene y abandona estrategias (progreso y agotamiento) |
+| Reaccionar  | Peticion       | Metas instrumentales que las estrategias activas piden al planificador de S3 |
 | Actuar      | Accion         | Acción de cada estrategia activa, con su origen |
-| Actuar      | Peticion       | Metas instrumentales que las estrategias activas piden al planificador de S3 |
 | Actuar      | Anticipacion   | Expectativa: cambio esperado de las necesidades si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
 
@@ -840,6 +840,6 @@ def crear_s1() -> Sistema:
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
         Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia()]),   # Recinto: lo añade el mundo que lo usa (D16)
-        Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
-        Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion()]),
+        Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD), Peticion(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo), Anticipacion()]),
     ], preatencion=[Amenaza(), Saliencia()])

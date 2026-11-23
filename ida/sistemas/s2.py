@@ -11,6 +11,7 @@
 | Reaccionar  | Impulso          | Impulso propio: Exploración (apertura × novedad) |
 | Reaccionar  | Feedback         | Feedback de S2: mejora del placer y bajada del estrés |
 | Reaccionar  | Estrategia       | Estrategias de valor: explorar, refugiarse (hogar valorado), recordar_comida |
+| Reaccionar  | Peticion         | Metas instrumentales que las estrategias activas piden al planificador de S3 |
 | Actuar      | Accion           | Acción de cada estrategia activa de S2, con su origen |
 | Actuar      | Anticipacion     | Expectativa: valencia esperada si se ejecuta su propuesta (con el interruptor de expectativa) |
 """
@@ -452,6 +453,6 @@ def crear_s2() -> Sistema:
     return Sistema("S2", "Valor", [
         Modulo("Sentir", [Patron(), Emocion(), Recuerdo()]),
         Modulo("Interpretar", [Sujeto(), Valor()]),
-        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo)]),
-        Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion(("placer", "estres"))]),
+        Modulo("Reaccionar", [Exteriorizacion(), Impulso(), Feedback(), Estrategia(catalogo), Peticion(catalogo)]),
+        Modulo("Actuar", [Accion(catalogo), Anticipacion(("placer", "estres"))]),
     ])
