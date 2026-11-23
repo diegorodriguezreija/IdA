@@ -35,10 +35,10 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.core.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.mundos.crafter_valoracion import ValoracionCrafter
-from ida.sistemas.proteger import Recinto, SalirDelRecinto   # de Crafter (D16); sus ficheros se mueven en A6b
+from ida.sistemas.proteger import ALCANCE_SITIO, Recinto, SalirDelRecinto   # de Crafter (D16); sus ficheros se mueven en A6b
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
@@ -143,7 +143,13 @@ class MundoCrafter(Mundo):
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",),
-                    rasgos_declarados=())
+                    rasgos_declarados=(),
+                    # Escala de Crafter (D15): la salud son 9 puntos (vitalidad 0-100)
+                    escala=Escala(dano_previo=100.0 * 2.0 / 9.0,      # un golpe desconocido quita 2 de 9
+                                  golpes_previo=10.0,                 # golpes para derribar algo sin datos
+                                  margen_lugar=3,                     # casillas tras el alcance de lo peligroso
+                                  reserva=100.0 * 3.0 / 9.0,          # una lucha deja intactos 3 de 9
+                                  coste_sin_sitio=float(3 * ALCANCE_SITIO)))   # sin sitio: ir y volver al alcance de búsqueda
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
                  manual: str = "estricto", **_):

@@ -171,6 +171,19 @@ MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, 
                                expectativa=True, plan=True)
 
 
+@dataclass(frozen=True)
+class Escala:
+    """Constantes de escala del mundo que usan los Componentes y estrategias generales (D15). Por defecto, los valores
+    de antes de A6a; el mundo que los usa los fija en su ``Perfil``. Lo que no depende de la escala (proporciones
+    internas, pesos de previos, ventanas) se queda en su Componente."""
+
+    dano_previo: float = 100.0 * 2.0 / 9.0   # Amenaza: daño de un golpe de lo peligroso sin datos, en vitalidad (0-100)
+    golpes_previo: float = 10.0              # Amenaza: golpes para derribar algo sin datos (pesimista)
+    margen_lugar: int = 3                    # Amenaza: casillas más allá del alcance a las que se anula el peligro de un lugar
+    reserva: float = 100.0 * 3.0 / 9.0       # Afrontar: vitalidad que una lucha debe dejar intacta
+    coste_sin_sitio: float = 45.0            # Impulso (alostasis): horizonte del cobijo sin ningún sitio, en pasos
+
+
 @dataclass
 class Perfil:
     """Las pocas perillas de un mundo. Cada una tiene un efecto visible al ejecutar."""
@@ -196,6 +209,7 @@ class Perfil:
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
     # Rasgos valorados ("peligro", "nutritivo", "recurso", "novedad") entregados hechos por el mundo (D4)
     rasgos_declarados: Tuple[str, ...] = ()
+    escala: Escala = Escala()   # constantes de escala de los generales (D15)
     # La aliestesia (paso 0b) ya no es una perilla: la tiene el mundo que registra ``Apetencia`` (D3, D15).
 
 

@@ -23,7 +23,7 @@ from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
-from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, recinto
+from ida.sistemas.proteger import COBIJO, Proteger, recinto
 from ida.sistemas.amenaza import Amenaza
 from ida.sistemas.saliencia import Saliencia
 
@@ -259,7 +259,6 @@ class Defenderse(Definicion):
         return Propuesta(Verbo.ATACAR, amenaza.id, acotar(0.75 + 0.25 * _peligro(ctx)), 0.7, f"defenderse de {amenaza.clase}", clase=amenaza.clase)
 
 
-RESERVA = 100.0 * 3.0 / 9.0   # paso 6b: vitalidad que una lucha debe dejar intacta (3 de 9, declarado)
 
 
 def _yo(ctx: Contexto) -> Optional[Tuple[int, int]]:
@@ -297,7 +296,7 @@ class Afrontar(Definicion):
     - margen = salud − daño recibido; beneficio = el peligro que elimina + 1 si derribarla es una meta pendiente
       del manual (ATACAR sobre su clase).
 
-    Lucha (fase ``luchar``) contra la de mayor beneficio con margen > ``RESERVA`` y beneficio > 0: ATACAR si está en
+    Lucha (fase ``luchar``) contra la de mayor beneficio con margen > ``Perfil.escala.reserva`` (D15) y beneficio > 0: ATACAR si está en
     contacto; si no y su alcance es mayor que el contacto (un emisor: huir no lo reduce y acercarse acorta la
     exposición), MOVER al lugar que más acerca; si daña solo por contacto, no se huye: se espera (ESPERAR) cuando le
     falta un paso para el contacto y, más lejos, no se propone nada.
@@ -340,12 +339,14 @@ class Afrontar(Definicion):
             return cast(Optional[Dict[str, Any]], ctx.extra["afrontar"])
         res: Optional[Dict[str, Any]] = None
         aqui = _yo(ctx)
+        reserva = ctx.perfil.escala.reserva
+        ctx.memoria.peligros.escalar(ctx.perfil.escala)
         if ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
             salud = float(ctx.soma.vitalidad)
             llevados = _objetos_llevados(ctx)
             reductores = ctx.memoria.peligros.reductores()
             valoradas = [v for o in objetos_peligrosos(ctx) if (v := self._valorar(ctx, o, aqui, salud, llevados, reductores)) is not None]
-            favorables = [v for v in valoradas if v["margen"] > RESERVA and v["beneficio"] > 0.0]
+            favorables = [v for v in valoradas if v["margen"] > reserva and v["beneficio"] > 0.0]
             if favorables:
                 v = max(favorables, key=lambda v: (v["beneficio"], -v["d"], v["pieza"].id))
                 res = {"fase": self.LUCHAR, "valoracion": v, "objeto": None}
@@ -354,7 +355,7 @@ class Afrontar(Definicion):
                 elegido: Optional[Tuple[str, Dict[str, Any]]] = None
                 for x in sorted((set(reductores) - llevados) & ctx.memoria.peligros.distinguibles()):
                     w = self._valorar(ctx, principal["pieza"], aqui, salud, llevados | {x}, reductores)
-                    if w is not None and w["margen"] > RESERVA and (elegido is None or w["golpes"] < elegido[1]["golpes"]):
+                    if w is not None and w["margen"] > reserva and (elegido is None or w["golpes"] < elegido[1]["golpes"]):
                         elegido = (x, w)
                 if elegido is not None:
                     res = {"fase": self.ARMARSE, "valoracion": principal, "objeto": elegido[0], "con_objeto": elegido[1]}
@@ -774,7 +775,8 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
       anterior. Seguridad (el peligro) no se anticipa.
     - **Cobijo:** T = coste en pasos del mejor sitio para protegerse (``Recinto``), incluido lo que
       cuesta conseguir lo que le falta (metas instrumentales); dentro de un recinto, 0; sin ningún sitio posible, una
-      estimación alta declarada (``COSTE_SIN_SITIO``). Si la luz baja y el recinto está a 20 pasos, la intensidad sube unos 20 latidos antes.
+      estimación alta que declara el mundo (``Perfil.escala.coste_sin_sitio``, D15). Si la luz baja y el recinto está a
+      20 pasos, la intensidad sube unos 20 latidos antes.
     - **Las demás:** T = 0, no se anticipan. La versión que las anticipaba (3b, provisiones antes de encerrarse) se retiró
       por no tener efecto medido (``docs/ENCARGO_PASO3_PROTEGER.md``, «Resultado»)."""
     previos = ctx.onda.ei("Impulso")
@@ -790,7 +792,7 @@ def alostasis(ctx: Contexto, defs: Dict[str, float]) -> Dict[str, Tuple[float, f
     coste = None if r is None or r.carga["coste"] is None else max(0.0, float(r.carga["coste"]))
     horizontes: Dict[str, float] = dict.fromkeys(defs, 0.0)
     if COBIJO in defs and r is not None:
-        horizontes[COBIJO] = coste if coste is not None else (0.0 if r.carga["dentro"] else float(COSTE_SIN_SITIO))
+        horizontes[COBIJO] = coste if coste is not None else (0.0 if r.carga["dentro"] else float(ctx.perfil.escala.coste_sin_sitio))
     salida: Dict[str, Tuple[float, float, float]] = {}
     for nombre, d in defs.items():
         t, h = tendencias[nombre], horizontes[nombre]

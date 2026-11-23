@@ -10,16 +10,16 @@ Crafter con `añade`; las constantes de escala de los generales pasan a parámet
 |---|---|---|---|
 | E1 | Punto 5 (revisión) y mecanismo de opcionales con tests, sin uso | Hecha | `e9ddc83` |
 | E2 | Opcionales y añadidos de Crafter, especificación | Hecha | `002c1d5` |
-| E3 | Fuera las activaciones condicionales | Hecha | ver `git log` |
-| E4 | Constantes de escala | Pendiente | |
+| E3 | Fuera las activaciones condicionales | Hecha | `6f37f49` |
+| E4 | Constantes de escala | Hecha | ver `git log` |
 | E5 | Herramienta, documentación y tests restantes | Pendiente | |
 
-### Últimas comprobaciones (E3, 23/11/2026)
+### Últimas comprobaciones (E4, 23/11/2026)
 
 ```
 ruff check .          All checks passed!
 mypy ida              Success: no issues found in 50 source files
-pytest -q             332 passed, 1 warning
+pytest -q             334 passed, 1 warning
 equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK · EQUIVALENCIA: OK
 ```
 
@@ -103,6 +103,52 @@ Conclusión: nada consume Azar ni escribe estado del que dependa la conducta. Se
   `_ctx_juguete` pone `registrados = {"Apetencia"}` con las necesidades que comparten rasgo; el de Crafter comprueba
   `"Apetencia" in registro().opcionales`. Mapa: notas de `Alimentarse` y `Apetencia`.
 
+## Constantes de escala (E4)
+
+**Mecanismo (uno solo): `Perfil.escala`**, una `Escala` congelada (`ida/core/mundo.py`) con los valores de antes por
+defecto. Crafter la fija explícitamente con los mismos valores (`ida/mundos/crafter.py`, su `perfil`; la salud son 9
+puntos). Por qué el Perfil y no el registro: los opcionales se construyen en el montaje general sin argumentos (su
+sitio no cambia), así que el registro no puede pasarles parámetros sin `sustituye`; y `Peligros`, que usa tres de ellas,
+no es un Componente (vive en `Memoria`). `Peligros.escalar(e)` copia las de Amenaza; la llaman `Amenaza.reactiva` y
+`Afrontar.evaluar` cada latido (sin depender de que la otra esté registrada). `Afrontar` lee `reserva` y la alostasis de
+`Impulso`, `coste_sin_sitio`, de `ctx.perfil.escala`. Los nombres de módulo (`DANO_PREVIO`...) quedan como valores por
+defecto. Test: `test_la_escala_del_perfil_llega_a_peligros` y `test_crafter_fija_la_escala_de_antes`
+(`tests/test_defensa.py`).
+
+Clasificación de las constantes de R0, sección E, de esos ficheros (las de `ida/core/peligro.py` están hoy en
+`ida/sistemas/amenaza.py`):
+
+| Fichero | Constante | Clase | Motivo |
+|---|---|---|---|
+| amenaza.py | `DANO_PREVIO` | de escala → `Escala.dano_previo` | fracción de la vida (2 de 9 puntos de salud de Crafter) |
+| amenaza.py | `GOLPES_PREVIO` | de escala → `Escala.golpes_previo` | número de golpes |
+| amenaza.py | `MARGEN_LUGAR` | de escala → `Escala.margen_lugar` | distancia en casillas |
+| amenaza.py | `ESCALA` | de escala (derivada) | sale de `dano_previo`: `Peligros.c_escala`, con `constante_escala` |
+| amenaza.py | `VITALIDAD_MAXIMA` | de diseño | escala interna del soma (0-100), igual en todos los mundos |
+| amenaza.py | `PESO_PREVIO`, `PESO_TASA` | de diseño | pesos de los previos |
+| amenaza.py | `VENTANA`, `MAX_RECORRIDOS`, `MAX_DERRIBOS` | de diseño | tamaños de búfer |
+| amenaza.py | `EMISION_MINIMA`, `MARGEN_REDUCTOR`, `PELIGRO_PREVIO` | de diseño | proporciones internas |
+| amenaza.py | `JUNTO_MINIMO`, `MINIMO_LEGADO` | de diseño | observaciones mínimas para decidir |
+| amenaza.py | `TASA_PREVIA` (0,5) | **DUDA** | daños por latido de exposición sin datos. A favor de escala: depende del ritmo de ataque del mundo por latido. En contra: es un previo pesimista en [0, 1], como una probabilidad, que la experiencia corrige con peso 2. Se queda |
+| s1.py | `RESERVA` | de escala → `Escala.reserva` | fracción de la vida (3 de 9) |
+| s1.py | `ENCUENTROS_HABITUACION` | de diseño | velocidad de habituación (cuenta de experiencias) |
+| s1.py | `HABITUACION_MAX`, `SENSIBILIZACION_MAX`, `SATISFACE_MIN`, `UMBRAL_MIEDO_REFERENCIA` | de diseño | proporciones internas |
+| s1.py | `SEGURIDAD` | de diseño | nombre del impulso |
+| s1.py | `VENTANA_TENDENCIA` (50) | **DUDA** | latidos de la media móvil de la tendencia. A favor de escala: con otro ritmo del mundo (latidos por día) 50 latidos son otra cosa. En contra: es una ventana de memoria del propio organismo, como `VENTANA`. Se queda |
+| proteger.py | `COSTE_SIN_SITIO` | de escala → `Escala.coste_sin_sitio` | pasos; la usa la alostasis general (`Impulso`). Crafter la fija como `3 * ALCANCE_SITIO` |
+| proteger.py | `MAX_INTERIOR`, `ALCANCE_SITIO`, `PROFUNDIDAD_PLAN`, `CANDIDATOS_EXACTOS`, `CADA_EVALUACION`, `MARGEN_SITIO`, `MARGEN_SITIO_MIN`, `BONO_HOGAR` | de Crafter | solo las usan `Recinto` y sus funciones (`planificar`, `recinto_actual`, `rutas`, `candidatos`, `completar`) |
+| proteger.py | `MAX_ESTADOS`, `MAX_PASOS_POSTURA` | de Crafter | del buscador (`_bfs`, `buscar_postura`), que D16 lleva al cuerpo cuadrícula en A6b |
+| proteger.py | `COBIJO` | de diseño | nombre de la necesidad que sirve `Proteger` |
+
+Resumen: 6 de escala (5 parámetros de `Escala` y `ESCALA`, derivada), 18 de diseño, 10 de Crafter, 2 DUDAS
+(`TASA_PREVIA`, `VENTANA_TENDENCIA`). `Proteger` y `SalirDelRecinto` no usan ninguna constante de módulo de escala.
+D15 cita `ALCANCE_SITIO`, `MAX_INTERIOR`, `CANDIDATOS_EXACTOS` y `MAX_ESTADOS` entre las que pasan al Perfil; como son
+de `Recinto` (de Crafter por D16), se quedan en su fichero, que pasa a Crafter en A6b.
+
+Fuera de esta clasificación: las constantes de `ida/sistemas/comun.py`, `s2.py` y `s3.py` (p. ej. `MAX_RUTA_MAPA` y
+`COSTE_RECORDADO` de `s3.py`, en pasos). El encargo pide las de «esos ficheros»; quedan para A6b o para la DUDA de
+`PerseguirMetas`.
+
 ## Decisiones y desviaciones
 
 - **`Recinto` no es el último de S1.Interpretar en Crafter hoy:** el cuerpo cuadrícula añade `MapaLocal` después
@@ -115,4 +161,4 @@ Conclusión: nada consume Azar ni escribe estado del que dependa la conducta. Se
 
 ## Pendientes
 
-E4 y E5 (ver la tabla de estado).
+E5 (herramienta `conocimiento_mundo.py`, documentación). Las constantes de `comun.py`, `s2.py` y `s3.py` sin clasificar.
