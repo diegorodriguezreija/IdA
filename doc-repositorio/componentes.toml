@@ -1,0 +1,690 @@
+# Mapa de Componentes de IdA: especificación del diseño por Componentes.
+#
+# Es la fuente de verdad de dónde vive cada Componente (destino) y dónde está hoy (hoy).
+# tests/test_mapa_componentes.py comprueba que el código montado coincide con «hoy» en cada mundo,
+# y doc-repositorio/06_MAPA_DE_COMPONENTES.md se genera desde aquí (herramientas/mapa_componentes.py).
+#
+# Reglas de cambio (AGENTS.md):
+# - Mover un Componente en el código obliga a actualizar «hoy» (y «hoy_en») en el mismo PR.
+# - Cambiar «destino», «clase» o «registran» exige una decisión de docs/DISENO_COMPONENTES.md
+#   (campo «decision») aprobada por el autor. Nunca se cambia para que pase un test.
+#
+# Campos:
+#   nombre       clase Python del Componente, la estrategia (Definicion) o la biblioteca
+#   tipo         componente | estrategia | biblioteca
+#   clase        general | opcional (general que solo monta quien lo registra) | cuerpo | mundo
+#   dueno        mundo o familia de cuerpos (clase mundo o cuerpo)
+#   destino      dónde debe vivir: CORE.Sentir, CORE.Regulacion, CORE.Actuar, S1.Sentir... o «cuerpo» (biblioteca)
+#   hoy          dónde está hoy: una ubicación como destino, «fuera:<fichero>» si aún no es un Componente,
+#                o «» si todavía no existe
+#   hoy_en       en qué mundos se monta hoy («todos» o lista); por defecto, todos (general) o [dueno] (mundo)
+#   registran    mundos que lo registrarán (clase opcional o cuerpo)
+#   sustituye    estrategia general a la que sustituye en su mundo
+#   paso         paso del plan que lo lleva a su destino (vacío si ya está)
+#   decision     D<n> de docs/DISENO_COMPONENTES.md, o «previo» si es anterior a la reorganización
+#   preatentivo  corre en la preatención (D5)
+#   aprende      tiene plasticidad (D6)
+
+[[componente]]
+nombre = "Interocepcion"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Sentir"
+hoy = "CORE.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Propiocepcion"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Sentir"
+hoy = "CORE.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Ambiente"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Sentir"
+hoy = "CORE.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Exterocepcion"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Sentir"
+hoy = "CORE.Sentir"
+decision = "previo"
+nota = "En bruto: la saliencia pasa a la preatención (A3, D5)"
+
+[[componente]]
+nombre = "Regulacion"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Regulacion"
+hoy = "fuera:ida/core/marcapasos.py"
+paso = "A3"
+decision = "D12"
+nota = "Reglas instantáneas de la Onda; hoy Marcapasos.ritmo"
+
+[[componente]]
+nombre = "Tribunal"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Actuar"
+hoy = "CORE.Actuar"
+decision = "previo"
+
+[[componente]]
+nombre = "Actuador"
+tipo = "componente"
+clase = "general"
+destino = "CORE.Actuar"
+hoy = "CORE.Actuar"
+decision = "previo"
+nota = "Ejecuta primitivas del mundo (A5, D9)"
+
+[[componente]]
+nombre = "ModeloDirecto"
+tipo = "componente"
+clase = "cuerpo"
+dueno = "cuadricula"
+destino = "CORE.Actuar"
+hoy = "fuera:ida/core/memoria.py"
+registran = ["crafter"]
+paso = "A5"
+decision = "D10"
+aprende = true
+nota = "Qué hace cada primitiva; hoy Memoria.aprender_cuerpo"
+
+[[componente]]
+nombre = "Saliencia"
+tipo = "componente"
+clase = "general"
+destino = "S1.Sentir"
+hoy = "fuera:ida/core/sentidos.py"
+paso = "A3"
+decision = "D5"
+preatentivo = true
+nota = "Hoy dentro de Exterocepcion (sentidos.py:57)"
+
+[[componente]]
+nombre = "Amenaza"
+tipo = "componente"
+clase = "opcional"
+destino = "S1.Sentir"
+hoy = "fuera:ida/core/peligro.py"
+registran = ["crafter"]
+paso = "A3"
+decision = "D5"
+preatentivo = true
+aprende = true
+nota = "Aprende y estima el peligro; sustituye a ida/core/peligro.py"
+
+[[componente]]
+nombre = "ValoracionCrafter"
+tipo = "componente"
+clase = "mundo"
+dueno = "crafter"
+destino = "S1.Sentir"
+hoy = "fuera:ida/mundos/crafter.py"
+paso = "A4"
+decision = "D4"
+preatentivo = true
+nota = "nutritivo, recurso y novedad; hoy los calcula el adaptador"
+
+[[componente]]
+nombre = "Imagen"
+tipo = "componente"
+clase = "general"
+destino = "S1.Sentir"
+hoy = "S1.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Objeto"
+tipo = "componente"
+clase = "general"
+destino = "S1.Interpretar"
+hoy = "S1.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Supervivencia"
+tipo = "componente"
+clase = "general"
+destino = "S1.Interpretar"
+hoy = "S1.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Apetencia"
+tipo = "componente"
+clase = "opcional"
+destino = "S1.Interpretar"
+hoy = "S1.Interpretar"
+hoy_en = "todos"
+registran = ["crafter"]
+paso = "A6"
+decision = "D15"
+aprende = true
+nota = "Aliestesia; sustituye a Perfil.aliestesia"
+
+[[componente]]
+nombre = "Recinto"
+tipo = "componente"
+clase = "mundo"
+dueno = "crafter"
+destino = "S1.Interpretar"
+hoy = "S1.Interpretar"
+hoy_en = "todos"
+paso = "A6"
+decision = "D16"
+nota = "Emite la afordancia de protección"
+
+[[componente]]
+nombre = "MapaLocal"
+tipo = "componente"
+clase = "cuerpo"
+dueno = "cuadricula"
+destino = "S1.Interpretar"
+hoy = "fuera:ida/core/memoria.py"
+registran = ["crafter"]
+paso = "A5"
+decision = "D10"
+aprende = true
+nota = "Mapa métrico; hoy Memoria.ver_casillas"
+
+[[componente]]
+nombre = "Reflejo"
+tipo = "componente"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Impulso"
+tipo = "componente"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Feedback"
+tipo = "componente"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Estrategia"
+tipo = "componente"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Peticion"
+tipo = "componente"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Actuar"
+paso = "A7"
+decision = "D11"
+
+[[componente]]
+nombre = "Accion"
+tipo = "componente"
+clase = "general"
+destino = "S1.Actuar"
+hoy = "S1.Actuar"
+decision = "previo"
+
+[[componente]]
+nombre = "Anticipacion"
+tipo = "componente"
+clase = "general"
+destino = "S1.Actuar"
+hoy = "S1.Actuar"
+decision = "D11"
+nota = "Copia eferente"
+
+[[componente]]
+nombre = "Huir"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Defenderse"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Sobresalto"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "QuietoOHuir"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Alimentarse"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "SeguirEnMovimiento"
+tipo = "estrategia"
+clase = "general"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Afrontar"
+tipo = "estrategia"
+clase = "opcional"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+hoy_en = "todos"
+registran = ["crafter"]
+paso = "A6"
+decision = "D15"
+
+[[componente]]
+nombre = "Proteger"
+tipo = "estrategia"
+clase = "opcional"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+hoy_en = "todos"
+registran = ["crafter"]
+paso = "A6"
+decision = "D16"
+
+[[componente]]
+nombre = "SalirDelRecinto"
+tipo = "estrategia"
+clase = "mundo"
+dueno = "crafter"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+hoy_en = "todos"
+paso = "A6"
+decision = "D16"
+
+[[componente]]
+nombre = "Defensa"
+tipo = "estrategia"
+clase = "mundo"
+dueno = "minimo"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+nota = "plantar_cara"
+
+[[componente]]
+nombre = "Defensa"
+tipo = "estrategia"
+clase = "mundo"
+dueno = "archivos"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+decision = "previo"
+nota = "plantar_cara"
+
+[[componente]]
+nombre = "AlimentarseConPrudencia"
+tipo = "estrategia"
+clase = "mundo"
+dueno = "archivos"
+destino = "S1.Reaccionar"
+hoy = "S1.Reaccionar"
+sustituye = "Alimentarse"
+decision = "previo"
+
+[[componente]]
+nombre = "Patron"
+tipo = "componente"
+clase = "general"
+destino = "S2.Sentir"
+hoy = "S2.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Emocion"
+tipo = "componente"
+clase = "general"
+destino = "S2.Sentir"
+hoy = "S2.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Recuerdo"
+tipo = "componente"
+clase = "general"
+destino = "S2.Sentir"
+hoy = "S2.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Sujeto"
+tipo = "componente"
+clase = "general"
+destino = "S2.Interpretar"
+hoy = "S2.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Valor"
+tipo = "componente"
+clase = "general"
+destino = "S2.Interpretar"
+hoy = "S2.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Exteriorizacion"
+tipo = "componente"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Impulso"
+tipo = "componente"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Feedback"
+tipo = "componente"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Estrategia"
+tipo = "componente"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Peticion"
+tipo = "componente"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Actuar"
+paso = "A7"
+decision = "D11"
+
+[[componente]]
+nombre = "Accion"
+tipo = "componente"
+clase = "general"
+destino = "S2.Actuar"
+hoy = "S2.Actuar"
+decision = "previo"
+
+[[componente]]
+nombre = "Anticipacion"
+tipo = "componente"
+clase = "general"
+destino = "S2.Actuar"
+hoy = "S2.Actuar"
+decision = "D11"
+nota = "Copia eferente"
+
+[[componente]]
+nombre = "Explorar"
+tipo = "estrategia"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Refugiarse"
+tipo = "estrategia"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "RecordarComida"
+tipo = "estrategia"
+clase = "general"
+destino = "S2.Reaccionar"
+hoy = "S2.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Comunicacion"
+tipo = "componente"
+clase = "general"
+destino = "S3.Sentir"
+hoy = "S3.Sentir"
+decision = "previo"
+
+[[componente]]
+nombre = "Agente"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Predicado"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Proposicion"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Sentencia"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Logica"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Creencia"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "S3.Interpretar"
+decision = "previo"
+
+[[componente]]
+nombre = "Requisito"
+tipo = "componente"
+clase = "general"
+destino = "S3.Interpretar"
+hoy = "fuera:ida/core/memoria.py"
+paso = "A7"
+decision = "D7"
+aprende = true
+nota = "Requisitos y transformaciones; «delante» y «cerca» los da el cuerpo"
+
+[[componente]]
+nombre = "Intencion"
+tipo = "componente"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Impulso"
+tipo = "componente"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Feedback"
+tipo = "componente"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Estrategia"
+tipo = "componente"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Prudencia"
+tipo = "componente"
+clase = "mundo"
+dueno = "archivos"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Accion"
+tipo = "componente"
+clase = "general"
+destino = "S3.Actuar"
+hoy = "S3.Actuar"
+decision = "previo"
+
+[[componente]]
+nombre = "EvitarLoPeligroso"
+tipo = "estrategia"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "ComerLoNutritivo"
+tipo = "estrategia"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "CogerLoUtil"
+tipo = "estrategia"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Estudio"
+tipo = "estrategia"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "PerseguirMetas"
+tipo = "estrategia"
+clase = "general"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+nota = "DUDA para R0: el lote por estación y el material del mapa pueden suponer la cuadrícula (D16)"
+
+[[componente]]
+nombre = "BuscarEnOtraCarpeta"
+tipo = "estrategia"
+clase = "mundo"
+dueno = "archivos"
+destino = "S3.Reaccionar"
+hoy = "S3.Reaccionar"
+decision = "previo"
+
+[[componente]]
+nombre = "Geometria"
+tipo = "biblioteca"
+clase = "cuerpo"
+dueno = "cuadricula"
+destino = "cuerpo"
+hoy = "fuera:ida/sistemas/proteger.py"
+registran = ["crafter"]
+paso = "A5"
+decision = "D10"
+nota = "Vecinos, distancia, «delante», orientación"
+
+[[componente]]
+nombre = "BuscadorPosturas"
+tipo = "biblioteca"
+clase = "cuerpo"
+dueno = "cuadricula"
+destino = "cuerpo"
+hoy = "fuera:ida/sistemas/proteger.py"
+registran = ["crafter"]
+paso = "A5"
+decision = "D10"
+nota = "Qué secuencia de MOVER deja en A mirando a C"
+
+[[componente]]
+nombre = "Motor"
+tipo = "biblioteca"
+clase = "cuerpo"
+dueno = "cuadricula"
+destino = "cuerpo"
+hoy = "fuera:ida/mundos/crafter.py"
+registran = ["crafter"]
+paso = "A5"
+decision = "D9"
+nota = "Intención → primitivas, con sinergias (máx. 2 en la fase A)"

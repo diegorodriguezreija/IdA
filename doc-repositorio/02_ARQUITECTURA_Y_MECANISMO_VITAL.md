@@ -121,7 +121,7 @@ $$\text{Puntuación}_i = \text{Arousal}^{*}_i \cdot \text{Estrés} + \text{Confi
 
 ## 7. Diseño objetivo: Componentes generales y de cada mundo
 
-Decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md). Se migra en dos fases: la A (reorganización con el mismo resultado, campo a campo) y la B (cambios de conducta medidos uno a uno).
+Decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md). Qué Componente va en cada módulo, y dónde está hoy, lo dice el [mapa de Componentes](06_MAPA_DE_COMPONENTES.md), generado desde [`componentes.toml`](componentes.toml) y vigilado por un test. Se migra en dos fases: la A (reorganización con el mismo resultado, campo a campo) y la B (cambios de conducta medidos uno a uno).
 
 **El latido, en ocho pasos:**
 1. **Onda:** copia de la anterior; la anterior pasa a la memoria a corto plazo (cola de ondas, de la que salen los episodios).

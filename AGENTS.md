@@ -17,6 +17,10 @@ Los bloques A a F están terminados. Donde [`docs/DISENO_COMPONENTES.md`](docs/D
 
 Desde el 22/11/2026 el trabajo sigue [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) (decisiones D1 a D17) y su plan (fases A y B). La etapa en la que la base estaba congelada y solo se tocaba `ida/mundos/` terminó con la fase de generalización de Crafter.
 
+- **El mapa de Componentes es la especificación:** [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) dice dónde debe vivir cada Componente (`destino`) y dónde está hoy (`hoy`); `tests/test_mapa_componentes.py` comprueba que el código coincide con `hoy` en cada mundo.
+  - Si mueves, añades o quitas un Componente o una estrategia, actualiza `hoy` (y `hoy_en`, `paso`) en el mismo PR y regenera el documento: `.venv\Scripts\python.exe herramientas/mapa_componentes.py --escribir`.
+  - **No cambies `destino`, `clase`, `registran` ni `decision`** sin una decisión nueva o modificada en `docs/DISENO_COMPONENTES.md`, aprobada por el autor. Si el código no puede llegar al destino, para y explica por qué.
+  - Nunca cambies la especificación para que pase un test.
 - **Implementa solo el paso que te encarguen** (A1, A2...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
 - **Fase A: mismo resultado.** Con `--plazo-logico 40`, el JSON de `evaluar_crafter.py` (3000 pasos, semillas 31 y 32) debe ser idéntico al de `main`, `invariancia.py` debe dar OK y los tests deben pasar. Si algo cambia, para y explica por qué antes de seguir.
 - **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir.

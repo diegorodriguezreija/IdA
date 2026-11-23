@@ -4,6 +4,8 @@
 **Origen:** sección 0 y paso R1 de [`PLAN_COMPONENTES_Y_HOJA_DE_RUTA.md`](PLAN_COMPONENTES_Y_HOJA_DE_RUTA.md), con el flujo de alto nivel que dio el autor el 22/11/2026. El autor delegó las decisiones abiertas en el arquitecto; todas son revisables por él.
 **Qué sustituye:** la sección 0.2 del plan (preguntas abiertas) y los pasos R1 a R7, que pasan a ser las fases A y B de este documento (sección 5).
 
+**Especificación verificable:** el reparto de Componentes que deciden estas páginas está en [`doc-repositorio/componentes.toml`](../doc-repositorio/componentes.toml) (destino, dónde está hoy, paso y decisión de cada uno). Un test comprueba que el código coincide con ella, y [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](../doc-repositorio/06_MAPA_DE_COMPONENTES.md) se genera desde ella. Cambiar un destino exige modificar antes la decisión correspondiente aquí (sección 7).
+
 Dos objetivos, en este orden de prioridad:
 1. **Diseño coherente:** biológicamente plausible, y con Componentes coherentes entre sistemas y mundos.
 2. **Score intacta:** la reorganización (fase A) da el mismo JSON. Los cambios de conducta (fase B) se aceptan solo si no empeoran, según el criterio fijado de antemano (D17).
@@ -307,3 +309,23 @@ Después: V1 a V3 y M1 a M7 del plan, con M1 reformulado (D14).
 - **R1.1 y R2:** el registro ya existía; A1 lo amplía.
 - **Nuevo:** preatención, plasticidad, regulación, capa motora con sinergias, familia de cuerpos, `rasgos_declarados` e informe de conocimiento del mundo.
 - **M1 reformulado** (D14).
+
+---
+
+## 7. Cómo se cambia este diseño
+
+El diseño se actualiza con los resultados, pero nunca de pasada:
+
+1. **Un resultado lo motiva** (una medición, un diagnóstico o la auditoría R0), citado por su fichero.
+2. **Se modifica la decisión aquí:** se edita la D afectada (o se añade una nueva), con una línea en el registro de cambios de abajo que diga qué cambió, por qué y con qué resultado.
+3. **Se actualiza `componentes.toml`** (destino, clase, registran o decisión) y se regenera el mapa.
+4. **El autor lo aprueba** en un PR propio, separado de la implementación.
+
+Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va en el PR de cada paso.
+
+### Registro de cambios del diseño
+
+| Fecha | Decisión | Cambio | Motivo |
+|---|---|---|---|
+| 22/11/2026 | D1–D17 | Versión inicial | Sección 0 del plan; flujo de alto nivel del autor |
+| 23/11/2026 | D3, D7 | Especificación en `componentes.toml` con test; reglas de cambio (esta sección) | Que el diseño no se pervierta a la ligera y se actualice con los resultados |

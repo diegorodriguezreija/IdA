@@ -1,0 +1,171 @@
+# Mapa de Componentes
+
+> **Generado** por `herramientas/mapa_componentes.py --escribir` desde [`componentes.toml`](componentes.toml). No se edita a mano.
+> Diseño y decisiones: [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md).
+
+Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
+
+**Total:** 74 · **en su destino:** 57 · **pendientes:** 17 (A3: 3, A4: 1, A5: 5, A6: 5, A7: 3)
+
+**Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
+
+## 2 · Core · Sentir (en bruto)
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Interocepcion` | componente | general | ✓ |  | previo |  |
+| `Propiocepcion` | componente | general | ✓ |  | previo |  |
+| `Ambiente` | componente | general | ✓ |  | previo |  |
+| `Exterocepcion` | componente | general | ✓ |  | previo | En bruto: la saliencia pasa a la preatención (A3, D5) |
+
+## 3 · Preatención (S1 · Sentir, no paga atención, también dormido)
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Saliencia` | componente | general | fuera: `ida/core/sentidos.py` | A3 | D5 | Hoy dentro de Exterocepcion (sentidos.py:57) |
+| `Amenaza` ✱ | componente | opcional (crafter) | fuera: `ida/core/peligro.py` | A3 | D5 | Aprende y estima el peligro; sustituye a ida/core/peligro.py |
+| `ValoracionCrafter` | componente | mundo: crafter | fuera: `ida/mundos/crafter.py` | A4 | D4 | nutritivo, recurso y novedad; hoy los calcula el adaptador |
+
+## 5 · Regulación de la Onda (Core)
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Regulacion` | componente | general | fuera: `ida/core/marcapasos.py` | A3 | D12 | Reglas instantáneas de la Onda; hoy Marcapasos.ritmo |
+
+## S1 · Sentir
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Imagen` | componente | general | ✓ |  | previo |  |
+
+## S1 · Interpretar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Objeto` | componente | general | ✓ |  | previo |  |
+| `Supervivencia` | componente | general | ✓ |  | previo |  |
+| `Apetencia` ✱ | componente | opcional (crafter) | S1.Interpretar · en todos | A6 | D15 | Aliestesia; sustituye a Perfil.aliestesia |
+| `Recinto` | componente | mundo: crafter | S1.Interpretar · en todos | A6 | D16 | Emite la afordancia de protección |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Mapa métrico; hoy Memoria.ver_casillas |
+
+## S1 · Reaccionar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Reflejo` | componente | general | ✓ |  | previo |  |
+| `Impulso` | componente | general | ✓ |  | previo |  |
+| `Feedback` | componente | general | ✓ |  | previo |  |
+| `Estrategia` | componente | general | ✓ |  | previo |  |
+| `Peticion` | componente | general | S1.Actuar | A7 | D11 |  |
+| `Huir` | estrategia | general | ✓ |  | previo |  |
+| `Defenderse` | estrategia | general | ✓ |  | previo |  |
+| `Sobresalto` | estrategia | general | ✓ |  | previo |  |
+| `QuietoOHuir` | estrategia | general | ✓ |  | previo |  |
+| `Alimentarse` | estrategia | general | ✓ |  | previo |  |
+| `SeguirEnMovimiento` | estrategia | general | ✓ |  | previo |  |
+| `Afrontar` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D15 |  |
+| `Proteger` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D16 |  |
+| `SalirDelRecinto` | estrategia | mundo: crafter | S1.Reaccionar · en todos | A6 | D16 |  |
+| `Defensa` | estrategia | mundo: minimo | ✓ |  | previo | plantar_cara |
+| `Defensa` | estrategia | mundo: archivos | ✓ |  | previo | plantar_cara |
+| `AlimentarseConPrudencia` | estrategia | mundo: archivos | ✓ |  | previo |  Sustituye a `Alimentarse`. |
+
+## S1 · Actuar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Accion` | componente | general | ✓ |  | previo |  |
+| `Anticipacion` | componente | general | ✓ |  | D11 | Copia eferente |
+
+## S2 · Sentir
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Patron` | componente | general | ✓ |  | previo |  |
+| `Emocion` | componente | general | ✓ |  | previo |  |
+| `Recuerdo` | componente | general | ✓ |  | previo |  |
+
+## S2 · Interpretar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Sujeto` | componente | general | ✓ |  | previo |  |
+| `Valor` | componente | general | ✓ |  | previo |  |
+
+## S2 · Reaccionar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Exteriorizacion` | componente | general | ✓ |  | previo |  |
+| `Impulso` | componente | general | ✓ |  | previo |  |
+| `Feedback` | componente | general | ✓ |  | previo |  |
+| `Estrategia` | componente | general | ✓ |  | previo |  |
+| `Peticion` | componente | general | S2.Actuar | A7 | D11 |  |
+| `Explorar` | estrategia | general | ✓ |  | previo |  |
+| `Refugiarse` | estrategia | general | ✓ |  | previo |  |
+| `RecordarComida` | estrategia | general | ✓ |  | previo |  |
+
+## S2 · Actuar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Accion` | componente | general | ✓ |  | previo |  |
+| `Anticipacion` | componente | general | ✓ |  | D11 | Copia eferente |
+
+## S3 · Sentir
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Comunicacion` | componente | general | ✓ |  | previo |  |
+
+## S3 · Interpretar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Agente` | componente | general | ✓ |  | previo |  |
+| `Predicado` | componente | general | ✓ |  | previo |  |
+| `Proposicion` | componente | general | ✓ |  | previo |  |
+| `Sentencia` | componente | general | ✓ |  | previo |  |
+| `Logica` | componente | general | ✓ |  | previo |  |
+| `Creencia` | componente | general | ✓ |  | previo |  |
+| `Requisito` ✱ | componente | general | fuera: `ida/core/memoria.py` | A7 | D7 | Requisitos y transformaciones; «delante» y «cerca» los da el cuerpo |
+
+## S3 · Reaccionar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Intencion` | componente | general | ✓ |  | previo |  |
+| `Impulso` | componente | general | ✓ |  | previo |  |
+| `Feedback` | componente | general | ✓ |  | previo |  |
+| `Estrategia` | componente | general | ✓ |  | previo |  |
+| `Prudencia` | componente | mundo: archivos | ✓ |  | previo |  |
+| `EvitarLoPeligroso` | estrategia | general | ✓ |  | previo |  |
+| `ComerLoNutritivo` | estrategia | general | ✓ |  | previo |  |
+| `CogerLoUtil` | estrategia | general | ✓ |  | previo |  |
+| `Estudio` | estrategia | general | ✓ |  | previo |  |
+| `PerseguirMetas` | estrategia | general | ✓ |  | previo | DUDA para R0: el lote por estación y el material del mapa pueden suponer la cuadrícula (D16) |
+| `BuscarEnOtraCarpeta` | estrategia | mundo: archivos | ✓ |  | previo |  |
+
+## S3 · Actuar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Accion` | componente | general | ✓ |  | previo |  |
+
+## 7 · Core · Actuar
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Tribunal` | componente | general | ✓ |  | previo |  |
+| `Actuador` | componente | general | ✓ |  | previo | Ejecuta primitivas del mundo (A5, D9) |
+| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Qué hace cada primitiva; hoy Memoria.aprender_cuerpo |
+
+## Bibliotecas de los cuerpos
+
+| Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
+|---|---|---|---|---|---|---|
+| `Geometria` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Vecinos, distancia, «delante», orientación |
+| `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Qué secuencia de MOVER deja en A mirando a C |
+| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5 | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A) |
+
+✱ Tiene plasticidad: aprende en el paso 4 del latido (D6).
