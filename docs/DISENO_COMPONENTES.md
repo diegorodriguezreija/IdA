@@ -234,6 +234,7 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
   Hoy solo Crafter los activa, así que solo Crafter los registra y los demás mundos no cambian.
 - **Las constantes de escala pasan al `Perfil`** del mundo o a parámetros del cuerpo, con los valores de hoy en Crafter: `ALCANCE_SITIO`, `MAX_INTERIOR`, `CANDIDATOS_EXACTOS`, `MAX_ESTADOS`, `DANO_PREVIO`, `GOLPES_PREVIO`, `MARGEN_LUGAR`... El inventario completo es parte de A6.
 - **Los interruptores de los bloques E y F** (`MecanismosMemoria`) se quedan como parámetros del `Perfil`: activan mecanismos generales por mundo, que es justo lo que debe decidir el mundo.
+- **Se quedan como diseño** (decisión del 23/11/2026, tras A6a): `TASA_PREVIA` (previo pesimista del organismo, que la experiencia corrige) y `VENTANA_TENDENCIA` (ventana en latidos: memoria del propio organismo, no escala del mundo).
 
 ### D16. Estrategias de Crafter, una a una
 
@@ -301,7 +302,7 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 | A5b | Actuar con primitivas (D9): el `Motor` del cuerpo traduce la intención a primitivas, con `max_sinergia = 2`; el Core ejecuta primitivas; el éxito de cada intención lo juzga Crafter, no su adaptador | Va antes que A4 (D4): da la cuenta de primitivas |
 | A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | `rasgos_declarados` vacío en Crafter |
 | A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | **A6a hecho** (23/11/2026, `docs/A6A_PROGRESO.md`): opcionales por registro y `Perfil.escala`. Queda A6b: mover ficheros. Decide la DUDA de `PerseguirMetas` (lee `mem.casillas`, `s3.py:552`) |
-| A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia |
+| A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia. `Peligros` recibe la escala al construirse (hoy la copia `Peligros.escalar()` en cada latido) y `Memoria` deja de importar `ida/sistemas` |
 | A2 | Estructura de paquetes (D2) | Al final de la fase A, porque solo mueve ficheros; `test_pureza` con las nuevas reglas de importación |
 | A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
 
@@ -358,3 +359,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D4, sección 5 | `vista` en bruto para el Motor; B5 nuevo | Bloqueo de A5b E1 (`docs/A5B_PROGRESO.md`) |
 | 23/11/2026 | D9 | Primitivas al ejecutar; el éxito lo juzga el cuerpo | A5b |
 | 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |
+| 23/11/2026 | D15, sección 5 | Dos constantes, de diseño; `Peligros.escalar()` se resuelve en A7 | Resultado de A6a (`docs/A6A_PROGRESO.md`) |
