@@ -20,7 +20,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
-from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
+from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -34,6 +34,7 @@ DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
     for sis in ("S1", "S2", "S3")
     for etapa in ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 }
+DESTINOS_VALIDOS_CUERPO = DESTINOS_VALIDOS_COMPONENTES | {"CORE.Actuar"}
 SISTEMAS_VALIDOS_ESTRATEGIAS = {"S1", "S2", "S3"}
 
 
@@ -74,8 +75,21 @@ class Organismo:
 
         # Montaje declarado por el registro del mundo (D3)
         reg = mundo.registro()
+
+        # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
+        self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; su ``aprender`` lo llama ``_aprender``
         if reg.cuerpo is not None:
-            raise ValueError(f"En A1 solo se admite cuerpo=None ('{reg.cuerpo}' no admitido)")
+            for destino, comps in reg.cuerpo.componentes().items():
+                if destino not in DESTINOS_VALIDOS_CUERPO:
+                    raise ValueError(
+                        f"Destino no válido para un Componente del cuerpo '{reg.cuerpo.nombre}': '{destino}'. "
+                        f"Válidos: {sorted(DESTINOS_VALIDOS_CUERPO)}"
+                    )
+                modulo, preatencion, sistema_asignar = self._destino(destino)
+                for comp in comps:
+                    comp.de_cuerpo = reg.cuerpo.nombre
+                    self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
+                    self.componentes_cuerpo.append(comp)
 
         # Componentes del registro (por destino, en el orden declarado)
         for destino, alta in reg.componentes.items():
@@ -83,16 +97,7 @@ class Organismo:
                 raise ValueError(
                     f"Destino de componente no válido: '{destino}'. Válidos: {sorted(DESTINOS_VALIDOS_COMPONENTES)}"
                 )
-            if destino == "CORE.Sentir":
-                modulo = self.sentir
-                sistema_asignar = "MUNDO"
-            else:
-                sis, etapa = destino.split(".")
-                modulo = self._sistema(sis).modulo(etapa)
-                sistema_asignar = sis
-
-            # Preatención (D5): los preatentivos de S1.Sentir viven en ``Sistema.preatencion``, no en el módulo
-            preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
+            modulo, preatencion, sistema_asignar = self._destino(destino)
 
             # sustituye: busca en el módulo de destino (o en su preatención) el Componente general cuya clase se llame como la clave
             for nombre_clase, sustituto in alta.sustituye.items():
@@ -117,14 +122,7 @@ class Organismo:
 
             # añade: se añade al final del módulo (los preatentivos, al final de la preatención), en el orden declarado
             for comp in alta.añade:
-                if comp.preatentivo and preatencion is None:
-                    raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
-                lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
-                if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
-                    raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
-                comp.propio_del_mundo = True
-                comp.sistema = sistema_asignar
-                lista.append(comp)
+                self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
 
         # Estrategias del registro (por sistema)
         for sis, alta in reg.estrategias.items():
@@ -185,6 +183,28 @@ class Organismo:
         self._ubicacion_previa: Optional[str] = None
         self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
+
+    def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
+        """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""
+        if destino == "CORE.Sentir":
+            return self.sentir, None, "MUNDO"
+        if destino == "CORE.Actuar":
+            return self.actuar, None, "CORE"
+        sis, etapa = destino.split(".")
+        preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
+        return self._sistema(sis).modulo(etapa), preatencion, sis
+
+    @staticmethod
+    def _añadir(modulo: Modulo, preatencion: Optional[List[Componente]], destino: str, comp: Componente, sistema: str) -> None:
+        """``añade`` (D3): al final del módulo (un preatentivo, al final de la preatención), con nombre de clase único."""
+        if comp.preatentivo and preatencion is None:
+            raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
+        lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
+        if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
+            raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
+        comp.propio_del_mundo = True
+        comp.sistema = sistema
+        lista.append(comp)
 
     def _sistema(self, nombre: str) -> Sistema:
         for s in self.sistemas:
@@ -298,9 +318,11 @@ class Organismo:
                 *(c for s in self.sistemas for m in s.modulos for c in m.componentes)]
 
     def _plasticidad(self, ctx: Contexto) -> None:
-        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``."""
+        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``. Los del cuerpo
+        no: su ``aprender`` lo llama ``_aprender`` en su punto del latido."""
         for c in self.montados():
-            c.aprender(ctx)
+            if not c.de_cuerpo:
+                c.aprender(ctx)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
@@ -314,7 +336,8 @@ class Organismo:
                         self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
         if self.con_experiencia and self.memoria.activa:
-            self._aprender_mapa(ctx, previa.carga if previa is not None else None)
+            for comp in self.componentes_cuerpo:   # cuerpo (D10), en orden de montaje (cuadrícula: ModeloDirecto, MapaLocal)
+                comp.aprender(ctx)
         if previa is None or not self.con_experiencia:
             return
         c = previa.carga
@@ -354,71 +377,6 @@ class Organismo:
             self.memoria.aprender_satisface(str(c["clase"]), subidas)
         else:
             self.memoria.actualizar_linea_base(subidas)
-
-    def _aprender_mapa(self, ctx: Contexto, c: Optional[Dict[str, Any]]) -> None:
-        """Paso 3 (proteger X): mapa local, modelo del cuerpo y transformaciones, desde lo percibido.
-
-        Necesita posiciones (ubicación ``<nombre>_x_y``) y la clase de cada casilla a la vista (``cuerpo["casillas"]``);
-        sin ellas no hace nada. Antes de actualizar el mapa contrasta la acción anterior con lo que hay ahora:
-        - MOVER hacia una casilla vecina de clase conocida: si la posición cambió y si quedó mirando hacia ella, según la
-          casilla fuera transitable o no (modelo del cuerpo, propiocepción);
-        - COGER, COMER o ATACAR sobre una vecina: si quedó mirando hacia ella;
-        - COGER o USAR: si la casilla sobre la que actuó cambió de clase (la de delante, para USAR), la transformación; si la
-          acción salió y la casilla no cambió, también («no la cambia»): así un primer intento real corrige lo inferido.
-        """
-        obs = ctx.observacion
-        if obs is None:
-            return
-        aqui = pos_de(obs.ubicacion)
-        cuerpo = obs.cuerpo or {}
-        crudas = cuerpo.get("casillas")
-        if aqui is None or not isinstance(crudas, dict) or not crudas:
-            return
-        casillas = {(int(k[0]), int(k[1])): str(v) for k, v in crudas.items()}
-        o = cuerpo.get("orientacion")
-        cara = (int(o[0]), int(o[1])) if isinstance(o, (list, tuple)) and len(o) == 2 else None
-        mem = self.memoria
-        if c is not None and mem.yo_previo is not None:
-            p0, f0 = mem.yo_previo
-            verbo = c["verbo"]
-            if verbo == Verbo.USAR:
-                destino = (p0[0] + f0[0], p0[1] + f0[1]) if f0 is not None else None
-            else:
-                destino = pos_de(c.get("objetivo"))
-            if destino is not None and abs(destino[0] - p0[0]) + abs(destino[1] - p0[1]) == 1:
-                direccion = (destino[0] - p0[0], destino[1] - p0[1])
-                antes = mem.casillas.get(destino)
-                if verbo == Verbo.MOVER:
-                    libre = mem.transitable(antes)
-                    if libre is not None:
-                        mem.aprender_cuerpo("mover", libre, aqui == destino, cara == direccion)
-                elif verbo in (Verbo.COGER, Verbo.COMER, Verbo.ATACAR):
-                    mem.aprender_cuerpo("interactuar", True, aqui != p0, cara == direccion)
-                despues = casillas.get(destino)
-                cambio = antes is not None and despues is not None and antes != despues
-                if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and (cambio or bool(c.get("exito"))):
-                    objetivo = str(c.get("clase") or c.get("objetivo") or "")
-                    mem.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
-                    if cambio and verbo == Verbo.USAR and not mem.transitable_peligro(despues):
-                        mem.cierres.add(destino)
-                    elif cambio:
-                        mem.cierres.discard(destino)
-        libres, ocupadas, peligros = set(), set(), set()
-        exterocepcion = ctx.onda.ev("Exterocepcion")   # el peligro (de Amenaza o del mundo) está en la pieza de cada entidad
-        for e in obs.entidades:
-            pos = e.datos.get("pos")
-            if not isinstance(pos, (list, tuple)) or len(pos) != 2:
-                continue
-            p = (int(pos[0]), int(pos[1]))
-            if e.rasgos.get("lugar", 0.0) >= 0.5:
-                libres.add(p)
-            elif e.clase != casillas.get(p):
-                ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
-                pieza = exterocepcion.get(e.id)
-                if pieza is not None and pieza.rasgo("peligro") >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
-                    peligros.add(p)
-        mem.ver_casillas(aqui, casillas, libres, ocupadas, peligros)
-        mem.yo_previo = (aqui, cara)
 
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:

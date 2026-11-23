@@ -34,7 +34,8 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.cuerpos.cuadricula import Cuadricula
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
@@ -348,6 +349,11 @@ class MundoCrafter(Mundo):
                            inventario={k: float(v) for k, v in p.inventory.items()},
                            cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "delante": self._delante(), "casillas": self._casillas()},
                            ambiente={"luz": float(w.daylight)})
+
+    # --- registro (D3) y cuerpo (D10) ----------------------------------------
+    def registro(self) -> Registro:
+        """Crafter es un mundo de cuadrícula: registra ese cuerpo (``ModeloDirecto`` y ``MapaLocal``)."""
+        return Registro(cuerpo=Cuadricula())
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:

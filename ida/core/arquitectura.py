@@ -89,6 +89,10 @@ class Componente:
     # Preatención (D5): un Componente preatentivo corre en la preatención de S1 (S1 · Sentir), justo después de
     # Core · Sentir, despierto o dormido, exento de atención; solo modifica piezas de los sensores del Core.
     preatentivo: bool = False
+    # Componente de un cuerpo (D10): el nombre de su familia. El Core llama a su ``aprender`` en el punto del latido que
+    # le corresponde (``Organismo._aprender``), no en el gancho general de plasticidad.
+    de_cuerpo: str = ""
+    propio_del_mundo: bool = False   # lo pone el Core al montar lo que declara el registro del mundo (D3), cuerpo incluido
 
     def __init__(self, nombre: Optional[str] = None):
         self.nombre = nombre or self.__class__.__name__

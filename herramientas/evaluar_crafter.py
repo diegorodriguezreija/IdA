@@ -120,7 +120,7 @@ def evaluar(
     clase_crafter = cargar("crafter")
     registro_original = clase_crafter.registro
     if sin_estrategias_propias:
-        clase_crafter.registro = lambda self: Registro()
+        clase_crafter.registro = lambda self: Registro(cuerpo=registro_original(self).cuerpo)   # conserva el cuerpo (D10)
     perfil_original = clase_crafter.perfil
     if mecanismos:      # interruptores de Perfil.mecanismos (bloques E y F)
         from dataclasses import replace

@@ -44,7 +44,8 @@ def main() -> int:
     from ida.sistemas.s3 import PerseguirMetas
 
     if args.sin_estrategias_propias:
-        cargar("crafter").registro = lambda self: Registro()
+        original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)
+        cargar("crafter").registro = lambda self: Registro(cuerpo=original(self).cuerpo)
     propuestos: List[int] = []
     original = PerseguirMetas.proponer
 

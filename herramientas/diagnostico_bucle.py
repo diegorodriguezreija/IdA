@@ -33,7 +33,8 @@ def main() -> int:
     from ida.mundos import cargar
 
     if args.sin_estrategias_propias:
-        cargar("crafter").registro = lambda self: Registro()
+        original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)
+        cargar("crafter").registro = lambda self: Registro(cuerpo=original(self).cuerpo)
     props: List[Tuple[int, str, str, str]] = []
     detalle: List[Tuple[Any, ...]] = []
 
