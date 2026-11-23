@@ -132,7 +132,7 @@ Con límites estrictos, vigilados por test, para que no sean una puerta trasera:
 3. Coste acotado: lineal en las entidades percibidas. Sin búsquedas ni planes. Su tiempo se mide (`onda.tiempos_ms`) y se informa.
 
 Contenido:
-- **General:** la saliencia de `sentidos.py:57`, que pasa a calcularse aquí. `Exterocepcion` en el Core emite con la saliencia de lo bruto (proximidad), y la preatención la repone con los rasgos interpretados. Valor final idéntico al de hoy.
+- **General:** la saliencia de `sentidos.py:57`, que pasa a calcularse aquí. `Exterocepcion` en el Core emite cada entidad en bruto, con arousal 0 (sin valorar), y la preatención le pone la saliencia con los rasgos interpretados. Valor final idéntico al de hoy.
 - **Amenaza** (S1, general, D7): estima el `peligro` de cada entidad con lo aprendido.
 - **Crafter (`ValoracionCrafter`):** `nutritivo`, `recurso` y `novedad` que hoy calcula el adaptador, con la misma fórmula, a partir de las piezas, el manual y la memoria.
 
@@ -295,12 +295,13 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 |---|---|---|
 | R0 | Inventario (`docs/R0_INVENTARIO.md`) y correcciones a este documento | Hecho el 23/11/2026: corrigió D4, D7, D15 y el orden A5 → A4 |
 | A1 | Registro declarado (D3): `añade` y `sustituye`, nombres únicos, orden, cuerpo, informe de conocimiento | Sobre el código actual; con los registros de hoy, todo idéntico |
-| A2 | Estructura de paquetes (D2) | Solo movimiento de ficheros; `test_pureza` con las nuevas reglas de importación |
-| A3 | Pasos del latido: preatención, plasticidad y regulación (D1, D5, D6, D12); `Amenaza` sustituye a `ida/core/peligro.py` | La parte más delicada; comprobar también las noches (`wake_up`) |
-| A5 | Cuerpo cuadrícula y Actuar con primitivas (D9, D10), con `max_sinergia = 2` | El adaptador de Crafter ya no traduce ni juzga. Va antes que A4 (D4) |
-| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; el mapa, los requisitos y las transformaciones leen piezas | `rasgos_declarados` vacío en Crafter; necesita la cuenta de primitivas del `Motor` (A5) |
-| A6 | Crafter a su carpeta (D16); activaciones por registro y constantes al `Perfil` (D15) | Inventario completo de constantes |
+| A3 | Pasos del latido: preatención, plasticidad y regulación (D1, D5, D6, D12); `Amenaza` sustituye a `ida/core/peligro.py` | **Hecho** (23/11/2026, `docs/A3_PROGRESO.md`). Única dependencia de `ida/core` hacia `ida/sistemas`: `Memoria` importa `Peligros` en su constructor, hasta A7 |
+| A5a | Cuerpo cuadrícula (D10): el registro admite un cuerpo (`Registro(cuerpo=Cuadricula())`); `MapaLocal` y `ModeloDirecto` salen de `_aprender_mapa` a `ida/cuerpos/cuadricula/` y leen piezas, no la Observación | Su plasticidad se llama en el mismo punto del latido que hoy `_aprender_mapa`. La geometría y el buscador de posturas se mueven en A6, con `Recinto`: moverlos antes haría que `ida/sistemas` importara un cuerpo (D2) |
+| A5b | Actuar con primitivas (D9): el `Motor` del cuerpo traduce la intención a primitivas, con `max_sinergia = 2`; el Core ejecuta primitivas; el éxito de cada intención lo juzga Crafter, no su adaptador | Va antes que A4 (D4): da la cuenta de primitivas |
+| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | `rasgos_declarados` vacío en Crafter |
+| A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | Inventario completo de constantes. Decide la DUDA de `PerseguirMetas` (lee `mem.casillas`, `s3.py:552`) |
 | A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia |
+| A2 | Estructura de paquetes (D2) | Al final de la fase A, porque solo mueve ficheros; `test_pureza` con las nuevas reglas de importación |
 | A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
 
 ### Fase B: cambios de conducta (uno por PR, criterio D17)
@@ -350,4 +351,5 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 22/11/2026 | D1–D17 | Versión inicial | Sección 0 del plan; flujo de alto nivel del autor |
 | 23/11/2026 | D3, D7 | Especificación en `componentes.toml` con test; reglas de cambio (esta sección) | Que el diseño no se pervierta a la ligera y se actualice con los resultados |
 | 23/11/2026 | Sección 5 | Rama de integración `reorg/componentes`; nada entra en `main` hasta confirmar la Score | Decisión del autor |
+| 23/11/2026 | D5, sección 5 | `Exterocepcion` emite con arousal 0; A5 se parte en A5a (cuerpo) y A5b (primitivas); A2 pasa al final de la fase A | Resultado de A3 (`docs/A3_PROGRESO.md`) |
 | 23/11/2026 | D4, D7, D15, sección 5 | Novedad con la cuenta propia de primitivas (A5 antes que A4); metas a `Requisito`; escrituras delegadas; `Alimentarse` pregunta por el registro; `invariancia` no se regenera en la fase A | `docs/R0_INVENTARIO.md`, secciones B, D, F y H |

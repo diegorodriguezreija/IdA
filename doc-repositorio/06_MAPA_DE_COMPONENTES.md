@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 59 · **pendientes:** 15 (A4: 1, A5: 5, A6: 6, A7: 3)
+**Total:** 74 · **en su destino:** 59 · **pendientes:** 15 (A4: 1, A5a: 2, A5b: 1, A6: 8, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -46,7 +46,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
 | `Apetencia` ✱ | componente | opcional (crafter) | S1.Interpretar · en todos | A6 | D15 | Aliestesia; sustituye a Perfil.aliestesia |
 | `Recinto` | componente | mundo: crafter | S1.Interpretar · en todos | A6 | D16 | Emite la afordancia de protección |
-| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5a | D10 | Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa |
 
 ## S1 · Reaccionar
 
@@ -158,14 +158,14 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Tribunal` | componente | general | ✓ |  | previo |  |
 | `Actuador` | componente | general | ✓ |  | previo | Ejecuta primitivas del mundo (A5, D9) |
-| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Qué hace cada primitiva; hoy Memoria.aprender_cuerpo |
+| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5a | D10 | Qué hace cada primitiva; hoy Memoria.aprender_cuerpo |
 
 ## Bibliotecas de los cuerpos
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Geometria` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Vecinos, distancia, «delante», orientación |
-| `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Qué secuencia de MOVER deja en A mirando a C |
-| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5 | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A); cuenta las primitivas ejecutadas (copia eferente) |
+| `Geometria` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A6 | D10 | Vecinos, distancia, «delante», orientación |
+| `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A6 | D10 | Qué secuencia de MOVER deja en A mirando a C |
+| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5b | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A); cuenta las primitivas ejecutadas (copia eferente) |
 
 ✱ Tiene plasticidad: aprende en el paso 4 del latido (D6).

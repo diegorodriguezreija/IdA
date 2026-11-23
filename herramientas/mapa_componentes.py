@@ -29,7 +29,7 @@ DISENO = os.path.join(RAIZ, "docs", "DISENO_COMPONENTES.md")
 
 TIPOS = {"componente", "estrategia", "biblioteca"}
 CLASES = {"general", "opcional", "cuerpo", "mundo"}
-PASOS = {"R0", "A1", "A2", "A3", "A4", "A5", "A6", "A7", "A8", "B1", "B2", "B3", "B4"}
+PASOS = {"R0", "A1", "A2", "A3", "A4", "A5", "A5a", "A5b", "A6", "A7", "A8", "B1", "B2", "B3", "B4"}
 MODULOS = ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 UBICACIONES = (
     ["CORE.Sentir", "CORE.Regulacion", "CORE.Actuar"]
