@@ -7,6 +7,8 @@
   y los ejecuta por barridos: primero todos los reactivos; después, los
   activos; después, los proactivos. Sin amplitud o potencia, la Onda rechaza o recorta cada
   operación y el resto sigue. Los módulos del Core están exentos de peaje.
+- La **Preatención** (D5) es el módulo exento de los Componentes preatentivos de S1: corre una vez por latido, tras
+  Core · Sentir, y solo puede modificar piezas de los sensores del Core.
 - Un **Sistema** (S1, S2, S3) tiene una meta y sus módulos.
 """
 
@@ -84,6 +86,9 @@ class Contexto:
 class Componente:
     tipo: str = "Pieza"
     entradas: tuple = ()
+    # Preatención (D5): un Componente preatentivo corre en la preatención de S1 (S1 · Sentir), justo después de
+    # Core · Sentir, despierto o dormido, exento de atención; solo modifica piezas de los sensores del Core.
+    preatentivo: bool = False
 
     def __init__(self, nombre: Optional[str] = None):
         self.nombre = nombre or self.__class__.__name__
@@ -171,6 +176,8 @@ class Componente:
 
 
 class Modulo:
+    prefijo_tiempos = ""   # prefijo de la clave de ``Onda.tiempos_ms`` (la preatención usa el suyo)
+
     def __init__(self, nombre: str, componentes: List[Componente], exento: bool = False):
         self.nombre = nombre
         self.componentes = list(componentes)
@@ -188,20 +195,64 @@ class Modulo:
                     onda.control_vital(0, donde=f"{comp.sistema}.{comp.nombre}")
                     t0 = time.perf_counter()
                     getattr(comp, barrido)(ctx)
-                    clave = f"{comp.sistema}.{comp.nombre}"
+                    clave = f"{self.prefijo_tiempos}{comp.sistema}.{comp.nombre}"
                     onda.tiempos_ms[clave] = onda.tiempos_ms.get(clave, 0.0) + (time.perf_counter() - t0) * 1000.0
         finally:
             onda.exento = False
 
 
+class Preatencion(Modulo):
+    """La preatención (D5, paso 3 del latido): los Componentes preatentivos de S1 · Sentir.
+
+    Corre una vez por latido, justo después de Core · Sentir y también dormido, exenta de amplitud, potencia y plazo
+    como el Sentir del Core. Mientras corre, la Onda está en modo preatención (``Onda.preatencion``): solo admite
+    modificar el arousal o los rasgos de piezas de los sensores del Core; emitir o tocar otra cosa lanza ``PiezaAjena``.
+    """
+
+    prefijo_tiempos = "preatencion:"
+
+    def __init__(self, componentes: List[Componente]):
+        for c in componentes:
+            if not c.preatentivo:
+                raise ValueError(f"{c.nombre} no es preatentivo y no puede ir en la preatención")
+        super().__init__("Preatencion", componentes, exento=True)
+
+    def ejecutar(self, ctx: Contexto) -> None:
+        ctx.onda.preatencion = True
+        try:
+            super().ejecutar(ctx)
+        finally:
+            ctx.onda.preatencion = False
+
+
 class Sistema:
-    def __init__(self, nombre: str, meta: str, modulos: List[Modulo]):
+    """Un sistema con su meta y sus módulos.
+
+    ``preatencion``: sus Componentes preatentivos (D5). Su sitio en el diseño es ``<sistema>.Sentir``, pero no están en
+    el módulo Sentir: los ejecuta el Organismo una sola vez por latido en su ``Preatencion`` (exenta), así que no
+    vuelven a correr cuando el sistema late en la cognición. Solo S1 tiene preatención.
+    """
+
+    def __init__(self, nombre: str, meta: str, modulos: List[Modulo], preatencion: Optional[List[Componente]] = None):
         self.nombre = nombre
         self.meta = meta
         self.modulos = modulos
+        self.preatencion: List[Componente] = []
         for m in modulos:
             for c in m.componentes:
+                if c.preatentivo:
+                    raise ValueError(f"{c.nombre} es preatentivo: va en la preatención de {nombre}, no en {m.nombre}")
                 c.sistema = nombre
+        for c in preatencion or []:
+            self.añadir_preatentivo(c)
+
+    def añadir_preatentivo(self, componente: Componente) -> None:
+        if not componente.preatentivo:
+            raise ValueError(f"{componente.nombre} no es preatentivo")
+        if self.nombre != "S1":
+            raise ValueError(f"Solo S1 tiene preatención ({componente.nombre} en {self.nombre})")
+        componente.sistema = self.nombre
+        self.preatencion.append(componente)
 
     def modulo(self, etapa: str) -> Modulo:
         for m in self.modulos:
@@ -213,6 +264,11 @@ class Sistema:
         return nuevo
 
     def añadir(self, etapa: str, componente: Componente) -> None:
+        if componente.preatentivo:
+            if etapa != "Sentir":
+                raise ValueError(f"{componente.nombre} es preatentivo: solo puede ir en {self.nombre}.Sentir")
+            self.añadir_preatentivo(componente)
+            return
         componente.sistema = self.nombre
         self.modulo(etapa).componentes.append(componente)
 

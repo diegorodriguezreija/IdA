@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 58 · **pendientes:** 16 (A3: 2, A4: 1, A5: 5, A6: 5, A7: 3)
+**Total:** 74 · **en su destino:** 59 · **pendientes:** 15 (A3: 1, A4: 1, A5: 5, A6: 5, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -22,7 +22,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Saliencia` | componente | general | fuera: `ida/core/sentidos.py` | A3 | D5 | Hoy dentro de Exterocepcion (sentidos.py:57) |
+| `Saliencia` | componente | general | ✓ |  | D5 | ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
 | `Amenaza` ✱ | componente | opcional (crafter) | fuera: `ida/core/peligro.py` | A3 | D5 | Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido |
 | `ValoracionCrafter` | componente | mundo: crafter | fuera: `ida/mundos/crafter.py` | A4 | D4 | nutritivo, recurso y novedad; hoy los calcula el adaptador (crafter.py:290-344). Después de A5 |
 

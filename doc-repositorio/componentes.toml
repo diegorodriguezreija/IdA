@@ -102,11 +102,10 @@ nombre = "Saliencia"
 tipo = "componente"
 clase = "general"
 destino = "S1.Sentir"
-hoy = "fuera:ida/core/sentidos.py"
-paso = "A3"
+hoy = "S1.Sentir"
 decision = "D5"
 preatentivo = true
-nota = "Hoy dentro de Exterocepcion (sentidos.py:57)"
+nota = "ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
 
 [[componente]]
 nombre = "Amenaza"

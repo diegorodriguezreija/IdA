@@ -24,6 +24,7 @@ from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
 from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, Recinto, SalirDelRecinto, recinto
+from ida.sistemas.saliencia import Saliencia
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -837,4 +838,4 @@ def crear_s1() -> Sistema:
         Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia(), Recinto()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
         Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion()]),
-    ])
+    ], preatencion=[Saliencia()])

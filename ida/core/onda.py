@@ -56,6 +56,10 @@ Canales = Dict[str, Dict[str, Pieza]]
 # registro de la pieza y se cuenta en ``Onda.excepciones``.
 EXCEPCIONES_TRANSITORIAS: Dict[str, str] = {}
 
+# Canales de los sensores del Core. Son los únicos que la preatención (D5) puede tocar: solo modificar, y solo el
+# arousal y los rasgos de la carga.
+CANALES_SENSORES = frozenset({"Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente"})
+
 
 class LatidoAgotado(Exception):
     """La guillotina: se agotó el plazo o la amplitud del latido."""
@@ -133,6 +137,7 @@ class Onda:
         self.ops_por_ms = ops_por_ms     # plazo lógico: None = reloj de pared
         self.operaciones = 0             # llamadas a ``control_vital`` fuera del Core exento
         self.exento = False            # True mientras corren los módulos del Core (sin peaje)
+        self.preatencion = False       # True mientras corre la preatención (D5): exenta, pero solo modifica sensores
         self.guillotina = False
         self.motivo_guillotina = ""
         self.tiempos_ms: Dict[str, float] = {}   # tiempo de cada componente en este latido
@@ -221,7 +226,17 @@ class Onda:
     # --- propiedad ---------------------------------------------------------
     def _propiedad(self, autor: Optional[Autor], pieza: Pieza, op: str, campos: Tuple[str, ...] = ()) -> Optional[str]:
         """Comprueba que ``autor`` puede emitir o modificar ``pieza``. Devuelve la excepción transitoria
-        usada, si alguna. El Core (sin autor o en un módulo exento) no se comprueba."""
+        usada, si alguna. El Core (sin autor o en un módulo exento) no se comprueba.
+
+        En la preatención (D5) la regla es otra, explícita y más estrecha: solo se puede modificar una pieza de un canal
+        sensor del Core (``CANALES_SENSORES``), de cualquier tipo sensor; emitir (percibir, registrar, proponer,
+        activar) o modificar otra cosa es un error."""
+        if self.preatencion:
+            if op == "modificar" and pieza.tipo in CANALES_SENSORES and set(campos) <= {"arousal", "carga"}:
+                return None
+            quien = f"{autor.sistema}.{autor.nombre}" if autor else "?"
+            raise PiezaAjena(f"Preatención: {quien} no puede {op} {campos or ''} una pieza {pieza.tipo} ({pieza.id}); "
+                             f"solo modificar el arousal o los rasgos de piezas de {sorted(CANALES_SENSORES)}")
         if autor is None or self.exento or autor.tipo == pieza.tipo:
             return None
         raise PiezaAjena(f"{autor.sistema}.{autor.nombre} (tipo {autor.tipo}) no puede {op} una pieza {pieza.tipo} ({pieza.id})")
@@ -292,6 +307,8 @@ class Onda:
         anotación en ``entradas``. Solo su dueño, salvo las excepciones transitorias."""
         campos = tuple(k for k, v in (("arousal", arousal), ("confianza", confianza), ("carga", carga), ("entrada", entrada)) if v is not None)
         excepcion = self._propiedad(autor, pieza, "modificar", campos)
+        if self.preatencion and carga is not None and set(carga) != {"rasgos"}:
+            raise PiezaAjena(f"Preatención: solo puede cambiar los rasgos de la carga de {pieza.id}, no {sorted(carga)}")
         cambios: Dict[str, Any] = {}
         if arousal is not None:
             nuevo = self._cobrar(autor, 0, pieza.arousal, self._limitar(pieza.arousal, acotar(arousal), autor), pieza.tipo)
