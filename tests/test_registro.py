@@ -377,3 +377,83 @@ def test_ctx_registrado_dice_true_para_lo_montado_y_false_para_lo_que_no():
     assert ctx.registrado("EstrategiaPrueba") is True
     assert ctx.registrado("ComponenteInexistente") is False
     assert ctx.registrado("EstrategiaFantasma") is False
+
+
+# --- Opcionales (D3, D15, paso A6a) -------------------------------------------
+
+
+class OpcionalInterpretar(Componente):
+    opcional = True
+
+
+class OpcionalPreatento(Componente):
+    tipo = "Exterocepcion"
+    preatentivo = True
+    opcional = True
+
+
+class EstrategiaOpcional(Definicion):
+    nombre = "estrategia_opcional"
+    impulsos = ("seguridad",)
+    opcional = True
+
+
+def _organismo_con_opcionales(opcionales: list) -> Organismo:
+    """Un montaje general con un Componente, un preatentivo y una estrategia opcionales en medio de lo general."""
+
+    class MundoOpcionales(MundoMinimo):
+        def registro(self) -> Registro:
+            reg = super().registro()      # lo que ya registra el mínimo (``Defensa``)
+            reg.opcionales = list(opcionales)
+            return reg
+
+    mundo = MundoOpcionales()
+    azar = Azar(42)
+    sistemas = crear_sistemas()
+    s1 = next(s for s in sistemas if s.nombre == "S1")
+    s1.modulo("Interpretar").componentes.insert(1, OpcionalInterpretar())
+    s1.preatencion.insert(0, OpcionalPreatento())
+    catalogo = next(c for c in s1.componentes() if c.tipo == "Estrategia").catalogo
+    defs = catalogo.todas()
+    for d in defs:
+        catalogo.quitar(d.nombre)
+    for d in [*defs[:2], EstrategiaOpcional(), *defs[2:]]:
+        catalogo.añadir(d)
+    return Organismo(mundo, sistemas, Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar)
+
+
+def _nombres(lista: list) -> list:
+    return [c.__class__.__name__ for c in lista]
+
+
+def test_opcional_no_nombrado_se_quita_conservando_el_orden():
+    base = _crear_organismo(MundoMinimo())
+    org = _organismo_con_opcionales([])
+    s1, s1_base = org._sistema("S1"), base._sistema("S1")
+    assert _nombres(s1.modulo("Interpretar").componentes) == _nombres(s1_base.modulo("Interpretar").componentes)
+    assert _nombres(org.preatencion.componentes) == _nombres(base.preatencion.componentes)
+    cat = next(c for c in s1.componentes() if c.tipo == "Estrategia").catalogo
+    cat_base = next(c for c in s1_base.componentes() if c.tipo == "Estrategia").catalogo
+    assert [d.nombre for d in cat.todas()] == [d.nombre for d in cat_base.todas()]
+    for nombre in ("OpcionalInterpretar", "OpcionalPreatento", "EstrategiaOpcional"):
+        assert nombre not in org.registrados
+
+
+def test_opcional_nombrado_se_monta_en_su_sitio():
+    org = _organismo_con_opcionales(["OpcionalInterpretar", "OpcionalPreatento", "EstrategiaOpcional"])
+    s1 = org._sistema("S1")
+    assert _nombres(s1.modulo("Interpretar").componentes)[1] == "OpcionalInterpretar"
+    assert _nombres(org.preatencion.componentes)[0] == "OpcionalPreatento"
+    cat = next(c for c in s1.componentes() if c.tipo == "Estrategia").catalogo
+    assert [d.nombre for d in cat.todas()][2] == "estrategia_opcional"
+    accion = next(c for c in s1.componentes() if c.tipo == "Accion")
+    assert accion.catalogo is cat      # el catálogo es el mismo para Estrategia y Accion
+    for nombre in ("OpcionalInterpretar", "OpcionalPreatento", "EstrategiaOpcional"):
+        assert nombre in org.registrados
+
+
+def test_opcional_desconocido_lanza_value_error():
+    with pytest.raises(ValueError, match="Opcionales desconocidos"):
+        _organismo_con_opcionales(["NoExiste"])
+    with pytest.raises(ValueError, match="Opcionales desconocidos"):
+        _organismo_con_opcionales(["Objeto"])     # existe, pero no es opcional

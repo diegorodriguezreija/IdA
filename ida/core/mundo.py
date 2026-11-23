@@ -71,6 +71,7 @@ class Registro:
     componentes: Dict[str, Alta] = field(default_factory=dict)  # destino -> Alta
     estrategias: Dict[str, Alta] = field(default_factory=dict)  # "S1" | "S2" | "S3" -> Alta
     cuerpo: Optional[Cuerpo] = None                              # familia de cuerpos (D10), o ninguna
+    opcionales: List[str] = field(default_factory=list)         # nombres de CLASE de los generales opcionales que monta (D3)
 
 
 @dataclass

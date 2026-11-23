@@ -73,6 +73,7 @@ class Definicion:
     prioridad: int = 0
     reflejo: bool = False
     ultimo_recurso: bool = False
+    opcional: bool = False   # D3: general, pero solo se monta si el mundo la nombra en ``Registro.opcionales``
 
     def sirve(self, impulso: str, rasgo: Optional[str]) -> bool:
         return self.cualquier_impulso or impulso in self.impulsos or (self.rasgo is not None and self.rasgo == rasgo)
@@ -172,6 +173,10 @@ class Catalogo:
 
     def añadir(self, definicion: Definicion) -> None:
         self._por_nombre[definicion.nombre] = definicion
+
+    def quitar(self, nombre: str) -> None:
+        """Quita la definición ``nombre`` conservando el orden de las demás (opcionales no registrados, D3)."""
+        del self._por_nombre[nombre]
 
     def get(self, nombre: str) -> Optional[Definicion]:
         return self._por_nombre.get(nombre)
