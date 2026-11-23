@@ -12,7 +12,7 @@ Traducción al vocabulario común:
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
   ``manual``): lo que declara UTIL tiene ``recurso`` 0,6. Sus proposiciones y requisitos entran en la memoria al nacer
   (``manual()``).
-- El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.core.peligro``), con el previo de
+- El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.sistemas.amenaza``), con el previo de
   lo que el manual declara PELIGROSO. La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría
   de alcance.
 - Sin estrategias propias (paso 6d): la conducta de Crafter es la general de la base.

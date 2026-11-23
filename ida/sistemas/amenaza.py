@@ -1,6 +1,10 @@
-"""Peligro aprendido (paso 6 de la fase de generalización, ``docs/ENCARGO_PASO6_DEFENSA.md``).
+"""Amenaza (D5, D7): peligro aprendido, como Componente preatentivo general de S1 · Sentir.
 
-Con ``Perfil.mecanismos.peligro_aprendido``, y solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y
+Antes era ``ida/core/peligro.py`` y ``Organismo._peligro_aprendido`` (paso 6 de la fase de generalización,
+``docs/ENCARGO_PASO6_DEFENSA.md``). ``Amenaza`` corre en la preatención, antes de ``Saliencia``: aprende del latido
+y después estima, y escribe el ``peligro`` en los rasgos de cada pieza ``Exterocepcion`` (no en la Observación).
+
+Solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y
 ``datos["pos"]``) y no da su propio rasgo ``peligro``, la base aprende de la experiencia:
 
 - **daño por contacto** de cada clase: media móvil de la vitalidad perdida en cada **encuentro** con una instancia suya
@@ -45,6 +49,11 @@ Ninguna cifra es de un mundo: los previos están declarados aquí y valen para c
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+
+from ida.core.arquitectura import Componente, Contexto
+from ida.core.memoria import pos_de
+from ida.core.pieza import Pieza
+from ida.core.vocabulario import Verbo
 
 
 Pos = Tuple[int, int]
@@ -404,25 +413,88 @@ class Peligros:
         return n
 
 
-def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa, dormido: bool = False) -> None:
-    """Escribe el rasgo ``peligro`` de cada entidad con posición (paso 6a): las cosas, por su daño y alcance aprendidos a su
-    distancia; los lugares, por lo peligroso percibido a la distancia de cada lugar."""
+def estimaciones(entidades: List[Tuple[str, Dict[str, Any], Dict[str, Any]]], aqui: Pos, peligros: Peligros, salud: float,
+                 peligrosa, dormido: bool = False) -> List[Tuple[int, float]]:
+    """El ``peligro`` de cada entidad ``(clase, rasgos, datos)`` con posición (paso 6a), como ``(índice, valor)``: las
+    cosas, por su daño y alcance aprendidos a su distancia; los lugares, por lo peligroso percibido a la distancia de cada
+    lugar. No escribe nada."""
     fuentes: List[Tuple[Pos, List[Tuple[float, int]]]] = []
     lugares = []
+    salida: List[Tuple[int, float]] = []
     cache: Dict[str, List[Tuple[float, int]]] = {}
-    for e in entidades:
-        pos = e.datos.get("pos")
+    for i, (clase, rasgos, datos) in enumerate(entidades):
+        pos = datos.get("pos")
         if not isinstance(pos, (list, tuple)) or len(pos) != 2:
             continue
         p = (int(pos[0]), int(pos[1]))
-        if e.rasgos.get("lugar", 0.0) >= 0.5:
-            lugares.append((e, p))
+        if rasgos.get("lugar", 0.0) >= 0.5:
+            lugares.append((i, p))
             continue
-        comps = cache.get(e.clase)
+        comps = cache.get(clase)
         if comps is None:
-            comps = cache[e.clase] = peligros.componentes(e.clase, peligrosa, dormido)
-        e.rasgos["peligro"] = peligros.peligro_a(comps, manhattan(aqui, p), salud)
+            comps = cache[clase] = peligros.componentes(clase, peligrosa, dormido)
+        salida.append((i, peligros.peligro_a(comps, manhattan(aqui, p), salud)))
         if comps:
             fuentes.append((p, comps))
-    for e, p in lugares:
-        e.rasgos["peligro"] = max((peligros.peligro_lugar(comps, manhattan(p, q), salud) for q, comps in fuentes), default=0.0)
+    for i, p in lugares:
+        salida.append((i, max((peligros.peligro_lugar(comps, manhattan(p, q), salud) for q, comps in fuentes), default=0.0)))
+    return salida
+
+
+def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa, dormido: bool = False) -> None:
+    """Escribe el rasgo ``peligro`` de cada entidad con posición (``clase``, ``rasgos``, ``datos``) con ``estimaciones``."""
+    for i, v in estimaciones([(e.clase, e.rasgos, e.datos) for e in entidades], aqui, peligros, salud, peligrosa, dormido):
+        entidades[i].rasgos["peligro"] = v
+
+
+def _pos(pieza: Pieza) -> Optional[Pos]:
+    pos = pieza.carga.get("datos", {}).get("pos")
+    return (int(pos[0]), int(pos[1])) if isinstance(pos, (list, tuple)) and len(pos) == 2 else None
+
+
+class Amenaza(Componente):
+    """Preatención (D5): aprende del latido (daño, exposición, golpes, derribos y apariciones) y después estima el
+    ``peligro`` de cada entidad, que escribe al final de los rasgos de su pieza ``Exterocepcion``.
+
+    Solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y no da su propio rasgo
+    ``peligro`` (los que lo dan no cambian). Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo
+    aprendido (``Afrontar``); sustituir esa condición y esa marca por el registro es A6. Lee de las piezas: la ubicación,
+    el cuerpo (``casillas``) y el inventario, de la ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su
+    ``Exterocepcion``. Es el único que escribe en ``memoria.peligros``. Coste lineal en lo percibido (más lo que cueste
+    ``Peligros.aprender``, igual que antes)."""
+
+    tipo = "Exterocepcion"
+    preatentivo = True
+
+    def reactiva(self, ctx: Contexto) -> None:
+        yo = ctx.onda.ev("Propiocepcion").get("yo")
+        aqui = pos_de(yo.carga.get("ubicacion")) if yo is not None else None
+        piezas = list(ctx.onda.ev("Exterocepcion").values())
+        if yo is None or aqui is None or any("peligro" in p.carga.get("rasgos", {}) for p in piezas):
+            return
+        con_pos = [(p, q) for p in piezas if (q := _pos(p)) is not None]
+        if not con_pos:
+            return
+        mem = ctx.memoria
+        dormido = bool(ctx.soma.dormido)
+        if ctx.con_experiencia and mem.activa:
+            agentes = {p.id: (str(p.carga.get("clase", "")), q) for p, q in con_pos
+                       if p.rasgo("lugar") < 0.5 and p.rasgo("agente") >= 0.5}
+            crudas = (yo.carga.get("cuerpo") or {}).get("casillas")
+            if isinstance(crudas, dict) and crudas:
+                visibles = {(int(k[0]), int(k[1])) for k in crudas}
+            else:
+                visibles = {q for _, q in con_pos}
+            objetos = frozenset(k for k, v in mem._objetos(dict(yo.carga.get("inventario") or {})).items() if v >= 1.0)
+            previa = ctx.onda.ei("Accion").get("Accion")
+            c = previa.carga if previa is not None else {}
+            verbo = c.get("verbo")
+            golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
+            mem.peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
+                                  c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa,
+                                  dormido=dormido)
+        entidades = [(str(p.carga.get("clase", "")), p.carga.get("rasgos", {}), p.carga.get("datos", {})) for p in piezas]
+        for i, v in estimaciones(entidades, aqui, mem.peligros, ctx.soma.vitalidad, mem.peligrosa, dormido=dormido):
+            p = piezas[i]
+            self.modificar(ctx, p, carga={"rasgos": {**p.carga["rasgos"], "peligro": v}})
+        ctx.extra["peligro_aprendido"] = True

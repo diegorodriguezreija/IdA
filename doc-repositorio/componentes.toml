@@ -112,13 +112,14 @@ nombre = "Amenaza"
 tipo = "componente"
 clase = "opcional"
 destino = "S1.Sentir"
-hoy = "fuera:ida/core/peligro.py"
+hoy = "S1.Sentir"
+hoy_en = "todos"
 registran = ["crafter"]
-paso = "A3"
+paso = "A6"
 decision = "D5"
 preatentivo = true
 aprende = true
-nota = "Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido"
+nota = "ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6"
 
 [[componente]]
 nombre = "ValoracionCrafter"

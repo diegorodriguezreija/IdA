@@ -10,12 +10,14 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.biblioteca import RegistroLectura
-from ida.core.peligro import Peligros
 from ida.core.pieza import Episodio, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+
+if TYPE_CHECKING:
+    from ida.sistemas.amenaza import Peligros
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 
@@ -393,8 +395,12 @@ class Memoria:
         self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
         self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
         self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
-        # Paso 6 (peligro aprendido): daño, alcance, emisores y eficacia de ataque, desde la experiencia.
-        self.peligros = Peligros()
+        # Paso 6 (peligro aprendido): daño, alcance, emisores y eficacia de ataque, desde la experiencia. Solo escribe
+        # en ella su dueño, ``Amenaza`` (ida/sistemas/amenaza.py). A7: la sección pasará a su dueño; hasta entonces se
+        # importa aquí, en diferido, porque importar ``ida.sistemas`` al cargar este módulo cerraría un ciclo
+        # (``ida.sistemas`` importa ``ida.core.arquitectura``, que importa este módulo).
+        from ida.sistemas.amenaza import Peligros
+        self.peligros: "Peligros" = Peligros()
 
     @property
     def activa(self) -> bool:

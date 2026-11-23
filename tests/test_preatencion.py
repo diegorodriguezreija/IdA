@@ -204,3 +204,61 @@ def test_exterocepcion_en_bruto_y_saliencia_de_antes() -> None:
         cerca = r.get("proximidad", 0.0)
         esperado = acotar(max(r.get("peligro", 0.0) * max(cerca, 0.3), r.get("nutritivo", 0.0) * cerca, 0.4 * r.get("novedad", 0.0)))
         assert piezas[e.id].arousal == esperado
+
+
+# --- Amenaza (D5, D7) -------------------------------------------------------------------------------
+def test_amenaza_va_antes_que_saliencia() -> None:
+    org = _organismo()
+    assert [type(c).__name__ for c in org.preatencion.componentes] == ["Amenaza", "Saliencia"]
+
+
+def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None:
+    """En un mundo con posiciones y sin peligro propio (Crafter): el peligro va al final de los rasgos de cada pieza
+    ``Exterocepcion`` con posición, con el valor que daba ``estimar`` sobre la Observación, y la Observación queda sin
+    él. Se comprueba varios latidos, también tras aprender."""
+    pytest.importorskip("crafter")
+    import copy
+
+    from ida.mundos.crafter import MundoCrafter
+    from ida.sistemas import amenaza as pel
+    from ida.sistemas.amenaza import Amenaza
+
+    mundo = MundoCrafter()
+    mundo.reiniciar(31)
+    org = _organismo(mundo)
+    obs_vista: List[Any] = []
+    observar = mundo.observar
+
+    def capturar() -> Any:
+        obs = observar()
+        obs_vista.append(obs)
+        return obs
+
+    mundo.observar = capturar  # type: ignore[method-assign]
+    amenaza = next(c for c in org.preatencion.componentes if isinstance(c, Amenaza))
+    esperados: List[Dict[str, float]] = []
+    reactiva = amenaza.reactiva
+
+    def comprobar(ctx: Contexto) -> None:
+        reactiva(ctx)
+        assert ctx.extra.get("peligro_aprendido") is True
+        # Lo que habría escrito la versión anterior en la Observación, con la memoria ya actualizada
+        entidades = copy.deepcopy(ctx.observacion.entidades if ctx.observacion else [])
+        aqui = pel.pos_de(ctx.observacion.ubicacion if ctx.observacion else "")
+        assert aqui is not None
+        pel.estimar(entidades, aqui, ctx.memoria.peligros, ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
+        esperados.append({e.id: e.rasgos["peligro"] for e in entidades if "peligro" in e.rasgos})
+
+    amenaza.reactiva = comprobar  # type: ignore[method-assign]
+    for _ in range(30):
+        onda = org.latir()
+        obs = obs_vista[-1]
+        piezas = onda.ev("Exterocepcion")
+        assert all("peligro" not in e.rasgos for e in obs.entidades)
+        con_peligro = {i: p for i, p in piezas.items() if "peligro" in p.carga["rasgos"]}
+        assert con_peligro and set(con_peligro) == set(esperados[-1])
+        for i, p in con_peligro.items():
+            assert list(p.carga["rasgos"])[-1] == "peligro"
+            assert p.carga["rasgos"]["peligro"] == esperados[-1][i]
+        if mundo.terminado():
+            break

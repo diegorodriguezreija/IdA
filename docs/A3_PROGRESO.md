@@ -9,7 +9,7 @@ orden, cada una en verde y con «EQUIVALENCIA: OK» por sí sola:
 | E1 | Regulación (punto 5) | HECHA |
 | E2 | Gancho de plasticidad (punto 4) | HECHA |
 | E3 | Mecanismo de preatención y Saliencia (puntos 1 y 2) | HECHA |
-| E4 | Amenaza (punto 3) | pendiente |
+| E4 | Amenaza (punto 3) | HECHA |
 | E5 | Especificación, test del mapa y tests restantes (punto 6) | pendiente |
 
 El hash de cada etapa es el del commit «A3 E<n>: ...» (`git log --oneline --grep "A3 E"`); el de una etapa se anota
@@ -81,7 +81,7 @@ Pendiente: nada de E2.
 
 ## E3 · Mecanismo de preatención y Saliencia
 
-Estado: HECHA. Commit: «A3 E3: preatención (D5) y Saliencia».
+Estado: HECHA. Commit 919e4be «A3 E3: preatención (D5) y Saliencia».
 
 Comprobación (última línea de cada una):
 
@@ -130,4 +130,58 @@ Decisiones:
   clave de la carga que no sea `rasgos` → `PiezaAjena`; solo preatentivos y solo en S1; Exterocepcion en bruto (0.0)
   y Saliencia igual a la fórmula de antes; el gancho `aprender` incluye la preatención en su orden.
 
-Pendiente: Amenaza (E4) debe ir antes que Saliencia en `crear_s1` (`preatencion=[Amenaza(), Saliencia()]`).
+Pendiente: nada de E3 (el orden Amenaza → Saliencia se fijó en E4).
+
+## E4 · Amenaza
+
+Estado: HECHA. Commit: «A3 E4: Amenaza sustituye a ida/core/peligro.py y a _peligro_aprendido».
+
+Comprobación (última línea de cada una):
+
+```
+All checks passed!
+Success: no issues found in 43 source files
+301 passed, 1 warning in 43.67s
+EQUIVALENCIA: OK
+```
+
+Las noches están cubiertas: la referencia (`datos/equivalencia/base_31.json` y `base_32.json`) tiene
+`tasas_logros/wake_up` 7,69 y 16,67, así que en esos 3000 pasos hay latidos dormidos con la preatención activa.
+
+Decisiones:
+- `git mv ida/core/peligro.py ida/sistemas/amenaza.py` (el fichero viejo desaparece: regla de traslado). Las clases
+  que tenía son `Media`, `Emision` y `Peligros` y las funciones `escala`, `manhattan`, `f_alcance` y `estimar` (el
+  encargo citaba `Encuentro`, `ClasePeligrosa` y `PeligroAprendido`, que no existen; se movió todo el contenido).
+- `estimar` se parte en `estimaciones(...) -> [(índice, valor)]`, que no escribe, y `estimar`, que escribe en
+  `e.rasgos` con ella (lo usan `tests/test_defensa.py` y el test de A3 como referencia). Mismo cálculo y mismo orden.
+- `Amenaza(Componente)` (`tipo = "Exterocepcion"`, preatentivo) hace en la preatención lo que hacía
+  `_peligro_aprendido`, en el mismo orden (aprender, después estimar), con la misma condición (posiciones y ningún
+  `peligro` del mundo) y la marca `ctx.extra["peligro_aprendido"]` (A6 las sustituirá por el registro). Escribe el
+  peligro con `modificar(carga={"rasgos": {**rasgos, "peligro": v}})`: la clave queda al final, como antes, porque la
+  condición garantiza que no estaba. Orden en S1: `preatencion=[Amenaza(), Saliencia()]`.
+- Por qué sale igual aunque ahora corre después de Core · Sentir (antes, antes): Sentir no cambia nada de lo que lee
+  Amenaza (el soma no cambia; `ver_clase` solo toca `clases_vistas`, que `peligrosa` y `_objetos` no leen) y las
+  piezas copian la Observación (`dict(e.rasgos)`, `dict(e.datos)`, `dict(obs.cuerpo)`, `dict(obs.inventario)`).
+- Lecturas: todo sale de piezas. Ubicación, `cuerpo["casillas"]` e inventario, de la pieza `Propiocepcion` «yo»
+  (que ya los lleva: `sentidos.py`, `Propiocepcion.reactiva`); clase, rasgos y posición, de cada `Exterocepcion`. No
+  quedan lecturas de `ctx.observacion` en Amenaza, así que no hay ningún comentario `# A4:` (el encargo suponía que
+  casillas e inventario no estaban en ninguna pieza; sí están, en la Propiocepcion).
+- Lector del peligro en la Observación: solo `_aprender_mapa` (`latido.py`), confirmado con `git grep '"peligro"'`
+  en `ida/core`, `ida/sistemas`, `ida/mundos/crafter.py` y `herramientas/evaluar_crafter.py`. Ahora lee
+  `pieza.rasgo("peligro")` de la `Exterocepcion` de esa entidad (por id). Los demás lectores del peligro
+  (`_dormir`, `_indicadores`, S1) ya leían piezas.
+- Ciclo de importación: `ida/core/memoria.py` crea `Peligros()`. Importarlo de `ida.sistemas` al cargar `memoria.py`
+  cierra un ciclo (`ida.sistemas` → `arquitectura` → `memoria`). Se importa en diferido dentro de
+  `Memoria.__init__`, con `TYPE_CHECKING` para la anotación y un comentario `A7:` (la sección pasará a su dueño). Es
+  la única dependencia de `ida/core` hacia `ida/sistemas`; `test_pureza` no la prohíbe.
+- `Organismo._peligro_aprendido` y su llamada se borran; `memoria.peligros` solo lo escribe `Amenaza`.
+- `tests/test_proteger.py`: dos tests llamaban a `_aprender_mapa` con un contexto falso sin Onda. Se añade `_ctx(obs)`,
+  que da también las piezas `Exterocepcion` que emitiría el sensor con esa Observación (mismos rasgos). No cambia
+  ninguna aserción.
+- `componentes.toml`: Amenaza → `hoy = "S1.Sentir"`, `hoy_en = "todos"`, `paso = "A6"`, nota nueva. Mapa
+  regenerado. `destino`, `clase`, `registran` y `decision` sin tocar.
+- Tests nuevos: Amenaza antes que Saliencia; en Crafter (semilla 31, 30 latidos) el peligro está al final de los
+  rasgos de cada pieza con posición, con el valor exacto de `estimar` sobre una copia de la Observación con la misma
+  memoria, y la Observación queda sin `peligro`; `ctx.extra["peligro_aprendido"]` puesto.
+
+Pendiente: E5 (repaso de notas del toml, de los tests pedidos y de la documentación).
