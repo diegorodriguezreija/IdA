@@ -303,7 +303,7 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 | A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | `rasgos_declarados` vacío en Crafter |
 | A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | **A6a hecho** (23/11/2026, `docs/A6A_PROGRESO.md`): opcionales por registro y `Perfil.escala`. Queda A6b: mover ficheros. Decide la DUDA de `PerseguirMetas` (lee `mem.casillas`, `s3.py:552`) |
 | A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia. `Peligros` recibe la escala al construirse (hoy la copia `Peligros.escalar()` en cada latido) y `Memoria` deja de importar `ida/sistemas` |
-| A2 | Estructura de paquetes (D2) | Al final de la fase A, porque solo mueve ficheros; `test_pureza` con las nuevas reglas de importación |
+| A2 | Estructura de paquetes (D2) | Al final de la fase A, porque solo mueve ficheros; `test_pureza` con las nuevas reglas de importación. También: `ida/cuerpos/cuadricula/mapa.py` devuelve la casilla siguiente y S3 construye su `Paso` (hoy el cuerpo importa `ida.sistemas.s3`); y `test_pureza` comprueba también `ida/core` y `ida/cuerpos`. |
 | A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
 
 ### Fase B: cambios de conducta (uno por PR, criterio D17)

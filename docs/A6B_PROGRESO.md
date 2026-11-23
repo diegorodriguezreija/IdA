@@ -11,8 +11,8 @@ la búsqueda en el mapa de S3 pasa al cuerpo; pureza de importaciones y actualiz
 | E1 | Paquete de Crafter con adaptador, manuales y ValoracionCrafter | Hecha | `4c926ce` |
 | E2 | Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza | Hecha | `c487a42` |
 | E3 | Geometría y buscador al cuerpo | Hecha | ver `git log` |
-| E4 | PerseguirMetas y Contexto.cuerpo | Pendiente | |
-| E5 | Pureza, especificación y documentos | Pendiente | |
+| E4 | PerseguirMetas y Contexto.cuerpo | HECHA | `d456732` |
+| E5 | Pureza, especificación y documentos | HECHA | `2994f92` |
 
 ### Últimas comprobaciones (E3)
 
