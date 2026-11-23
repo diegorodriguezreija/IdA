@@ -11,10 +11,10 @@ Crafter con `añade`; las constantes de escala de los generales pasan a parámet
 | E1 | Punto 5 (revisión) y mecanismo de opcionales con tests, sin uso | Hecha | `e9ddc83` |
 | E2 | Opcionales y añadidos de Crafter, especificación | Hecha | `002c1d5` |
 | E3 | Fuera las activaciones condicionales | Hecha | `6f37f49` |
-| E4 | Constantes de escala | Hecha | ver `git log` |
-| E5 | Herramienta, documentación y tests restantes | Pendiente | |
+| E4 | Constantes de escala | Hecha | `b548215` |
+| E5 | Herramienta, documentación y tests restantes | Hecha | ver `git log` |
 
-### Últimas comprobaciones (E4, 23/11/2026)
+### Últimas comprobaciones (E5, 23/11/2026)
 
 ```
 ruff check .          All checks passed!
@@ -149,6 +149,12 @@ Fuera de esta clasificación: las constantes de `ida/sistemas/comun.py`, `s2.py`
 `COSTE_RECORDADO` de `s3.py`, en pasos). El encargo pide las de «esos ficheros»; quedan para A6b o para la DUDA de
 `PerseguirMetas`.
 
+## Herramienta y documentación (E5)
+
+- `herramientas/conocimiento_mundo.py`: línea «Opcionales» por mundo (Crafter: `Apetencia`, `Amenaza`, `Afrontar`,
+  `Proteger`; los demás, ninguno). Test en `tests/test_valoracion_crafter.py`.
+- `docs/DISENO_COMPONENTES.md`, fila A6 del plan: estado de A6a. Sin cambios en decisiones.
+
 ## Decisiones y desviaciones
 
 - **`Recinto` no es el último de S1.Interpretar en Crafter hoy:** el cuerpo cuadrícula añade `MapaLocal` después
@@ -161,4 +167,8 @@ Fuera de esta clasificación: las constantes de `ida/sistemas/comun.py`, `s2.py`
 
 ## Pendientes
 
-E5 (herramienta `conocimiento_mundo.py`, documentación). Las constantes de `comun.py`, `s2.py` y `s3.py` sin clasificar.
+- A6b: mover `Recinto`, `SalirDelRecinto` y sus constantes a Crafter, y la geometría y el buscador al cuerpo cuadrícula.
+- Constantes de `comun.py`, `s2.py` y `s3.py` sin clasificar.
+- DUDAS: `TASA_PREVIA` y `VENTANA_TENDENCIA` (decide el autor).
+- La alostasis general (`Impulso`) sigue leyendo la pieza `recinto` (`recinto(ctx)` de `proteger.py`); sin ella no
+  hace nada, pero es una dependencia de un general hacia lo de Crafter que A6b debe resolver.
