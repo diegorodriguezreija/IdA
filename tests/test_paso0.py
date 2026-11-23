@@ -14,7 +14,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.onda import Onda
 from ida.core.pieza import Pieza
 from ida.core.soma import Soma
@@ -72,6 +72,9 @@ class MundoDosNecesidades(Mundo):
 
     def manual(self):
         return MANUAL_JUGUETE if self.con_manual else {}
+
+    def registro(self) -> Registro:
+        return Registro(opcionales=["Apetencia"])   # dos necesidades con el mismo rasgo: aliestesia (D3, D15)
 
 
 def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, necesidades: Tuple[Necesidad, ...] = NECESIDADES_JUGUETE):

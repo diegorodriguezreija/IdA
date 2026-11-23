@@ -208,7 +208,18 @@ def test_exterocepcion_en_bruto_y_saliencia_de_antes() -> None:
 
 # --- Amenaza (D5, D7) -------------------------------------------------------------------------------
 def test_amenaza_va_antes_que_saliencia() -> None:
-    org = _organismo()
+    """Amenaza es opcional (D3): el mínimo no la registra; quien la registra la tiene antes que Saliencia."""
+    from ida.core.mundo import Registro
+    from ida.mundos.minimo import MundoMinimo
+
+    class MundoConAmenaza(MundoMinimo):
+        def registro(self) -> Registro:
+            reg = super().registro()
+            reg.opcionales = ["Amenaza"]
+            return reg
+
+    assert [type(c).__name__ for c in _organismo().preatencion.componentes] == ["Saliencia"]
+    org = _organismo(MundoConAmenaza())
     assert [type(c).__name__ for c in org.preatencion.componentes] == ["Amenaza", "Saliencia"]
 
 

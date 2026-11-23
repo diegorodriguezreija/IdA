@@ -224,7 +224,7 @@ def test_estrategia_sustituida_conserva_posicion_y_exige_mismo_nombre():
     # Obtenemos el orden original de nombres de S1
     s1_base = crear_s1()
     cat_base = next(c for c in s1_base.componentes() if c.tipo == "Estrategia").catalogo
-    nombres_originales = [d.nombre for d in cat_base.todas()]
+    nombres_originales = [d.nombre for d in cat_base.todas() if not d.opcional]   # el mínimo no registra opcionales
 
     org = _crear_organismo(MundoSustituyeEstrategia())
     s1 = org._sistema("S1")

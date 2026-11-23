@@ -760,6 +760,7 @@ class Proteger(ConPropuestas):
     nombre = "proteger"
     impulsos = (COBIJO,)
     prioridad = 10
+    opcional = True          # D3, D15: solo la monta el mundo que la registra
     agotable = False         # protegerse no baja el déficit del cobijo (la noche sigue): no se agota por falta de progreso
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:

@@ -113,9 +113,8 @@ tipo = "componente"
 clase = "opcional"
 destino = "S1.Sentir"
 hoy = "S1.Sentir"
-hoy_en = "todos"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D5"
 preatentivo = true
 aprende = true
@@ -163,9 +162,8 @@ tipo = "componente"
 clase = "opcional"
 destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
-hoy_en = "todos"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D15"
 aprende = true
 nota = "Aliestesia; sustituye a Perfil.aliestesia"
@@ -177,10 +175,9 @@ clase = "mundo"
 dueno = "crafter"
 destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
-hoy_en = "todos"
-paso = "A6"
+hoy_en = ["crafter"]
 decision = "D16"
-nota = "Emite la afordancia de protección"
+nota = "Emite la afordancia de protección. Lo registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b"
 
 [[componente]]
 nombre = "MapaLocal"
@@ -308,9 +305,8 @@ tipo = "estrategia"
 clase = "opcional"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
-hoy_en = "todos"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D15"
 
 [[componente]]
@@ -319,9 +315,8 @@ tipo = "estrategia"
 clase = "opcional"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
-hoy_en = "todos"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D16"
 
 [[componente]]
@@ -331,9 +326,9 @@ clase = "mundo"
 dueno = "crafter"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
-hoy_en = "todos"
-paso = "A6"
+hoy_en = ["crafter"]
 decision = "D16"
+nota = "La registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b"
 
 [[componente]]
 nombre = "Defensa"

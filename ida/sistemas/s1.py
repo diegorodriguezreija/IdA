@@ -23,7 +23,7 @@ from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
-from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, Recinto, SalirDelRecinto, recinto
+from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, recinto
 from ida.sistemas.amenaza import Amenaza
 from ida.sistemas.saliencia import Saliencia
 
@@ -177,6 +177,7 @@ class Apetencia(Componente):
 
     tipo = "Apetencia"
     entradas = ("Objeto", "Interocepcion")
+    opcional = True     # D3, D15: solo la monta el mundo que la registra
 
     def reactiva(self, ctx: Contexto) -> None:
         if not ctx.perfil.aliestesia:
@@ -314,6 +315,7 @@ class Afrontar(Definicion):
     nombre = "afrontar"
     impulsos = (SEGURIDAD,)
     prioridad = 50
+    opcional = True     # D3, D15: solo la monta el mundo que la registra
     LUCHAR, ARMARSE = "luchar", "armarse"
 
     @staticmethod
@@ -708,8 +710,9 @@ class Alimentarse(Definicion):
 
 
 def estrategias_s1() -> List[Definicion]:
-    return [Huir(), Defenderse(), Afrontar(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger(),
-            SalirDelRecinto()]
+    """Catálogo general de S1. ``Afrontar`` y ``Proteger`` son opcionales (D3): solo quedan si el mundo los registra.
+    ``SalirDelRecinto`` la añade con su registro el mundo que la usa (D16)."""
+    return [Huir(), Defenderse(), Afrontar(), Sobresalto(), QuietoOHuir(), Alimentarse(), SeguirEnMovimiento(), Proteger()]
 
 
 # --- Componentes de Reaccionar ------------------------------------------------------------------
@@ -836,7 +839,7 @@ def crear_s1() -> Sistema:
     catalogo = Catalogo(estrategias_s1())
     return Sistema("S1", "Supervivencia", [
         Modulo("Sentir", [Imagen()]),
-        Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia(), Recinto()]),
+        Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia()]),   # Recinto: lo añade el mundo que lo usa (D16)
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
         Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion()]),
     ], preatencion=[Amenaza(), Saliencia()])

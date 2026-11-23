@@ -465,6 +465,7 @@ class Amenaza(Componente):
 
     tipo = "Exterocepcion"
     preatentivo = True
+    opcional = True     # D3, D15: solo la monta el mundo que la registra
 
     def reactiva(self, ctx: Contexto) -> None:
         yo = ctx.onda.ev("Propiocepcion").get("yo")

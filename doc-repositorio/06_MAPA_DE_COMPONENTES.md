@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 63 · **pendientes:** 11 (A6: 8, A7: 3)
+**Total:** 74 · **en su destino:** 69 · **pendientes:** 5 (A6: 2, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -23,7 +23,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
 | `Saliencia` | componente | general | ✓ |  | D5 | ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
-| `Amenaza` ✱ | componente | opcional (crafter) | S1.Sentir · en todos | A6 | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6 |
+| `Amenaza` ✱ | componente | opcional (crafter) | ✓ |  | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6 |
 | `ValoracionCrafter` | componente | mundo: crafter | ✓ |  | D4 | ida/mundos/crafter_valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual |
 
 ## 5 · Regulación de la Onda (Core)
@@ -44,8 +44,8 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Objeto` | componente | general | ✓ |  | previo |  |
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
-| `Apetencia` ✱ | componente | opcional (crafter) | S1.Interpretar · en todos | A6 | D15 | Aliestesia; sustituye a Perfil.aliestesia |
-| `Recinto` | componente | mundo: crafter | S1.Interpretar · en todos | A6 | D16 | Emite la afordancia de protección |
+| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia |
+| `Recinto` | componente | mundo: crafter | ✓ |  | D16 | Emite la afordancia de protección. Lo registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b |
 | `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter |
 
 ## S1 · Reaccionar
@@ -63,9 +63,9 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `QuietoOHuir` | estrategia | general | ✓ |  | previo |  |
 | `Alimentarse` | estrategia | general | ✓ |  | previo | Deja de leer Perfil.aliestesia y pregunta si Apetencia está registrada (A6, D15) |
 | `SeguirEnMovimiento` | estrategia | general | ✓ |  | previo |  |
-| `Afrontar` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D15 |  |
-| `Proteger` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D16 |  |
-| `SalirDelRecinto` | estrategia | mundo: crafter | S1.Reaccionar · en todos | A6 | D16 |  |
+| `Afrontar` | estrategia | opcional (crafter) | ✓ |  | D15 |  |
+| `Proteger` | estrategia | opcional (crafter) | ✓ |  | D16 |  |
+| `SalirDelRecinto` | estrategia | mundo: crafter | ✓ |  | D16 | La registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b |
 | `Defensa` | estrategia | mundo: minimo | ✓ |  | previo | plantar_cara |
 | `Defensa` | estrategia | mundo: archivos | ✓ |  | previo | plantar_cara |
 | `AlimentarseConPrudencia` | estrategia | mundo: archivos | ✓ |  | previo |  Sustituye a `Alimentarse`. |

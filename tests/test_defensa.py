@@ -14,7 +14,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas import crear_sistemas
 
@@ -201,6 +201,10 @@ class MundoErizos(Mundo):
 
     def manual(self) -> Dict[str, Any]:
         return {"hechos": [{"tipo": "proposicion", "sujeto": "erizo", "relacion": "PELIGROSO"}], "inventario": ["baston", "palo"]}
+
+    def registro(self) -> Registro:
+        """Como Crafter (D3, D15): el peligro aprendido y la lucha por evaluación, solo si el mundo no da su ``peligro``."""
+        return Registro(opcionales=[] if self.da_peligro else ["Amenaza", "Afrontar"])
 
 
 def _organismo(mundo: MundoErizos, mem: Optional[Memoria] = None) -> Organismo:
@@ -420,4 +424,7 @@ def test_crafter_no_escribe_conducta():
     clases = [c for _, c in inspect.getmembers(crafter, inspect.isclass) if c.__module__ == crafter.__name__]
     assert clases     # el adaptador existe
     assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
-    assert crafter.MundoCrafter().registro().estrategias == {}
+    # D16: Crafter solo registra SalirDelRecinto, de ``ida/sistemas/proteger.py`` (pasa a Crafter en A6b)
+    estrategias = crafter.MundoCrafter().registro().estrategias
+    assert list(estrategias) == ["S1"] and not estrategias["S1"].sustituye
+    assert [type(d).__name__ for d in estrategias["S1"].añade] == ["SalirDelRecinto"]
