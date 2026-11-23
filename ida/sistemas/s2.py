@@ -269,7 +269,7 @@ class Refugiarse(Definicion):
     @staticmethod
     def _estado(ctx: Contexto) -> Tuple[float, float, Optional[str], str]:
         hogar = ctx.memoria.hogar() if ctx.perfil.hogar else None
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         return _peligro(ctx), ctx.soma.cansancio(), hogar, aqui
 
     def _puerta(self, ctx: Contexto) -> Optional[Pieza]:
@@ -327,7 +327,7 @@ class RecordarComida(Plan):
         hambre = ctx.soma.hambre()
         if _peligro(ctx) >= 0.4 or hambre < 0.35 or any(o.rasgo("nutritivo") >= 0.3 for o in objetos(ctx)):
             return None
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         if not aqui:
             return None
         if ctx.perfil.mecanismos.evocacion:   # bloque E, E5: lo recuperado (piezas Recuerdo), no la memoria
@@ -368,7 +368,7 @@ class RecordarComida(Plan):
         return sorted(crudos, key=lambda c: (-c[1], -float(grafo.get(f"Objeto:{c[0]}", {}).get("fuerza", 0.0)), c[0]))
 
     def construir(self, ctx: Contexto, estrategia: Pieza) -> Optional[List[Dict[str, Any]]]:
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         if not aqui:
             return None
         for clase, confianza, destino in self._candidatos_plan(ctx):
@@ -381,10 +381,10 @@ class RecordarComida(Plan):
     def cumplido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
         if paso["meta"] == "encontrar":
             return any(o.clase == paso["clase"] for o in objetos(ctx))
-        return ctx.observacion is not None and ctx.observacion.ubicacion == paso["meta"]
+        return ctx.ubicacion() == paso["meta"]
 
     def fallido(self, ctx: Contexto, paso: Dict[str, Any], estado: Dict[str, Any]) -> bool:
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         if paso["meta"] == "encontrar":
             if aqui == paso["en"]:
                 ctx.memoria.olvidar_donde(paso["clase"])    # llegó y no está
@@ -397,7 +397,7 @@ class RecordarComida(Plan):
 
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
         if ctx.perfil.mecanismos.plan:
-            aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+            aqui = ctx.ubicacion()
             return bool(aqui) and any(d and d != aqui for _, _, d in self._candidatos_plan(ctx))
         return self._plan(ctx) is not None
 

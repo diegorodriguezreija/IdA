@@ -43,7 +43,7 @@ def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float],
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion=ubicacion), verbos=set(Verbo), perfil=perfil or Perfil())
+                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil())
 
 
 def test_planificador_encadena_hacia_atras():

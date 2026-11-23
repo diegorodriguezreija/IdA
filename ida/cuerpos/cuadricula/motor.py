@@ -3,8 +3,8 @@
 Traduce la intención decidida a las primitivas del mundo leyendo piezas:
 - posición y orientación propias, de la ``Propiocepcion`` «yo» (``ubicacion`` y ``cuerpo["orientacion"]``);
 - posición del objetivo, en este orden: las coordenadas de su id (``<clase>_<x>_<y>``); la pieza ``Exterocepcion`` con
-  ese id (``datos["pos"]``); ``cuerpo["vista"]`` de la Propiocepcion (B5: transitorio, mientras el mundo corte lo que
-  entrega). Si no está en ninguno, no hay primitivas.
+  ese id (``datos["pos"]``); ``cuerpo["vista"][id]["pos"]`` de la Propiocepcion (B5: transitorio, mientras el mundo corte
+  lo que entrega). Si no está en ninguno, no hay primitivas.
 
 MOVER a una vecina → [mover hacia ella]; COMER, ATACAR o COGER a una vecina → [girar hacia ella si no la mira] + [do]
 (girar contra lo que ocupa la casilla no mueve); USAR → [receta] si está disponible; DORMIR → [sleep]; el resto →
@@ -55,7 +55,8 @@ class MotorCuadricula(Motor):
                 return p
         yo = ctx.onda.ev("Propiocepcion").get("yo")
         vista = ((yo.carga.get("cuerpo") or {}).get("vista") or {}) if yo is not None else {}
-        return _par(vista.get(objetivo)) if isinstance(vista, dict) else None
+        visto = vista.get(objetivo) if isinstance(vista, dict) else None
+        return _par(visto.get("pos")) if isinstance(visto, dict) else None
 
     def primitivas(self, intencion: Pieza, ctx: Contexto, disponibles: List[str]) -> List[str]:
         verbo, objetivo = intencion.carga["verbo"], str(intencion.carga.get("objetivo", ""))

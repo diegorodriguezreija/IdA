@@ -26,7 +26,8 @@ DISPONIBLES = ["noop", "move_left", "move_right", "move_up", "move_down", "do", 
 
 def _ctx(aqui: Pos, cara: Pos, ext: Optional[Dict[str, Pos]] = None, vista: Optional[Dict[str, List[int]]] = None) -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"ubicacion": f"celda_{aqui[0]}_{aqui[1]}",
-                                                      "cuerpo": {"orientacion": cara, "vista": dict(vista or {})}})
+                                                      "cuerpo": {"orientacion": cara,
+                                                                 "vista": {k: {"clase": k.rsplit("_", 1)[0], "pos": v} for k, v in (vista or {}).items()}}})
     piezas = {"Propiocepcion": {"yo": yo},
               "Exterocepcion": {i: Pieza(id=i, tipo="Exterocepcion", carga={"clase": i.split("_")[0], "rasgos": {}, "datos": {"pos": p}})
                                 for i, p in (ext or {}).items()}}
@@ -155,7 +156,6 @@ def _ejecutar_antes(m: Any, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) 
         pos = tuple(p.pos)
         if destino is not None and _dist(pos, destino) == 1:
             m._paso(MOVIMIENTOS[(destino[0] - pos[0], destino[1] - pos[1])])
-            m.visitas[tuple(p.pos)] = m.t
         else:
             exito = False
     elif verbo in (Verbo.COMER, Verbo.ATACAR, Verbo.COGER):
@@ -235,7 +235,7 @@ def test_el_efecto_por_primitivas_es_el_de_antes(semilla):
         antes = _ejecutar_antes(a, verbo, objetivo, datos)
         ahora, prims = _ejecutar_ahora(b, motor, verbo, objetivo, datos)
         assert _campos(ahora) == _campos(antes), (i, verbo, objetivo, prims)
-        assert a.visitas == b.visitas and a.t == b.t
+        assert a.t == b.t     # las visitas ya no son del adaptador (A4): las compara tests/test_valoracion_crafter.py
         dos += len(prims) == 2
     assert dos > 0      # hubo golpes con giro: secuencias de dos primitivas
 
@@ -263,7 +263,7 @@ def test_vecina_fuera_de_las_14_entidades():
     w.add(objects.Cow(w, vaca))
     obs = m.observar()
     vid = (obs.cuerpo or {})["vista"]
-    ids = [i for i, p in vid.items() if tuple(p) == vaca]
+    ids = [i for i, v in vid.items() if tuple(v["pos"]) == vaca and v["clase"] == "vaca"]
     assert len(m._cosas()) > 14 and ids
     assert ids[0] not in {e.id for e in obs.entidades}
     motor = MotorCuadricula()

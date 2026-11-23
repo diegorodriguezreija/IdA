@@ -362,7 +362,7 @@ class Prudencia(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         ahora = ctx.latido
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         al_alcance = [o for o in ctx.onda.ev("Objeto").values() if o.rasgo("nutritivo") >= 0.3 and o.rasgo("proximidad") >= 0.9]
         if aqui and al_alcance and all(_indicios_de_dano(ctx, o.clase) for o in al_alcance):
             self.malas[aqui] = ahora
@@ -409,7 +409,7 @@ class BuscarEnOtraCarpeta(Definicion):
         self.prudencia = prudencia
 
     def _destino(self, ctx: Contexto) -> Optional[Pieza]:
-        aqui = ctx.observacion.ubicacion if ctx.observacion else ""
+        aqui = ctx.ubicacion()
         malas = self.prudencia.recientes(ctx.latido)
         if aqui not in malas:
             return None

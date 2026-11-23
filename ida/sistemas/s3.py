@@ -608,7 +608,7 @@ def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir
                     coste = COSTE_POR_PROXIMIDAD * (1.0 - objetivo.rasgo("proximidad"))
                     return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"],
                                 destino=objetivo.id, distancia=_dist(aqui, destino))
-    ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
+    ubicacion = ctx.ubicacion()
     destino_nodo = ctx.memoria.donde_esta(clase) if ctx.con_experiencia else None
     if ubicacion and destino_nodo and destino_nodo != ubicacion and destino_nodo not in excluir:
         salto = ctx.memoria.ruta(ubicacion, destino_nodo)
@@ -628,7 +628,7 @@ def _cantidad(r: Any, objeto: str) -> float:
 
 def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
     """Posición propia si la ubicación lleva coordenadas al final (``<nombre>_x_y``); si no, None."""
-    partes = str(ctx.observacion.ubicacion if ctx.observacion else "").rsplit("_", 2)
+    partes = ctx.ubicacion().rsplit("_", 2)
     if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
         return int(partes[1]), int(partes[2])
     return None

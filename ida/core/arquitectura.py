@@ -69,7 +69,7 @@ class Contexto:
     azar: Azar
     perfil: Perfil
     verbos: Set[Verbo]
-    observacion: Optional[Observacion] = None
+    observacion: Optional[Observacion] = None   # solo para Core · Sentir: el Organismo la pone a None después (D4)
     con_experiencia: bool = True
     biblioteca: Optional[Any] = None
     extra: Dict[str, Any] = field(default_factory=dict)
@@ -82,6 +82,12 @@ class Contexto:
     def registrado(self, nombre: str) -> bool:
         return nombre in self.registrados
 
+    def ubicacion(self) -> str:
+        """Dónde está el individuo, de la pieza ``Propiocepcion`` «yo» (D4: fuera de los sensores nadie lee la
+        Observación)."""
+        yo = self.onda.ev("Propiocepcion").get("yo")
+        return str(yo.carga.get("ubicacion") or "") if yo is not None else ""
+
 
 class Componente:
     tipo: str = "Pieza"
@@ -89,6 +95,8 @@ class Componente:
     # Preatención (D5): un Componente preatentivo corre en la preatención de S1 (S1 · Sentir), justo después de
     # Core · Sentir, despierto o dormido, exento de atención; solo modifica piezas de los sensores del Core.
     preatentivo: bool = False
+    # Preatentivo integrador (D5): corre el último de la preatención, tras los que ponen rasgos (``Saliencia``).
+    integrador: bool = False
     # Componente de un cuerpo (D10): el nombre de su familia. El Core llama a su ``aprender`` en el punto del latido que
     # le corresponde (``Organismo._aprender``), no en el gancho general de plasticidad.
     de_cuerpo: str = ""

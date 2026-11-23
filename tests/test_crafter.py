@@ -21,10 +21,8 @@ def test_observacion_y_aliestesia(mundo):
     assert obs.vitales and obs.dormido is False
     assert all(set(e.rasgos) <= set(RASGOS) for e in obs.entidades)
     assert any(e.rasgos.get("lugar") for e in obs.entidades)
-    mundo.jugador.inventory["drink"] = 2
-    agua = [e for e in mundo.observar().entidades if e.clase == "agua"]
-    if agua:
-        assert agua[0].rasgos["nutritivo"] > 0.5
+    assert all(set(e.rasgos) <= {"proximidad", "agente", "lugar"} for e in obs.entidades)   # en bruto (A4)
+    assert MundoCrafter.perfil.rasgos_declarados == ()
 
 
 def test_dormido_lo_decide_el_juego(mundo):

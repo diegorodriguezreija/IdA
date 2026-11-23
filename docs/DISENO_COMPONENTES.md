@@ -135,6 +135,7 @@ Contenido:
 - **General:** la saliencia de `sentidos.py:57`, que pasa a calcularse aquí. `Exterocepcion` en el Core emite cada entidad en bruto, con arousal 0 (sin valorar), y la preatención le pone la saliencia con los rasgos interpretados. Valor final idéntico al de hoy.
 - **Amenaza** (S1, general, D7): estima el `peligro` de cada entidad con lo aprendido.
 - **Crafter (`ValoracionCrafter`):** `nutritivo`, `recurso` y `novedad` que hoy calcula el adaptador, con la misma fórmula, a partir de las piezas, el manual y la memoria.
+- **Orden:** `Saliencia` corre siempre la última de la preatención: integra los rasgos que ponen los demás preatentivos, generales o del mundo.
 
 Así se cumplen a la vez el punto 2 del autor (el Core no procesa), la nota B (no hay piezas nuevas que cuesten atención) y la nota D (dormido se sigue estimando el peligro, y la alarma funciona igual).
 
@@ -356,3 +357,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D4, D7, D15, sección 5 | Novedad con la cuenta propia de primitivas (A5 antes que A4); metas a `Requisito`; escrituras delegadas; `Alimentarse` pregunta por el registro; `invariancia` no se regenera en la fase A | `docs/R0_INVENTARIO.md`, secciones B, D, F y H |
 | 23/11/2026 | D4, sección 5 | `vista` en bruto para el Motor; B5 nuevo | Bloqueo de A5b E1 (`docs/A5B_PROGRESO.md`) |
 | 23/11/2026 | D9 | Primitivas al ejecutar; el éxito lo juzga el cuerpo | A5b |
+| 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |
