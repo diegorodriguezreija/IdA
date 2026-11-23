@@ -313,6 +313,6 @@ def test_crafter_el_nutritivo_es_perceptivo_y_constante():
         for e in obs.entidades:
             if e.clase in ("agua", "vaca"):
                 assert e.rasgos["nutritivo"] == NUTRITIVO_MANUAL
-        m.ejecutar(Verbo.MOVER, f"celda_{m.jugador.pos[0] + 1}_{m.jugador.pos[1]}", {})
+        m.ejecutar_primitivas(["move_right"], Verbo.MOVER)
     assert valores <= {0.0, NUTRITIVO_MANUAL}
 

@@ -17,8 +17,9 @@ Traducción al vocabulario común:
   de alcance.
 - Sin estrategias propias (paso 6d): la conducta de Crafter es la general de la base.
 - Verbos: MOVER, COMER (beber agua, comer vaca o planta), ATACAR, COGER (talar, picar, recoger
-  un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. Para
-  interactuar con algo adyacente, el mundo primero gira hacia ello y después hace ``do``.
+  un retoño), USAR (colocar o fabricar, con la receta en la carga), DORMIR y ESPERAR. El mundo ejecuta primitivas (las
+  acciones del juego, D9): la traducción de cada verbo (girar y ``do`` para interactuar con algo adyacente) y el juicio
+  de su éxito son del Motor del cuerpo cuadrícula; el adaptador solo mide.
 
 Diferencias con el benchmark oficial: IdA lee el estado simbólico del juego, no los píxeles.
 
@@ -404,22 +405,13 @@ class MundoCrafter(Mundo):
         junto = sorted(orden(o, c, p) for o, (c, p) in ahora.items() if _dist(pos, p) <= 1)
         return junto[0][1] if junto else None
 
-    def _posicion(self, objetivo: str) -> Optional[Pos]:
-        partes = objetivo.rsplit("_", 2)
-        if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
-            return int(partes[1]), int(partes[2])
-        for cid, _, cpos, _ in self._cosas():
-            if cid == objetivo:
-                return cpos
-        return None
-
     def primitivas(self) -> List[str]:
         """Las acciones del juego (``constants.actions``)."""
         return list(self.constantes.actions)
 
     def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
         """Ejecuta las primitivas en orden y mide antes de la primera y después de la última. ``exito`` queda en True:
-        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después)."""
+        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después y qué claves son objetos)."""
         p = self.jugador
         antes = {"salud": p.health, **dict(p.inventory)}
         inventario_antes = dict(p.inventory)
@@ -430,36 +422,8 @@ class MundoCrafter(Mundo):
         if intencion == Verbo.MOVER and primitivas:   # A4: las visitas pasan al organismo; único uso de ``intencion``
             self.visitas[tuple(p.pos)] = self.t
         ef = self._efecto(antes, logros_antes)
-        ef.medidas = {"inventario_antes": inventario_antes, "inventario_despues": dict(p.inventory)}
+        ef.medidas = {"inventario_antes": inventario_antes, "inventario_despues": dict(p.inventory), "objetos": sorted(INVENTARIO)}
         self._actualizar_ventana()
-        return ef
-
-    def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
-        """A5b E1, transitorio (lo sustituye el Motor del cuerpo en E2): la traducción y el juicio de antes sobre
-        ``ejecutar_primitivas``."""
-        pos, primitivas = tuple(self.jugador.pos), ["noop"]
-        if verbo in (Verbo.MOVER, Verbo.COMER, Verbo.ATACAR, Verbo.COGER):
-            destino = self._posicion(objetivo)
-            primitivas = []
-            if destino is not None and _dist(pos, destino) == 1:
-                direccion = (destino[0] - pos[0], destino[1] - pos[1])
-                if verbo == Verbo.MOVER:
-                    primitivas = [MOVIMIENTOS[direccion]]
-                else:
-                    primitivas = ([] if tuple(self.jugador.facing) == direccion else [MOVIMIENTOS[direccion]]) + ["do"]
-        elif verbo == Verbo.USAR:
-            receta = datos.get("receta") or objetivo
-            primitivas = [receta] if receta in self.acciones else []
-        elif verbo == Verbo.DORMIR:
-            primitivas = ["sleep"]
-        ef = self.ejecutar_primitivas(primitivas, verbo)
-        antes, despues = ef.medidas["inventario_antes"], ef.medidas["inventario_despues"]
-        exito = bool(primitivas)
-        if exito and verbo == Verbo.COMER and despues["food"] <= antes["food"] and despues["drink"] <= antes["drink"]:
-            exito = False
-        if exito and verbo == Verbo.COGER and not any(despues[k] > antes[k] for k in INVENTARIO):
-            exito = False
-        ef.exito = exito
         return ef
 
     def _efecto(self, antes: Dict[str, int], logros_antes: Set[str]) -> Efecto:

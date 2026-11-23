@@ -7,7 +7,7 @@ intención → primitivas pasa del adaptador al Motor del cuerpo cuadrícula. Ra
 | Etapa | Qué | Estado |
 |---|---|---|
 | E1 | Contrato `primitivas`/`ejecutar_primitivas`, adaptador y `vista` | HECHA |
-| E2 | Motor (traducción, sinergias, juicio) y Actuador por primitivas | sin empezar |
+| E2 | Motor (traducción, sinergias, juicio) y Actuador por primitivas | HECHA |
 | E3 | Cuenta de primitivas, «primitivas» en la pieza Accion, especificación y documentación | sin empezar |
 | E4 | Tests | sin empezar |
 
@@ -51,7 +51,10 @@ primitivas. La sonda no queda en el código.
 
 ## E1 · Contrato y adaptador
 
-Estado: HECHA (commit «A5b E1: contrato de primitivas y adaptador de Crafter»).
+Estado: HECHA. Commit 9974c77 «A5b E1: contrato de primitivas y adaptador de Crafter».
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 48 source files` ·
+`307 passed, 1 warning in 33.81s` · `EQUIVALENCIA: OK`.
 
 Comprobación previa (punto 3 de la decisión): qué recorre `obs.cuerpo` o `carga["cuerpo"]` de forma genérica.
 `git grep -n -E '\.cuerpo|\["cuerpo"\]|get\("cuerpo"\)' -- ida herramientas tests` y búsqueda de copias de la
@@ -80,4 +83,35 @@ Decisiones:
 - `ejecutar` queda en E1 como función de transición sobre `ejecutar_primitivas` (misma traducción y mismo juicio);
   E2 la quita.
 
-Pendiente: E2 a E4.
+Pendiente: nada de E1.
+
+## E2 · Motor y Actuador por primitivas
+
+Estado: HECHA (commit «A5b E2: Motor del cuerpo cuadrícula y Actuador por primitivas»).
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 49 source files` ·
+`307 passed, 1 warning in 29.10s` · `EQUIVALENCIA: OK`.
+
+Decisiones:
+- `ida/core/mundo.py`: clase base `Motor` (contrato: `primitivas(intencion, ctx, disponibles)`, `juzgar(intencion,
+  primitivas, efecto)`, `contar(primitivas)` y `ejecutadas`) y `Cuerpo.motor()` (None por defecto). `intencion` es la
+  pieza `decision` del Tribunal (verbo, objetivo, datos). El Core no importa `ida/cuerpos`.
+- `ida/cuerpos/cuadricula/motor.py`: `MotorCuadricula(max_sinergia)`. Posición del objetivo: coordenadas del id →
+  `datos["pos"]` de la pieza Exterocepcion → `cuerpo["vista"]` de la Propiocepcion «yo». Posición y orientación
+  propias, de «yo». Si la secuencia supera `max_sinergia`, se recorta a las primeras (con 2 no ocurre).
+- Juicio sin claves de Crafter en el cuerpo: COMER es éxito si `delta["alimentacion"] > 0`; equivale a la regla
+  antigua (sube comida o bebida) porque `_efecto` solo da `alimentacion` > 0 si sube una de las dos (rama `max(...)`) y,
+  si sube una, el `max` la hace positiva. COGER, si sube alguna clave de `medidas["objetos"]` (= `sorted(INVENTARIO)`,
+  las mismas claves que usaba la regla antigua). Por eso `Efecto.medidas` lleva también `objetos`.
+- `ida/core/sentidos.py`: `Actuador(verbo, ejecutar, motor, ejecutar_primitivas, disponibles)`. Con Motor: pide las
+  primitivas al ejecutar; si hay, `ejecutar_primitivas(primitivas, verbo)`; si no, `Efecto(exito=False)` sin tocar el
+  mundo; después `efecto.exito = motor.juzgar(...)`. Sin Motor: `ejecutar(verbo, objetivo, datos)` como antes.
+  Diferencia con antes en el caso sin primitivas: antes `muerte = salud <= 0`; con salud ≤ 0 la vida ya ha terminado
+  (`terminado`), así que no cambia nada (y la equivalencia da OK).
+- `ida/core/latido.py`: `reg = mundo.registro()` se lee antes de montar los Actuadores (solo cambia el orden de una
+  llamada sin efectos). Motor solo si el cuerpo lo tiene y `mundo.primitivas()` no es None.
+- `ida/mundos/crafter.py`: fuera `ejecutar` (el de transición) y `_posicion`.
+- Tests que llamaban a `MundoCrafter.ejecutar` (`tests/test_crafter.py`, `tests/test_paso0.py`) pasan a
+  `ejecutar_primitivas`; el de COGER sin ganancia juzga con `MotorCuadricula`.
+
+Pendiente: E3 y E4.

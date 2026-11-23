@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 from ida.core.vocabulario import RASGOS, Verbo
 
 if TYPE_CHECKING:
-    from ida.core.arquitectura import Componente
+    from ida.core.arquitectura import Componente, Contexto
+    from ida.core.pieza import Pieza
 
 
 @dataclass
@@ -37,6 +38,31 @@ class Cuerpo:
 
     def componentes(self) -> Dict[str, List["Componente"]]:
         return {}
+
+    def motor(self) -> Optional["Motor"]:
+        """Capa motora del cuerpo (D9), o None: sin ella, el Core ejecuta verbos."""
+        return None
+
+
+class Motor:
+    """Capa motora de un cuerpo (D9): una biblioteca, no un Componente. Traduce la intención decidida (la pieza
+    ``decision`` del Tribunal) a las primitivas del mundo leyendo piezas, y juzga su éxito comparando lo pretendido con
+    lo medido en bruto (``Efecto.medidas``). Lleva la cuenta de las primitivas ejecutadas (copia eferente)."""
+
+    def __init__(self) -> None:
+        self.ejecutadas: Dict[str, int] = {}
+
+    def primitivas(self, intencion: "Pieza", ctx: "Contexto", disponibles: List[str]) -> List[str]:
+        """Las primitivas para la intención, o [] si no se cumple su precondición (no se toca el mundo)."""
+        return []
+
+    def juzgar(self, intencion: "Pieza", primitivas: List[str], efecto: "Efecto") -> bool:
+        """Si la intención tuvo éxito, con lo medido en bruto."""
+        return bool(primitivas)
+
+    def contar(self, primitivas: List[str]) -> None:
+        for p in primitivas:
+            self.ejecutadas[p] = self.ejecutadas.get(p, 0) + 1
 
 
 @dataclass
