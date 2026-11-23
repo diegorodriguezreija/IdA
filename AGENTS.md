@@ -23,6 +23,7 @@ Desde el 22/11/2026 el trabajo sigue [`docs/DISENO_COMPONENTES.md`](docs/DISENO_
   - Nunca cambies la especificación para que pase un test.
 - **Ramas de la reorganización:** todo paso sale de `reorg/componentes` y su PR va contra `reorg/componentes`, **nunca contra `main`**. `main` es la referencia fija de la Score (`crafter-general-v4`) hasta que el autor decida fusionar la reorganización completa. No hagas push ni a `main` ni a `reorg/componentes`: sube solo la rama de tu paso.
 - **Implementa solo el paso que te encarguen** (A1, A2...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
+- **Comprobar la equivalencia:** `.venv\Scripts\python.exe herramientas/equivalencia.py` debe terminar en `EQUIVALENCIA: OK`. En la fase A, **no regeneres** `datos/equivalencia/` ni `datos/invariancia/referencia.json`: son la referencia de `eaeadaa`.
 - **Fase A: mismo resultado.** Con `--plazo-logico 40`, el JSON de `evaluar_crafter.py` (3000 pasos, semillas 31 y 32) debe ser idéntico al de `main`, `invariancia.py` debe dar OK y los tests deben pasar. Si algo cambia, para y explica por qué antes de seguir.
 - **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir.
 - **Componentes de mundo:**

@@ -116,6 +116,10 @@ REGISTRO = {
 - **Interpretación** es siempre del organismo: `nutritivo`, `peligro`, `recurso` y `novedad`.
 - `proximidad`, `lugar` y `agente` se aceptan como bruto: son medidas (distancia, se puede pisar, se mueve sola), no juicios.
 - **La Observación solo la leen los sensores del Core** (y los del mundo en `core/sentir/`). Todo lo demás lee piezas de la Onda. Como el Core no paga atención, cada entidad tiene su pieza y no se pierde nada.
+- **Lo que R0 encontró en Crafter** (`docs/R0_INVENTARIO.md`, secciones B y H):
+  - `nutritivo` lee `obj.ripe` del motor: el adaptador entregará `madura` en los `datos` de la entidad, que es una medida visible;
+  - `novedad` lee `self.visitas` y `self.t` (el reloj del mundo): el organismo la calculará con su propia memoria de visitas (`MapaLocal`) y con su propia cuenta de primitivas ejecutadas (la copia eferente del `Motor`). Coincide con `self.t` porque cada primitiva es un paso del entorno. Por eso **A5 va antes que A4**;
+  - en S2 y S3, la Observación solo se lee para la `ubicacion`, que pasa a leerse de la pieza `Propiocepcion`.
 - **Transición:** mínimo, archivos, snake y ajedrez entregan hoy rasgos valorados. Se declaran en su `Perfil` (`rasgos_declarados = ("peligro", "nutritivo", ...)`) como conocimiento que el mundo da hecho, y cuentan en el informe de D3. Crafter queda con `rasgos_declarados` vacío al terminar la fase A. Quitarlos en los demás mundos es M3 y cambia su conducta.
 
 ### D5. Preatención
@@ -153,10 +157,19 @@ Excepción de orden: `Amenaza` aprende (daño, emisores, eficacia) en su propio 
 | Qué necesidad satisface cada clase (aliestesia) | `Apetencia` (S1 · Interpretar, general) | `Memoria.satisface` |
 | Peligro: daño, alcance, emisores, eficacia | `Amenaza` (S1 · Interpretar, general) | `ida/core/peligro.py` |
 | Requisitos, transformaciones | `Requisito` (S3 · Interpretar, general; «delante» y «cerca» los da el cuerpo) | `Memoria.aprender_requisito`, `aprender_transformacion` |
-| Metas | `PerseguirMetas` (S3) | `Memoria.registrar_meta` |
+| Metas (qué verbo sobre qué objetivo cumplió un logro) | `Requisito` (S3 · Interpretar): una estrategia no tiene plasticidad (D6), así que las metas las aprende el Componente de medios y fines | `Memoria.registrar_meta` |
 | Lugares, hogar y mapa topológico (lugares y rutas) | Core (como hoy) | `Memoria.lugares`, `mapa` |
 | Mapa local métrico (casillas) | `MapaLocal` (cuerpo cuadrícula) | `Memoria.ver_casillas` |
 | Modelo del cuerpo (si avanza, si gira) | Capa motora del cuerpo cuadrícula (modelo directo) | `Memoria.aprender_cuerpo` |
+
+**Escrituras de quien no es el dueño** (R0, sección F). Pasan por la API del dueño con el autor, en el mismo momento que hoy, para no cambiar la conducta. Cada dueño declara qué autores admite:
+
+| Escritura | Quién la hace hoy | Dueño |
+|---|---|---|
+| `ver_clase` (clases vistas, para la novedad) | `Exterocepcion`, `sentidos.py:61` | Core (plasticidad); el sensor deja de escribir |
+| `recordar_lugar` (hogar) | `Proteger`, `proteger.py:556` | Core (lugares), autor `Proteger` |
+| `olvidar_donde` (dónde estaba una clase) | `RecordarComida`, `s2.py:344` y `390` | Core (lugares), autor `RecordarComida` |
+| `lectura_activa`, `ultimo_fin_lectura` | `Estudio`, `s3.py:316-459` | S3, autor `Estudio` |
 
 ### D8. Estrategias
 
@@ -212,8 +225,8 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
 ### D15. Activaciones, parámetros e interruptores
 
 - **Las activaciones condicionales se sustituyen por el registro:**
-  - `Perfil.aliestesia` desaparece: `Apetencia` solo existe donde se registra;
-  - el peligro aprendido solo existe donde se registra `Amenaza`;
+  - `Perfil.aliestesia` desaparece: `Apetencia` solo existe donde se registra. `Alimentarse` también lo consulta (`s1.py:664`, `670` y `680`; R0, sección D): pasa a preguntar si `Apetencia` está registrada (`ctx.registrado("Apetencia")`), no si hay piezas de deseo en ese latido, que daría otra conducta los latidos sin nada deseable a la vista;
+  - el peligro aprendido solo existe donde se registra `Amenaza`. Su condición actual («el mundo no da `peligro`», `latido.py:250`) y la marca `ctx.extra["peligro_aprendido"]` que lee `Afrontar` (`s1.py:341`) se sustituyen por el registro, con los mismos valores en Crafter;
   - `Afrontar` y `Proteger`, lo mismo.
 
   Hoy solo Crafter los activa, así que solo Crafter los registra y los demás mundos no cambian.
@@ -230,7 +243,7 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
 | `SalirDelRecinto` | Crafter, estrategia de S1 | Depende del recinto de Crafter |
 | `Afrontar` | S1, general; la registra Crafter | Luchar o huir según el daño esperado y la salud |
 | `Apetencia` | S1 · Interpretar, general; la registra Crafter | Aliestesia |
-| `PerseguirMetas` | S3, general | **DUDA para R0:** el lote por estación y el material desde el mapa pueden suponer el cuerpo cuadrícula; la auditoría lo decide |
+| `PerseguirMetas` | S3, general | **DUDA abierta:** el lote por estación y el material desde el mapa pueden suponer el cuerpo cuadrícula. R0 no lo resuelve (no lee ni posiciones ni la Observación, sección B); se decide en A6 leyendo su código |
 
 ### D17. Criterios de aceptación
 
@@ -279,12 +292,12 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 
 | Paso | Qué | Notas |
 |---|---|---|
-| R0 | Auditoría con las clasificaciones de este documento | Confirma o corrige el reparto de las secciones 3 y D16; marca las DUDAS |
+| R0 | Inventario (`docs/R0_INVENTARIO.md`) y correcciones a este documento | Hecho el 23/11/2026: corrigió D4, D7, D15 y el orden A5 → A4 |
 | A1 | Registro declarado (D3): `añade` y `sustituye`, nombres únicos, orden, cuerpo, informe de conocimiento | Sobre el código actual; con los registros de hoy, todo idéntico |
 | A2 | Estructura de paquetes (D2) | Solo movimiento de ficheros; `test_pureza` con las nuevas reglas de importación |
 | A3 | Pasos del latido: preatención, plasticidad y regulación (D1, D5, D6, D12); `Amenaza` sustituye a `ida/core/peligro.py` | La parte más delicada; comprobar también las noches (`wake_up`) |
-| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; el mapa, los requisitos y las transformaciones leen piezas | `rasgos_declarados` vacío en Crafter |
-| A5 | Cuerpo cuadrícula y Actuar con primitivas (D9, D10), con `max_sinergia = 2` | El adaptador de Crafter ya no traduce ni juzga |
+| A5 | Cuerpo cuadrícula y Actuar con primitivas (D9, D10), con `max_sinergia = 2` | El adaptador de Crafter ya no traduce ni juzga. Va antes que A4 (D4) |
+| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; el mapa, los requisitos y las transformaciones leen piezas | `rasgos_declarados` vacío en Crafter; necesita la cuenta de primitivas del `Motor` (A5) |
 | A6 | Crafter a su carpeta (D16); activaciones por registro y constantes al `Perfil` (D15) | Inventario completo de constantes |
 | A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia |
 | A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
@@ -336,3 +349,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 22/11/2026 | D1–D17 | Versión inicial | Sección 0 del plan; flujo de alto nivel del autor |
 | 23/11/2026 | D3, D7 | Especificación en `componentes.toml` con test; reglas de cambio (esta sección) | Que el diseño no se pervierta a la ligera y se actualice con los resultados |
 | 23/11/2026 | Sección 5 | Rama de integración `reorg/componentes`; nada entra en `main` hasta confirmar la Score | Decisión del autor |
+| 23/11/2026 | D4, D7, D15, sección 5 | Novedad con la cuenta propia de primitivas (A5 antes que A4); metas a `Requisito`; escrituras delegadas; `Alimentarse` pregunta por el registro; `invariancia` no se regenera en la fase A | `docs/R0_INVENTARIO.md`, secciones B, D, F y H |

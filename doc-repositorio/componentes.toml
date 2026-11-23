@@ -120,7 +120,7 @@ paso = "A3"
 decision = "D5"
 preatentivo = true
 aprende = true
-nota = "Aprende y estima el peligro; sustituye a ida/core/peligro.py"
+nota = "Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido"
 
 [[componente]]
 nombre = "ValoracionCrafter"
@@ -132,7 +132,7 @@ hoy = "fuera:ida/mundos/crafter.py"
 paso = "A4"
 decision = "D4"
 preatentivo = true
-nota = "nutritivo, recurso y novedad; hoy los calcula el adaptador"
+nota = "nutritivo, recurso y novedad; hoy los calcula el adaptador (crafter.py:290-344). Después de A5"
 
 [[componente]]
 nombre = "Imagen"
@@ -194,7 +194,7 @@ registran = ["crafter"]
 paso = "A5"
 decision = "D10"
 aprende = true
-nota = "Mapa métrico; hoy Memoria.ver_casillas"
+nota = "Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa"
 
 [[componente]]
 nombre = "Reflejo"
@@ -293,6 +293,7 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+nota = "Deja de leer Perfil.aliestesia y pregunta si Apetencia está registrada (A6, D15)"
 
 [[componente]]
 nombre = "SeguirEnMovimiento"
@@ -552,7 +553,7 @@ hoy = "fuera:ida/core/memoria.py"
 paso = "A7"
 decision = "D7"
 aprende = true
-nota = "Requisitos y transformaciones; «delante» y «cerca» los da el cuerpo"
+nota = "Requisitos, transformaciones y metas; hoy latido.py _aprender, _aprender_mapa y _situacion_inventario. «delante» y «cerca» los da el cuerpo"
 
 [[componente]]
 nombre = "Intencion"
@@ -687,4 +688,4 @@ hoy = "fuera:ida/mundos/crafter.py"
 registran = ["crafter"]
 paso = "A5"
 decision = "D9"
-nota = "Intención → primitivas, con sinergias (máx. 2 en la fase A)"
+nota = "Intención → primitivas, con sinergias (máx. 2 en la fase A); cuenta las primitivas ejecutadas (copia eferente)"

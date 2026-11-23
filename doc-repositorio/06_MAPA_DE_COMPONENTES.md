@@ -23,8 +23,8 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
 | `Saliencia` | componente | general | fuera: `ida/core/sentidos.py` | A3 | D5 | Hoy dentro de Exterocepcion (sentidos.py:57) |
-| `Amenaza` ✱ | componente | opcional (crafter) | fuera: `ida/core/peligro.py` | A3 | D5 | Aprende y estima el peligro; sustituye a ida/core/peligro.py |
-| `ValoracionCrafter` | componente | mundo: crafter | fuera: `ida/mundos/crafter.py` | A4 | D4 | nutritivo, recurso y novedad; hoy los calcula el adaptador |
+| `Amenaza` ✱ | componente | opcional (crafter) | fuera: `ida/core/peligro.py` | A3 | D5 | Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido |
+| `ValoracionCrafter` | componente | mundo: crafter | fuera: `ida/mundos/crafter.py` | A4 | D4 | nutritivo, recurso y novedad; hoy los calcula el adaptador (crafter.py:290-344). Después de A5 |
 
 ## 5 · Regulación de la Onda (Core)
 
@@ -46,7 +46,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
 | `Apetencia` ✱ | componente | opcional (crafter) | S1.Interpretar · en todos | A6 | D15 | Aliestesia; sustituye a Perfil.aliestesia |
 | `Recinto` | componente | mundo: crafter | S1.Interpretar · en todos | A6 | D16 | Emite la afordancia de protección |
-| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Mapa métrico; hoy Memoria.ver_casillas |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5 | D10 | Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa |
 
 ## S1 · Reaccionar
 
@@ -61,7 +61,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Defenderse` | estrategia | general | ✓ |  | previo |  |
 | `Sobresalto` | estrategia | general | ✓ |  | previo |  |
 | `QuietoOHuir` | estrategia | general | ✓ |  | previo |  |
-| `Alimentarse` | estrategia | general | ✓ |  | previo |  |
+| `Alimentarse` | estrategia | general | ✓ |  | previo | Deja de leer Perfil.aliestesia y pregunta si Apetencia está registrada (A6, D15) |
 | `SeguirEnMovimiento` | estrategia | general | ✓ |  | previo |  |
 | `Afrontar` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D15 |  |
 | `Proteger` | estrategia | opcional (crafter) | S1.Reaccionar · en todos | A6 | D16 |  |
@@ -128,7 +128,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Sentencia` | componente | general | ✓ |  | previo |  |
 | `Logica` | componente | general | ✓ |  | previo |  |
 | `Creencia` | componente | general | ✓ |  | previo |  |
-| `Requisito` ✱ | componente | general | fuera: `ida/core/memoria.py` | A7 | D7 | Requisitos y transformaciones; «delante» y «cerca» los da el cuerpo |
+| `Requisito` ✱ | componente | general | fuera: `ida/core/memoria.py` | A7 | D7 | Requisitos, transformaciones y metas; hoy latido.py _aprender, _aprender_mapa y _situacion_inventario. «delante» y «cerca» los da el cuerpo |
 
 ## S3 · Reaccionar
 
@@ -166,6 +166,6 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Geometria` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Vecinos, distancia, «delante», orientación |
 | `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A5 | D10 | Qué secuencia de MOVER deja en A mirando a C |
-| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5 | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A) |
+| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5 | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A); cuenta las primitivas ejecutadas (copia eferente) |
 
 ✱ Tiene plasticidad: aprende en el paso 4 del latido (D6).
