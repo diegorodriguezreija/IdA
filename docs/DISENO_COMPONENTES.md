@@ -118,7 +118,7 @@ REGISTRO = {
 - **La Observación solo la leen los sensores del Core** (y los del mundo en `core/sentir/`). Todo lo demás lee piezas de la Onda. Como el Core no paga atención, cada entidad tiene su pieza y no se pierde nada.
 - **Lo que R0 encontró en Crafter** (`docs/R0_INVENTARIO.md`, secciones B y H):
   - `nutritivo` lee `obj.ripe` del motor: el adaptador entregará `madura` en los `datos` de la entidad, que es una medida visible;
-  - `novedad` lee `self.visitas` y `self.t` (el reloj del mundo): el organismo la calculará con su propia memoria de visitas (`MapaLocal`) y con su propia cuenta de primitivas ejecutadas (la copia eferente del `Motor`). Coincide con `self.t` porque cada primitiva es un paso del entorno. Por eso **A5 va antes que A4**;
+  - `novedad` lee `self.visitas` y `self.t` (el reloj del mundo): el organismo la calculará con su propia memoria de visitas (`ValoracionCrafter`, que las apunta al empezar su turno de preatención) y con su propia cuenta de primitivas ejecutadas (la copia eferente del `Motor`). Coincide con `self.t` porque cada primitiva es un paso del entorno. Por eso **A5 va antes que A4**;
   - en S2 y S3, la Observación solo se lee para la `ubicacion`, que pasa a leerse de la pieza `Propiocepcion`.
 - **Transición:** mínimo, archivos, snake y ajedrez entregan hoy rasgos valorados. Se declaran en su `Perfil` (`rasgos_declarados = ("peligro", "nutritivo", ...)`) como conocimiento que el mundo da hecho, y cuentan en el informe de D3. Crafter queda con `rasgos_declarados` vacío al terminar la fase A. Quitarlos en los demás mundos es M3 y cambia su conducta.
 
