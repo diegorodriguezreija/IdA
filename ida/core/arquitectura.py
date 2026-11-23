@@ -71,10 +71,14 @@ class Contexto:
     con_experiencia: bool = True
     biblioteca: Optional[Any] = None
     extra: Dict[str, Any] = field(default_factory=dict)
+    registrados: Set[str] = field(default_factory=set)
 
     @property
     def latido(self) -> int:
         return self.onda.ciclo
+
+    def registrado(self, nombre: str) -> bool:
+        return nombre in self.registrados
 
 
 class Componente:
