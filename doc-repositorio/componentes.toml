@@ -56,17 +56,16 @@ clase = "general"
 destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
-nota = "En bruto: la saliencia pasa a la preatención (A3, D5)"
+nota = "En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5)"
 
 [[componente]]
 nombre = "Regulacion"
 tipo = "componente"
 clase = "general"
 destino = "CORE.Regulacion"
-hoy = "fuera:ida/core/marcapasos.py"
-paso = "A3"
+hoy = "CORE.Regulacion"
 decision = "D12"
-nota = "Reglas instantáneas de la Onda; hoy Marcapasos.ritmo"
+nota = "Reglas instantáneas de la Onda (ida/core/regulacion.py), antes Marcapasos.ritmo; en la fase A se calcula al crear la Onda, tras la preatención es B2"
 
 [[componente]]
 nombre = "Tribunal"
@@ -103,24 +102,24 @@ nombre = "Saliencia"
 tipo = "componente"
 clase = "general"
 destino = "S1.Sentir"
-hoy = "fuera:ida/core/sentidos.py"
-paso = "A3"
+hoy = "S1.Sentir"
 decision = "D5"
 preatentivo = true
-nota = "Hoy dentro de Exterocepcion (sentidos.py:57)"
+nota = "ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
 
 [[componente]]
 nombre = "Amenaza"
 tipo = "componente"
 clase = "opcional"
 destino = "S1.Sentir"
-hoy = "fuera:ida/core/peligro.py"
+hoy = "S1.Sentir"
+hoy_en = "todos"
 registran = ["crafter"]
-paso = "A3"
+paso = "A6"
 decision = "D5"
 preatentivo = true
 aprende = true
-nota = "Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido"
+nota = "ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6"
 
 [[componente]]
 nombre = "ValoracionCrafter"

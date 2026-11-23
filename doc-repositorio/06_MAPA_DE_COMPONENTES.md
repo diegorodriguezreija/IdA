@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 57 · **pendientes:** 17 (A3: 3, A4: 1, A5: 5, A6: 5, A7: 3)
+**Total:** 74 · **en su destino:** 59 · **pendientes:** 15 (A4: 1, A5: 5, A6: 6, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -16,21 +16,21 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Interocepcion` | componente | general | ✓ |  | previo |  |
 | `Propiocepcion` | componente | general | ✓ |  | previo |  |
 | `Ambiente` | componente | general | ✓ |  | previo |  |
-| `Exterocepcion` | componente | general | ✓ |  | previo | En bruto: la saliencia pasa a la preatención (A3, D5) |
+| `Exterocepcion` | componente | general | ✓ |  | previo | En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5) |
 
 ## 3 · Preatención (S1 · Sentir, no paga atención, también dormido)
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Saliencia` | componente | general | fuera: `ida/core/sentidos.py` | A3 | D5 | Hoy dentro de Exterocepcion (sentidos.py:57) |
-| `Amenaza` ✱ | componente | opcional (crafter) | fuera: `ida/core/peligro.py` | A3 | D5 | Aprende y estima el peligro; sustituye a ida/core/peligro.py y latido.py _peligro_aprendido |
+| `Saliencia` | componente | general | ✓ |  | D5 | ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
+| `Amenaza` ✱ | componente | opcional (crafter) | S1.Sentir · en todos | A6 | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6 |
 | `ValoracionCrafter` | componente | mundo: crafter | fuera: `ida/mundos/crafter.py` | A4 | D4 | nutritivo, recurso y novedad; hoy los calcula el adaptador (crafter.py:290-344). Después de A5 |
 
 ## 5 · Regulación de la Onda (Core)
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Regulacion` | componente | general | fuera: `ida/core/marcapasos.py` | A3 | D12 | Reglas instantáneas de la Onda; hoy Marcapasos.ritmo |
+| `Regulacion` | componente | general | ✓ |  | D12 | Reglas instantáneas de la Onda (ida/core/regulacion.py), antes Marcapasos.ritmo; en la fase A se calcula al crear la Onda, tras la preatención es B2 |
 
 ## S1 · Sentir
 

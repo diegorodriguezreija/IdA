@@ -36,7 +36,7 @@ def test_cada_latido_es_una_traza_con_sus_fases(capturar, tmp_path):
     raices = [t for t in tramos if t.name == "latido"]
     assert len(raices) == 5
     hijos = [t.name for t in tramos if t.parent is not None and t.parent.span_id == raices[0].context.span_id]
-    assert hijos == ["percibir", "sentir", "aprender", "S1", "S2", "S3", "actuar", "cierre"]
+    assert hijos == ["percibir", "sentir", "preatencion", "aprender", "S1", "S2", "S3", "actuar", "cierre"]
     assert raices[0].attributes["ida.decision.verbo"]
     nombres = set(_metricas(lector))
     assert {"ida.latido.duracion", "ida.fase.duracion", "ida.latidos", "ida.decisiones", "ida.soma", "ida.vidas"} <= nombres

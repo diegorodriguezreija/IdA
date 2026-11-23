@@ -97,7 +97,7 @@ def test_la_onda_apunta_sus_fases():
     org = Organismo(mundo, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(mundo.perfil.memoria), azar)
     onda = org.latir()
     nombres = [f[0] for f in onda.fases]
-    assert nombres == ["percibir", "sentir", "aprender", "S1", "S2", "S3", "actuar", "cierre"]
+    assert nombres == ["percibir", "sentir", "preatencion", "aprender", "S1", "S2", "S3", "actuar", "cierre"]
     for (_, ini, fin), (_, ini_sig, _) in zip(onda.fases, onda.fases[1:], strict=False):
         assert ini <= fin <= ini_sig
 

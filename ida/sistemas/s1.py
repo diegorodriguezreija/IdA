@@ -24,6 +24,8 @@ from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
 from ida.sistemas.proteger import COBIJO, COSTE_SIN_SITIO, Proteger, Recinto, SalirDelRecinto, recinto
+from ida.sistemas.amenaza import Amenaza
+from ida.sistemas.saliencia import Saliencia
 
 
 def _cosas(ctx: Contexto) -> list:
@@ -287,7 +289,7 @@ def objetos_peligrosos(ctx: Contexto) -> List[Pieza]:
 
 class Afrontar(Definicion):
     """Seguridad (paso 6b): luchar o huir por evaluación, con lo aprendido en 6a
-    (``ida.core.peligro``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
+    (``ida.sistemas.amenaza``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
     observado o que el manual declara meta de ATACAR):
 
     - golpes para derribarla con lo que se lleva (aprendido; previo pesimista sin datos), pasos hasta el contacto
@@ -837,4 +839,4 @@ def crear_s1() -> Sistema:
         Modulo("Interpretar", [Objeto(), Supervivencia(), Apetencia(), Recinto()]),
         Modulo("Reaccionar", [Reflejo(), Impulso(), Feedback(), Estrategia(catalogo, impulso_critico=SEGURIDAD)]),
         Modulo("Actuar", [Accion(catalogo), Peticion(catalogo), Anticipacion()]),
-    ])
+    ], preatencion=[Amenaza(), Saliencia()])

@@ -4,7 +4,8 @@ Sentir convierte la ``Observacion`` que entrega el mundo en piezas de ``ev``:
 - ``Interocepcion``: una pieza por constante vital, con su variación respecto al latido anterior.
   Además de las de ``Soma``, las constantes propias que el mundo entregue en ``vitales``.
 - ``Propiocepcion``: dónde está el individuo, qué lleva y su inventario (si el mundo lo tiene).
-- ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir).
+- ``Exterocepcion``: una pieza por entidad percibida (incluidos los lugares a los que puede ir), en bruto (arousal 0);
+  la saliencia la pone la preatención de S1 (D5).
 - ``Ambiente``: las condiciones del entorno que el mundo entregue (p. ej. la luz), si las hay.
 
 Actuar: el ``Tribunal`` elige un candidato de ``acc["Accion"]`` y el ``Actuador`` de ese
@@ -46,16 +47,15 @@ class Propiocepcion(Componente):
 
 
 class Exterocepcion(Componente):
+    """Una pieza por entidad, en bruto: arousal 0 (sin valorar). La saliencia la pone la preatención (``Saliencia``, D5)."""
+
     tipo = "Exterocepcion"
 
     def reactiva(self, ctx: Contexto) -> None:
         if ctx.observacion is None:
             return
         for e in ctx.observacion.entidades:
-            r = e.rasgos
-            cerca = r.get("proximidad", 0.0)
-            saliencia = max(r.get("peligro", 0.0) * max(cerca, 0.3), r.get("nutritivo", 0.0) * cerca, 0.4 * r.get("novedad", 0.0))
-            p = self.pieza(ctx, e.id, arousal=saliencia, carga={"clase": e.clase, "rasgos": dict(r), "datos": dict(e.datos)})
+            p = self.pieza(ctx, e.id, arousal=0.0, carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
             self.percibir(ctx, p)
             if ctx.memoria.activa:
                 ctx.memoria.ver_clase(e.clase)

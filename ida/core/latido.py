@@ -1,10 +1,12 @@
 """El latido: ensambla Core, Sistemas y mundo y ejecuta un ciclo de vida con su guillotina.
 
 Orden de un latido:
-1. Soma: metabolismo. Observación del mundo. Marcapasos: frecuencia, amplitud y potencia.
+1. Soma: metabolismo. Observación del mundo. Regulación (D12): frecuencia, amplitud y potencia.
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
-3. Core · Sentir (exento de peaje).
-4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
+3. Core · Sentir (exento de peaje). Después, la preatención de S1 (D5): exenta, también dormido (``Amenaza``
+   aprende y estima el peligro en las piezas; ``Saliencia`` pone el arousal).
+4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``); después, el gancho ``aprender`` de cada
+   Componente montado (plasticidad, D6).
 5. S1 → S2 → S3, con un único fondo de amplitud y potencia gastado en ese orden. La guillotina
    solo salta por plazo; si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
@@ -15,20 +17,18 @@ Orden de un latido:
 import time
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
+from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
-from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
 from ida.core.mundo import Efecto, Mundo
-from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
-from ida.core import peligro as pel
+from ida.core.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
+from ida.core.regulacion import Regulacion
 from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
 
-CANALES_SENSORES = {"Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente"}
 DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
     f"{sis}.{etapa}"
     for sis in ("S1", "S2", "S3")
@@ -62,7 +62,8 @@ class Organismo:
         if Verbo.ESPERAR in self.verbos:
             self.verbos.add(Verbo.LEER)
 
-        self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
+        self.regulacion = Regulacion()       # CORE.Regulacion (D12): fija frecuencia, amplitud y potencia de cada latido
+        self.regulacion.sistema = "CORE"
         self.ops_por_ms: Optional[float] = None   # plazo lógico de la guillotina (``Onda``); None = reloj
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
@@ -90,28 +91,40 @@ class Organismo:
                 modulo = self._sistema(sis).modulo(etapa)
                 sistema_asignar = sis
 
-            # sustituye: busca en el módulo de destino el Componente general cuya clase se llame como la clave
+            # Preatención (D5): los preatentivos de S1.Sentir viven en ``Sistema.preatencion``, no en el módulo
+            preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
+
+            # sustituye: busca en el módulo de destino (o en su preatención) el Componente general cuya clase se llame como la clave
             for nombre_clase, sustituto in alta.sustituye.items():
-                idx = next((i for i, c in enumerate(modulo.componentes) if c.__class__.__name__ == nombre_clase), None)
+                lista = modulo.componentes
+                idx = next((i for i, c in enumerate(lista) if c.__class__.__name__ == nombre_clase), None)
+                if idx is None and preatencion is not None:
+                    lista = preatencion
+                    idx = next((i for i, c in enumerate(lista) if c.__class__.__name__ == nombre_clase), None)
                 if idx is None:
                     raise ValueError(f"No existe componente general '{nombre_clase}' en {destino} para sustituir")
-                original = modulo.componentes[idx]
+                original = lista[idx]
                 if sustituto.tipo != original.tipo:
                     raise ValueError(
                         f"El sustituto '{sustituto.__class__.__name__}' tiene tipo '{sustituto.tipo}', "
                         f"pero '{nombre_clase}' tiene tipo '{original.tipo}'"
                     )
+                if sustituto.preatentivo != original.preatentivo:
+                    raise ValueError(f"El sustituto '{sustituto.__class__.__name__}' debe ser preatentivo como '{nombre_clase}' o no serlo")
                 sustituto.propio_del_mundo = True
                 sustituto.sistema = sistema_asignar
-                modulo.componentes[idx] = sustituto
+                lista[idx] = sustituto
 
-            # añade: se añade al final del módulo, en el orden declarado
+            # añade: se añade al final del módulo (los preatentivos, al final de la preatención), en el orden declarado
             for comp in alta.añade:
-                if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes):
+                if comp.preatentivo and preatencion is None:
+                    raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
+                lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
+                if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
                     raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
                 comp.propio_del_mundo = True
                 comp.sistema = sistema_asignar
-                modulo.componentes.append(comp)
+                lista.append(comp)
 
         # Estrategias del registro (por sistema)
         for sis, alta in reg.estrategias.items():
@@ -144,9 +157,12 @@ class Organismo:
                     raise ValueError(f"Ya existe una estrategia de clase '{d.__class__.__name__}' en el catálogo de {sis}")
                 catalogo.añadir(d)
 
-        # Conjunto de nombres de clase de todo lo montado (Componentes Core y S1-S3, y definiciones de catálogos)
+        # Preatención (D5): los preatentivos de S1 · Sentir, en un módulo exento que corre tras Core · Sentir
+        self.preatencion = Preatencion([c for s in self.sistemas for c in s.preatencion])
+
+        # Conjunto de nombres de clase de todo lo montado (Componentes Core, preatención y S1-S3, y definiciones de catálogos)
         self.registrados: Set[str] = {
-            c.__class__.__name__ for c in self.sentir.componentes + self.actuar.componentes
+            c.__class__.__name__ for c in self.sentir.componentes + self.actuar.componentes + self.preatencion.componentes
         } | {
             c.__class__.__name__ for s in self.sistemas for m in s.modulos for c in m.componentes
         } | {
@@ -188,7 +204,7 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
+        frecuencia, amplitud, potencia = self.regulacion.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias,
                     ops_por_ms=self.ops_por_ms)
         ctx = Contexto(
@@ -205,16 +221,19 @@ class Organismo:
             registrados=self.registrados,
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
-        self._peligro_aprendido(ctx)
 
         # 3. Sentir
         with onda.fase("sentir"):
             self.sentir.ejecutar(ctx)
+        # 3b. Preatención (D5): exenta, también dormido; solo modifica piezas de los sensores
+        with onda.fase("preatencion"):
+            self.preatencion.ejecutar(ctx)
         # 4. Aprender del efecto de la acción anterior (el cuarteto)
         with onda.fase("aprender"):
             self._aprender(ctx)
             if self.con_experiencia and self.perfil.mecanismos.expectativa:
                 self._contrastar(ctx)
+            self._plasticidad(ctx)
 
         # 5. Cognición (o sueño)
         if soma.dormido:
@@ -272,6 +291,17 @@ class Organismo:
                   sistema="CORE", creada=ctx.latido, actualizada=ctx.latido)
         ctx.onda.proponer("Accion", p, autor=AutorCore("Accion"))
 
+    def montados(self) -> List[Componente]:
+        """Todos los Componentes montados, en orden determinista: Core (Sentir, Regulación, Actuar), preatención y S1,
+        S2 y S3 por módulos."""
+        return [*self.sentir.componentes, self.regulacion, *self.actuar.componentes, *self.preatencion.componentes,
+                *(c for s in self.sistemas for m in s.modulos for c in m.componentes)]
+
+    def _plasticidad(self, ctx: Contexto) -> None:
+        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``."""
+        for c in self.montados():
+            c.aprender(ctx)
+
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
         if self.con_experiencia and ubicacion:
@@ -313,38 +343,6 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
-
-    def _peligro_aprendido(self, ctx: Contexto) -> None:
-        """Paso 6 (``ida.core.peligro``), siempre activo: en un mundo que da posiciones y no da su propio rasgo ``peligro``
-        (los que lo dan no cambian), aprende del
-        latido (daño, exposición, golpes, derribos y apariciones) y escribe el ``peligro`` de cada entidad antes de Sentir.
-        Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``)."""
-        obs = ctx.observacion
-        aqui = pos_de(obs.ubicacion) if obs is not None else None
-        if obs is None or aqui is None or any("peligro" in e.rasgos for e in obs.entidades):
-            return
-        con_pos = [e for e in obs.entidades if isinstance(e.datos.get("pos"), (list, tuple)) and len(e.datos["pos"]) == 2]
-        if not con_pos:
-            return
-        mem = self.memoria
-        if self.con_experiencia and mem.activa:
-            agentes = {e.id: (e.clase, (int(e.datos["pos"][0]), int(e.datos["pos"][1]))) for e in con_pos
-                       if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("agente", 0.0) >= 0.5}
-            crudas = (obs.cuerpo or {}).get("casillas")
-            if isinstance(crudas, dict) and crudas:
-                visibles = {(int(k[0]), int(k[1])) for k in crudas}
-            else:
-                visibles = {(int(e.datos["pos"][0]), int(e.datos["pos"][1])) for e in con_pos}
-            objetos = frozenset(k for k, v in mem._objetos(dict(obs.inventario or {})).items() if v >= 1.0)
-            previa = ctx.onda.ei("Accion").get("Accion")
-            c = previa.carga if previa is not None else {}
-            verbo = c.get("verbo")
-            golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
-            mem.peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
-                                  c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa,
-                                  dormido=bool(self.soma.dormido))
-        pel.estimar(obs.entidades, aqui, mem.peligros, self.soma.vitalidad, mem.peligrosa, dormido=bool(self.soma.dormido))
-        ctx.extra["peligro_aprendido"] = True
 
     def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
         """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior
@@ -406,6 +404,7 @@ class Organismo:
                     elif cambio:
                         mem.cierres.discard(destino)
         libres, ocupadas, peligros = set(), set(), set()
+        exterocepcion = ctx.onda.ev("Exterocepcion")   # el peligro (de Amenaza o del mundo) está en la pieza de cada entidad
         for e in obs.entidades:
             pos = e.datos.get("pos")
             if not isinstance(pos, (list, tuple)) or len(pos) != 2:
@@ -415,7 +414,8 @@ class Organismo:
                 libres.add(p)
             elif e.clase != casillas.get(p):
                 ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
-                if e.rasgos.get("peligro", 0.0) >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
+                pieza = exterocepcion.get(e.id)
+                if pieza is not None and pieza.rasgo("peligro") >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
                     peligros.add(p)
         mem.ver_casillas(aqui, casillas, libres, ocupadas, peligros)
         mem.yo_previo = (aqui, cara)

@@ -18,6 +18,7 @@ from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
 from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.proteger import Modelo, buscar_postura
@@ -158,6 +159,14 @@ def _obs(pos: Pos, cara: Pos, mapa: Dict[Pos, str]) -> Observacion:
     return m.observar()
 
 
+def _ctx(obs: Observacion) -> SimpleNamespace:
+    """Contexto mínimo para ``Organismo._aprender_mapa``: la Observación y las piezas ``Exterocepcion`` que emitiría el
+    sensor con ella (el peligro de cada entidad se lee de su pieza desde A3)."""
+    piezas = {e.id: Pieza(id=e.id, tipo="Exterocepcion", carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
+              for e in obs.entidades}
+    return SimpleNamespace(observacion=obs, onda=SimpleNamespace(ev=lambda canal: piezas if canal == "Exterocepcion" else {}))
+
+
 def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
     """Tras MOVER hacia una casilla libre, la posición cambia y queda mirando hacia allí; hacia una bloqueada, solo gira.
     La memoria lo aprende de lo percibido antes y después (``Organismo._aprender_mapa``), sin que nadie se lo diga."""
@@ -172,7 +181,7 @@ def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
         ((2, 0), (-1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
     ]
     for pos, cara, accion in secuencia:
-        Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs(pos, cara, mapa)), accion)   # type: ignore[arg-type]
+        Organismo._aprender_mapa(yo, _ctx(_obs(pos, cara, mapa)), accion)   # type: ignore[arg-type]
     assert mem.transitable("suelo") is True and mem.transitable("roca") is False
     assert mem.modelo_cuerpo("mover", True) == (True, True)
     assert mem.modelo_cuerpo("mover", False) == (False, True)
@@ -354,12 +363,12 @@ def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
     mapa = {(0, 0): "suelo", (1, 0): "bloque"} | {(x, y): "bloque" for x in range(-1, 2) for y in (-1, 1)} | {(-1, 0): "bloque"}
     mem = Memoria("completa")
     yo = SimpleNamespace(memoria=mem)
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), None)   # type: ignore[arg-type]
+    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), None)   # type: ignore[arg-type]
     accion = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "bloque", "exito": True}
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), accion)   # type: ignore[arg-type]
+    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), accion)   # type: ignore[arg-type]
     assert mem.resultado(Verbo.COGER, "bloque", "bloque") == "bloque"
     fallida = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "otra", "exito": False}
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
+    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
     assert (Verbo.COGER, "otra") not in mem.transformaciones           # sin éxito y sin cambio no dice nada
 
 
