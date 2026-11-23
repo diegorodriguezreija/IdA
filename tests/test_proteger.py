@@ -22,7 +22,9 @@ from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas import crear_sistemas
-from ida.sistemas.proteger import Modelo, Recinto, SalirDelRecinto, buscar_postura
+from ida.cuerpos.cuadricula.buscador import buscar_postura
+from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto
+from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
 
 Pos = Tuple[int, int]
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -390,7 +392,7 @@ def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
 def test_para_abrir_solo_coge_una_pared_vecina():
     """Recinto de 2 casillas (1,0)+(2,0); la única pared cavable, (0,0), es vecina de (1,0). Desde (2,0) no se coge a dos
     casillas: primero se va a (1,0)."""
-    from ida.sistemas.proteger import _abrir
+    from ida.mundos.crafter.s1.interpretar.recinto import _abrir
     mapa = {(1, 0): "suelo", (2, 0): "suelo", (0, 0): "roca"} | {(x, y): "muro" for x in range(-1, 4) for y in (-1, 1)} | {(3, 0): "muro"}
     mem = _memoria(MundoCueva(mapa, (2, 0)), aprendida=True)
     mem.paso_bloqueado["muro"] = 1

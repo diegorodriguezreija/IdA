@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Set
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Observacion, Perfil
+from ida.core.mundo import Cuerpo, Observacion, Perfil
 from ida.core.onda import Onda
 from ida.core.pieza import Pieza
 from ida.core.soma import Soma
@@ -74,6 +74,7 @@ class Contexto:
     biblioteca: Optional[Any] = None
     extra: Dict[str, Any] = field(default_factory=dict)
     registrados: Set[str] = field(default_factory=set)
+    cuerpo: Optional[Cuerpo] = None
 
     @property
     def latido(self) -> int:

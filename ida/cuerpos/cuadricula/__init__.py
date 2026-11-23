@@ -11,15 +11,31 @@ mundo, con como mucho ``max_sinergia`` primitivas por Actuación, y juzga su éx
 La geometría y el buscador de posturas se mueven en A6, con ``Recinto``.
 """
 
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
-from ida.core.arquitectura import Componente
+from ida.core.arquitectura import Componente, Contexto
 from ida.core.mundo import Cuerpo, Motor
+from ida.cuerpos.cuadricula.buscador import buscar_postura, mover
+from ida.cuerpos.cuadricula.geometria import _bfs, _manhattan, _suma, _vecinas, entorno
+from ida.cuerpos.cuadricula.mapa import ir_por_el_mapa
 from ida.cuerpos.cuadricula.mapa_local import MapaLocal
 from ida.cuerpos.cuadricula.modelo_directo import ModeloDirecto
 from ida.cuerpos.cuadricula.motor import MotorCuadricula
 
-__all__ = ["Cuadricula", "MapaLocal", "ModeloDirecto", "MotorCuadricula"]
+__all__ = [
+    "Cuadricula",
+    "MapaLocal",
+    "ModeloDirecto",
+    "MotorCuadricula",
+    "_bfs",
+    "_manhattan",
+    "_suma",
+    "_vecinas",
+    "buscar_postura",
+    "entorno",
+    "ir_por_el_mapa",
+    "mover",
+]
 
 
 class Cuadricula(Cuerpo):
@@ -33,3 +49,8 @@ class Cuadricula(Cuerpo):
 
     def componentes(self) -> Dict[str, List[Componente]]:
         return {"CORE.Actuar": [ModeloDirecto()], "S1.Interpretar": [MapaLocal()]}
+
+    def ir_por_el_mapa(
+        self, ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
+    ) -> Optional[Any]:
+        return ir_por_el_mapa(ctx, clase, confianza, excluir)

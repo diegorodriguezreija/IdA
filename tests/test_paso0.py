@@ -307,7 +307,7 @@ def test_crafter_el_nutritivo_es_perceptivo_y_constante():
     sed o el hambre."""
     pytest.importorskip("crafter")
     from ida.mundos.crafter import NUTRITIVO_MANUAL, MundoCrafter
-    from ida.mundos.crafter_valoracion import ValoracionCrafter
+    from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
 
     assert not hasattr(MundoCrafter, "_deseo")
     m = MundoCrafter(vista="oficial")

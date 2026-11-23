@@ -9,6 +9,7 @@ from ida.core.memoria import Memoria
 from ida.core.mundo import Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas.s3 import PerseguirMetas
 
 # Mundo de juguete: la meta es USAR «hacer_a», que requiere B; B se obtiene cogiendo C.
@@ -39,11 +40,11 @@ def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0, pos: O
 
 
 def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float], delante: Optional[Dict[str, str]] = None,
-         latido: int = 1, ubicacion: str = "aqui", perfil: Optional[Perfil] = None) -> Any:
+         latido: int = 1, ubicacion: str = "aqui", perfil: Optional[Perfil] = None, cuerpo: Optional[Any] = None) -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil())
+                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil(), cuerpo=cuerpo)
 
 
 def test_planificador_encadena_hacia_atras():
@@ -280,7 +281,7 @@ def _pasillo(banco_en: int, consumo_aprendido: bool = True) -> Any:
     if consumo_aprendido:
         m.aprender_requisito(Verbo.USAR, "poner_banco", {"madera": 2.0}, {"madera": 1.0}, set(), True, cerca_despues={"banco"})
     lugar = _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))
-    return _ctx(m, [lugar], {"madera": 2.0}, ubicacion="celda_0_0")
+    return _ctx(m, [lugar], {"madera": 2.0}, ubicacion="celda_0_0", cuerpo=Cuadricula())
 
 
 def test_va_al_banco_recordado_si_cuesta_menos_que_poner_otro():
@@ -328,9 +329,9 @@ def test_el_material_se_busca_tambien_en_el_mapa_local():
     m.paso_libre["suelo"] = 1
     m.paso_bloqueado["arbol"] = 1
     entidades = [_entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
-    propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0"), None)
+    propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", cuerpo=Cuadricula()), None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
     assert "volver a arbol (mapa, 5 pasos)" in propuestas[0].motivo
     m.casillas[(6, 0)] = "suelo"          # el mapa ya no recuerda ningún árbol
-    sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", latido=2), None)
+    sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", latido=2, cuerpo=Cuadricula()), None)
     assert not any("(mapa," in p.motivo for p in sin_mapa), [p.motivo for p in sin_mapa]

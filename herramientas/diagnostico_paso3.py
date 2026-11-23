@@ -75,7 +75,8 @@ def cavable(mem: Any, aqui: Tuple[int, int], inv: Dict[str, float]) -> Dict[str,
     """La casilla conocida más cercana (Manhattan) de una clase que cavar abre (``Modelo.abre``: observado o inducido), y si
     entra en la búsqueda de sitio: ``nunca vista`` (ninguna en el mapa local), ``lejos`` (fuera de lo que ``candidatos``
     considera: alcanzable en ≤ ``ALCANCE_SITIO`` pasos más 2 casillas cavables) o ``dentro`` con el motivo de descarte."""
-    from ida.sistemas.proteger import ALCANCE_SITIO, Modelo, _vecinas, candidatos, rutas
+    from ida.cuerpos.cuadricula.geometria import _vecinas
+    from ida.mundos.crafter.s1.interpretar.recinto import ALCANCE_SITIO, Modelo, candidatos, rutas
     modelo = Modelo(mem, inv, set())
     clases = sorted(c for c in set(mem.casillas.values()) if modelo.abre(c))
     celdas = [p for p, c in mem.casillas.items() if c in clases]
@@ -105,7 +106,8 @@ def cavable(mem: Any, aqui: Tuple[int, int], inv: Dict[str, float]) -> Dict[str,
 
 def _formas(modelo: Any, dist: Dict[Tuple[int, int], int]) -> Dict[str, int]:
     """Por qué se descartan las formas de 1-3 casillas al alcance (el mismo filtro que ``candidatos``), la primera razón de cada una."""
-    from ida.sistemas.proteger import _manhattan, _suma, _vecinas, accesos_de
+    from ida.cuerpos.cuadricula.geometria import _manhattan, _suma, _vecinas
+    from ida.mundos.crafter.s1.interpretar.recinto import accesos_de
     celdas = set(dist)
     for _ in range(2):
         celdas |= {v for p in list(celdas) for v in _vecinas(p) if modelo.rinde(v) is not None}
