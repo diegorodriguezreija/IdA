@@ -15,6 +15,8 @@ Orden de un latido:
 """
 
 import time
+from collections import deque
+from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
@@ -194,6 +196,11 @@ class Organismo:
         self._ubicacion_previa: Optional[str] = None
         self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
+        self._corto_plazo: deque[Any] = deque(maxlen=max(0, self.perfil.corto_plazo))
+
+    @property
+    def corto_plazo(self) -> Tuple[Any, ...]:
+        return tuple(self._corto_plazo)
 
     def _montar_opcionales(self, nombres: List[str]) -> None:
         """Quita los generales opcionales (Componentes de los módulos, preatentivos y definiciones de los catálogos) cuya
@@ -276,6 +283,7 @@ class Organismo:
             biblioteca=self.biblioteca,
             registrados=self.registrados,
             cuerpo=self.cuerpo,
+            corto_plazo=tuple(self._corto_plazo),
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
 
@@ -340,7 +348,15 @@ class Organismo:
         soma.agotado_previo = onda.amplitud_agotada
         onda.notas["ms_total"] = round(onda.ms_transcurridos(), 2)
         self.ef_anterior = onda.reactiva.ef
+        self._guardar_corto_plazo(onda)
         return onda
+
+    def _guardar_corto_plazo(self, onda: Onda) -> None:
+        if self._corto_plazo.maxlen and self._corto_plazo.maxlen > 0:
+            ef_inmutable = MappingProxyType({
+                c: MappingProxyType(dict(p)) for c, p in onda.reactiva.ef.items()
+            })
+            self._corto_plazo.append(ef_inmutable)
 
     # -----------------------------------------------------------------------
     def _candidato_core(self, ctx: Contexto, verbo: Verbo, motivo: str) -> None:

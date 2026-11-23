@@ -8,15 +8,15 @@ Encargo: equivalencia con herencia y legado frente a eaeadaa; Peticion a Reaccio
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Equivalencia con herencia y línea base de legado | Hecha | `78ee258` |
-| E2 | Peticion a Reaccionar (D11) | Hecha | ver `git log` |
-| E3 | Memoria a corto plazo (D13) | Pendiente | - |
+| E2 | Peticion a Reaccionar (D11) | Hecha | `ce3f314` |
+| E3 | Memoria a corto plazo (D13) | Hecha | ver `git log` |
 
-### Últimas comprobaciones (E2)
+### Últimas comprobaciones (E3)
 
 ```
 ruff check .          All checks passed!
 mypy ida              Success: no issues found in 61 source files
-pytest -q             359 passed, 1 warning in 57.21s
+pytest -q             362 passed, 1 warning in 95.60s
 equivalencia.py:
   31: IDÉNTICO
   32: IDÉNTICO
@@ -50,4 +50,21 @@ equivalencia.py:
 - En `doc-repositorio/componentes.toml`:
   - Actualizado `Peticion` de S1 y S2 con `hoy = "S1.Reaccionar"` y `hoy = "S2.Reaccionar"`, retirando `paso = "A7"`.
 - Regenerado `doc-repositorio/06_MAPA_DE_COMPONENTES.md` mediante `herramientas/mapa_componentes.py --escribir`.
+
+## E3 · Memoria a corto plazo (D13)
+
+- En `Perfil` (`ida/core/mundo.py`): se añade el parámetro `corto_plazo: int = 8` con valor por defecto 8.
+- En `Contexto` (`ida/core/arquitectura.py`): se añade el campo `corto_plazo: Tuple[Any, ...] = ()` (secuencia inmutable, de la más antigua a la más reciente).
+- En `Organismo` (`ida/core/latido.py`):
+  - Inicializa una cola circular `self._corto_plazo: deque[Any] = deque(maxlen=max(0, self.perfil.corto_plazo))`.
+  - Expone la propiedad `corto_plazo` como tupla inmutable.
+  - Al instanciar `Contexto` en `latir()`, pasa `corto_plazo=tuple(self._corto_plazo)`.
+  - Al cerrar la onda en `latir()`, guarda una copia inmutable del `ef` (`MappingProxyType` multinivel) con las piezas que contienen `tipo`, `id`, `arousal` y `carga`.
+- En `tests/test_corto_plazo.py`:
+  - Se verifica que el valor por defecto en `Perfil` es 8.
+  - Se verifica con N=3 y N=4 que la cola desborda correctamente respetando el tamaño máximo.
+  - Se comprueba el orden estricto de la onda más antigua a la más reciente.
+  - Se verifica la inmutabilidad de la tupla y de los mapeos `MappingProxyType`.
+  - Se verifica que cada pieza retiene sus atributos identificativos (`tipo`, `id`, `arousal`, `carga`).
+
 
