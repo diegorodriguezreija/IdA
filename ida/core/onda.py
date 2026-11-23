@@ -28,7 +28,7 @@ Plazo lógico (opcional, para evaluaciones reproducibles): con ``ops_por_ms`` el
 pared y se mide en operaciones. Una operación es una llamada a ``control_vital`` fuera del Core exento:
 la entrada a cada sistema, el turno de cada componente y cada pieza que se cobra. Es la unidad natural
 porque son exactamente los puntos donde la guillotina cooperativa puede cortar. El plazo del latido
-pasa a ser ``frecuencia_ms × ops_por_ms`` operaciones, así que el marcapasos lo sigue acortando con
+pasa a ser ``frecuencia_ms × ops_por_ms`` operaciones, así que la regulación lo sigue acortando con
 peligro. Con plazo lógico, la misma semilla da la misma vida aunque la máquina esté cargada. Por defecto
 (``None``) todo sigue igual: plazo de reloj.
 

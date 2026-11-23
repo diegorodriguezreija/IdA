@@ -1,4 +1,4 @@
-"""El cuerpo: constantes vitales, química e indicadores generales (el ritmo del latido lo fija ``Marcapasos``)."""
+"""El cuerpo: constantes vitales, química e indicadores generales (el ritmo del latido lo fija ``Regulacion``)."""
 
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple

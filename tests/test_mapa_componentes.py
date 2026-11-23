@@ -54,6 +54,7 @@ def _montado(mundo: Any) -> Montado:
     hay: Montado = set()
     for modulo, ubicacion in ((org.sentir, "CORE.Sentir"), (org.actuar, "CORE.Actuar")):
         hay |= {("componente", ubicacion, type(c).__name__) for c in modulo.componentes}
+    hay.add(("componente", "CORE.Regulacion", type(org.regulacion).__name__))
     for sistema in org.sistemas:
         for modulo in sistema.modulos:
             ubicacion = f"{sistema.nombre}.{modulo.nombre}"

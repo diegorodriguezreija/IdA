@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 57 · **pendientes:** 17 (A3: 3, A4: 1, A5: 5, A6: 5, A7: 3)
+**Total:** 74 · **en su destino:** 58 · **pendientes:** 16 (A3: 2, A4: 1, A5: 5, A6: 5, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -30,7 +30,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Regulacion` | componente | general | fuera: `ida/core/marcapasos.py` | A3 | D12 | Reglas instantáneas de la Onda; hoy Marcapasos.ritmo |
+| `Regulacion` | componente | general | ✓ |  | D12 | Reglas instantáneas de la Onda (ida/core/regulacion.py), antes Marcapasos.ritmo; en la fase A se calcula al crear la Onda, tras la preatención es B2 |
 
 ## S1 · Sentir
 

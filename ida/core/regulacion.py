@@ -1,8 +1,12 @@
-"""Marcapasos: fija el ritmo de cada latido a partir de los indicadores del cuerpo.
+"""Regulación de la Onda (D12): fija el ritmo de cada latido a partir de los indicadores del cuerpo.
 
-El Core crea la Onda con lo que devuelve. Es sustituible (``Organismo.marcapasos``): otro algoritmo
-puede cambiar el ritmo sin tocar el resto. Devuelve frecuencia (plazo), amplitud (piezas nuevas que
+Es un Componente del Core (``CORE.Regulacion``): reglas instantáneas (condición → ajuste), sin búsquedas
+ni bucles sobre la memoria. Sustituye al antiguo ``Marcapasos`` con las mismas reglas y los mismos datos.
+El Core crea la Onda con lo que devuelve ``ritmo``: frecuencia (plazo), amplitud (piezas nuevas que
 caben en el latido) y potencia (arousal que se puede otorgar o cambiar en total).
+
+Fase A: se calcula al crear la Onda (la Onda necesita frecuencia, amplitud y potencia al nacer), con el
+soma y los indicadores del latido anterior, como el Marcapasos. Leer lo sentido en el propio latido es B2.
 
 Valores por defecto (bloque B, sin algoritmo adaptativo):
 - Frecuencia y amplitud: dependen de la energía, el sueño, la taquicardia y el peligro (ver ``ritmo``).
@@ -17,10 +21,13 @@ Valores por defecto (bloque B, sin algoritmo adaptativo):
 
 from typing import Tuple
 
+from ida.core.arquitectura import Componente
 from ida.core.soma import Soma
 
 
-class Marcapasos:
+class Regulacion(Componente):
+    tipo = "Regulacion"
+
     FUERZA_POR_PIEZA = 1.0   # potencia / amplitud
     FACTOR_AMPLITUD = 0.45   # amplitud = factor × amplitud base del perfil (escasez de atención)
 

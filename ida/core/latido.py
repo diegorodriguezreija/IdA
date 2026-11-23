@@ -1,7 +1,7 @@
 """El latido: ensambla Core, Sistemas y mundo y ejecuta un ciclo de vida con su guillotina.
 
 Orden de un latido:
-1. Soma: metabolismo. Observación del mundo. Marcapasos: frecuencia, amplitud y potencia.
+1. Soma: metabolismo. Observación del mundo. Regulación (D12): frecuencia, amplitud y potencia.
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
 3. Core · Sentir (exento de peaje).
 4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``).
@@ -18,12 +18,12 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
-from ida.core.marcapasos import Marcapasos
 from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento, pos_de
 from ida.core.mundo import Efecto, Mundo
 from ida.core.onda import AutorCore, Canales, LatidoAgotado, Onda
 from ida.core import peligro as pel
 from ida.core.pieza import Episodio, Pieza
+from ida.core.regulacion import Regulacion
 from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
 from ida.core.soma import Soma, VITALES
 from ida.core.vocabulario import Afecto, Verbo
@@ -62,7 +62,8 @@ class Organismo:
         if Verbo.ESPERAR in self.verbos:
             self.verbos.add(Verbo.LEER)
 
-        self.marcapasos = Marcapasos()       # sustituible: fija frecuencia y amplitud de cada latido
+        self.regulacion = Regulacion()       # CORE.Regulacion (D12): fija frecuencia, amplitud y potencia de cada latido
+        self.regulacion.sistema = "CORE"
         self.ops_por_ms: Optional[float] = None   # plazo lógico de la guillotina (``Onda``); None = reloj
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
@@ -188,7 +189,7 @@ class Organismo:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
             soma.dormido = obs.dormido
-        frecuencia, amplitud, potencia = self.marcapasos.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
+        frecuencia, amplitud, potencia = self.regulacion.ritmo(soma, self.perfil.frecuencia_ms, self.perfil.amplitud)
         onda = Onda(self.ciclo, amplitud, frecuencia, self.ef_anterior, potencia_max=potencia, estrategias=self.estrategias,
                     ops_por_ms=self.ops_por_ms)
         ctx = Contexto(

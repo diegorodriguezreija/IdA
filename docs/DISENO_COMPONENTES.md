@@ -210,6 +210,7 @@ Lo que solo existe en Crafter (cavar, colocar piedra, recintos) va en `mundos/cr
 - **Fase A:** lee lo mismo que hoy (el soma y los indicadores del latido anterior). Mismos valores.
 - **Fase B (B2):** lee también lo sentido y preatendido en el propio latido. Es un cambio de conducta (se responde un latido antes).
 - Un mundo puede añadir reglas (registradas como Componentes de `core`), con los mismos límites que la preatención.
+- En la fase A la regulación se calcula al crear la Onda, con los mismos datos que el Marcapasos; colocarla tras la preatención, con lo sentido en el propio latido, es B2.
 
 ### D13. Memoria a corto plazo, episodios y poda
 
