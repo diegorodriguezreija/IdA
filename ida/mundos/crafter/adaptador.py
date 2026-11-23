@@ -7,7 +7,7 @@ Traducción al vocabulario común:
   árboles, agua, piedra, carbón, hierro, diamante, mesa, horno, lava, hierba, vacas, zombis,
   esqueletos y plantas, en bruto: ``proximidad`` y ``agente`` (y ``datos["madura"]`` de las plantas, que se ve).
 - Lugares: las casillas vecinas transitables, con ``lugar`` y ``proximidad``.
-- La valoración es del organismo (A4, D4): ``ValoracionCrafter`` (``crafter_valoracion.py``), preatentivo de S1 que
+- La valoración es del organismo (A4, D4): ``ValoracionCrafter`` (``s1/sentir/valoracion.py``), preatentivo de S1 que
   registra este mundo, pone ``nutritivo`` y ``recurso`` a las cosas y ``nutritivo`` y ``novedad`` a los lugares.
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
   ``manual``): lo que declara NUTRITIVO y UTIL lo recibe ``ValoracionCrafter`` (valor 0,6). Sus proposiciones y
@@ -37,7 +37,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.cuerpos.cuadricula import Cuadricula
-from ida.mundos.crafter_valoracion import ValoracionCrafter
+from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
 from ida.sistemas.proteger import ALCANCE_SITIO, Recinto, SalirDelRecinto   # de Crafter (D16); sus ficheros se mueven en A6b
 from ida.core.vocabulario import Verbo
 

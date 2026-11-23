@@ -140,7 +140,7 @@ def test_saliencia_la_ultima_de_la_preatencion() -> None:
 
 
 def test_orden_de_las_claves_reconstruido() -> None:
-    from ida.mundos.crafter_valoracion import ORDEN_COSA as COSA, ORDEN_LUGAR as LUGAR, _ordenados
+    from ida.mundos.crafter.s1.sentir.valoracion import ORDEN_COSA as COSA, ORDEN_LUGAR as LUGAR, _ordenados
     r: Dict[str, float] = {"proximidad": 1.0, "agente": 0.0, "peligro": 0.2}
     assert list(_ordenados(r, {"nutritivo": 0.6, "recurso": 0.0}, COSA)) == ORDEN_COSA + ["peligro"]
     assert list(_ordenados({"lugar": 1.0, "proximidad": 1.0}, {"nutritivo": 0.0, "novedad": 1.0}, LUGAR)) == ORDEN_LUGAR
@@ -154,7 +154,7 @@ def test_conocimiento_declarado_por_el_registro() -> None:
     import pathlib
 
     from ida.mundos.crafter import MundoCrafter
-    from ida.mundos.crafter_valoracion import ValoracionCrafter
+    from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
     m = MundoCrafter()
     reg = m.registro()
     (v,) = reg.componentes["S1.Sentir"].añade
@@ -168,7 +168,7 @@ def test_conocimiento_declarado_por_el_registro() -> None:
     spec.loader.exec_module(herramienta)
     informe = herramienta.informe_mundo("crafter")
     assert "ValoracionCrafter (preatentivo) {NUTRITIVO: agua, planta, vaca;" in informe
-    assert "`ida/mundos/crafter_valoracion.py`" in informe
+    assert "`ida/mundos/crafter/s1/sentir/valoracion.py`" in informe
     # A6a (D3, D15): los generales opcionales que registra Crafter; el mínimo, ninguno
     assert "- **Opcionales:** `Apetencia`, `Amenaza`, `Afrontar`, `Proteger`" in informe
     assert "- **Opcionales:** *(ninguno)*" in herramienta.informe_mundo("minimo")

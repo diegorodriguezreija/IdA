@@ -412,20 +412,20 @@ def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
 
 # --- 6d: frontera de Crafter ------------------------------------------------------------------------------
 def test_crafter_no_escribe_conducta():
-    """Paso 6d: ninguna clase de ``ida/mundos/crafter.py`` es una estrategia y Crafter no declara estrategias propias."""
+    """Paso 6d: ninguna clase de ``ida/mundos/crafter/adaptador.py`` es una estrategia y Crafter no declara estrategias propias."""
     import inspect
 
     import pytest
 
     pytest.importorskip("crafter")
     from ida.core.estrategia import ConPropuestas, Definicion, Plan
-    from ida.mundos import crafter
+    from ida.mundos.crafter import MundoCrafter, adaptador
 
-    clases = [c for _, c in inspect.getmembers(crafter, inspect.isclass) if c.__module__ == crafter.__name__]
+    clases = [c for _, c in inspect.getmembers(adaptador, inspect.isclass) if c.__module__ == adaptador.__name__]
     assert clases     # el adaptador existe
     assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
     # D16: Crafter solo registra SalirDelRecinto, de ``ida/sistemas/proteger.py`` (pasa a Crafter en A6b)
-    estrategias = crafter.MundoCrafter().registro().estrategias
+    estrategias = MundoCrafter().registro().estrategias
     assert list(estrategias) == ["S1"] and not estrategias["S1"].sustituye
     assert [type(d).__name__ for d in estrategias["S1"].añade] == ["SalirDelRecinto"]
 
