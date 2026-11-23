@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 61 · **pendientes:** 13 (A4: 1, A5b: 1, A6: 8, A7: 3)
+**Total:** 74 · **en su destino:** 62 · **pendientes:** 12 (A4: 1, A6: 8, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -166,6 +166,6 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Geometria` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A6 | D10 | Vecinos, distancia, «delante», orientación |
 | `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | fuera: `ida/sistemas/proteger.py` | A6 | D10 | Qué secuencia de MOVER deja en A mirando a C |
-| `Motor` | biblioteca | cuerpo: cuadricula | fuera: `ida/mundos/crafter.py` | A5b | D9 | Intención → primitivas, con sinergias (máx. 2 en la fase A); cuenta las primitivas ejecutadas (copia eferente) |
+| `Motor` | biblioteca | cuerpo: cuadricula | ✓ |  | D9 | ida/cuerpos/cuadricula/motor.py: intención → primitivas, con sinergias (máx. 2 en la fase A); juzga el éxito; cuenta las primitivas ejecutadas (copia eferente) |
 
 ✱ Tiene plasticidad: aprende en el paso 4 del latido (D6).

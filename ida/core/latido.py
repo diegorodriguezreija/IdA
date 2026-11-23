@@ -68,13 +68,18 @@ class Organismo:
         self.ops_por_ms: Optional[float] = None   # plazo lógico de la guillotina (``Onda``); None = reloj
         self.tribunal = Tribunal()
         self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
-        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar) for v in verbos_mundo]
+        # Montaje declarado por el registro del mundo (D3)
+        reg = mundo.registro()
+        # Capa motora (D9): con primitivas del mundo y Motor del cuerpo, el Actuador ejecuta primitivas
+        motor = reg.cuerpo.motor() if reg.cuerpo is not None else None
+        disponibles = mundo.primitivas() if motor is not None else None
+        if disponibles is None:
+            motor = None
+        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar, motor, mundo.ejecutar_primitivas if motor else None, disponibles)
+                                        for v in verbos_mundo]
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
-
-        # Montaje declarado por el registro del mundo (D3)
-        reg = mundo.registro()
 
         # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
         self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; su ``aprender`` lo llama ``_aprender``
