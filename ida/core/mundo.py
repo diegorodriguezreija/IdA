@@ -40,7 +40,8 @@ class Cuerpo:
         return {}
 
     def motor(self) -> Optional["Motor"]:
-        """Capa motora del cuerpo (D9), o None: sin ella, el Core ejecuta verbos."""
+        """Capa motora del cuerpo (D9), o None: sin ella, el Core ejecuta verbos. Expone la cuenta de primitivas
+        ejecutadas (``Motor.ejecutadas``, copia eferente)."""
         return None
 
 

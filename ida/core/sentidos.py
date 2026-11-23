@@ -213,11 +213,13 @@ class Actuador(Componente):
             return
         primitivas = self._motor.primitivas(d, ctx, self._disponibles)
         efecto = self._ejecutar_primitivas(primitivas, verbo) if primitivas else Efecto(exito=False)
+        self._motor.contar(primitivas)    # copia eferente
         efecto.exito = self._motor.juzgar(d, primitivas, efecto)
-        aplicar_efecto(ctx, verbo, d, efecto)
+        aplicar_efecto(ctx, verbo, d, efecto, primitivas)
 
 
-def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto) -> None:
+def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto, primitivas: Optional[List[str]] = None) -> None:
+    """Aplica el efecto al soma y registra la pieza ``Accion`` ejecutada (con sus primitivas, si las hubo: D9)."""
     soma = ctx.soma
     soma.aplicar(efecto.delta)
     if efecto.exito:
@@ -247,6 +249,7 @@ def aplicar_efecto(ctx: Contexto, verbo: Verbo, decision: Pieza, efecto: Efecto)
             "causa": efecto.causa,
             "obtenido": efecto.obtenido,
             "mensaje": efecto.mensaje,
+            **({"primitivas": list(primitivas)} if primitivas is not None else {}),
         },
         entradas=["decision"],
         sistema="CORE",

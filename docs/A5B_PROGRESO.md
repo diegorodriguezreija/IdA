@@ -8,7 +8,7 @@ intención → primitivas pasa del adaptador al Motor del cuerpo cuadrícula. Ra
 |---|---|---|
 | E1 | Contrato `primitivas`/`ejecutar_primitivas`, adaptador y `vista` | HECHA |
 | E2 | Motor (traducción, sinergias, juicio) y Actuador por primitivas | HECHA |
-| E3 | Cuenta de primitivas, «primitivas» en la pieza Accion, especificación y documentación | sin empezar |
+| E3 | Cuenta de primitivas, «primitivas» en la pieza Accion, especificación y documentación | HECHA |
 | E4 | Tests | sin empezar |
 
 El hash de cada etapa es el de su commit «A5b E<n>: ...» (`git log --oneline --grep "A5b E"`).
@@ -87,7 +87,7 @@ Pendiente: nada de E1.
 
 ## E2 · Motor y Actuador por primitivas
 
-Estado: HECHA (commit «A5b E2: Motor del cuerpo cuadrícula y Actuador por primitivas»).
+Estado: HECHA. Commit 562a4a2 «A5b E2: Motor del cuerpo cuadrícula y Actuador por primitivas».
 
 Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 49 source files` ·
 `307 passed, 1 warning in 29.10s` · `EQUIVALENCIA: OK`.
@@ -114,4 +114,25 @@ Decisiones:
 - Tests que llamaban a `MundoCrafter.ejecutar` (`tests/test_crafter.py`, `tests/test_paso0.py`) pasan a
   `ejecutar_primitivas`; el de COGER sin ganancia juzga con `MotorCuadricula`.
 
-Pendiente: E3 y E4.
+Pendiente: nada de E2.
+
+## E3 · Cuenta, pieza Accion, especificación y documentación
+
+Estado: HECHA (commit «A5b E3: cuenta de primitivas, especificación y D9»).
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 49 source files` ·
+`307 passed, 1 warning in 27.03s` · `EQUIVALENCIA: OK`.
+
+Decisiones:
+- Cuenta de primitivas: `Motor.contar` / `Motor.ejecutadas` (primitiva → veces), en la clase base; el Actuador la llama
+  tras ejecutar. El cuerpo la expone con `Cuerpo.motor()` (para A4).
+- `aplicar_efecto(..., primitivas=None)`: con Motor, la pieza `Accion` lleva `"primitivas": [...]` (también `[]` cuando
+  no se tocó el mundo); sin Motor la carga no cambia (mundos sin cuerpo idénticos).
+- `doc-repositorio/componentes.toml`: Motor → `hoy = "cuerpo"`, `hoy_en = ["crafter"]` (para que no quede pendiente:
+  `objetivo_en` de un Componente de cuerpo son sus `registran`), sin `paso`; `nota` con el fichero. Sin tocar
+  destino, clase, registran ni decision. `herramientas/mapa_componentes.py`: `hoy = "cuerpo"` se admite solo para
+  `tipo = "biblioteca"` (como ya se hacía con `destino`). Mapa regenerado con `--escribir`.
+- `docs/DISENO_COMPONENTES.md`: las dos frases de D9, la fila B5 de la fase B y dos líneas en el registro de cambios
+  (D4/sección 5 por `vista` y B5; D9 por A5b).
+
+Pendiente: E4.

@@ -106,7 +106,7 @@ def validar(espec: List[Dict[str, Any]], decisiones: Set[str]) -> List[str]:
         if c["tipo"] == "estrategia" and not c["destino"].endswith(".Reaccionar"):
             errores.append(f"{n}: una estrategia vive en Reaccionar")
         hoy = c["hoy"]
-        if hoy and not hoy.startswith("fuera:") and hoy not in UBICACIONES:
+        if hoy and not hoy.startswith("fuera:") and hoy not in UBICACIONES + (["cuerpo"] if c["tipo"] == "biblioteca" else []):
             errores.append(f"{n}: hoy «{hoy}» no válido")
         if hoy.startswith("fuera:") and not os.path.exists(os.path.join(RAIZ, hoy[len("fuera:"):])):
             errores.append(f"{n}: el fichero de «{hoy}» no existe")

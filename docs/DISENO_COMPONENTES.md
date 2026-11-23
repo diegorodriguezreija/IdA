@@ -184,9 +184,9 @@ Excepción de orden: `Amenaza` aprende (daño, emisores, eficacia) en su propio 
 
 - **El Core · Actuar solo ejecuta primitivas del mundo:** las que declara su adaptador (en Crafter, las teclas: `move_left`, `do`, `place_table`, `sleep`, `noop`...; en snake, las flechas; en mínimo y archivos, sus verbos actuales, que ya son primitivas de ese mundo).
 - **La Actuación** (la pieza `Accion`) lleva **la primitiva y la intención** (verbo semántico, objetivo, clase, origen). El aprendizaje sigue usando la intención (`COMER` sobre una vaca), así que no cambia.
-- **La capa motora** del cuerpo traduce intención → primitiva. `Accion` de cada sistema le pide la primitiva al proponer.
+- **La capa motora** del cuerpo traduce intención → primitiva. El Actuador del Core le pide las primitivas al ejecutar la Actuación decidida (entre la propuesta y la ejecución nada cambia, así que es equivalente y más simple).
 - **Sinergias motoras:** la capa motora puede devolver una sinergia corta (orientarse y golpear) que el Core ejecuta entera. Es una unidad motora, como las sinergias de la médula espinal, no una conducta. Su longitud máxima es un parámetro del cuerpo (`max_sinergia`), con valor 2 en la fase A para reproducir el giro y golpe de hoy. Pasarla a 1 es B1.
-- **El éxito de una intención** (`COMER` solo tiene éxito si sube la comida) lo juzga la capa motora del mundo con la medida en bruto que devuelve el adaptador (deltas de inventario y salud). El adaptador deja de juzgar.
+- **El éxito de una intención** (`COMER` solo tiene éxito si sube la comida) lo juzga la capa motora del cuerpo, comparando lo pretendido con lo medido en bruto que devuelve el adaptador. Es un juicio general (comer es éxito si alimenta), no de un mundo. El adaptador deja de juzgar.
 - **El plus a lo ejecutado** (punto 7 del autor) es la continuidad del Tribunal que ya existe: 0,1 × (1 − agotamiento) × (1 − progreso). Lleva el freno contra la perseveración. Se conserva tal cual.
 
 ### D10. Familias de cuerpos
@@ -312,6 +312,7 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 | B2 | Regulación con lo sentido en el propio latido |
 | B3 | Poda por arousal mínimo en `ev` |
 | B4 | Episodios formados desde la memoria a corto plazo, si su formación cambia |
+| B5 | Quitar el corte de 14 entidades de `observar` en Crafter (hoy prioriza «primero los peligrosos»): elegir a qué atender es atención y valoración del organismo, no del mundo. La percepción entrega todo lo visible y la amplitud de la Onda decide; `obs.cuerpo["vista"]` desaparece |
 
 Después: V1 a V3 y M1 a M7 del plan, con M1 reformulado (D14).
 
@@ -353,3 +354,5 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | Sección 5 | Rama de integración `reorg/componentes`; nada entra en `main` hasta confirmar la Score | Decisión del autor |
 | 23/11/2026 | D5, sección 5 | `Exterocepcion` emite con arousal 0; A5 se parte en A5a (cuerpo) y A5b (primitivas); A2 pasa al final de la fase A | Resultado de A3 (`docs/A3_PROGRESO.md`) |
 | 23/11/2026 | D4, D7, D15, sección 5 | Novedad con la cuenta propia de primitivas (A5 antes que A4); metas a `Requisito`; escrituras delegadas; `Alimentarse` pregunta por el registro; `invariancia` no se regenera en la fase A | `docs/R0_INVENTARIO.md`, secciones B, D, F y H |
+| 23/11/2026 | D4, sección 5 | `vista` en bruto para el Motor; B5 nuevo | Bloqueo de A5b E1 (`docs/A5B_PROGRESO.md`) |
+| 23/11/2026 | D9 | Primitivas al ejecutar; el éxito lo juzga el cuerpo | A5b |
