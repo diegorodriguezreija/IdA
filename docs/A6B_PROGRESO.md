@@ -8,18 +8,18 @@ la búsqueda en el mapa de S3 pasa al cuerpo; pureza de importaciones y actualiz
 
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
-| E1 | Paquete de Crafter con adaptador, manuales y ValoracionCrafter | Hecha | ver `git log` |
-| E2 | Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza | Pendiente | |
+| E1 | Paquete de Crafter con adaptador, manuales y ValoracionCrafter | Hecha | `4c926ce` |
+| E2 | Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza | Hecha | ver `git log` |
 | E3 | Geometría y buscador al cuerpo | Pendiente | |
 | E4 | PerseguirMetas y Contexto.cuerpo | Pendiente | |
 | E5 | Pureza, especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E1)
+### Últimas comprobaciones (E2)
 
 ```
 ruff check .          All checks passed!
-mypy ida              Success: no issues found in 53 source files
-pytest -q             337 passed, 1 warning in 54.40s
+mypy ida              Success: no issues found in 58 source files
+pytest -q             342 passed, 1 warning in 54.90s
 equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK · EQUIVALENCIA: OK
 ```
 
@@ -37,6 +37,22 @@ equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK �
   - `tests/test_valoracion_crafter.py`
   - `tests/test_defensa.py`
 - Borrados `ida/mundos/crafter.py` y `ida/mundos/crafter_valoracion.py` mediante git mv.
+
+## E2 · Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza
+
+- `ida/sistemas/proteger.py`: reducido a lo general:
+  - `COBIJO = "cobijo"`
+  - `TIPO_RECINTO = "Recinto"` (constante del tipo de pieza de afordancia)
+  - `recinto(ctx)` lector de la pieza
+  - `riesgo_exterior(ctx)`
+  - `_proponer_abrir(...)` compartido
+  - `Proteger`: estrategia general del cobijo
+  - Ya no importa nada de Crafter ni de cuerpos.
+- Traslados a Crafter:
+  - `ida/mundos/crafter/s1/interpretar/recinto.py`: `Recinto`, modelo (`Modelo`, `Cerrador`), candidatos y constantes de Crafter (`ALCANCE_SITIO`, etc.).
+  - `ida/mundos/crafter/s1/reaccionar/estrategias/salir_del_recinto.py`: `SalirDelRecinto`.
+  - `__init__.py` en `ida/mundos/crafter/s1/interpretar/`, `ida/mundos/crafter/s1/reaccionar/` y `ida/mundos/crafter/s1/reaccionar/estrategias/`.
+- Referencias actualizadas en `adaptador.py`, `tests/test_proteger.py`, `herramientas/diagnostico_paso3.py`.
 
 ## Decisiones y desviaciones
 

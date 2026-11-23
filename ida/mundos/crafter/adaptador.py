@@ -38,7 +38,8 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ida.core.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
-from ida.sistemas.proteger import ALCANCE_SITIO, Recinto, SalirDelRecinto   # de Crafter (D16); sus ficheros se mueven en A6b
+from ida.mundos.crafter.s1.interpretar.recinto import ALCANCE_SITIO, Recinto
+from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
 from ida.core.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
