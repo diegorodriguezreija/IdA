@@ -26,7 +26,8 @@ DISPONIBLES = ["noop", "move_left", "move_right", "move_up", "move_down", "do", 
 
 def _ctx(aqui: Pos, cara: Pos, ext: Optional[Dict[str, Pos]] = None, vista: Optional[Dict[str, List[int]]] = None) -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"ubicacion": f"celda_{aqui[0]}_{aqui[1]}",
-                                                      "cuerpo": {"orientacion": cara, "vista": dict(vista or {})}})
+                                                      "cuerpo": {"orientacion": cara,
+                                                                 "vista": {k: {"clase": k.rsplit("_", 1)[0], "pos": v} for k, v in (vista or {}).items()}}})
     piezas = {"Propiocepcion": {"yo": yo},
               "Exterocepcion": {i: Pieza(id=i, tipo="Exterocepcion", carga={"clase": i.split("_")[0], "rasgos": {}, "datos": {"pos": p}})
                                 for i, p in (ext or {}).items()}}
@@ -263,7 +264,7 @@ def test_vecina_fuera_de_las_14_entidades():
     w.add(objects.Cow(w, vaca))
     obs = m.observar()
     vid = (obs.cuerpo or {})["vista"]
-    ids = [i for i, p in vid.items() if tuple(p) == vaca]
+    ids = [i for i, v in vid.items() if tuple(v["pos"]) == vaca and v["clase"] == "vaca"]
     assert len(m._cosas()) > 14 and ids
     assert ids[0] not in {e.id for e in obs.entidades}
     motor = MotorCuadricula()

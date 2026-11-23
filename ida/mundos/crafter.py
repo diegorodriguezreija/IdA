@@ -327,7 +327,10 @@ class MundoCrafter(Mundo):
                 "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }
-            entidades.append(Entidad(cid, clase, rasgos, {"pos": cpos}))
+            datos: Dict[str, Any] = {"pos": cpos}
+            if clase == "planta":
+                datos["madura"] = bool(getattr(obj, "ripe", False))   # se ve en su textura (en bruto)
+            entidades.append(Entidad(cid, clase, rasgos, datos))
         deseables = [(c, self._nutritivo(c[1], c[3])) for c in cosas if self._nutritivo(c[1], c[3]) > 0.1]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():
@@ -346,10 +349,17 @@ class MundoCrafter(Mundo):
             celda = {"lugar": 1.0, "proximidad": 1.0, "nutritivo": nutritivo, "novedad": novedad}
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", celda, {"pos": c}))
 
-        # B5: transitorio. ``vista`` = posición en bruto (sin valorar) de lo que se ve y cuyo id no lleva coordenadas
-        # (criaturas y plantas: el mismo conjunto que ``_cosas()``), para que el Motor del cuerpo localice un objetivo que
-        # el corte de 14 entidades de arriba haya dejado fuera de las piezas. Desaparece al quitar el corte (B5).
-        vista = {cid: [int(cpos[0]), int(cpos[1])] for cid, _, cpos, obj in cosas if obj is not None}
+        # B5: transitorio. ``vista`` = lo que se ve y cuyo id no lleva coordenadas (criaturas y plantas: los objetos de
+        # ``_cosas()``), en bruto y sin valorar: id -> {"clase", "pos": [x, y]} y, si es planta, "madura". Para que el Motor
+        # del cuerpo localice un objetivo y la valoración del organismo (``ValoracionCrafter``) vea lo que el corte de 14
+        # entidades de arriba deja fuera de las piezas. Los materiales a la vista ya van en ``casillas``. Desaparece al
+        # quitar el corte (B5).
+        vista: Dict[str, Dict[str, Any]] = {}
+        for cid, clase, cpos, obj in cosas:
+            if obj is not None:
+                vista[cid] = {"clase": clase, "pos": [int(cpos[0]), int(cpos[1])]}
+                if clase == "planta":
+                    vista[cid]["madura"] = bool(getattr(obj, "ripe", False))
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
                            cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "delante": self._delante(), "casillas": self._casillas(),
