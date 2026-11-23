@@ -1,0 +1,2 @@
+eaeadaa307714c02d036e12fdbbc9c8f0dabd4aa
+python.exe herramientas/equivalencia.py --base
