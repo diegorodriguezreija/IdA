@@ -16,7 +16,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Interocepcion` | componente | general | ✓ |  | previo |  |
 | `Propiocepcion` | componente | general | ✓ |  | previo |  |
 | `Ambiente` | componente | general | ✓ |  | previo |  |
-| `Exterocepcion` | componente | general | ✓ |  | previo | En bruto: la saliencia pasa a la preatención (A3, D5) |
+| `Exterocepcion` | componente | general | ✓ |  | previo | En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5) |
 
 ## 3 · Preatención (S1 · Sentir, no paga atención, también dormido)
 

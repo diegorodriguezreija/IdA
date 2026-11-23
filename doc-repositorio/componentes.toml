@@ -56,7 +56,7 @@ clase = "general"
 destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
-nota = "En bruto: la saliencia pasa a la preatención (A3, D5)"
+nota = "En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5)"
 
 [[componente]]
 nombre = "Regulacion"

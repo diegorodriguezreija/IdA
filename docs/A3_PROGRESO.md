@@ -10,7 +10,7 @@ orden, cada una en verde y con «EQUIVALENCIA: OK» por sí sola:
 | E2 | Gancho de plasticidad (punto 4) | HECHA |
 | E3 | Mecanismo de preatención y Saliencia (puntos 1 y 2) | HECHA |
 | E4 | Amenaza (punto 3) | HECHA |
-| E5 | Especificación, test del mapa y tests restantes (punto 6) | pendiente |
+| E5 | Especificación, test del mapa y tests restantes (punto 6) | HECHA |
 
 El hash de cada etapa es el del commit «A3 E<n>: ...» (`git log --oneline --grep "A3 E"`); el de una etapa se anota
 en la siguiente.
@@ -134,7 +134,7 @@ Pendiente: nada de E3 (el orden Amenaza → Saliencia se fijó en E4).
 
 ## E4 · Amenaza
 
-Estado: HECHA. Commit: «A3 E4: Amenaza sustituye a ida/core/peligro.py y a _peligro_aprendido».
+Estado: HECHA. Commit de1ccc0 «A3 E4: Amenaza sustituye a ida/core/peligro.py y a _peligro_aprendido».
 
 Comprobación (última línea de cada una):
 
@@ -184,4 +184,39 @@ Decisiones:
   rasgos de cada pieza con posición, con el valor exacto de `estimar` sobre una copia de la Observación con la misma
   memoria, y la Observación queda sin `peligro`; `ctx.extra["peligro_aprendido"]` puesto.
 
-Pendiente: E5 (repaso de notas del toml, de los tests pedidos y de la documentación).
+Pendiente: nada de E4.
+
+## E5 · Especificación, test del mapa y tests restantes
+
+Estado: HECHA. Commit: «A3 E5: especificación y documentación al día».
+
+Comprobación (última línea de cada una, punto 7 del encargo):
+
+```
+All checks passed!
+Success: no issues found in 43 source files
+301 passed, 1 warning in 43.44s
+Mapa de Componentes válido y al día.
+EQUIVALENCIA: OK
+```
+
+Decisiones:
+- Las entradas de Regulacion, Saliencia y Amenaza en `componentes.toml` y las dos líneas de `_montado` se hicieron en
+  E1, E3 y E4 (cada etapa debía quedar en verde; ver E1). En E5 solo queda la nota de `Exterocepcion` («emite con
+  arousal 0; la saliencia la pone Saliencia en la preatención»). Mapa regenerado.
+- `doc-repositorio/02_ARQUITECTURA_Y_MECANISMO_VITAL.md`: el párrafo de atención nombra la `Regulacion`
+  (`ida/core/regulacion.py`) en lugar del `Marcapasos`.
+- No se tocan los documentos históricos que citan `ida/core/peligro.py`, `marcapasos.py` o `_peligro_aprendido`
+  (`docs/R0_INVENTARIO.md`, planes, mediciones, `CHANGELOG.md`), ni las columnas «Hoy» de `docs/DISENO_COMPONENTES.md`
+  (cambiar el diseño exige al autor; solo se añadió la línea literal de D12).
+- Tests pedidos en el punto 6, todos en `tests/test_preatencion.py`: sin consumo de amplitud ni potencia (ni
+  operaciones del plazo lógico); corre dormido; emitir o modificar una pieza no sensora → error; Saliencia da el
+  arousal de antes; Amenaza escribe el peligro en la pieza y no en la Observación; el gancho `aprender` se llama en la
+  fase «aprender» y en orden.
+
+Para quien continúe (A4 en adelante):
+- Ninguna lectura `# A4:` en Amenaza: lo que necesitaba de la Observación ya estaba en la pieza `Propiocepcion`.
+- `Memoria` importa `Peligros` en diferido (comentario `A7:`); al hacer las secciones con dueño (A7) debería
+  desaparecer esa dependencia de `ida/core` hacia `ida/sistemas`.
+- La condición de Amenaza (posiciones y sin peligro del mundo) y `ctx.extra["peligro_aprendido"]` siguen; son A6.
+- La Regulación se sigue calculando al crear la Onda; moverla tras la preatención es B2 (cambio de conducta).
