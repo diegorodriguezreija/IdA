@@ -13,7 +13,7 @@ classDiagram
         +observar() Observacion
         +ejecutar(verbo: Verbo, objetivo: str, datos: dict) Efecto
         +verbos() set[Verbo]
-        +componentes_propios() dict
+        +registro() Registro
         +terminado() bool
         +puntuacion() dict
         +vista() str

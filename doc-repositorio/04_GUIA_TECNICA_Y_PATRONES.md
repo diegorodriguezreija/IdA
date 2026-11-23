@@ -71,7 +71,7 @@ graph TD
   * El Arquetipo de personalidad.
   * La Memoria activa y proactiva.
   * El generador de Azar con semilla.
-* **Beneficio:** Cada pieza se puede probar por separado (los tests de Snake sustituyen el navegador por un doble) y cada mundo añade sus propios componentes sin tocar el núcleo (`Mundo.componentes_propios()`).
+* **Beneficio:** Cada pieza se puede probar por separado (los tests de Snake sustituyen el navegador por un doble) y cada mundo añade sus propios componentes sin tocar el núcleo (`Mundo.registro()`).
 
 ---
 
