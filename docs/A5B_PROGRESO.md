@@ -9,7 +9,7 @@ intención → primitivas pasa del adaptador al Motor del cuerpo cuadrícula. Ra
 | E1 | Contrato `primitivas`/`ejecutar_primitivas`, adaptador y `vista` | HECHA |
 | E2 | Motor (traducción, sinergias, juicio) y Actuador por primitivas | HECHA |
 | E3 | Cuenta de primitivas, «primitivas» en la pieza Accion, especificación y documentación | HECHA |
-| E4 | Tests | sin empezar |
+| E4 | Tests | HECHA |
 
 El hash de cada etapa es el de su commit «A5b E<n>: ...» (`git log --oneline --grep "A5b E"`).
 
@@ -118,7 +118,7 @@ Pendiente: nada de E2.
 
 ## E3 · Cuenta, pieza Accion, especificación y documentación
 
-Estado: HECHA (commit «A5b E3: cuenta de primitivas, especificación y D9»).
+Estado: HECHA. Commit 8c8e7e4 «A5b E3: cuenta de primitivas, especificación y D9».
 
 Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 49 source files` ·
 `307 passed, 1 warning in 27.03s` · `EQUIVALENCIA: OK`.
@@ -135,4 +135,29 @@ Decisiones:
 - `docs/DISENO_COMPONENTES.md`: las dos frases de D9, la fila B5 de la fase B y dos líneas en el registro de cambios
   (D4/sección 5 por `vista` y B5; D9 por A5b).
 
-Pendiente: E4.
+Pendiente: nada de E3.
+
+## E4 · Tests
+
+Estado: HECHA (commit «A5b E4: tests del Motor»).
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 49 source files` ·
+`320 passed, 1 warning in 37.79s` · `EQUIVALENCIA: OK`.
+
+`tests/test_motor.py` (13 tests):
+- Traducción: MOVER a vecina y no vecina; golpe (COMER, ATACAR, COGER) con y sin giro; objetivo sin coordenadas por
+  pieza Exterocepcion (manda sobre `vista`) y solo por `vista`; USAR con receta disponible, por objetivo y no
+  disponible; DORMIR; ESPERAR y ACECHAR → `noop`.
+- Sinergia: `Cuadricula().motor().max_sinergia == 2`; con 1, el golpe con giro se recorta a la primera primitiva.
+- Juicio: sin primitivas, COMER que no alimenta, COGER sin ganancia (subir salud o comida no cuenta) → False; los demás
+  casos → True. Cuenta de primitivas.
+- Mundo sin cuerpo (mínimo): `primitivas()` None, sin cuerpo, y ningún Actuador con Motor.
+- Equivalencia en Crafter (semillas 1 y 7, 400 pasos de un guion fijo): dos mundos con la misma semilla, uno con una
+  copia literal del `ejecutar` de antes y otro con Motor + `ejecutar_primitivas` + `juzgar`; mismo `exito`, `delta`,
+  `causa`, `obtenido`, `muerte`, `mensaje`, visitas y pasos en cada paso, y al menos una secuencia de dos primitivas.
+  Con un juicio roto a propósito (sin las reglas de COMER y COGER) el test falla (comprobado a mano, sin dejarlo en el
+  código).
+- Vecina fuera de las 14 entidades: lava alrededor del jugador (más de 14 cosas a la vista) y una vaca vecina; la vaca
+  no está entre las entidades observadas y el Motor la localiza por `vista`.
+
+Pendiente: nada. El paso A5b queda listo para revisión; no se ha abierto PR.
