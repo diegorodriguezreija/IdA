@@ -246,7 +246,7 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
 | `SalirDelRecinto` | Crafter, estrategia de S1 | Depende del recinto de Crafter |
 | `Afrontar` | S1, general; la registra Crafter | Luchar o huir según el daño esperado y la salud |
 | `Apetencia` | S1 · Interpretar, general; la registra Crafter | Aliestesia |
-| `PerseguirMetas` | S3, general | **DUDA abierta:** el lote por estación y el material desde el mapa pueden suponer el cuerpo cuadrícula. R0 no lo resuelve (no lee ni posiciones ni la Observación, sección B); se decide en A6 leyendo su código |
+| `PerseguirMetas` | S3, general | General. Resuelto en A6b: la búsqueda de material en el mapa es geometría de cuadrícula y la ofrece el cuerpo (`Contexto.cuerpo`); sin cuerpo no la hay |
 
 ### D17. Criterios de aceptación
 

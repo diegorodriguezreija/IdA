@@ -130,7 +130,7 @@ hoy = "S1.Sentir"
 hoy_en = ["crafter"]
 decision = "D4"
 preatentivo = true
-nota = "ida/mundos/crafter_valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual"
+nota = "ida/mundos/crafter/s1/sentir/valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual"
 
 [[componente]]
 nombre = "Imagen"
@@ -177,7 +177,7 @@ destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
 hoy_en = ["crafter"]
 decision = "D16"
-nota = "Emite la afordancia de protección. Lo registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b"
+nota = "ida/mundos/crafter/s1/interpretar/recinto.py: emite la afordancia de protección. Lo registra Crafter (A6a, A6b)"
 
 [[componente]]
 nombre = "MapaLocal"
@@ -328,7 +328,7 @@ destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 hoy_en = ["crafter"]
 decision = "D16"
-nota = "La registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b"
+nota = "ida/mundos/crafter/s1/reaccionar/estrategias/salir_del_recinto.py: la registra Crafter (A6a, A6b)"
 
 [[componente]]
 nombre = "Defensa"
@@ -637,7 +637,7 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
-nota = "DUDA para R0: el lote por estación y el material del mapa pueden suponer la cuadrícula (D16)"
+nota = "General; resuelto en A6b: la búsqueda de material en el mapa es geometría de cuadrícula (ida/cuerpos/cuadricula/mapa.py) y la ofrece el cuerpo (Contexto.cuerpo); sin cuerpo no la hay"
 
 [[componente]]
 nombre = "BuscarEnOtraCarpeta"
@@ -654,11 +654,11 @@ tipo = "biblioteca"
 clase = "cuerpo"
 dueno = "cuadricula"
 destino = "cuerpo"
-hoy = "fuera:ida/sistemas/proteger.py"
+hoy = "cuerpo"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D10"
-nota = "Vecinos, distancia, «delante», orientación"
+nota = "ida/cuerpos/cuadricula/geometria.py: vecinos, distancia, entorno, búsqueda en anchura"
 
 [[componente]]
 nombre = "BuscadorPosturas"
@@ -666,11 +666,11 @@ tipo = "biblioteca"
 clase = "cuerpo"
 dueno = "cuadricula"
 destino = "cuerpo"
-hoy = "fuera:ida/sistemas/proteger.py"
+hoy = "cuerpo"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A6"
 decision = "D10"
-nota = "Qué secuencia de MOVER deja en A mirando a C"
+nota = "ida/cuerpos/cuadricula/buscador.py: qué secuencia de MOVER deja en A mirando a C"
 
 [[componente]]
 nombre = "Motor"

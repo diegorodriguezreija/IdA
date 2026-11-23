@@ -86,10 +86,24 @@ equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK �
 - Tests adaptados para suministrar cuerpo en pruebas unitarias de mapa en cuadrícula (`test_planificador.py`, `test_deuda14.py`).
 - Comprobaciones: ruff OK, mypy ida OK, pytest (342 passed), equivalencia OK.
 
+## E5 · Pureza, especificación y documentos
+
+- `tests/test_pureza.py`:
+  - Nuevos tests con `ast`: `test_importaciones_sistemas` (`ida/sistemas` no importa ni `ida.mundos` ni `ida.cuerpos`) y `test_importaciones_cuerpos` (`ida/cuerpos` no importa `ida.mundos`).
+- `doc-repositorio/componentes.toml`:
+  - `Geometria` y `BuscadorPosturas`: `hoy = "cuerpo"`, `hoy_en = ["crafter"]`, eliminado `paso = "A6"`.
+  - Notas actualizadas para `ValoracionCrafter`, `Recinto`, `SalirDelRecinto` y `PerseguirMetas` con sus ficheros y resoluciones finales.
+  - `doc-repositorio/06_MAPA_DE_COMPONENTES.md` regenerado con `herramientas/mapa_componentes.py --escribir`.
+- `docs/DISENO_COMPONENTES.md`:
+  - D16: Celda de `PerseguirMetas` actualizada sustituyendo la duda abierta por la resolución formal con `Contexto.cuerpo`.
+- `herramientas/conocimiento_mundo.py`:
+  - Verificado: cuenta todos los ficheros del paquete `ida/mundos/crafter/` (1878 líneas totales en 12 ficheros).
+- Comprobaciones: ruff OK, mypy ida OK, pytest (359 passed), equivalencia OK.
+
 ## Decisiones y desviaciones
 
-- Ninguna en E1, E2, E3 ni E4. Se trasladó todo preservando la lógica exacta e interfaces.
+- Ninguna. Todas las etapas E1 a E5 se completaron según la especificación del encargo y las decisiones D2, D10 y D16.
 
 ## Pendientes
 
-- E5: Pureza (ast), actualizar `doc-repositorio/componentes.toml`, regenerar mapa, D16 en `DISENO_COMPONENTES.md`, verificación de `herramientas/conocimiento_mundo.py`.
+- Ninguno. Paso A6b completado en su totalidad.

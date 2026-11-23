@@ -38,3 +38,39 @@ def test_pureza(ruta):
             texto = nodo.value.lower()
             for palabra in PALABRAS_DE_MUNDO:
                 assert palabra not in texto.split() and f" {palabra}" not in texto, f"{ruta.name}: palabra de mundo '{palabra}' en {nodo.value!r}"
+
+
+# Reglas de reparto de importaciones (D2):
+# - ida/sistemas NO importa ni ida/mundos ni ida/cuerpos
+# - ida/cuerpos NO importa ida/mundos
+# - ida/mundos puede importar los dos
+SISTEMAS = sorted((RAIZ / "sistemas").rglob("*.py"))
+CUERPOS = sorted((RAIZ / "cuerpos").rglob("*.py"))
+
+
+def _modulos_importados(arbol: ast.AST) -> list[str]:
+    modulos: list[str] = []
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.Import):
+            modulos.extend(a.name for a in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom) and nodo.module:
+            modulos.append(nodo.module)
+    return modulos
+
+
+@pytest.mark.parametrize("ruta", SISTEMAS, ids=lambda p: p.name)
+def test_importaciones_sistemas(ruta: pathlib.Path) -> None:
+    """ida/sistemas no importa ni ida/mundos ni ida/cuerpos (D2)."""
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+    for m in _modulos_importados(arbol):
+        assert not (m == "ida.mundos" or m.startswith("ida.mundos.")), f"{ruta.name} importa {m}"
+        assert not (m == "ida.cuerpos" or m.startswith("ida.cuerpos.")), f"{ruta.name} importa {m}"
+
+
+@pytest.mark.parametrize("ruta", CUERPOS, ids=lambda p: p.name)
+def test_importaciones_cuerpos(ruta: pathlib.Path) -> None:
+    """ida/cuerpos no importa ida/mundos (D2)."""
+    arbol = ast.parse(ruta.read_text(encoding="utf-8"))
+    for m in _modulos_importados(arbol):
+        assert not (m == "ida.mundos" or m.startswith("ida.mundos.")), f"{ruta.name} importa {m}"
+
