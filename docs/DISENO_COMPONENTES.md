@@ -357,3 +357,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D4, D7, D15, sección 5 | Novedad con la cuenta propia de primitivas (A5 antes que A4); metas a `Requisito`; escrituras delegadas; `Alimentarse` pregunta por el registro; `invariancia` no se regenera en la fase A | `docs/R0_INVENTARIO.md`, secciones B, D, F y H |
 | 23/11/2026 | D4, sección 5 | `vista` en bruto para el Motor; B5 nuevo | Bloqueo de A5b E1 (`docs/A5B_PROGRESO.md`) |
 | 23/11/2026 | D9 | Primitivas al ejecutar; el éxito lo juzga el cuerpo | A5b |
+| 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |

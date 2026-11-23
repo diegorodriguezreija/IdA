@@ -11,7 +11,7 @@ Componente preatentivo de Crafter (`ValoracionCrafter`). Rama `reorg/a4-observac
 | E2 | `ValoracionCrafter` y orden de la preatención (`Saliencia` la última) | HECHA |
 | E3 | El adaptador deja de valorar y de apuntar visitas; `rasgos_declarados` vacío | HECHA |
 | E4 | Lectores a piezas y `ctx.observacion = None` tras Core · Sentir | HECHA |
-| E5 | Especificación, herramienta, documentación y tests restantes | pendiente |
+| E5 | Especificación, herramienta, documentación y tests restantes | HECHA |
 
 El hash de cada etapa es el de su commit «A4 E<n>: ...» (`git log --oneline --grep "A4 E"`).
 
@@ -132,3 +132,32 @@ Decisiones:
   mano y restaurado), y `inventario` en «yo» solo si el mundo lo tiene.
 
 Pendiente: nada de E4.
+
+## E5 · Especificación, herramienta, documentación y tests
+
+Estado: HECHA.
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 50 source files` ·
+`329 passed, 1 warning in 55.74s` · `EQUIVALENCIA: OK`.
+
+Decisiones:
+- Especificación (`doc-repositorio/componentes.toml`): hecha en E2 (ver allí); sin cambiar `destino`, `clase`,
+  `registran` ni `decision`. Mapa regenerado con `--escribir` (sin cambios desde E2).
+- `herramientas/conocimiento_mundo.py`: cada Componente que registra el mundo se muestra con «(preatentivo)» si lo es y
+  con su conocimiento declarado si expone `conocimiento_declarado()`. `ValoracionCrafter.conocimiento_declarado()` da
+  las clases NUTRITIVO y UTIL que le pasa el registro. Salida para Crafter: `S1.Sentir: añade: [ValoracionCrafter
+  (preatentivo) {NUTRITIVO: agua, planta, vaca; UTIL: arbol, carbon, diamante, hierro, horno, mesa, piedra}]` y el
+  fichero `ida/mundos/crafter_valoracion.py` (103 líneas no vacías) en el total de Crafter.
+- `docs/DISENO_COMPONENTES.md`: línea literal de D5 (en E2) y una fila en el registro de cambios.
+- Test nuevo en `tests/test_valoracion_crafter.py`: el registro de Crafter monta `ValoracionCrafter` con las clases del
+  manual y el mismo cuerpo (Motor) que el Organismo, y el informe de conocimiento lo muestra.
+
+Pendiente para el autor (no implementado, fuera del encargo):
+- D4 dice que la novedad la calculará el organismo «con su propia memoria de visitas (`MapaLocal`)». Por el encargo,
+  las visitas las lleva `ValoracionCrafter` (y así lo dicen las notas de la especificación). Si se quiere, ajustar esa
+  frase de D4.
+- `_situacion_inventario` y `_distancias` leen las piezas Exterocepcion en el momento de actuar (tras S1-S3). Hoy nadie
+  añade piezas a ese canal fuera de Core · Sentir ni cambia `lugar` o `proximidad` (la equivalencia da OK); si un
+  Componente futuro lo hiciera, cambiaría lo que ven.
+
+El paso A4 queda listo para revisión; no se ha abierto PR.

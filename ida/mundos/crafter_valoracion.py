@@ -60,6 +60,10 @@ class ValoracionCrafter(Componente):
         self.olvido_novedad = float(olvido_novedad)
         self.visitas: Dict[Pos, int] = {}
 
+    def conocimiento_declarado(self) -> Dict[str, List[str]]:
+        """Lo que el mundo le declara (su manual), para ``herramientas/conocimiento_mundo.py``."""
+        return {"NUTRITIVO": sorted(self.nutritivas), "UTIL": sorted(self.utiles)}
+
     def cuenta(self) -> int:
         """Primitivas ejecutadas en esta vida (copia eferente del Motor del cuerpo)."""
         motor = self.cuerpo.motor() if self.cuerpo is not None else None

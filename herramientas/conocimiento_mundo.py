@@ -1,7 +1,8 @@
 """Informe estático de conocimiento del mundo por diseño (decisión D3).
 
 Para cada mundo conectable en ida/mundos:
-- qué registra (componentes añadidos y sustituidos por destino, estrategias por sistema, cuerpo);
+- qué registra (componentes añadidos y sustituidos por destino, estrategias por sistema, cuerpo), con el conocimiento
+  que cada Componente del mundo recibe declarado (``conocimiento_declarado()``, si lo tiene);
 - sus rasgos_declarados en Perfil;
 - las líneas no vacías de los ficheros de su módulo en ida/mundos.
 
@@ -51,10 +52,20 @@ def contar_lineas_no_vacias(ruta: Path) -> int:
         return sum(1 for linea in contenido.splitlines() if linea.strip())
 
 
+def nombre_componente(c: Any) -> str:
+    """Nombre de clase, «(preatentivo)» si lo es y el conocimiento que declara el mundo al construirlo, si lo expone
+    (``conocimiento_declarado()``: p. ej. las clases que el manual declara NUTRITIVO y UTIL)."""
+    texto = type(c).__name__ + (" (preatentivo)" if getattr(c, "preatentivo", False) else "")
+    declarado = getattr(c, "conocimiento_declarado", None)
+    if callable(declarado):
+        texto += " {" + "; ".join(f"{k}: {', '.join(map(str, v))}" for k, v in declarado().items()) + "}"
+    return texto
+
+
 def formatear_alta(alta: Alta) -> str:
     partes: List[str] = []
     if alta.añade:
-        nombres_anade = [type(c).__name__ for c in alta.añade]
+        nombres_anade = [nombre_componente(c) for c in alta.añade]
         partes.append(f"añade: [{', '.join(nombres_anade)}]")
     if alta.sustituye:
         items_sust = [f"{k} -> {type(v).__name__}" for k, v in alta.sustituye.items()]

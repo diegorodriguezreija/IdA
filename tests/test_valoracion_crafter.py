@@ -144,3 +144,28 @@ def test_orden_de_las_claves_reconstruido() -> None:
     r: Dict[str, float] = {"proximidad": 1.0, "agente": 0.0, "peligro": 0.2}
     assert list(_ordenados(r, {"nutritivo": 0.6, "recurso": 0.0}, COSA)) == ORDEN_COSA + ["peligro"]
     assert list(_ordenados({"lugar": 1.0, "proximidad": 1.0}, {"nutritivo": 0.0, "novedad": 1.0}, LUGAR)) == ORDEN_LUGAR
+
+
+def test_conocimiento_declarado_por_el_registro() -> None:
+    """Crafter registra ``ValoracionCrafter`` en S1.Sentir con lo que su manual declara NUTRITIVO y UTIL, y el informe de
+    conocimiento del mundo (D3) lo muestra."""
+    pytest.importorskip("crafter")
+    import importlib.util
+    import pathlib
+
+    from ida.mundos.crafter import MundoCrafter
+    from ida.mundos.crafter_valoracion import ValoracionCrafter
+    m = MundoCrafter()
+    reg = m.registro()
+    (v,) = reg.componentes["S1.Sentir"].añade
+    assert isinstance(v, ValoracionCrafter) and v.preatentivo
+    assert v.conocimiento_declarado() == {"NUTRITIVO": sorted(m.nutritivos), "UTIL": sorted(m.utiles)}
+    assert v.cuerpo is reg.cuerpo           # la cuenta de primitivas es la del Motor que usan los Actuadores
+    ruta = pathlib.Path(__file__).resolve().parent.parent / "herramientas" / "conocimiento_mundo.py"
+    spec = importlib.util.spec_from_file_location("conocimiento_mundo", ruta)
+    assert spec is not None and spec.loader is not None
+    herramienta = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(herramienta)
+    informe = herramienta.informe_mundo("crafter")
+    assert "ValoracionCrafter (preatentivo) {NUTRITIVO: agua, planta, vaca;" in informe
+    assert "`ida/mundos/crafter_valoracion.py`" in informe
