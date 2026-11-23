@@ -44,7 +44,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Objeto` | componente | general | ✓ |  | previo |  |
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
-| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia |
+| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a |
 | `Recinto` | componente | mundo: crafter | ✓ |  | D16 | Emite la afordancia de protección. Lo registra Crafter (A6a); su fichero, ida/sistemas/proteger.py, pasa a Crafter en A6b |
 | `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter |
 
@@ -61,7 +61,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Defenderse` | estrategia | general | ✓ |  | previo |  |
 | `Sobresalto` | estrategia | general | ✓ |  | previo |  |
 | `QuietoOHuir` | estrategia | general | ✓ |  | previo |  |
-| `Alimentarse` | estrategia | general | ✓ |  | previo | Deja de leer Perfil.aliestesia y pregunta si Apetencia está registrada (A6, D15) |
+| `Alimentarse` | estrategia | general | ✓ |  | previo | Por necesidad si Apetencia está registrada (ctx.registrado, D15); Perfil.aliestesia ya no existe (A6a) |
 | `SeguirEnMovimiento` | estrategia | general | ✓ |  | previo |  |
 | `Afrontar` | estrategia | opcional (crafter) | ✓ |  | D15 |  |
 | `Proteger` | estrategia | opcional (crafter) | ✓ |  | D16 |  |

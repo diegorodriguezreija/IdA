@@ -166,7 +166,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D15"
 aprende = true
-nota = "Aliestesia; sustituye a Perfil.aliestesia"
+nota = "Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a"
 
 [[componente]]
 nombre = "Recinto"
@@ -289,7 +289,7 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
-nota = "Deja de leer Perfil.aliestesia y pregunta si Apetencia está registrada (A6, D15)"
+nota = "Por necesidad si Apetencia está registrada (ctx.registrado, D15); Perfil.aliestesia ya no existe (A6a)"
 
 [[componente]]
 nombre = "SeguirEnMovimiento"

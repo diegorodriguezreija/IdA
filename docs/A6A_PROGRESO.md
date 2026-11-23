@@ -9,12 +9,12 @@ Crafter con `añade`; las constantes de escala de los generales pasan a parámet
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Punto 5 (revisión) y mecanismo de opcionales con tests, sin uso | Hecha | `e9ddc83` |
-| E2 | Opcionales y añadidos de Crafter, especificación | Hecha | ver `git log` |
-| E3 | Fuera las activaciones condicionales | Pendiente | |
+| E2 | Opcionales y añadidos de Crafter, especificación | Hecha | `002c1d5` |
+| E3 | Fuera las activaciones condicionales | Hecha | ver `git log` |
 | E4 | Constantes de escala | Pendiente | |
 | E5 | Herramienta, documentación y tests restantes | Pendiente | |
 
-### Últimas comprobaciones (E2, 23/11/2026)
+### Últimas comprobaciones (E3, 23/11/2026)
 
 ```
 ruff check .          All checks passed!
@@ -87,6 +87,22 @@ Conclusión: nada consume Azar ni escribe estado del que dependa la conducta. Se
   Amenaza, y un mundo que la registra la tiene antes que Saliencia. `test_estrategia_sustituida_conserva_posicion...`:
   la referencia es el catálogo general sin los opcionales que el mínimo no registra.
 
+## Activaciones condicionales retiradas (E3)
+
+- `Perfil.aliestesia` (propiedad calculada: dos o más necesidades con el mismo rasgo) ya no existe. Antes de quitarla:
+  True en Crafter y False en minimo, archivos, snake y ajedrez (salida del script del punto 5).
+- La consultaban: `Apetencia.reactiva` (quitada la comprobación), `Alimentarse.elegible`, `paso` y `actuar` (ahora
+  `ctx.registrado("Apetencia")`) y `Organismo._aprender` en `ida/core/latido.py`, que llama a `_aprender_satisface`
+  (ahora `"Apetencia" in self.registrados`). Este último no estaba en el encargo; es la misma condición y sin él la
+  propiedad no podía desaparecer.
+- `Amenaza` ya no comprueba si alguna pieza trae `peligro`; siguen las condiciones de ubicación y entidades con posición
+  y la marca `ctx.extra["peligro_aprendido"]`.
+- Sin cambios: la comprobación de `Proteger` del impulso `cobijo`.
+- Tests: `test_aliestesia_solo_con_un_rasgo_compartido...` pasa a `test_aliestesia_solo_donde_se_registra_apetencia`
+  (Perfil sin la propiedad; el mínimo no monta Apetencia; el mundo de dos necesidades con el mismo rasgo, sí);
+  `_ctx_juguete` pone `registrados = {"Apetencia"}` con las necesidades que comparten rasgo; el de Crafter comprueba
+  `"Apetencia" in registro().opcionales`. Mapa: notas de `Alimentarse` y `Apetencia`.
+
 ## Decisiones y desviaciones
 
 - **`Recinto` no es el último de S1.Interpretar en Crafter hoy:** el cuerpo cuadrícula añade `MapaLocal` después
@@ -99,5 +115,4 @@ Conclusión: nada consume Azar ni escribe estado del que dependa la conducta. Se
 
 ## Pendientes
 
-E3 a E5 (ver la tabla de estado). En E3: nota de `Alimentarse` en el mapa; `MundoErizos` con `da_peligro` ya no
-registra Amenaza, así que su segunda aserción seguirá valiendo sin la condición.
+E4 y E5 (ver la tabla de estado).

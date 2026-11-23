@@ -196,14 +196,7 @@ class Perfil:
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
     # Rasgos valorados ("peligro", "nutritivo", "recurso", "novedad") entregados hechos por el mundo (D4)
     rasgos_declarados: Tuple[str, ...] = ()
-
-    @property
-    def aliestesia(self) -> bool:
-        """Paso 0b (``docs/PROPUESTA_PASO0.md``): hay que aprender qué necesidad satisface cada clase cuando dos o
-        más necesidades se satisfacen con el mismo rasgo (el rasgo no dice a cuál sirve un objeto). Con una sola
-        necesidad por rasgo, el rasgo ya lo dice: satisface = rasgo y la base hace lo de siempre."""
-        rasgos = [n.rasgo for n in self.necesidades if n.rasgo]
-        return len(rasgos) != len(set(rasgos))
+    # La aliestesia (paso 0b) ya no es una perilla: la tiene el mundo que registra ``Apetencia`` (D3, D15).
 
 
 class Mundo(ABC):

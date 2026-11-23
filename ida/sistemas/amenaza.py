@@ -456,9 +456,9 @@ class Amenaza(Componente):
     """Preatención (D5): aprende del latido (daño, exposición, golpes, derribos y apariciones) y después estima el
     ``peligro`` de cada entidad, que escribe al final de los rasgos de su pieza ``Exterocepcion``.
 
-    Solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y no da su propio rasgo
-    ``peligro`` (los que lo dan no cambian). Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo
-    aprendido (``Afrontar``); sustituir esa condición y esa marca por el registro es A6. Lee de las piezas: la ubicación,
+    Opcional (D3, D15): solo la monta el mundo que la registra (un mundo que da su propio ``peligro`` no la registra).
+    Actúa si el mundo da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y deja
+    ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``). Lee de las piezas: la ubicación,
     el cuerpo (``casillas``) y el inventario, de la ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su
     ``Exterocepcion``. Es el único que escribe en ``memoria.peligros``. Coste lineal en lo percibido (más lo que cueste
     ``Peligros.aprender``, igual que antes)."""
@@ -471,7 +471,7 @@ class Amenaza(Componente):
         yo = ctx.onda.ev("Propiocepcion").get("yo")
         aqui = pos_de(yo.carga.get("ubicacion")) if yo is not None else None
         piezas = list(ctx.onda.ev("Exterocepcion").values())
-        if yo is None or aqui is None or any("peligro" in p.carga.get("rasgos", {}) for p in piezas):
+        if yo is None or aqui is None:
             return
         con_pos = [(p, q) for p in piezas if (q := _pos(p)) is not None]
         if not con_pos:

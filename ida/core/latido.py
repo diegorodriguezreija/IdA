@@ -386,7 +386,7 @@ class Organismo:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
                                             bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
                                             distancias=self._antes_accion[3])
-        if self.perfil.aliestesia:
+        if "Apetencia" in self.registrados:      # aliestesia: la tiene el mundo que registra Apetencia (D15)
             self._aprender_satisface(ctx, c)
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
