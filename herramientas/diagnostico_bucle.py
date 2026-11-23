@@ -28,11 +28,12 @@ def main() -> int:
     p.add_argument("--raiz", default=RAIZ, help="raíz del repositorio que se ejecuta (p. ej. un worktree de otro commit)")
     args = p.parse_args()
     sys.path.insert(0, args.raiz)
+    from ida.core.mundo import Registro
     from ida.ejecutor import ejecutar
     from ida.mundos import cargar
 
     if args.sin_estrategias_propias:
-        cargar("crafter").estrategias_propias = lambda self: {}
+        cargar("crafter").registro = lambda self: Registro()
     props: List[Tuple[int, str, str, str]] = []
     detalle: List[Tuple[Any, ...]] = []
 

@@ -1,0 +1,304 @@
+"""Tests para el registro declarado de Componentes y estrategias (decisión D3, paso A1)."""
+
+from typing import Any
+import pytest
+
+from ida.core.arquitectura import Componente, Contexto
+from ida.core.azar import Azar
+from ida.core.estrategia import Definicion
+from ida.core.latido import DESTINOS_VALIDOS_COMPONENTES, Organismo
+from ida.core.linaje import Arquetipo
+from ida.core.memoria import Memoria
+from ida.core.mundo import Alta, Registro
+from ida.mundos.minimo import MundoMinimo
+from ida.sistemas import crear_sistemas
+from ida.sistemas.s1 import crear_s1
+
+
+def _crear_organismo(mundo: Any) -> Organismo:
+    azar = Azar(42)
+    sistemas = crear_sistemas()
+    arquetipo = Arquetipo.nuevo(azar)
+    memoria = Memoria(mundo.perfil.memoria)
+    return Organismo(mundo, sistemas, arquetipo, memoria, azar)
+
+
+# --- Clases auxiliares para tests --------------------------------------------
+
+
+class DummyComp(Componente):
+    def __init__(self, nombre_clase: str, tipo: str = "Pieza"):
+        super().__init__()
+        self.__class__.__name__ = nombre_clase
+        self.tipo = tipo
+
+
+def _crear_clase_comp(nombre: str, tipo_pieza: str = "Pieza"):
+    return type(nombre, (Componente,), {"tipo": tipo_pieza})
+
+
+class EstrategiaPrueba(Definicion):
+    nombre = "estrategia_prueba"
+    impulsos = ("seguridad",)
+
+
+class EstrategiaSustitutaAlimentarse(Definicion):
+    nombre = "alimentarse"
+    impulsos = ("hambre",)
+
+
+class EstrategiaMalNombre(Definicion):
+    nombre = "nombre_distinto"
+    impulsos = ("hambre",)
+
+
+# --- Tests -------------------------------------------------------------------
+
+
+def test_añade_en_los_13_destinos_al_final_y_en_orden():
+    assert len(DESTINOS_VALIDOS_COMPONENTES) == 13
+
+    componentes_registro = {}
+    clases_creadas = {}
+    for i, destino in enumerate(sorted(DESTINOS_VALIDOS_COMPONENTES)):
+        c1 = _crear_clase_comp(f"CompA_{i}", f"TipoA_{i}")()
+        c2 = _crear_clase_comp(f"CompB_{i}", f"TipoB_{i}")()
+        componentes_registro[destino] = Alta(añade=[c1, c2])
+        clases_creadas[destino] = (c1, c2)
+
+    class Mundo13Destinos(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(componentes=componentes_registro)
+
+    org = _crear_organismo(Mundo13Destinos())
+
+    for destino, (c1, c2) in clases_creadas.items():
+        if destino == "CORE.Sentir":
+            comps = org.sentir.componentes
+            esperado_sis = "MUNDO"
+        else:
+            sis, etapa = destino.split(".")
+            comps = org._sistema(sis).modulo(etapa).componentes
+            esperado_sis = sis
+
+        # Verificamos que están al final y en el orden declarado
+        assert comps[-2] is c1
+        assert comps[-1] is c2
+        assert c1.propio_del_mundo is True
+        assert c2.propio_del_mundo is True
+        assert c1.sistema == esperado_sis
+        assert c2.sistema == esperado_sis
+
+
+def test_sustituye_conserva_posicion_y_exige_mismo_tipo():
+    ClaseSustituto = _crear_clase_comp("ObjetoPersonalizado", tipo_pieza="Objeto")
+    sustituto = ClaseSustituto()
+
+    class MundoSustituto(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                componentes={
+                    "S1.Interpretar": Alta(sustituye={"Objeto": sustituto})
+                }
+            )
+
+    org = _crear_organismo(MundoSustituto())
+    modulo = org._sistema("S1").modulo("Interpretar")
+
+    # Objeto era el primer componente de S1.Interpretar
+    assert modulo.componentes[0] is sustituto
+    assert sustituto.propio_del_mundo is True
+    assert sustituto.sistema == "S1"
+    assert type(modulo.componentes[1]).__name__ == "Supervivencia"
+
+    # Distinto tipo debe fallar
+    ClaseMalTipo = _crear_clase_comp("ObjetoMalTipo", tipo_pieza="OtroTipo")
+    mal_tipo = ClaseMalTipo()
+
+    class MundoMalTipo(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                componentes={
+                    "S1.Interpretar": Alta(sustituye={"Objeto": mal_tipo})
+                }
+            )
+
+    with pytest.raises(ValueError, match="tiene tipo 'OtroTipo', pero 'Objeto' tiene tipo 'Objeto'"):
+        _crear_organismo(MundoMalTipo())
+
+
+def test_nombre_repetido_sin_sustituye_lanza_value_error():
+    ClaseRepetida = _crear_clase_comp("Objeto", tipo_pieza="Objeto")
+
+    class MundoRepetido(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                componentes={
+                    "S1.Interpretar": Alta(añade=[ClaseRepetida()])
+                }
+            )
+
+    with pytest.raises(ValueError, match="Ya existe un componente 'Objeto' en S1.Interpretar; declara sustituye"):
+        _crear_organismo(MundoRepetido())
+
+
+def test_sustituye_de_algo_que_no_existe_lanza_value_error():
+    ClaseComp = _crear_clase_comp("MiComponente", tipo_pieza="Pieza")
+
+    class MundoInexistente(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                componentes={
+                    "S1.Interpretar": Alta(sustituye={"ComponenteFantasma": ClaseComp()})
+                }
+            )
+
+    with pytest.raises(ValueError, match="No existe componente general 'ComponenteFantasma' en S1.Interpretar"):
+        _crear_organismo(MundoInexistente())
+
+
+def test_destino_invalido_lanza_value_error():
+    ClaseComp = _crear_clase_comp("MiComponente", tipo_pieza="Pieza")
+
+    class MundoDestinoInvalido(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                componentes={
+                    "CORE.Actuar": Alta(añade=[ClaseComp()])
+                }
+            )
+
+    with pytest.raises(ValueError, match="Destino de componente no válido"):
+        _crear_organismo(MundoDestinoInvalido())
+
+
+def test_estrategia_añadida_en_catalogo_de_estrategia_y_de_accion():
+    estr = EstrategiaPrueba()
+
+    class MundoNuevaEstrategia(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(estrategias={"S1": Alta(añade=[estr])})
+
+    org = _crear_organismo(MundoNuevaEstrategia())
+    s1 = org._sistema("S1")
+
+    comp_estr = next(c for c in s1.componentes() if c.tipo == "Estrategia")
+    comp_acc = next(c for c in s1.componentes() if c.tipo == "Accion")
+
+    # Mismo objeto y presente en ambos catálogos
+    assert comp_estr.catalogo.get("estrategia_prueba") is estr
+    assert comp_acc.catalogo.get("estrategia_prueba") is estr
+    assert comp_estr.catalogo is comp_acc.catalogo
+
+    # Añadir estrategia con nombre ya existente debe fallar
+    class EstrategiaNombreRepetido(Definicion):
+        nombre = "huir"  # ya existe en S1
+
+    class MundoEstrategiaNombreRepetido(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(estrategias={"S1": Alta(añade=[EstrategiaNombreRepetido()])})
+
+    with pytest.raises(ValueError, match="Ya existe una estrategia con nombre 'huir' en el catálogo de S1"):
+        _crear_organismo(MundoEstrategiaNombreRepetido())
+
+    # Añadir estrategia con nombre de clase ya existente debe fallar
+    ClaseHuirRepetida = type("Huir", (Definicion,), {"nombre": "huir_personalizado"})
+
+    class MundoEstrategiaClaseRepetida(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(estrategias={"S1": Alta(añade=[ClaseHuirRepetida()])})
+
+    with pytest.raises(ValueError, match="Ya existe una estrategia de clase 'Huir' en el catálogo de S1"):
+        _crear_organismo(MundoEstrategiaClaseRepetida())
+
+
+def test_estrategia_sustituida_conserva_posicion_y_exige_mismo_nombre():
+    sustituta = EstrategiaSustitutaAlimentarse()
+
+    class MundoSustituyeEstrategia(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                estrategias={"S1": Alta(sustituye={"Alimentarse": sustituta})}
+            )
+
+    # Obtenemos el orden original de nombres de S1
+    s1_base = crear_s1()
+    cat_base = next(c for c in s1_base.componentes() if c.tipo == "Estrategia").catalogo
+    nombres_originales = [d.nombre for d in cat_base.todas()]
+
+    org = _crear_organismo(MundoSustituyeEstrategia())
+    s1 = org._sistema("S1")
+    cat = next(c for c in s1.componentes() if c.tipo == "Estrategia").catalogo
+
+    # La estrategia sustituida ocupa la misma posición que tenía Alimentarse
+    nombres_nuevos = [d.nombre for d in cat.todas()]
+    assert nombres_nuevos == nombres_originales
+    assert cat.get("alimentarse") is sustituta
+
+    # Exige el mismo nombre
+    mal_nombre = EstrategiaMalNombre()
+
+    class MundoMalNombre(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                estrategias={"S1": Alta(sustituye={"Alimentarse": mal_nombre})}
+            )
+
+    with pytest.raises(ValueError, match="tiene nombre 'nombre_distinto', pero la original 'Alimentarse' tiene nombre 'alimentarse'"):
+        _crear_organismo(MundoMalNombre())
+
+    # Sustituye de clase que no existe en el catálogo debe fallar
+    class MundoClaseNoExiste(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(
+                estrategias={"S1": Alta(sustituye={"EstrategiaFantasma": sustituta})}
+            )
+
+    with pytest.raises(ValueError, match="No existe estrategia general de clase 'EstrategiaFantasma' en S1 para sustituir"):
+        _crear_organismo(MundoClaseNoExiste())
+
+
+def test_cuerpo_distinto_de_none_lanza_value_error():
+    class MundoConCuerpo(MundoMinimo):
+        def registro(self) -> Registro:
+            return Registro(cuerpo="cuadricula")
+
+    with pytest.raises(ValueError, match="En A1 solo se admite cuerpo=None"):
+        _crear_organismo(MundoConCuerpo())
+
+
+def test_ctx_registrado_dice_true_para_lo_montado_y_false_para_lo_que_no():
+    class MundoPruebaRegistrados(MundoMinimo):
+        def registro(self) -> Registro:
+            estr = EstrategiaPrueba()
+            return Registro(estrategias={"S1": Alta(añade=[estr])})
+
+    org = _crear_organismo(MundoPruebaRegistrados())
+    onda = org.latir()
+
+    # Contexto construido durante latir()
+    assert "Interocepcion" in org.registrados
+    assert "Tribunal" in org.registrados
+    assert "Objeto" in org.registrados
+    assert "Huir" in org.registrados
+    assert "EstrategiaPrueba" in org.registrados
+
+    # Probamos ctx.registrado directamente
+    ctx = Contexto(
+        onda,
+        org.soma,
+        org.memoria,
+        org.arquetipo,
+        org.azar,
+        org.perfil,
+        org.verbos,
+        registrados=org.registrados,
+    )
+
+    assert ctx.registrado("Interocepcion") is True
+    assert ctx.registrado("Tribunal") is True
+    assert ctx.registrado("Objeto") is True
+    assert ctx.registrado("Huir") is True
+    assert ctx.registrado("EstrategiaPrueba") is True
+    assert ctx.registrado("ComponenteInexistente") is False
+    assert ctx.registrado("EstrategiaFantasma") is False
