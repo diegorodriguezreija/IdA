@@ -9,7 +9,7 @@ Encargo: equivalencia con herencia y legado frente a eaeadaa; Peticion a Reaccio
 |---|---|---|---|
 | E1 | Equivalencia con herencia y línea base de legado | Hecha | `78ee258` |
 | E2 | Peticion a Reaccionar (D11) | Hecha | `ce3f314` |
-| E3 | Memoria a corto plazo (D13) | Hecha | ver `git log` |
+| E3 | Memoria a corto plazo (D13) | Hecha | `2055fc0` |
 
 ### Últimas comprobaciones (E3)
 
