@@ -24,6 +24,7 @@ from ida.core.latido import Organismo  # noqa: E402
 from ida.core.linaje import Arquetipo  # noqa: E402
 from ida.core.memoria import Memoria  # noqa: E402
 from ida.sistemas import crear_sistemas  # noqa: E402
+from ida.sistemas.comun import Estrategia  # noqa: E402
 
 Montado = Set[Tuple[str, str, str]]   # (tipo, ubicación, nombre)
 
@@ -58,8 +59,8 @@ def _montado(mundo: Any) -> Montado:
             ubicacion = f"{sistema.nombre}.{modulo.nombre}"
             for c in modulo.componentes:
                 hay.add(("componente", ubicacion, type(c).__name__))
-                if type(c).__name__ == "Estrategia":
-                    hay |= {("estrategia", ubicacion, type(d).__name__) for d in getattr(c, "catalogo").todas()}
+                if isinstance(c, Estrategia):
+                    hay |= {("estrategia", ubicacion, type(d).__name__) for d in c.catalogo.todas()}
     return hay
 
 
