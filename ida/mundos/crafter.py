@@ -345,9 +345,14 @@ class MundoCrafter(Mundo):
             celda = {"lugar": 1.0, "proximidad": 1.0, "nutritivo": nutritivo, "novedad": novedad}
             entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", celda, {"pos": c}))
 
+        # B5: transitorio. ``vista`` = posición en bruto (sin valorar) de lo que se ve y cuyo id no lleva coordenadas
+        # (criaturas y plantas: el mismo conjunto que ``_cosas()``), para que el Motor del cuerpo localice un objetivo que
+        # el corte de 14 entidades de arriba haya dejado fuera de las piezas. Desaparece al quitar el corte (B5).
+        vista = {cid: [int(cpos[0]), int(cpos[1])] for cid, _, cpos, obj in cosas if obj is not None}
         return Observacion(ubicacion=f"celda_{pos[0]}_{pos[1]}", entidades=entidades, vitales=self._vitales(), dormido=bool(p.sleeping),
                            inventario={k: float(v) for k, v in p.inventory.items()},
-                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "delante": self._delante(), "casillas": self._casillas()},
+                           cuerpo={"orientacion": (int(p.facing[0]), int(p.facing[1])), "delante": self._delante(), "casillas": self._casillas(),
+                                   "vista": vista},
                            ambiente={"luz": float(w.daylight)})
 
     # --- registro (D3) y cuerpo (D10) ----------------------------------------
@@ -408,50 +413,56 @@ class MundoCrafter(Mundo):
                 return cpos
         return None
 
-    def _interactuar(self, objetivo: str) -> bool:
-        pos, destino = tuple(self.jugador.pos), self._posicion(objetivo)
-        if destino is None or _dist(pos, destino) != 1:
-            return False
-        direccion = (destino[0] - pos[0], destino[1] - pos[1])
-        if tuple(self.jugador.facing) != direccion:
-            self._paso(MOVIMIENTOS[direccion])      # bloqueado por el objetivo: solo gira
-        self._paso("do")
-        return True
+    def primitivas(self) -> List[str]:
+        """Las acciones del juego (``constants.actions``)."""
+        return list(self.constantes.actions)
 
-    def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
+    def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
+        """Ejecuta las primitivas en orden y mide antes de la primera y después de la última. ``exito`` queda en True:
+        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después)."""
         p = self.jugador
         antes = {"salud": p.health, **dict(p.inventory)}
+        inventario_antes = dict(p.inventory)
         logros_antes = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
-        exito = True
         self._causa_contacto = None
-        if verbo == Verbo.MOVER:
-            destino = self._posicion(objetivo)
-            pos = tuple(p.pos)
-            if destino is not None and _dist(pos, destino) == 1:
-                self._paso(MOVIMIENTOS[(destino[0] - pos[0], destino[1] - pos[1])])
-                self.visitas[tuple(p.pos)] = self.t
-            else:
-                exito = False
-        elif verbo in (Verbo.COMER, Verbo.ATACAR, Verbo.COGER):
-            exito = self._interactuar(objetivo)
-            if exito and verbo == Verbo.COMER and p.inventory["food"] <= antes["food"] and p.inventory["drink"] <= antes["drink"]:
-                exito = False      # un golpe a la vaca que aún no la abate: intento en curso, no prueba de que no nutra
-            if exito and verbo == Verbo.COGER and not any(p.inventory[k] > antes[k] for k in INVENTARIO):
-                exito = False      # coger solo es éxito si algo entra en el inventario
-        elif verbo == Verbo.USAR:
-            receta = datos.get("receta") or objetivo
-            exito = receta in self.acciones
-            if exito:
-                self._paso(receta)
-        elif verbo == Verbo.DORMIR:
-            self._paso("sleep")
-        else:
-            self._paso("noop")
-        ef = self._efecto(antes, logros_antes, exito)
+        for primitiva in primitivas:
+            self._paso(primitiva)
+        if intencion == Verbo.MOVER and primitivas:   # A4: las visitas pasan al organismo; único uso de ``intencion``
+            self.visitas[tuple(p.pos)] = self.t
+        ef = self._efecto(antes, logros_antes)
+        ef.medidas = {"inventario_antes": inventario_antes, "inventario_despues": dict(p.inventory)}
         self._actualizar_ventana()
         return ef
 
-    def _efecto(self, antes: Dict[str, int], logros_antes: Set[str], exito: bool) -> Efecto:
+    def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
+        """A5b E1, transitorio (lo sustituye el Motor del cuerpo en E2): la traducción y el juicio de antes sobre
+        ``ejecutar_primitivas``."""
+        pos, primitivas = tuple(self.jugador.pos), ["noop"]
+        if verbo in (Verbo.MOVER, Verbo.COMER, Verbo.ATACAR, Verbo.COGER):
+            destino = self._posicion(objetivo)
+            primitivas = []
+            if destino is not None and _dist(pos, destino) == 1:
+                direccion = (destino[0] - pos[0], destino[1] - pos[1])
+                if verbo == Verbo.MOVER:
+                    primitivas = [MOVIMIENTOS[direccion]]
+                else:
+                    primitivas = ([] if tuple(self.jugador.facing) == direccion else [MOVIMIENTOS[direccion]]) + ["do"]
+        elif verbo == Verbo.USAR:
+            receta = datos.get("receta") or objetivo
+            primitivas = [receta] if receta in self.acciones else []
+        elif verbo == Verbo.DORMIR:
+            primitivas = ["sleep"]
+        ef = self.ejecutar_primitivas(primitivas, verbo)
+        antes, despues = ef.medidas["inventario_antes"], ef.medidas["inventario_despues"]
+        exito = bool(primitivas)
+        if exito and verbo == Verbo.COMER and despues["food"] <= antes["food"] and despues["drink"] <= antes["drink"]:
+            exito = False
+        if exito and verbo == Verbo.COGER and not any(despues[k] > antes[k] for k in INVENTARIO):
+            exito = False
+        ef.exito = exito
+        return ef
+
+    def _efecto(self, antes: Dict[str, int], logros_antes: Set[str]) -> Efecto:
         p = self.jugador
         inv = p.inventory
         escala = 100.0 / 9.0
@@ -467,7 +478,7 @@ class MundoCrafter(Mundo):
         ganados = [INVENTARIO.get(k, k) for k in inv if inv[k] > antes.get(k, 0) and k not in ("health", "food", "drink", "energy")]
         logros = {k for k, v in p.achievements.items() if v} if isinstance(p.achievements, dict) else set(p.achievements)
         nuevos = sorted(logros - logros_antes)
-        return Efecto(exito, delta, causa=causa, obtenido=ganados[0] if ganados else None,
+        return Efecto(True, delta, causa=causa, obtenido=ganados[0] if ganados else None,
                       muerte=p.health <= 0, mensaje=("logro: " + ", ".join(nuevos)) if nuevos else "")
 
     def terminado(self) -> bool:

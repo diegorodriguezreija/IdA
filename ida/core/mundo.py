@@ -2,7 +2,8 @@
 
 Un mundo traduce su realidad al vocabulario común (``ida.core.vocabulario``):
 - en cada latido entrega una ``Observacion`` con entidades que llevan ``rasgos`` con significado;
-- ejecuta los verbos que declara y devuelve un ``Efecto``.
+- ejecuta los verbos que declara y devuelve un ``Efecto``; o, si declara primitivas (``primitivas()``), ejecuta las que
+  le pide el Core (traducidas por el Motor de su cuerpo) y devuelve el ``Efecto`` en bruto.
 
 El framework no sabe nada más del mundo. Si un mundo necesita razonamiento propio, lo aporta
 a través de su registro (``registro()``), declarado como tal.
@@ -85,6 +86,7 @@ class Efecto:
     obtenido: Optional[str] = None   # clase de lo obtenido (comido, recogido, fabricado)
     muerte: bool = False
     mensaje: str = ""
+    medidas: Dict[str, Any] = field(default_factory=dict)  # lo medido en bruto para juzgar el éxito (p. ej. inventario antes y después)
 
 
 @dataclass(frozen=True)
@@ -188,9 +190,19 @@ class Mundo(ABC):
     def observar(self) -> Observacion:
         """Lo que se percibe ahora."""
 
-    @abstractmethod
     def ejecutar(self, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) -> Efecto:
-        """Materializa una Ejecución en el mundo."""
+        """Materializa una Ejecución en el mundo (mundos sin primitivas: sus verbos son sus primitivas)."""
+        raise NotImplementedError(f"El mundo {self.nombre!r} no ejecuta verbos: ejecuta primitivas")
+
+    def primitivas(self) -> Optional[List[str]]:
+        """Acciones elementales del mundo (D9), o None si el mundo ejecuta verbos. Con primitivas, el Motor del cuerpo
+        traduce cada intención y el Core llama a ``ejecutar_primitivas``."""
+        return None
+
+    def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
+        """Ejecuta la secuencia y devuelve el efecto en bruto (``exito`` True: el éxito lo juzga el Motor del cuerpo, con
+        ``Efecto.medidas``). ``intencion`` no cambia lo que se ejecuta."""
+        raise NotImplementedError(f"El mundo {self.nombre!r} no ejecuta primitivas")
 
     @abstractmethod
     def verbos(self) -> Set[Verbo]:
