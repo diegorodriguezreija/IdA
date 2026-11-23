@@ -2,7 +2,8 @@
 casilla vecina sobre la que actuó en el latido anterior.
 
 Necesita posiciones (ubicación ``<nombre>_x_y``) y la clase de cada casilla a la vista (``cuerpo["casillas"]``); sin
-ellas no hay situación y los dos Componentes no hacen nada.
+ellas no hay situación y los dos Componentes no hacen nada. Lo lee de las piezas, no de la Observación: ubicación y
+cuerpo, de la ``Propiocepcion`` «yo».
 """
 
 from dataclasses import dataclass
@@ -21,12 +22,12 @@ class Situacion:
 
 
 def situacion(ctx: Contexto) -> Optional[Situacion]:
-    """Posición, casillas a la vista y orientación de este latido, o None si el mundo no las da."""
-    obs = ctx.observacion
-    if obs is None:
+    """Posición, casillas a la vista y orientación de este latido (pieza ``Propiocepcion`` «yo»), o None si no las hay."""
+    yo = ctx.onda.ev("Propiocepcion").get("yo")
+    if yo is None:
         return None
-    aqui = pos_de(obs.ubicacion)
-    cuerpo = obs.cuerpo or {}
+    aqui = pos_de(yo.carga.get("ubicacion"))
+    cuerpo = yo.carga.get("cuerpo") or {}
     crudas = cuerpo.get("casillas")
     if aqui is None or not isinstance(crudas, dict) or not crudas:
         return None

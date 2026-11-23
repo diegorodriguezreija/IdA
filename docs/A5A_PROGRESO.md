@@ -8,7 +8,7 @@ Encargo: paso A5a de `docs/DISENO_COMPONENTES.md` (sección 5): primer cuerpo, l
 |---|---|---|
 | E1 | Contrato `Cuerpo`, montaje y tests de registro (puntos 1, 2 y parte del 9) | HECHA |
 | E2 | `Cuadricula`, `ModeloDirecto` y `MapaLocal`, mismo punto, registro de Crafter (puntos 3, 4 y 6) | HECHA |
-| E3 | Leer piezas en lugar de la Observación (punto 5) | pendiente |
+| E3 | Leer piezas en lugar de la Observación (punto 5) | HECHA |
 | E4 | Herramienta, especificación y tests restantes (puntos 7, 8 y 9) | pendiente |
 
 El hash de cada etapa es el de su commit «A5a E<n>: ...» (`git log --oneline --grep "A5a E"`); se anota en la etapa
@@ -52,7 +52,7 @@ Pendiente: nada de E1.
 
 ## E2 · Cuadricula, ModeloDirecto y MapaLocal
 
-Estado: HECHA. Commit: «A5a E2: cuerpo cuadrícula con ModeloDirecto y MapaLocal; Crafter lo registra».
+Estado: HECHA. Commit 7504245 «A5a E2: cuerpo cuadrícula con ModeloDirecto y MapaLocal; Crafter lo registra».
 
 Comprobación (última línea de cada una):
 
@@ -96,4 +96,30 @@ Decisiones:
   `_aprender_mapa(mem, obs, accion)` que llama a `aprender` de los Componentes de `Cuadricula` con un contexto
   mínimo (memoria, Observación, piezas `Propiocepcion` y `Exterocepcion`, `ei["Accion"]`). Sin cambios en aserciones.
 
-Pendiente: E3 (leer de las piezas).
+Pendiente: nada de E2.
+
+## E3 · Leer piezas en lugar de la Observación
+
+Estado: HECHA. Commit: «A5a E3: el cuerpo cuadrícula lee piezas, no la Observación».
+
+Comprobación (última línea de cada una):
+
+```
+All checks passed!
+Success: no issues found in 48 source files
+304 passed, 1 warning in 30.41s
+EQUIVALENCIA: OK
+```
+
+Decisiones:
+- `situacion(ctx)` lee ubicación, `cuerpo["casillas"]` y `cuerpo["orientacion"]` de la pieza `Propiocepcion` «yo»
+  (`carga["ubicacion"]`, `carga["cuerpo"] = dict(obs.cuerpo or {})`). Sin pieza «yo» o sin Observación (ubicación
+  vacía), no hay situación, como antes.
+- `MapaLocal` recorre `ev["Exterocepcion"]` en lugar de `obs.entidades`: posición de `carga["datos"]["pos"]`, clase de
+  `carga["clase"]`, y `lugar`, `agente` y `peligro` con `pieza.rasgo(...)` (los rasgos de la Entidad ya son floats).
+  Las piezas siguen el orden de las entidades; con ids repetidos, la pieza sería la última entidad con ese id (ningún
+  caso en la equivalencia).
+- Nada de lo que leía `_aprender_mapa` faltaba en las piezas. `git grep observacion -- ida/cuerpos`: sin resultados.
+- El ayudante de `tests/test_proteger.py` ya daba las piezas desde E2: no cambia.
+
+Pendiente: E4.

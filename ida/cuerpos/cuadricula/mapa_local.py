@@ -4,7 +4,8 @@ En este orden:
 1. COGER o USAR sobre una vecina (para USAR, la de delante): si la casilla cambió de clase, la transformación; si la
    acción salió y la casilla no cambió, también («no la cambia»): así un primer intento real corrige lo inferido. Y
    los cierres: una casilla que el propio individuo cambió con USAR a algo por donde no pasa un peligro.
-2. Libres (lugares), ocupadas (algo encima de la casilla) y peligros (un agente peligroso encima); ``mem.ver_casillas``.
+2. Libres (lugares), ocupadas (algo encima de la casilla) y peligros (un agente peligroso encima), de las piezas
+   ``Exterocepcion``; ``mem.ver_casillas``.
 3. ``mem.yo_previo``: posición y orientación de este latido, para el contraste del siguiente.
 
 No actúa en los barridos: su trabajo va en ``aprender``, que el Core llama en ``Organismo._aprender`` (donde estaba
@@ -49,18 +50,16 @@ class MapaLocal(Componente):
         libres: Set[Pos] = set()
         ocupadas: Set[Pos] = set()
         peligros: Set[Pos] = set()
-        exterocepcion = ctx.onda.ev("Exterocepcion")   # el peligro (de Amenaza o del mundo) está en la pieza de cada entidad
-        for e in ctx.observacion.entidades if ctx.observacion is not None else []:
-            pos = e.datos.get("pos")
+        for e in ctx.onda.ev("Exterocepcion").values():   # una pieza por entidad: clase, rasgos (con el peligro) y datos
+            pos = e.carga.get("datos", {}).get("pos")
             if not isinstance(pos, (list, tuple)) or len(pos) != 2:
                 continue
             p = (int(pos[0]), int(pos[1]))
-            if e.rasgos.get("lugar", 0.0) >= 0.5:
+            if e.rasgo("lugar") >= 0.5:
                 libres.add(p)
-            elif e.clase != s.casillas.get(p):
+            elif e.carga.get("clase") != s.casillas.get(p):
                 ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
-                pieza = exterocepcion.get(e.id)
-                if pieza is not None and pieza.rasgo("peligro") >= 0.5 and e.rasgos.get("agente", 0.0) >= 0.5:
+                if e.rasgo("peligro") >= 0.5 and e.rasgo("agente") >= 0.5:
                     peligros.add(p)
         mem.ver_casillas(s.aqui, s.casillas, libres, ocupadas, peligros)
         mem.yo_previo = (s.aqui, s.cara)
