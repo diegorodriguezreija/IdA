@@ -156,7 +156,6 @@ def _ejecutar_antes(m: Any, verbo: Verbo, objetivo: str, datos: Dict[str, Any]) 
         pos = tuple(p.pos)
         if destino is not None and _dist(pos, destino) == 1:
             m._paso(MOVIMIENTOS[(destino[0] - pos[0], destino[1] - pos[1])])
-            m.visitas[tuple(p.pos)] = m.t
         else:
             exito = False
     elif verbo in (Verbo.COMER, Verbo.ATACAR, Verbo.COGER):
@@ -236,7 +235,7 @@ def test_el_efecto_por_primitivas_es_el_de_antes(semilla):
         antes = _ejecutar_antes(a, verbo, objetivo, datos)
         ahora, prims = _ejecutar_ahora(b, motor, verbo, objetivo, datos)
         assert _campos(ahora) == _campos(antes), (i, verbo, objetivo, prims)
-        assert a.visitas == b.visitas and a.t == b.t
+        assert a.t == b.t     # las visitas ya no son del adaptador (A4): las compara tests/test_valoracion_crafter.py
         dos += len(prims) == 2
     assert dos > 0      # hubo golpes con giro: secuencias de dos primitivas
 

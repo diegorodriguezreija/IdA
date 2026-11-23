@@ -5,13 +5,13 @@ Traducción al vocabulario común:
   del soma es el mínimo entre comida y bebida.
 - Entidades del entorno cercano (radio 4, como la vista oficial de 9×7; radio 2 de noche):
   árboles, agua, piedra, carbón, hierro, diamante, mesa, horno, lava, hierba, vacas, zombis,
-  esqueletos y plantas. **Aliestesia:** el ``nutritivo`` del agua crece con la sed y el de la
-  vaca o la planta madura, con el hambre.
-- Lugares: las casillas vecinas transitables, con ``nutritivo`` (cuánto acercan a lo que el
-  cuerpo necesita) y ``novedad``.
+  esqueletos y plantas, en bruto: ``proximidad`` y ``agente`` (y ``datos["madura"]`` de las plantas, que se ve).
+- Lugares: las casillas vecinas transitables, con ``lugar`` y ``proximidad``.
+- La valoración es del organismo (A4, D4): ``ValoracionCrafter`` (``crafter_valoracion.py``), preatentivo de S1 que
+  registra este mundo, pone ``nutritivo`` y ``recurso`` a las cosas y ``nutritivo`` y ``novedad`` a los lugares.
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
-  ``manual``): lo que declara UTIL tiene ``recurso`` 0,6. Sus proposiciones y requisitos entran en la memoria al nacer
-  (``manual()``).
+  ``manual``): lo que declara NUTRITIVO y UTIL lo recibe ``ValoracionCrafter`` (valor 0,6). Sus proposiciones y
+  requisitos entran en la memoria al nacer (``manual()``).
 - El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.sistemas.amenaza``), con el previo de
   lo que el manual declara PELIGROSO. La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría
   de alcance.
@@ -142,7 +142,7 @@ class MundoCrafter(Mundo):
                                  Necesidad("cansancio", ("energia",), 60.0), Necesidad("salud", ("vitalidad",), 100.0),
                                  Necesidad("cobijo", ("cobijo",), 100.0)),
                     intenciones=("progresar",),
-                    rasgos_declarados=("nutritivo", "recurso", "novedad"))
+                    rasgos_declarados=())
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
                  manual: str = "estricto", **_):
@@ -160,7 +160,6 @@ class MundoCrafter(Mundo):
         self.longitud = int(longitud)
         self.ventana = str(ventana) in ("1", "si", "sí", "true")
         self.env: Any = None
-        self.visitas: Dict[Pos, int] = {}
         self.t = 0
         self.fin = False
         self._tk: Any = None
@@ -180,7 +179,7 @@ class MundoCrafter(Mundo):
 
         mundo.reset = reset_ordenado
         self.env.reset()
-        self.visitas, self.t, self.fin = {}, 0, False
+        self.t, self.fin = 0, False
         self._causa_contacto: Optional[str] = None
         # Identificador estable y repetible para cada criatura. La clave es el propio objeto (no id(obj)):
         # así sigue vivo y su dirección no se reutiliza para otra criatura, lo que hacía la vida no repetible.
@@ -291,14 +290,6 @@ class MundoCrafter(Mundo):
         """El manual elegido con la opción ``manual`` (``"estricto"`` por defecto o ``"ampliado"``)."""
         return copy.deepcopy(self._manual)
 
-    def _nutritivo(self, clase: str, obj: Any) -> float:
-        """Rasgo ``nutritivo`` de lo percibido, perceptivo y constante (paso 0b): ``NUTRITIVO_MANUAL`` si el manual
-        declara la clase NUTRITIVO (la planta, solo madura: su textura se ve). Qué apetece según lo que falta lo
-        decide la base (aliestesia: ``Apetencia`` y ``Alimentarse`` por necesidad)."""
-        if clase not in self.nutritivos or (clase == "planta" and not (obj is not None and getattr(obj, "ripe", False))):
-            return 0.0
-        return NUTRITIVO_MANUAL
-
     def _delante(self) -> Optional[Dict[str, str]]:
         """Lo que hay en la casilla de delante (se ve): la criatura, si hay una, o el material o el suelo."""
         w, p = self.env._world, self.jugador
@@ -324,15 +315,12 @@ class MundoCrafter(Mundo):
             d = _dist(pos, cpos)
             rasgos = {
                 "proximidad": 1.0 if d <= 1 else max(0.0, 1.0 - d / (2 * self.radio + 1)),
-                "nutritivo": self._nutritivo(clase, obj),
-                "recurso": RECURSO_MANUAL if clase in self.utiles else 0.0,
                 "agente": 1.0 if obj is not None and clase != "planta" else 0.0,
             }
             datos: Dict[str, Any] = {"pos": cpos}
             if clase == "planta":
                 datos["madura"] = bool(getattr(obj, "ripe", False))   # se ve en su textura (en bruto)
             entidades.append(Entidad(cid, clase, rasgos, datos))
-        deseables = [(c, self._nutritivo(c[1], c[3])) for c in cosas if self._nutritivo(c[1], c[3]) > 0.1]
         w = self.env._world
         for (dx, dy), _ in MOVIMIENTOS.items():
             c = (pos[0] + dx, pos[1] + dy)
@@ -341,14 +329,7 @@ class MundoCrafter(Mundo):
             mat, obj = w[c]
             if mat not in self.constantes.walkable or obj is not None:
                 continue
-            nutritivo = 0.0
-            for (_, _, dpos, _), valor in deseables:
-                if _dist(c, dpos) < _dist(pos, dpos):
-                    nutritivo = max(nutritivo, valor * (1.0 - _dist(c, dpos) / (4 * self.radio)))
-            ultima = self.visitas.get(c)
-            novedad = 1.0 if ultima is None else min(1.0, (self.t - ultima) / 50.0)
-            celda = {"lugar": 1.0, "proximidad": 1.0, "nutritivo": nutritivo, "novedad": novedad}
-            entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", celda, {"pos": c}))
+            entidades.append(Entidad(f"celda_{c[0]}_{c[1]}", "suelo", {"lugar": 1.0, "proximidad": 1.0}, {"pos": c}))
 
         # B5: transitorio. ``vista`` = lo que se ve y cuyo id no lleva coordenadas (criaturas y plantas: los objetos de
         # ``_cosas()``), en bruto y sin valorar: id -> {"clase", "pos": [x, y]} y, si es planta, "madura". Para que el Motor
@@ -426,7 +407,8 @@ class MundoCrafter(Mundo):
 
     def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
         """Ejecuta las primitivas en orden y mide antes de la primera y después de la última. ``exito`` queda en True:
-        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después y qué claves son objetos)."""
+        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después y qué claves son objetos). ``intencion`` no
+        se usa (A4: las visitas son del organismo, ``ValoracionCrafter``); queda por el contrato de ``Mundo``."""
         p = self.jugador
         antes = {"salud": p.health, **dict(p.inventory)}
         inventario_antes = dict(p.inventory)
@@ -434,8 +416,6 @@ class MundoCrafter(Mundo):
         self._causa_contacto = None
         for primitiva in primitivas:
             self._paso(primitiva)
-        if intencion == Verbo.MOVER and primitivas:   # A4: las visitas pasan al organismo; único uso de ``intencion``
-            self.visitas[tuple(p.pos)] = self.t
         ef = self._efecto(antes, logros_antes)
         ef.medidas = {"inventario_antes": inventario_antes, "inventario_despues": dict(p.inventory), "objetos": sorted(INVENTARIO)}
         self._actualizar_ventana()

@@ -9,7 +9,7 @@ Componente preatentivo de Crafter (`ValoracionCrafter`). Rama `reorg/a4-observac
 |---|---|---|
 | E1 | Datos en bruto nuevos en el adaptador (`madura`, `vista` ampliada) | HECHA |
 | E2 | `ValoracionCrafter` y orden de la preatención (`Saliencia` la última) | HECHA |
-| E3 | El adaptador deja de valorar y de apuntar visitas; `rasgos_declarados` vacío | pendiente |
+| E3 | El adaptador deja de valorar y de apuntar visitas; `rasgos_declarados` vacío | HECHA |
 | E4 | Lectores a piezas y `ctx.observacion = None` tras Core · Sentir | pendiente |
 | E5 | Especificación, herramienta, documentación y tests restantes | pendiente |
 
@@ -67,3 +67,33 @@ Decisiones:
   idénticos (`==`, sin tolerancia) a los que entrega el adaptador, con el orden de claves de antes.
 
 Pendiente: nada de E2.
+
+## E3 · El adaptador deja de valorar
+
+Estado: HECHA.
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 50 source files` ·
+`325 passed, 1 warning in 52.11s` · `EQUIVALENCIA: OK`.
+
+Antes de quitar nada se pasó una sonda (scratchpad, no queda en el código) sobre la configuración de la equivalencia
+(`evaluar_crafter.py --pasos 3000 --vista oficial --sin-herencia --manual estricto --plazo-logico 40`, semillas 31 y
+32, 23/11/2026): en cada latido, `sum(Motor.ejecutadas) == mundo.t` y rasgos de las piezas tras la preatención iguales
+(y en el mismo orden) a los del adaptador. Resultado: 3000 latidos por semilla, 0 fallos de cuenta, 0 de rasgos.
+
+Decisiones:
+- `ida/mundos/crafter.py`: fuera `self.visitas`, `_nutritivo`, `deseables` y el cálculo de `nutritivo`, `recurso` y
+  `novedad`. Entidades: `proximidad` y `agente`; lugares: `lugar` y `proximidad`. `rasgos_declarados = ()`.
+  `NUTRITIVO_MANUAL` y `RECURSO_MANUAL` se quedan en el adaptador: son las escalas que el registro pasa a
+  `ValoracionCrafter`.
+- `ejecutar_primitivas(primitivas, intencion=None)`: el parámetro se queda, sin usar. Quitarlo cambiaría el contrato
+  de `Mundo` (`ida/core/mundo.py`) y la llamada del `Actuador` (`ida/core/sentidos.py`), que también usan los demás
+  mundos; queda dicho en su docstring.
+- Tests: `tests/test_valoracion_crafter.py` compara ahora con `_valoracion_antigua`, copia literal de la valoración y
+  las visitas del adaptador anterior (el espía se instala antes de montar el Organismo: los Actuadores guardan
+  `ejecutar_primitivas` al construirse; con el espía puesto después, el test falló en `novedad`, lo que muestra que
+  detecta unas visitas mal apuntadas). `tests/test_crafter.py` comprueba que la Observación va en bruto y
+  `rasgos_declarados == ()`. `tests/test_paso0.py::test_crafter_el_nutritivo_es_perceptivo_y_constante` lee el
+  `nutritivo` de las piezas tras la preatención de un Organismo, con la misma aserción. `tests/test_motor.py` deja de
+  comparar `visitas` del adaptador (ya no existen; las compara `test_valoracion_crafter.py`).
+
+Pendiente: nada de E3.

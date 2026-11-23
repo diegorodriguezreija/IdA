@@ -295,24 +295,33 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
 
 
 def test_crafter_el_nutritivo_es_perceptivo_y_constante():
-    """El adaptador de Crafter no decide qué apetece (``_deseo`` ya no existe): ``nutritivo`` vale 0,6 en lo que el
-    manual declara NUTRITIVO (la planta, solo madura) y 0 en lo demás, sea cual sea la sed o el hambre."""
+    """Nadie en Crafter decide qué apetece en la percepción (``_deseo`` ya no existe): ``ValoracionCrafter`` (A4) pone
+    ``nutritivo`` 0,6 en lo que el manual declara NUTRITIVO (la planta, solo madura) y 0 en lo demás, sea cual sea la
+    sed o el hambre."""
     pytest.importorskip("crafter")
     from ida.mundos.crafter import NUTRITIVO_MANUAL, MundoCrafter
+    from ida.mundos.crafter_valoracion import ValoracionCrafter
 
     assert MundoCrafter.perfil.aliestesia is True           # hambre y sed comparten «nutritivo»
     assert not hasattr(MundoCrafter, "_deseo")
     m = MundoCrafter(vista="oficial")
     m.reiniciar(1)
     assert m.nutritivos == {"agua", "vaca", "planta"}
+    azar = Azar(1)
+    org = Organismo(m, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(m.perfil.memoria), azar)
+    assert any(isinstance(c, ValoracionCrafter) for c in org.preatencion.componentes)
     valores = set()
+    vistas = 0
     for _ in range(60):
         m.jugador.inventory["drink"] = 2                     # sed apurada: el agua no vale más por ello
-        obs = m.observar()
-        valores |= {e.rasgos.get("nutritivo", 0.0) for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5}
-        for e in obs.entidades:
-            if e.clase in ("agua", "vaca"):
-                assert e.rasgos["nutritivo"] == NUTRITIVO_MANUAL
-        m.ejecutar_primitivas(["move_right"], Verbo.MOVER)
-    assert valores <= {0.0, NUTRITIVO_MANUAL}
+        onda = org.latir()
+        piezas = list(onda.ev("Exterocepcion").values())
+        valores |= {p.rasgo("nutritivo") for p in piezas if p.rasgo("lugar") < 0.5}
+        for p in piezas:
+            if p.clase in ("agua", "vaca"):
+                assert p.rasgo("nutritivo") == NUTRITIVO_MANUAL
+                vistas += 1
+        if not org.soma.esta_vivo:
+            break
+    assert valores <= {0.0, NUTRITIVO_MANUAL} and vistas
 
