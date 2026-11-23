@@ -9,17 +9,17 @@ la búsqueda en el mapa de S3 pasa al cuerpo; pureza de importaciones y actualiz
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Paquete de Crafter con adaptador, manuales y ValoracionCrafter | Hecha | `4c926ce` |
-| E2 | Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza | Hecha | ver `git log` |
-| E3 | Geometría y buscador al cuerpo | Pendiente | |
+| E2 | Recinto y SalirDelRecinto a Crafter; lo general en proteger.py con tipo de pieza | Hecha | `c487a42` |
+| E3 | Geometría y buscador al cuerpo | Hecha | ver `git log` |
 | E4 | PerseguirMetas y Contexto.cuerpo | Pendiente | |
 | E5 | Pureza, especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E2)
+### Últimas comprobaciones (E3)
 
 ```
 ruff check .          All checks passed!
-mypy ida              Success: no issues found in 58 source files
-pytest -q             342 passed, 1 warning in 54.90s
+mypy ida              Success: no issues found in 60 source files
+pytest -q             342 passed, 1 warning in 54.12s
 equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK · EQUIVALENCIA: OK
 ```
 
@@ -53,6 +53,19 @@ equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK �
   - `ida/mundos/crafter/s1/reaccionar/estrategias/salir_del_recinto.py`: `SalirDelRecinto`.
   - `__init__.py` en `ida/mundos/crafter/s1/interpretar/`, `ida/mundos/crafter/s1/reaccionar/` y `ida/mundos/crafter/s1/reaccionar/estrategias/`.
 - Referencias actualizadas en `adaptador.py`, `tests/test_proteger.py`, `herramientas/diagnostico_paso3.py`.
+
+## E3 · Geometría y buscador al cuerpo
+
+- `ida/cuerpos/cuadricula/geometria.py`:
+  - `_suma`, `_vecinas`, `_manhattan`, `entorno`, `_bfs`.
+  - Constante `MAX_ESTADOS = 6000`, tipo `Accion`.
+- `ida/cuerpos/cuadricula/buscador.py`:
+  - Protocol genérico `ModeloMovimiento` (con `mover_libre`, `mover_bloqueado` y `libre(p)`), desacoplando el buscador de `Modelo` de Crafter.
+  - `mover`, `buscar_postura`.
+  - Constante `MAX_PASOS_POSTURA = 12`.
+- Exportaciones en `ida/cuerpos/cuadricula/__init__.py`.
+- `ida/mundos/crafter/s1/interpretar/recinto.py` importa la geometría y buscador del cuerpo; `planificar` (cavar, cerrar accesos y materiales) permanece en Crafter.
+- Referencias actualizadas en `tests/test_proteger.py` y `herramientas/diagnostico_paso3.py`.
 
 ## Decisiones y desviaciones
 

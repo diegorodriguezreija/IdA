@@ -22,7 +22,8 @@ from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas import crear_sistemas
-from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto, buscar_postura
+from ida.cuerpos.cuadricula.buscador import buscar_postura
+from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto
 from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
 
 Pos = Tuple[int, int]

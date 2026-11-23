@@ -5,20 +5,20 @@ Construcción y búsqueda de recintos, cavar y cerrar accesos.
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Callable, Deque, Dict, FrozenSet, Hashable, Iterable, List, Optional, Set, Tuple
+from typing import Any, Deque, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.memoria import DIRECCIONES, Memoria, Pos, pos_de
 from ida.core.pieza import acotar
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula.buscador import mover
+from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.sistemas.proteger import TIPO_RECINTO
 from ida.sistemas.s3 import PerseguirMetas
 
 MAX_INTERIOR = 3          # un recinto tiene 1-3 casillas (encargo, sección 2)
 ALCANCE_SITIO = 15        # pasos máximos hasta un sitio candidato (3.3)
-MAX_PASOS_POSTURA = 12    # buscador de 3.1: «qué secuencia de MOVER me deja en A mirando a C»
 PROFUNDIDAD_PLAN = 30     # acciones máximas del plan local de un sitio (cavar, moverse, cerrar)
-MAX_ESTADOS = 6000        # coste de cálculo: estados máximos por búsqueda
 CANDIDATOS_EXACTOS = 6    # sitios más baratos por la estimación rápida que se planifican del todo
 CADA_EVALUACION = 5       # latidos entre evaluaciones completas de sitios (entretanto se replanifica el actual)
 MARGEN_SITIO = 0.25       # histéresis: otro sitio sustituye al actual si cuesta al menos un 25 % menos...
@@ -55,19 +55,6 @@ def _peligros(ctx: Contexto) -> Set[Pos]:
             if isinstance(pos, (list, tuple)) and len(pos) == 2:
                 salida.add((int(pos[0]), int(pos[1])))
     return salida
-
-
-def _suma(a: Pos, b: Pos) -> Pos:
-    return a[0] + b[0], a[1] + b[1]
-
-
-def _vecinas(p: Pos) -> List[Pos]:
-    x, y = p
-    return [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
-
-
-def _manhattan(a: Pos, b: Pos) -> int:
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 # --- modelo local del mundo (lo que la memoria sabe de él) ---------------------------------------
@@ -220,77 +207,12 @@ class Modelo:
         return max(validos, key=lambda c: (c.unidades, c.objetivo)) if validos else None
 
 
-# --- buscador sobre estados (3.1) ------------------------------------------------------------------
-Accion = Tuple[str, Pos]          # ("mover", destino) | ("coger", casilla) | ("usar", casilla)
-
-
-def _bfs(inicio: Hashable, sucesores: Callable[[Any], Iterable[Tuple[Accion, Any]]], meta: Callable[[Any], bool],
-         profundidad: int, max_estados: int = MAX_ESTADOS) -> Optional[List[Accion]]:
-    """Búsqueda en anchura: la secuencia más corta de acciones hasta un estado meta (None si no la hay en el límite)."""
-    if meta(inicio):
-        return []
-    padres: Dict[Any, Tuple[Any, Accion]] = {}
-    vistos = {inicio}
-    cola: Deque[Tuple[Any, int]] = deque([(inicio, 0)])
-    while cola:
-        estado, prof = cola.popleft()
-        if prof >= profundidad:
-            continue
-        for accion, nuevo in sucesores(estado):
-            if nuevo in vistos:
-                continue
-            vistos.add(nuevo)
-            padres[nuevo] = (estado, accion)
-            if meta(nuevo):
-                plan: List[Accion] = []
-                while nuevo != inicio:
-                    nuevo, a = padres[nuevo]
-                    plan.append(a)
-                return plan[::-1]
-            if len(vistos) >= max_estados:
-                return None
-            cola.append((nuevo, prof + 1))
-    return None
-
-
-def mover(modelo: Modelo, pos: Pos, cara: Optional[Pos], d: Pos, pasable: bool) -> Optional[Tuple[Pos, Optional[Pos]]]:
-    """Efecto previsto de MOVER en la dirección ``d`` según el modelo del cuerpo aprendido (None si no se sabe)."""
-    m = modelo.mover_libre if pasable else modelo.mover_bloqueado
-    if m is None:
-        return None
-    avanza, mira = m
-    return (_suma(pos, d) if avanza else pos), (d if mira else cara)
-
-
-def buscar_postura(modelo: Modelo, pos: Pos, cara: Optional[Pos], destino: Pos, mirando: Pos,
-                   max_pasos: int = MAX_PASOS_POSTURA) -> Optional[List[Accion]]:
-    """Secuencia de MOVER que deja en ``destino`` mirando a la casilla ``mirando`` (vecina), o None."""
-    cara_meta = (mirando[0] - destino[0], mirando[1] - destino[1])
-
-    def sucesores(e: Tuple[Pos, Optional[Pos]]) -> Iterable[Tuple[Accion, Any]]:
-        p, c = e
-        for d in DIRECCIONES:
-            t = _suma(p, d)
-            if _manhattan(t, pos) > max_pasos:
-                continue
-            r = mover(modelo, p, c, d, modelo.libre(t))
-            if r is not None and r != (p, c):
-                yield ("mover", t), r
-
-    return _bfs((pos, cara), sucesores, lambda e: e == (destino, cara_meta), max_pasos)
-
-
 @dataclass(frozen=True)
 class EstadoPlan:
     pos: Pos
     cara: Optional[Pos]
     cavadas: FrozenSet[Pos]
     cerradas: FrozenSet[Pos]
-
-
-def entorno(interior: Tuple[Pos, ...]) -> Set[Pos]:
-    """Casillas a 2 o menos (en cada eje) del sitio: la ventana del plan local."""
-    return {(x, y) for (cx, cy) in interior for x in range(cx - 2, cx + 3) for y in range(cy - 2, cy + 3)}
 
 
 def planificar(modelo: Modelo, pos: Pos, cara: Optional[Pos], interior: Tuple[Pos, ...], excavar: FrozenSet[Pos],
