@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 59 · **pendientes:** 15 (A4: 1, A5a: 2, A5b: 1, A6: 8, A7: 3)
+**Total:** 74 · **en su destino:** 61 · **pendientes:** 13 (A4: 1, A5b: 1, A6: 8, A7: 3)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -46,7 +46,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
 | `Apetencia` ✱ | componente | opcional (crafter) | S1.Interpretar · en todos | A6 | D15 | Aliestesia; sustituye a Perfil.aliestesia |
 | `Recinto` | componente | mundo: crafter | S1.Interpretar · en todos | A6 | D16 | Emite la afordancia de protección |
-| `MapaLocal` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5a | D10 | Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7 |
 
 ## S1 · Reaccionar
 
@@ -158,7 +158,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Tribunal` | componente | general | ✓ |  | previo |  |
 | `Actuador` | componente | general | ✓ |  | previo | Ejecuta primitivas del mundo (A5, D9) |
-| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | fuera: `ida/core/memoria.py` | A5a | D10 | Qué hace cada primitiva; hoy Memoria.aprender_cuerpo |
+| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); datos en Memoria.cuerpo hasta A7 |
 
 ## Bibliotecas de los cuerpos
 

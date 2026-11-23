@@ -90,12 +90,12 @@ tipo = "componente"
 clase = "cuerpo"
 dueno = "cuadricula"
 destino = "CORE.Actuar"
-hoy = "fuera:ida/core/memoria.py"
+hoy = "CORE.Actuar"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A5a"
 decision = "D10"
 aprende = true
-nota = "Qué hace cada primitiva; hoy Memoria.aprender_cuerpo"
+nota = "ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); datos en Memoria.cuerpo hasta A7"
 
 [[componente]]
 nombre = "Saliencia"
@@ -188,12 +188,12 @@ tipo = "componente"
 clase = "cuerpo"
 dueno = "cuadricula"
 destino = "S1.Interpretar"
-hoy = "fuera:ida/core/memoria.py"
+hoy = "S1.Interpretar"
+hoy_en = ["crafter"]
 registran = ["crafter"]
-paso = "A5a"
 decision = "D10"
 aprende = true
-nota = "Mapa métrico y visitas propias (para la novedad); hoy Memoria.ver_casillas y latido.py _aprender_mapa"
+nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7"
 
 [[componente]]
 nombre = "Reflejo"

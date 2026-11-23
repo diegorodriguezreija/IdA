@@ -37,7 +37,8 @@ def main() -> int:
     from ida.mundos import cargar
 
     if args.sin_estrategias_propias:
-        cargar(args.mundo).registro = lambda self: Registro()
+        original = cargar(args.mundo).registro   # sin estrategias propias, pero con su cuerpo (D10)
+        cargar(args.mundo).registro = lambda self: Registro(cuerpo=original(self).cuerpo)
     if args.mecanismos:
         from dataclasses import replace
         clase = cargar(args.mundo)

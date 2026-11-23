@@ -17,9 +17,10 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas import crear_sistemas
 from ida.sistemas.proteger import Modelo, buscar_postura
 
@@ -44,6 +45,9 @@ class MundoCueva(Mundo):
 
     def reiniciar(self, semilla: Optional[int]) -> None:
         pass
+
+    def registro(self) -> Registro:
+        return Registro(cuerpo=Cuadricula())   # cuadrícula con orientación, como Crafter (D10)
 
     def libre(self, p: Pos) -> bool:
         return self.mapa.get(p) in LIBRES
@@ -159,20 +163,28 @@ def _obs(pos: Pos, cara: Pos, mapa: Dict[Pos, str]) -> Observacion:
     return m.observar()
 
 
-def _ctx(obs: Observacion) -> SimpleNamespace:
-    """Contexto mínimo para ``Organismo._aprender_mapa``: la Observación y las piezas ``Exterocepcion`` que emitiría el
-    sensor con ella (el peligro de cada entidad se lee de su pieza desde A3)."""
-    piezas = {e.id: Pieza(id=e.id, tipo="Exterocepcion", carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
-              for e in obs.entidades}
-    return SimpleNamespace(observacion=obs, onda=SimpleNamespace(ev=lambda canal: piezas if canal == "Exterocepcion" else {}))
+def _aprender_mapa(mem: Memoria, obs: Observacion, accion: Optional[Dict[str, Any]]) -> None:
+    """Lo que hacía ``Organismo._aprender_mapa`` (hasta A5a): el ``aprender`` del cuerpo cuadrícula (``ModeloDirecto`` y
+    después ``MapaLocal``), con un contexto mínimo: la memoria, la Observación, las piezas que emitirían los sensores con
+    ella (``Propiocepcion`` «yo» y ``Exterocepcion``) y la acción anterior en ``ei["Accion"]``."""
+    exterocepcion = {e.id: Pieza(id=e.id, tipo="Exterocepcion", carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
+                     for e in obs.entidades}
+    yo = Pieza(id="yo", tipo="Propiocepcion", carga={"ubicacion": obs.ubicacion, "inventario": dict(obs.inventario or {}),
+                                                    "cuerpo": dict(obs.cuerpo or {})})
+    ev = {"Exterocepcion": exterocepcion, "Propiocepcion": {"yo": yo}}
+    ei = {"Accion": {"Accion": SimpleNamespace(carga=accion)}} if accion is not None else {}
+    onda = SimpleNamespace(ev=lambda canal: ev.get(canal, {}), ei=lambda canal: ei.get(canal, {}))
+    ctx = SimpleNamespace(memoria=mem, observacion=obs, onda=onda)
+    for comp in Cuadricula().componentes().values():
+        for c in comp:
+            c.aprender(ctx)   # type: ignore[arg-type]
 
 
 def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
     """Tras MOVER hacia una casilla libre, la posición cambia y queda mirando hacia allí; hacia una bloqueada, solo gira.
-    La memoria lo aprende de lo percibido antes y después (``Organismo._aprender_mapa``), sin que nadie se lo diga."""
+    La memoria lo aprende de lo percibido antes y después (``ModeloDirecto`` del cuerpo cuadrícula), sin que nadie se lo diga."""
     mapa = {(x, 0): "suelo" for x in range(4)} | {(4, 0): "roca"} | {(x, y): "roca" for x in range(5) for y in (-1, 1)}
     mem = Memoria("completa")
-    yo = SimpleNamespace(memoria=mem)
     secuencia = [  # (posición, orientación) percibidas y la acción del latido anterior
         ((1, 0), (0, 1), None),
         ((2, 0), (1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
@@ -181,7 +193,7 @@ def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
         ((2, 0), (-1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
     ]
     for pos, cara, accion in secuencia:
-        Organismo._aprender_mapa(yo, _ctx(_obs(pos, cara, mapa)), accion)   # type: ignore[arg-type]
+        _aprender_mapa(mem, _obs(pos, cara, mapa), accion)
     assert mem.transitable("suelo") is True and mem.transitable("roca") is False
     assert mem.modelo_cuerpo("mover", True) == (True, True)
     assert mem.modelo_cuerpo("mover", False) == (False, True)
@@ -362,13 +374,12 @@ def test_lo_inferido_se_corrige_con_el_primer_intento_real():
 def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
     mapa = {(0, 0): "suelo", (1, 0): "bloque"} | {(x, y): "bloque" for x in range(-1, 2) for y in (-1, 1)} | {(-1, 0): "bloque"}
     mem = Memoria("completa")
-    yo = SimpleNamespace(memoria=mem)
-    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), None)   # type: ignore[arg-type]
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), None)
     accion = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "bloque", "exito": True}
-    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), accion)   # type: ignore[arg-type]
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), accion)
     assert mem.resultado(Verbo.COGER, "bloque", "bloque") == "bloque"
     fallida = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "otra", "exito": False}
-    Organismo._aprender_mapa(yo, _ctx(_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), fallida)
     assert (Verbo.COGER, "otra") not in mem.transformaciones           # sin éxito y sin cambio no dice nada
 
 

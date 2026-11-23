@@ -7,7 +7,7 @@ Encargo: paso A5a de `docs/DISENO_COMPONENTES.md` (sección 5): primer cuerpo, l
 | Etapa | Qué | Estado |
 |---|---|---|
 | E1 | Contrato `Cuerpo`, montaje y tests de registro (puntos 1, 2 y parte del 9) | HECHA |
-| E2 | `Cuadricula`, `ModeloDirecto` y `MapaLocal`, mismo punto, registro de Crafter (puntos 3, 4 y 6) | pendiente |
+| E2 | `Cuadricula`, `ModeloDirecto` y `MapaLocal`, mismo punto, registro de Crafter (puntos 3, 4 y 6) | HECHA |
 | E3 | Leer piezas en lugar de la Observación (punto 5) | pendiente |
 | E4 | Herramienta, especificación y tests restantes (puntos 7, 8 y 9) | pendiente |
 
@@ -16,7 +16,7 @@ siguiente.
 
 ## E1 · Contrato Cuerpo y montaje
 
-Estado: HECHA. Commit: «A5a E1: contrato Cuerpo y montaje de sus Componentes (D10)».
+Estado: HECHA. Commit 4cd3f13 «A5a E1: contrato Cuerpo y montaje de sus Componentes (D10)».
 
 Comprobación (última línea de cada una):
 
@@ -48,4 +48,52 @@ Decisiones:
   que lo del mundo y admite `CORE.Actuar`; destino no válido → `ValueError`; cuerpo y mundo no pueden repetir clase;
   `aprender` de cada Componente de cuerpo se llama una sola vez por latido (tres latidos).
 
-Pendiente: E2.
+Pendiente: nada de E1.
+
+## E2 · Cuadricula, ModeloDirecto y MapaLocal
+
+Estado: HECHA. Commit: «A5a E2: cuerpo cuadrícula con ModeloDirecto y MapaLocal; Crafter lo registra».
+
+Comprobación (última línea de cada una):
+
+```
+All checks passed!
+Success: no issues found in 48 source files
+304 passed, 1 warning in 29.65s
+EQUIVALENCIA: OK
+```
+
+Decisiones:
+- `ida/cuerpos/__init__.py` y `ida/cuerpos/cuadricula/`: `__init__.py` (`Cuadricula(Cuerpo)`, `nombre = "cuadricula"`,
+  `componentes() = {"CORE.Actuar": [ModeloDirecto()], "S1.Interpretar": [MapaLocal()]}`), un fichero por Componente
+  (`modelo_directo.py`, `mapa_local.py`) y `situacion.py` con lo que comparten: `situacion(ctx)` (posición, casillas
+  y orientación, o None), `accion_previa(ctx)` (de `ei["Accion"]`, como antes) y `vecina(mem, c)` (casilla vecina de
+  la acción anterior). En E2 `situacion` y las entidades de `MapaLocal` aún leen `ctx.observacion` (E3 lo cambia).
+- Partición de `_aprender_mapa`: `ModeloDirecto` hace las dos llamadas a `mem.aprender_cuerpo`; `MapaLocal`, en el
+  mismo orden de antes, transformaciones y cierres (con el comentario `# A7:`: son de Requisito según D7), libres,
+  ocupadas y peligros, `ver_casillas` y `yo_previo`. Por qué sale igual: `aprender_cuerpo` solo escribe
+  `Memoria.cuerpo`, que no leen `aprender_transformacion`, `transitable` ni `transitable_peligro` (comprobado con grep
+  de `self.cuerpo` en esos métodos), así que adelantar las dos llamadas al bloque de transformaciones no cambia nada; y
+  `ModeloDirecto` corre antes, así que lee `yo_previo`, `casillas` y `transitable` sin actualizar, como antes.
+- Sin barridos: los dos sobrescriben `activo()` → `False`. Si no, `Modulo.ejecutar` llamaría a `control_vital` por
+  cada barrido en S1.Interpretar (no exento) y sumaría operaciones al plazo lógico, lo que cambiaría la guillotina.
+- `Organismo._aprender`: donde se llamaba a `_aprender_mapa` (misma condición) se llama a `aprender` de
+  `componentes_cuerpo` en orden de montaje (ModeloDirecto, MapaLocal). `_aprender_mapa` se borra (y el import ya
+  sin uso de `pos_de` en `latido.py`).
+- Crafter: `registro()` devuelve `Registro(cuerpo=Cuadricula())`. Ningún otro mundo de `ida/mundos` da `casillas`
+  (`git grep '"casillas"' ida/mundos`: solo `crafter.py`), así que en ellos `_aprender_mapa` no hacía nada.
+- Herramientas que quitan las estrategias propias reemplazando el registro por `Registro()`
+  (`evaluar_crafter.py --sin-estrategias-propias`, `diagnostico_bucle.py`, `diagnostico_intensidad.py`,
+  `diagnostico_tribunal.py`): ahora conservan el cuerpo (`Registro(cuerpo=original(self).cuerpo)`). Si no, esas
+  ejecuciones perderían el mapa local, que antes siempre se aprendía. La equivalencia no usa esa opción.
+- Adelantado de E4 (obligado, como en A3): `test_el_codigo_coincide_con_hoy[crafter]` falla si hay Componentes
+  montados que el toml no declara, así que `ModeloDirecto` y `MapaLocal` ya están en `componentes.toml` con
+  `hoy = "CORE.Actuar"` / `"S1.Interpretar"`, `hoy_en = ["crafter"]`, sin `paso` y con notas nuevas. Mapa
+  regenerado. `_montado` ya leía `CORE.Actuar` y los módulos de S1, y `_esperado` ya filtra por `hoy_en`: el test del
+  mapa no necesitó cambios.
+- `tests/test_proteger.py`: su `MundoCueva` es una cuadrícula que da `casillas` y dependía de `_aprender_mapa`; ahora
+  registra `Cuadricula()` como Crafter. Los dos tests que llamaban a `Organismo._aprender_mapa` usan un ayudante
+  `_aprender_mapa(mem, obs, accion)` que llama a `aprender` de los Componentes de `Cuadricula` con un contexto
+  mínimo (memoria, Observación, piezas `Propiocepcion` y `Exterocepcion`, `ei["Accion"]`). Sin cambios en aserciones.
+
+Pendiente: E3 (leer de las piezas).
