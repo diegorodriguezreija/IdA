@@ -1,7 +1,7 @@
 """Paso 0 de la fase de generalización (docs/PROPUESTA_PASO0.md): la intensidad del impulso llega al Tribunal.
 
 - 0a (urgencia local en ``Tribunal.reactiva``) se retiró: resultado negativo (``docs/PROPUESTA_PASO0.md``, «Resultado»).
-- 0b: aliestesia en la base, siempre activa donde dos o más necesidades comparten rasgo (``Perfil.aliestesia``):
+- 0b: aliestesia en la base, activa donde el mundo registra ``Apetencia`` (D3, D15; antes ``Perfil.aliestesia``):
   ``Memoria.satisface``, componente ``Apetencia`` de S1 y ``Alimentarse`` por necesidad.
 """
 
@@ -14,7 +14,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.onda import Onda
 from ida.core.pieza import Pieza
 from ida.core.soma import Soma
@@ -73,6 +73,9 @@ class MundoDosNecesidades(Mundo):
     def manual(self):
         return MANUAL_JUGUETE if self.con_manual else {}
 
+    def registro(self) -> Registro:
+        return Registro(opcionales=["Apetencia"])   # dos necesidades con el mismo rasgo: aliestesia (D3, D15)
+
 
 def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, necesidades: Tuple[Necesidad, ...] = NECESIDADES_JUGUETE):
     """Contexto de S1 con la interocepción, los dos objetos al alcance y los impulsos de hambre y sed."""
@@ -87,7 +90,10 @@ def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, 
     for n in NECESIDADES_JUGUETE:
         i = n.deficit({"comida": comida, "agua": agua}) or 0.0
         onda.registrar("Impulso", Pieza(n.nombre, "Impulso", i, carga={"intensidad": i, "objetivo": 0.0, "rasgo": n.rasgo}, sistema="S1"))
-    return Contexto(onda, Soma(), memoria or Memoria(), Arquetipo(), Azar(1), perfil, {Verbo.COMER, Verbo.MOVER, Verbo.ESPERAR}, None, True)
+    # Un mundo cuyas necesidades comparten rasgo registra Apetencia (D15); con una necesidad por rasgo, no.
+    registrados = {"Apetencia"} if necesidades == NECESIDADES_JUGUETE else set()
+    return Contexto(onda, Soma(), memoria or Memoria(), Arquetipo(), Azar(1), perfil, {Verbo.COMER, Verbo.MOVER, Verbo.ESPERAR}, None, True,
+                    registrados=registrados)
 
 
 def _propuesta(ctx: Contexto, impulso: str):
@@ -110,16 +116,17 @@ def _apetencia(ctx: Contexto) -> None:
     a.reactiva(ctx)
 
 
-def test_aliestesia_solo_con_un_rasgo_compartido_por_varias_necesidades():
-    """Sin interruptor: actúa cuando el rasgo no dice a qué necesidad sirve un objeto. Con las necesidades de la
-    base (una sola con rasgo) no produce nada, y mínimo, archivos y ajedrez se comportan como antes."""
-    assert Perfil().aliestesia is False
-    assert Perfil(necesidades=NECESIDADES_JUGUETE).aliestesia is True
-    assert Perfil(necesidades=UNA_POR_RASGO).aliestesia is False
+def test_aliestesia_solo_donde_se_registra_apetencia():
+    """Sin perilla (D15): la aliestesia existe donde el mundo registra ``Apetencia``. El mínimo y archivos (una sola
+    necesidad con rasgo) no la registran (``test_mapa_componentes``) y no la montan; el mundo de dos necesidades con el mismo rasgo, sí."""
+    from ida.mundos.minimo import MundoMinimo
+
+    assert not hasattr(Perfil(), "aliestesia")
     assert not hasattr(MecanismosMemoria(), "aliestesia")
-    ctx = _ctx_juguete(20.0, 90.0, necesidades=UNA_POR_RASGO)
-    _apetencia(ctx)
-    assert ctx.onda.ev("Apetencia") == {}
+    for mundo, monta in ((MundoMinimo(), False), (MundoDosNecesidades(), True)):
+        org = Organismo(mundo, crear_sistemas(), Arquetipo(), Memoria("completa"), Azar(1), True)
+        assert ("Apetencia" in org.registrados) is monta
+        assert any(type(c).__name__ == "Apetencia" for s in org.sistemas for c in s.componentes()) is monta
 
 
 def test_satisface_del_manual():
@@ -302,10 +309,10 @@ def test_crafter_el_nutritivo_es_perceptivo_y_constante():
     from ida.mundos.crafter import NUTRITIVO_MANUAL, MundoCrafter
     from ida.mundos.crafter_valoracion import ValoracionCrafter
 
-    assert MundoCrafter.perfil.aliestesia is True           # hambre y sed comparten «nutritivo»
     assert not hasattr(MundoCrafter, "_deseo")
     m = MundoCrafter(vista="oficial")
     m.reiniciar(1)
+    assert "Apetencia" in m.registro().opcionales           # hambre y sed comparten «nutritivo»: aliestesia (D15)
     assert m.nutritivos == {"agua", "vaca", "planta"}
     azar = Azar(1)
     org = Organismo(m, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(m.perfil.memoria), azar)

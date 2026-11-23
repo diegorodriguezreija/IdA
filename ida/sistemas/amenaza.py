@@ -52,6 +52,7 @@ from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.memoria import pos_de
+from ida.core.mundo import Escala
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
@@ -59,12 +60,13 @@ from ida.core.vocabulario import Verbo
 Pos = Tuple[int, int]
 
 VITALIDAD_MAXIMA = 100.0
-DANO_PREVIO = VITALIDAD_MAXIMA * 2.0 / 9.0   # daño desconocido de lo peligroso: 2 de 9 unidades de vitalidad (declarado)
+# De escala (D15): valen los de ``Perfil.escala``, que ``Peligros.escalar`` copia; estos son los valores por defecto.
+DANO_PREVIO = Escala().dano_previo           # daño desconocido de lo peligroso, en vitalidad
 PESO_PREVIO = 2.0                            # peso (en daños) del previo
 VENTANA = 20                                 # media móvil: los últimos ~20 daños de cada clase
 TASA_PREVIA = 0.5                            # daños por latido de exposición, sin datos (pesimista)
 PESO_TASA = 2.0                              # peso (en latidos) del previo de la tasa
-GOLPES_PREVIO = 10.0                         # golpes para derribar algo sin datos (pesimista: así no se lucha)
+GOLPES_PREVIO = Escala().golpes_previo       # golpes para derribar algo sin datos (pesimista: así no se lucha)
 EMISION_MINIMA = 0.6                         # ΔP a partir del cual X emite Y
 JUNTO_MINIMO = 3                             # apariciones de Y junto a una X mínimas para decidirlo
 MAX_RECORRIDOS = 10
@@ -72,13 +74,20 @@ MAX_DERRIBOS = 30
 MARGEN_REDUCTOR = 0.15                       # razón de golpes con / sin el objeto por debajo de 1 − margen: reduce
 MINIMO_LEGADO = 2                            # observaciones mínimas para pasar al legado
 PELIGRO_PREVIO = 0.8                         # peligro del previo del manual a salud completa (fija la escala)
-MARGEN_LUGAR = 3                             # el peligro de un lugar se anula a alcance + 3 casillas
-ESCALA = (DANO_PREVIO / VITALIDAD_MAXIMA) * (1.0 / PELIGRO_PREVIO - 1.0)   # C de g(x) = x / (x + C)
+MARGEN_LUGAR = Escala().margen_lugar         # el peligro de un lugar se anula a alcance + margen casillas
 
 
-def escala(x: float) -> float:
+def constante_escala(dano_previo: float) -> float:
+    """C de g(x) = x / (x + C), de una sola condición: el previo del manual a salud completa da ``PELIGRO_PREVIO``."""
+    return (dano_previo / VITALIDAD_MAXIMA) * (1.0 / PELIGRO_PREVIO - 1.0)
+
+
+ESCALA = constante_escala(DANO_PREVIO)       # C por defecto
+
+
+def escala(x: float, c: float = ESCALA) -> float:
     """g(x) = x / (x + C): de la pérdida relativa a la salud a un peligro en [0, 1)."""
-    return x / (x + ESCALA) if x > 0.0 else 0.0
+    return x / (x + c) if x > 0.0 else 0.0
 
 
 def manhattan(a: Pos, b: Pos) -> int:
@@ -139,6 +148,17 @@ class Peligros:
     aqui_previo: Optional[Pos] = None
     dormido_previo: bool = False
     objetos_previos: FrozenSet[str] = frozenset()
+    # Escala del mundo (D15): la copia ``escalar`` desde ``Perfil.escala``; no se hereda
+    dano_previo: float = DANO_PREVIO
+    golpes_previo: float = GOLPES_PREVIO
+    margen_lugar: int = MARGEN_LUGAR
+    c_escala: float = ESCALA
+
+    def escalar(self, e: Escala) -> None:
+        """Toma las constantes de escala del mundo (``Perfil.escala``). La llaman ``Amenaza`` y ``Afrontar`` cada latido."""
+        if e.dano_previo != self.dano_previo:
+            self.c_escala = constante_escala(e.dano_previo)
+        self.dano_previo, self.golpes_previo, self.margen_lugar = e.dano_previo, e.golpes_previo, e.margen_lugar
 
     # --- estimaciones ---------------------------------------------------------
     def emitidas(self, x: str) -> List[str]:
@@ -153,7 +173,7 @@ class Peligros:
         """Daño esperado de un contacto con ``clase``: la media aprendida con su previo, y como mínimo lo perdido en el
         contacto en curso."""
         m = self.dano.get(clase)
-        previo = DANO_PREVIO if peligrosa else 0.0
+        previo = self.dano_previo if peligrosa else 0.0
         estimado = m.estimar(previo, PESO_PREVIO) if m is not None else previo
         en_curso = [d for c, d in self.encuentros.values() if c == clase]
         return max([estimado] + en_curso)
@@ -165,7 +185,7 @@ class Peligros:
     def golpe(self, clase: str, peligrosa: bool, dormido: bool = False) -> float:
         """Daño de un golpe de ``clase`` en la condición dada. Dormido, el previo es el daño despierto."""
         m = self.dano_golpe.get(clase)
-        previo = DANO_PREVIO if peligrosa else 0.0
+        previo = self.dano_previo if peligrosa else 0.0
         despierto = m.estimar(previo, PESO_PREVIO) if m is not None else previo
         if not dormido:
             return despierto
@@ -193,16 +213,15 @@ class Peligros:
     def alcance(self, clase: str, peligrosa) -> int:
         return max((a for _, a in self.componentes(clase, peligrosa)), default=1)
 
-    @staticmethod
-    def peligro_a(comps: List[Tuple[float, int]], d: int, salud: float) -> float:
+    def peligro_a(self, comps: List[Tuple[float, int]], d: int, salud: float) -> float:
         """Peligro de una cosa: g(L / salud). La distancia no entra: la proximidad la aplica quien percibe (``Supervivencia``),
         como con el rasgo que dan los mundos."""
-        return max((escala(perdida / max(salud, 1.0)) for perdida, _ in comps), default=0.0)
+        return max((escala(perdida / max(salud, 1.0), self.c_escala) for perdida, _ in comps), default=0.0)
 
-    @staticmethod
-    def peligro_lugar(comps: List[Tuple[float, int]], d: int, salud: float) -> float:
-        """Peligro de un lugar a distancia ``d`` de una cosa peligrosa: g(L / salud) · max(0, 1 − d / (alcance + MARGEN_LUGAR))."""
-        return max((escala(perdida / max(salud, 1.0)) * max(0.0, 1.0 - d / (a + MARGEN_LUGAR)) for perdida, a in comps), default=0.0)
+    def peligro_lugar(self, comps: List[Tuple[float, int]], d: int, salud: float) -> float:
+        """Peligro de un lugar a distancia ``d`` de una cosa peligrosa: g(L / salud) · max(0, 1 − d / (alcance + margen_lugar))."""
+        return max((escala(perdida / max(salud, 1.0), self.c_escala) * max(0.0, 1.0 - d / (a + self.margen_lugar)) for perdida, a in comps),
+                   default=0.0)
 
     def tasa(self, clase: str) -> Tuple[float, int]:
         """Daños por latido de exposición a ``clase`` y latidos de exposición contados."""
@@ -242,7 +261,7 @@ class Peligros:
         por el mejor reductor llevado; sin derribos de la clase, el previo pesimista."""
         lista = self.derribos.get(clase, [])
         if not lista:
-            return GOLPES_PREVIO, 0
+            return self.golpes_previo, 0
         red = self.reductores() if reductores is None else reductores
         clave = frozenset(objetos) & frozenset(red)
         iguales = [g for kit, g in lista if kit & frozenset(red) == clave]
@@ -456,21 +475,23 @@ class Amenaza(Componente):
     """Preatención (D5): aprende del latido (daño, exposición, golpes, derribos y apariciones) y después estima el
     ``peligro`` de cada entidad, que escribe al final de los rasgos de su pieza ``Exterocepcion``.
 
-    Solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y no da su propio rasgo
-    ``peligro`` (los que lo dan no cambian). Deja ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo
-    aprendido (``Afrontar``); sustituir esa condición y esa marca por el registro es A6. Lee de las piezas: la ubicación,
+    Opcional (D3, D15): solo la monta el mundo que la registra (un mundo que da su propio ``peligro`` no la registra).
+    Actúa si el mundo da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y deja
+    ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``). Lee de las piezas: la ubicación,
     el cuerpo (``casillas``) y el inventario, de la ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su
     ``Exterocepcion``. Es el único que escribe en ``memoria.peligros``. Coste lineal en lo percibido (más lo que cueste
     ``Peligros.aprender``, igual que antes)."""
 
     tipo = "Exterocepcion"
     preatentivo = True
+    opcional = True     # D3, D15: solo la monta el mundo que la registra
 
     def reactiva(self, ctx: Contexto) -> None:
+        ctx.memoria.peligros.escalar(ctx.perfil.escala)
         yo = ctx.onda.ev("Propiocepcion").get("yo")
         aqui = pos_de(yo.carga.get("ubicacion")) if yo is not None else None
         piezas = list(ctx.onda.ev("Exterocepcion").values())
-        if yo is None or aqui is None or any("peligro" in p.carga.get("rasgos", {}) for p in piezas):
+        if yo is None or aqui is None:
             return
         con_pos = [(p, q) for p in piezas if (q := _pos(p)) is not None]
         if not con_pos:

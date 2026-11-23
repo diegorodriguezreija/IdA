@@ -113,6 +113,10 @@ def informe_mundo(nombre: str) -> str:
     else:
         salida.append("  - *(ninguno)*")
 
+    # Generales opcionales que monta (D3, D15): sustituyen a las activaciones condicionales
+    opcionales = ", ".join(f"`{o}`" for o in reg.opcionales) if reg.opcionales else "*(ninguno)*"
+    salida.append(f"- **Opcionales:** {opcionales}")
+
     # Ficheros y líneas de código
     ficheros = ficheros_del_modulo(nombre)
     total_lineas = 0

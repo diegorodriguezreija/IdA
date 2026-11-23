@@ -14,7 +14,7 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
+from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.vocabulario import Relacion, Verbo
 from ida.sistemas import crear_sistemas
 
@@ -201,6 +201,10 @@ class MundoErizos(Mundo):
 
     def manual(self) -> Dict[str, Any]:
         return {"hechos": [{"tipo": "proposicion", "sujeto": "erizo", "relacion": "PELIGROSO"}], "inventario": ["baston", "palo"]}
+
+    def registro(self) -> Registro:
+        """Como Crafter (D3, D15): el peligro aprendido y la lucha por evaluación, solo si el mundo no da su ``peligro``."""
+        return Registro(opcionales=[] if self.da_peligro else ["Amenaza", "Afrontar"])
 
 
 def _organismo(mundo: MundoErizos, mem: Optional[Memoria] = None) -> Organismo:
@@ -420,4 +424,34 @@ def test_crafter_no_escribe_conducta():
     clases = [c for _, c in inspect.getmembers(crafter, inspect.isclass) if c.__module__ == crafter.__name__]
     assert clases     # el adaptador existe
     assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
-    assert crafter.MundoCrafter().registro().estrategias == {}
+    # D16: Crafter solo registra SalirDelRecinto, de ``ida/sistemas/proteger.py`` (pasa a Crafter en A6b)
+    estrategias = crafter.MundoCrafter().registro().estrategias
+    assert list(estrategias) == ["S1"] and not estrategias["S1"].sustituye
+    assert [type(d).__name__ for d in estrategias["S1"].añade] == ["SalirDelRecinto"]
+
+
+def test_la_escala_del_perfil_llega_a_peligros():
+    """D15: las constantes de escala de Amenaza son parámetros del mundo (``Perfil.escala``)."""
+    from ida.core.mundo import Escala
+
+    p = pel.Peligros()
+    assert (p.dano_previo, p.golpes_previo, p.margen_lugar, p.c_escala) == (pel.DANO_PREVIO, pel.GOLPES_PREVIO, pel.MARGEN_LUGAR, pel.ESCALA)
+    p.escalar(Escala(dano_previo=50.0, golpes_previo=4.0, margen_lugar=1))
+    assert p.dano_propio("erizo", True) == 50.0
+    assert p.golpes("erizo", frozenset())[0] == 4.0
+    assert abs(p.peligro_a([(50.0, 1)], 1, 100.0) - pel.PELIGRO_PREVIO) < 1e-9   # el previo sigue fijando la escala
+    assert p.peligro_lugar([(50.0, 1)], 2, 100.0) == 0.0                          # se anula a alcance + 1
+
+
+def test_crafter_fija_la_escala_de_antes():
+    """A6a no cambia la conducta: Crafter declara en su Perfil los valores que tenían las constantes."""
+    import pytest
+
+    pytest.importorskip("crafter")
+    from ida.core.mundo import Escala
+    from ida.mundos.crafter import MundoCrafter
+
+    assert MundoCrafter.perfil.escala == Escala()
+    assert MundoCrafter.perfil.escala.dano_previo == 100.0 * 2.0 / 9.0
+    assert MundoCrafter.perfil.escala.reserva == 100.0 * 3.0 / 9.0
+    assert MundoCrafter.perfil.escala.coste_sin_sitio == 45.0

@@ -17,12 +17,12 @@ from ida.core.azar import Azar
 from ida.core.latido import Organismo
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas import crear_sistemas
-from ida.sistemas.proteger import Modelo, buscar_postura
+from ida.sistemas.proteger import Modelo, Recinto, SalirDelRecinto, buscar_postura
 
 Pos = Tuple[int, int]
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -47,7 +47,9 @@ class MundoCueva(Mundo):
         pass
 
     def registro(self) -> Registro:
-        return Registro(cuerpo=Cuadricula())   # cuadrícula con orientación, como Crafter (D10)
+        """Cuadrícula con orientación, como Crafter (D10), y lo de protegerse que registra Crafter (D3, D16)."""
+        return Registro(cuerpo=Cuadricula(), componentes={"S1.Interpretar": Alta(añade=[Recinto()])},
+                        estrategias={"S1": Alta(añade=[SalirDelRecinto()])}, opcionales=["Amenaza", "Afrontar", "Proteger"])
 
     def libre(self, p: Pos) -> bool:
         return self.mapa.get(p) in LIBRES
@@ -331,7 +333,9 @@ def test_crafter_no_tiene_refugio_propio():
     from ida.mundos import crafter
     from ida.mundos.crafter import MundoCrafter
 
-    assert MundoCrafter().registro().estrategias == {}
+    # D16: la única estrategia que registra Crafter es SalirDelRecinto (su fichero pasa a Crafter en A6b)
+    assert [type(d).__name__ for d in MundoCrafter().registro().estrategias["S1"].añade] == ["SalirDelRecinto"]
+    assert not MundoCrafter().registro().estrategias["S1"].sustituye
     assert not hasattr(crafter, "RefugioNocturno")
 
 

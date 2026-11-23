@@ -81,6 +81,9 @@ class Organismo:
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
 
+        # Opcionales (D3, D15): los generales con ``opcional`` que el mundo no nombra se quitan en su sitio, antes que nada
+        self._montar_opcionales(reg.opcionales)
+
         # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
         self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; su ``aprender`` lo llama ``_aprender``
         if reg.cuerpo is not None:
@@ -189,6 +192,29 @@ class Organismo:
         self._ubicacion_previa: Optional[str] = None
         self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
+
+    def _montar_opcionales(self, nombres: List[str]) -> None:
+        """Quita los generales opcionales (Componentes de los módulos, preatentivos y definiciones de los catálogos) cuya
+        clase no está en ``nombres``, conservando el orden relativo de lo demás. Un nombre que no corresponde a ningún
+        opcional del montaje general es un error (D3)."""
+        pedidos = set(nombres)
+        vistos: Set[str] = set()
+        for s in self.sistemas:
+            listas = [m.componentes for m in s.modulos] + [s.preatencion]
+            for lista in listas:
+                vistos |= {c.__class__.__name__ for c in lista if c.opcional}
+                lista[:] = [c for c in lista if not c.opcional or c.__class__.__name__ in pedidos]
+            catalogos = {id(c.catalogo): c.catalogo for c in s.componentes() if c.tipo == "Estrategia" and hasattr(c, "catalogo")}
+            for catalogo in catalogos.values():
+                for d in catalogo.todas():
+                    if d.opcional:
+                        vistos.add(d.__class__.__name__)
+                        if d.__class__.__name__ not in pedidos:
+                            catalogo.quitar(d.nombre)
+        desconocidos = sorted(pedidos - vistos)
+        if desconocidos:
+            raise ValueError(f"Opcionales desconocidos en el registro de {self.mundo.nombre}: {desconocidos}. "
+                             f"Opcionales del montaje general: {sorted(vistos)}")
 
     def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
         """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""
@@ -360,7 +386,7 @@ class Organismo:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
                                             bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
                                             distancias=self._antes_accion[3])
-        if self.perfil.aliestesia:
+        if "Apetencia" in self.registrados:      # aliestesia: la tiene el mundo que registra Apetencia (D15)
             self._aprender_satisface(ctx, c)
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),

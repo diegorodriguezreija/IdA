@@ -169,3 +169,6 @@ def test_conocimiento_declarado_por_el_registro() -> None:
     informe = herramienta.informe_mundo("crafter")
     assert "ValoracionCrafter (preatentivo) {NUTRITIVO: agua, planta, vaca;" in informe
     assert "`ida/mundos/crafter_valoracion.py`" in informe
+    # A6a (D3, D15): los generales opcionales que registra Crafter; el mínimo, ninguno
+    assert "- **Opcionales:** `Apetencia`, `Amenaza`, `Afrontar`, `Proteger`" in informe
+    assert "- **Opcionales:** *(ninguno)*" in herramienta.informe_mundo("minimo")
