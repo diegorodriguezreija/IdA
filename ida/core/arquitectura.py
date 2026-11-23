@@ -69,7 +69,7 @@ class Contexto:
     azar: Azar
     perfil: Perfil
     verbos: Set[Verbo]
-    observacion: Optional[Observacion] = None
+    observacion: Optional[Observacion] = None   # solo para Core · Sentir: el Organismo la pone a None después (D4)
     con_experiencia: bool = True
     biblioteca: Optional[Any] = None
     extra: Dict[str, Any] = field(default_factory=dict)
@@ -81,6 +81,12 @@ class Contexto:
 
     def registrado(self, nombre: str) -> bool:
         return nombre in self.registrados
+
+    def ubicacion(self) -> str:
+        """Dónde está el individuo, de la pieza ``Propiocepcion`` «yo» (D4: fuera de los sensores nadie lee la
+        Observación)."""
+        yo = self.onda.ev("Propiocepcion").get("yo")
+        return str(yo.carga.get("ubicacion") or "") if yo is not None else ""
 
 
 class Componente:

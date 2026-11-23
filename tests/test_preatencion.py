@@ -243,8 +243,9 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
         reactiva(ctx)
         assert ctx.extra.get("peligro_aprendido") is True
         # Lo que habría escrito la versión anterior en la Observación, con la memoria ya actualizada
-        entidades = copy.deepcopy(ctx.observacion.entidades if ctx.observacion else [])
-        aqui = pel.pos_de(ctx.observacion.ubicacion if ctx.observacion else "")
+        assert ctx.observacion is None             # D4: tras Core · Sentir nadie la lee; se usa la capturada
+        entidades = copy.deepcopy(obs_vista[-1].entidades)
+        aqui = pel.pos_de(obs_vista[-1].ubicacion)
         assert aqui is not None
         pel.estimar(entidades, aqui, ctx.memoria.peligros, ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
         esperados.append({e.id: e.rasgos["peligro"] for e in entidades if "peligro" in e.rasgos})

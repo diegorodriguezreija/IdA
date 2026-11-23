@@ -226,6 +226,8 @@ class Organismo:
         t_percibir = time.time_ns()
         obs = self.mundo.observar()
         t_percibido = time.time_ns()
+        # Excepción admitida a D4 (solo los sensores leen la Observación): sincronizar el soma con las constantes vitales y
+        # el sueño que da el mundo es transducción del propio cuerpo, y va antes de la regulación (que usa el soma).
         if obs.vitales:
             soma.sincronizar(obs.vitales)
         if obs.dormido is not None:
@@ -251,6 +253,7 @@ class Organismo:
         # 3. Sentir
         with onda.fase("sentir"):
             self.sentir.ejecutar(ctx)
+        ctx.observacion = None   # D4: después de los sensores nadie lee la Observación; todo lo demás lee piezas
         # 3b. Preatención (D5): exenta, también dormido; solo modifica piezas de los sensores
         with onda.fase("preatencion"):
             self.preatencion.ejecutar(ctx)
@@ -331,15 +334,14 @@ class Organismo:
                 c.aprender(ctx)
 
     def _aprender(self, ctx: Contexto) -> None:
-        ubicacion = ctx.observacion.ubicacion if ctx.observacion else ""
+        ubicacion = ctx.ubicacion()
         if self.con_experiencia and ubicacion:
             if self._ubicacion_previa and self._ubicacion_previa != ubicacion:
                 self.memoria.registrar_transicion(self._ubicacion_previa, ubicacion, ctx.latido)
             self._ubicacion_previa = ubicacion
-            if ctx.observacion:
-                for e in ctx.observacion.entidades:
-                    if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9:
-                        self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
+            for e in ctx.onda.ev("Exterocepcion").values():
+                if e.rasgo("lugar") < 0.5 and e.rasgo("proximidad") >= 0.9:
+                    self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
         if self.con_experiencia and self.memoria.activa:
             for comp in self.componentes_cuerpo:   # cuerpo (D10), en orden de montaje (cuadrícula: ModeloDirecto, MapaLocal)
@@ -387,30 +389,33 @@ class Organismo:
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:
         """Inventario percibido, clases al alcance (no lugares) y clase de lo que hay delante (``cuerpo["delante"]``,
-        si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas."""
-        obs = ctx.observacion
-        if obs is None or obs.inventario is None:
+        si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas. Lee piezas (D4): la
+        ``Propiocepcion`` «yo» y las ``Exterocepcion``."""
+        yo = ctx.onda.ev("Propiocepcion").get("yo")
+        if yo is None or yo.carga.get("inventario") is None:
             return None
-        cerca = {e.clase for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5 and e.rasgos.get("proximidad", 0.0) >= 0.9}
-        delante = (obs.cuerpo or {}).get("delante")
-        return (dict(obs.inventario), cerca, (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
-                Organismo._distancias(obs))
+        piezas = list(ctx.onda.ev("Exterocepcion").values())
+        cerca = {e.clase for e in piezas if e.rasgo("lugar") < 0.5 and e.rasgo("proximidad") >= 0.9}
+        delante = (yo.carga.get("cuerpo") or {}).get("delante")
+        return (dict(yo.carga["inventario"]), cerca,
+                (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
+                Organismo._distancias(str(yo.carga.get("ubicacion") or ""), piezas))
 
     @staticmethod
-    def _distancias(obs: Any) -> Dict[str, Desplazamiento]:
+    def _distancias(ubicacion: str, piezas: List[Pieza]) -> Dict[str, Desplazamiento]:
         """Desplazamiento ``(|dx|, |dy|)`` ordenado a la instancia más cercana de cada clase, hasta ``RADIO_PRUEBA``
         casillas (a igual distancia, el más diagonal). Con posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``)
         se calcula; sin ellas, lo que está al alcance (proximidad ≥ 0,9) cuenta como (0, 1)."""
-        partes = str(obs.ubicacion).rsplit("_", 2)
+        partes = ubicacion.rsplit("_", 2)
         aqui = (int(partes[1]), int(partes[2])) if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]) else None
         dist: Dict[str, Desplazamiento] = {}
-        for e in obs.entidades:
-            if e.rasgos.get("lugar", 0.0) >= 0.5:
+        for e in piezas:
+            if e.rasgo("lugar") >= 0.5:
                 continue
-            pos = e.datos.get("pos")
+            pos = (e.carga.get("datos") or {}).get("pos")
             if aqui is not None and isinstance(pos, (list, tuple)) and len(pos) == 2:
                 d = desplazamiento(int(pos[0]) - aqui[0], int(pos[1]) - aqui[1])
-            elif e.rasgos.get("proximidad", 0.0) >= 0.9:
+            elif e.rasgo("proximidad") >= 0.9:
                 d = (0, 1)
             else:
                 continue
@@ -520,6 +525,7 @@ class Organismo:
     def _episodio(self, ctx: Contexto) -> None:
         """Apertura y cierre de episodios (reglas de partida de la versión limpia, §5)."""
         soma, onda = self.soma, ctx.onda
+        ubicacion = ctx.ubicacion()
         maximo = max((p.arousal for canal, d in onda.reactiva.ev.items() if canal not in CANALES_SENSORES for p in d.values()), default=0.0)
         sorpresa = bool(onda.ev("Sorpresa"))
         ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
@@ -527,17 +533,17 @@ class Organismo:
             d_vit = abs(soma.vitalidad - self._vit_ep)
             if maximo >= self.perfil.umbral_apertura_episodio or sorpresa or d_vit >= 2.0:
                 self.episodio = Episodio(id=f"ep_{self.arquetipo.id}_{ctx.latido}", inicio=ctx.latido)
-                if ctx.observacion is not None and ctx.observacion.ubicacion:
-                    self.episodio.trayectoria.append(ctx.observacion.ubicacion)
+                if ubicacion:
+                    self.episodio.trayectoria.append(ubicacion)
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
             else:
                 self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion
                 return
         ep = self.episodio
         ep.arousal_max = max(ep.arousal_max, maximo)
-        if ctx.observacion is not None and ctx.observacion.ubicacion:
-            if not ep.trayectoria or ep.trayectoria[-1] != ctx.observacion.ubicacion:
-                ep.trayectoria.append(ctx.observacion.ubicacion)
+        if ubicacion:
+            if not ep.trayectoria or ep.trayectoria[-1] != ubicacion:
+                ep.trayectoria.append(ubicacion)
         if ej is not None:
             ep.acciones.append({"latido": ctx.latido, "verbo": ej.carga["verbo"].value, "objetivo": ej.carga["objetivo"]})
         calma = maximo < 0.55 and not sorpresa and abs(soma.vitalidad - self._vit_ep) < 0.5
@@ -548,8 +554,8 @@ class Organismo:
             ep.balance = round(d_vit + 0.5 * (soma.alimentacion - self._ali_ep), 3)
             ep.resuelto = soma.esta_vivo and d_vit >= -1.0 and ep.balance >= -2.5
             self.memoria.episodios.append(ep)
-            if self.con_experiencia and self.perfil.hogar and ctx.observacion is not None:
-                self.memoria.recordar_lugar(ctx.observacion.ubicacion, 1.0 if ep.resuelto and calma else -0.5)
+            if self.con_experiencia and self.perfil.hogar and ctx.onda.ev("Propiocepcion").get("yo") is not None:
+                self.memoria.recordar_lugar(ubicacion, 1.0 if ep.resuelto and calma else -0.5)
             onda.notas["episodio"] = f"{ep.id} cerrado: balance {ep.balance:+.1f} ({'resuelto' if ep.resuelto else 'sin resolver'})"
             self.episodio = None
             self._vit_ep, self._ali_ep = soma.vitalidad, soma.alimentacion

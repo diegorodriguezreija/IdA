@@ -60,7 +60,7 @@ def _yo(ctx: Contexto) -> Dict[str, Any]:
 
 
 def posicion(ctx: Contexto) -> Optional[Pos]:
-    return pos_de(ctx.observacion.ubicacion) if ctx.observacion is not None else None
+    return pos_de(ctx.ubicacion())
 
 
 def orientacion(ctx: Contexto) -> Optional[Pos]:
@@ -553,7 +553,7 @@ class Recinto(Componente):
                                  "accion": None, "explicacion": "", "abrir": [], "requiere": {}}
         if dentro is not None:
             if ctx.perfil.hogar:
-                ctx.memoria.recordar_lugar(ctx.observacion.ubicacion if ctx.observacion else "", 1.0)
+                ctx.memoria.recordar_lugar(ctx.ubicacion(), 1.0)
             carga.update(coste=0.0, confianza=1.0, explicacion="dentro del recinto",
                          abrir=_abrir(modelo, dentro, aqui))
             self._sitio = dentro

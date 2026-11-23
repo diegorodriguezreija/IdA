@@ -10,7 +10,7 @@ Componente preatentivo de Crafter (`ValoracionCrafter`). Rama `reorg/a4-observac
 | E1 | Datos en bruto nuevos en el adaptador (`madura`, `vista` ampliada) | HECHA |
 | E2 | `ValoracionCrafter` y orden de la preatención (`Saliencia` la última) | HECHA |
 | E3 | El adaptador deja de valorar y de apuntar visitas; `rasgos_declarados` vacío | HECHA |
-| E4 | Lectores a piezas y `ctx.observacion = None` tras Core · Sentir | pendiente |
+| E4 | Lectores a piezas y `ctx.observacion = None` tras Core · Sentir | HECHA |
 | E5 | Especificación, herramienta, documentación y tests restantes | pendiente |
 
 El hash de cada etapa es el de su commit «A4 E<n>: ...» (`git log --oneline --grep "A4 E"`).
@@ -97,3 +97,38 @@ Decisiones:
   comparar `visitas` del adaptador (ya no existen; las compara `test_valoracion_crafter.py`).
 
 Pendiente: nada de E3.
+
+## E4 · Lectores a piezas y `ctx.observacion = None` tras Sentir
+
+Estado: HECHA.
+
+Comprobación (última línea de cada una): `All checks passed!` · `Success: no issues found in 50 source files` ·
+`328 passed, 1 warning in 55.91s` · `EQUIVALENCIA: OK`.
+
+Lectores cambiados (R0, sección B, con las líneas de hoy):
+- `ida/core/arquitectura.py`: `Contexto.ubicacion()` lee `ubicacion` de la pieza Propiocepcion «yo» (`""` si no hay).
+  `onda.ev` no cobra amplitud ni cuenta operaciones (`ida/core/onda.py:353`), así que leer piezas no cambia el plazo.
+- `ida/sistemas/s2.py` (6 lecturas), `ida/sistemas/s3.py` (`acercarse_a_clase`, `_pos_propia`),
+  `ida/sistemas/proteger.py` (`posicion`, `reactiva`) y `ida/mundos/archivos.py` (2 lecturas en sus Componentes, que
+  R0 no listaba porque solo miró core y sistemas): `ctx.ubicacion()`.
+- `ida/core/latido.py`: `_aprender` (ubicación y clases al alcance, de piezas Exterocepcion), `_situacion_inventario`
+  (inventario y `delante` de «yo»; clases al alcance de las Exterocepcion), `_distancias(ubicacion, piezas)` (clase,
+  rasgos y `datos["pos"]` de las piezas) y `_episodio` (ubicación de «yo»).
+- Excepción admitida, comentada en `latir`: la sincronización del soma con `obs.vitales` y `obs.dormido`, antes de la
+  regulación. Tras `self.sentir.ejecutar(ctx)`, `ctx.observacion = None`; la referencia `obs` local de `latir` es la
+  que se queda el Organismo.
+
+Decisiones:
+- `Propiocepcion` pone `inventario` en «yo» solo si `obs.inventario is not None`. Antes ponía `{}` si el mundo no lo
+  tenía, y `_situacion_inventario` distinguía con `obs.inventario is None` (mundos sin inventario: `None`). Sin la clave
+  se conserva esa distinción. Lectores de `inventario` en «yo» comprobados, todos toleran que falte:
+  `ida/sistemas/amenaza.py:488` (`or {}`), `proteger.py:72` y `s3.py:481` (`or {}`), `s1.py:278` (`.get(..., {})`).
+- `_episodio`: `recordar_lugar` se llamaba si `ctx.observacion is not None`; ahora, si hay pieza «yo». Las dos se dan
+  siempre en un latido (el mundo siempre observa y la Propiocepcion siempre emite).
+- Tests: los `ctx` simulados de `tests/test_deuda14.py` y `tests/test_planificador.py` exponen `ubicacion()` en vez de
+  `observacion`; `tests/test_preatencion.py` compara Amenaza con la Observación capturada (y comprueba que
+  `ctx.observacion` es None en la preatención). Nuevo `tests/test_observacion_sensores.py`: en mínimo y Crafter, ningún
+  Componente montado fuera de los sensores ve la Observación (con la línea de la garantía comentada, falla: comprobado a
+  mano y restaurado), y `inventario` en «yo» solo si el mundo lo tiene.
+
+Pendiente: nada de E4.
