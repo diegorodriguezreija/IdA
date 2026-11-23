@@ -9,7 +9,7 @@ Encargo: paso A5a de `docs/DISENO_COMPONENTES.md` (sección 5): primer cuerpo, l
 | E1 | Contrato `Cuerpo`, montaje y tests de registro (puntos 1, 2 y parte del 9) | HECHA |
 | E2 | `Cuadricula`, `ModeloDirecto` y `MapaLocal`, mismo punto, registro de Crafter (puntos 3, 4 y 6) | HECHA |
 | E3 | Leer piezas en lugar de la Observación (punto 5) | HECHA |
-| E4 | Herramienta, especificación y tests restantes (puntos 7, 8 y 9) | pendiente |
+| E4 | Herramienta, especificación y tests restantes (puntos 7, 8 y 9) | HECHA |
 
 El hash de cada etapa es el de su commit «A5a E<n>: ...» (`git log --oneline --grep "A5a E"`); se anota en la etapa
 siguiente.
@@ -100,7 +100,7 @@ Pendiente: nada de E2.
 
 ## E3 · Leer piezas en lugar de la Observación
 
-Estado: HECHA. Commit: «A5a E3: el cuerpo cuadrícula lee piezas, no la Observación».
+Estado: HECHA. Commit 406f880 «A5a E3: el cuerpo cuadrícula lee piezas, no la Observación».
 
 Comprobación (última línea de cada una):
 
@@ -122,4 +122,43 @@ Decisiones:
 - Nada de lo que leía `_aprender_mapa` faltaba en las piezas. `git grep observacion -- ida/cuerpos`: sin resultados.
 - El ayudante de `tests/test_proteger.py` ya daba las piezas desde E2: no cambia.
 
-Pendiente: E4.
+Pendiente: nada de E3.
+
+## E4 · Herramienta, especificación y tests restantes
+
+Estado: HECHA. Commit: «A5a E4: informe del cuerpo y tests de la cuadrícula».
+
+Comprobación (última línea de cada una):
+
+```
+All checks passed!
+Success: no issues found in 48 source files
+307 passed, 1 warning in 32.82s
+EQUIVALENCIA: OK
+Mapa de Componentes válido y al día.
+```
+
+Decisiones:
+- `herramientas/conocimiento_mundo.py`: el cuerpo se muestra con su nombre, su módulo y sus Componentes por destino.
+  Para crafter:
+
+  ```
+  - **Cuerpo:** `cuadricula` (ida.cuerpos.cuadricula)
+    - `CORE.Actuar`: [ModeloDirecto]
+    - `S1.Interpretar`: [MapaLocal]
+  ```
+- Especificación: hecha en E2 (ver allí). `tests/test_mapa_componentes.py` no necesitó cambios: `_montado` ya leía
+  `org.actuar` (`CORE.Actuar`) y los módulos de S1, y `_esperado` ya cuenta un Componente solo en los mundos de su
+  `hoy_en` (`["crafter"]`). `test_el_codigo_coincide_con_hoy` pasa en minimo, archivos y crafter.
+- `tests/test_cuadricula.py`: una copia literal del `_aprender_mapa` anterior como referencia (leyendo una
+  Observación) frente a `ModeloDirecto` + `MapaLocal` con solo piezas sintéticas (`observacion=None`), siete latidos:
+  MOVER libre, MOVER bloqueado (solo gira), COGER que transforma, USAR que cierra, COGER con éxito que no cambia, y un
+  agente peligroso sobre una casilla. Tras cada latido se comparan `casillas`, `cuerpo`, `cierres`, `yo_previo`,
+  `transformaciones`, `peligro_sobre`, `paso_libre`, `paso_bloqueado` y `version_mapa`. Se exige además que la
+  secuencia ejerza cada rama (modelo del cuerpo, transformación, cierre y `peligro_sobre`). Y que sin situación no
+  hagan nada y que `activo()` sea `False`.
+
+Para quien continúe:
+- Los datos del cuerpo siguen en `Memoria` (`casillas`, `cuerpo`, `cierres`, `yo_previo`, `transformaciones`): A7.
+- La geometría y el buscador de posturas siguen en `ida/sistemas/proteger.py`: A6, con `Recinto`.
+- `test_pureza` no cubre `ida/cuerpos` (ni las reglas de importación de D2); queda para A2.

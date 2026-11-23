@@ -78,8 +78,13 @@ def informe_mundo(nombre: str) -> str:
     salida.append(f"- **Rasgos declarados:** {rasgos_txt}")
 
     reg: Registro = instancia.registro()
-    cuerpo_txt = f"`{reg.cuerpo}`" if reg.cuerpo else "*(ninguno)*"
-    salida.append(f"- **Cuerpo:** {cuerpo_txt}")
+    if reg.cuerpo is None:
+        salida.append("- **Cuerpo:** *(ninguno)*")
+    else:
+        # Familia de cuerpos (D10): su nombre y sus Componentes por destino, en orden de montaje
+        salida.append(f"- **Cuerpo:** `{reg.cuerpo.nombre}` ({type(reg.cuerpo).__module__})")
+        for destino, comps in reg.cuerpo.componentes().items():
+            salida.append(f"  - `{destino}`: [{', '.join(type(c).__name__ for c in comps)}]")
 
     # Componentes
     salida.append("- **Componentes:**")
