@@ -21,7 +21,7 @@ from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sis
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
 from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento
-from ida.core.mundo import Efecto, Mundo
+from ida.core.mundo import Cuerpo, Efecto, Mundo
 from ida.core.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
 from ida.core.regulacion import Regulacion
@@ -80,6 +80,8 @@ class Organismo:
         self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
         for c in self.sentir.componentes + self.actuar.componentes:
             c.sistema = "CORE"
+
+        self.cuerpo: Optional[Cuerpo] = reg.cuerpo
 
         # Opcionales (D3, D15): los generales con ``opcional`` que el mundo no nombra se quitan en su sitio, antes que nada
         self._montar_opcionales(reg.opcionales)
@@ -273,6 +275,7 @@ class Organismo:
             self.con_experiencia,
             biblioteca=self.biblioteca,
             registrados=self.registrados,
+            cuerpo=self.cuerpo,
         )
         onda.fases.append(("percibir", t_percibir, t_percibido))
 

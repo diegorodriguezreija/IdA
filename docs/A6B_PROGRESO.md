@@ -67,13 +67,29 @@ equivalencia.py       minimo: OK · archivos: OK · crafter: OK · ajedrez: OK �
 - `ida/mundos/crafter/s1/interpretar/recinto.py` importa la geometría y buscador del cuerpo; `planificar` (cavar, cerrar accesos y materiales) permanece en Crafter.
 - Referencias actualizadas en `tests/test_proteger.py` y `herramientas/diagnostico_paso3.py`.
 
+## E4 · PerseguirMetas y Contexto.cuerpo
+
+- `ida/cuerpos/cuadricula/mapa.py`:
+  - `ir_por_el_mapa`, `_pos`, `_pos_propia`, `MAX_RUTA_MAPA = 40`, `VECINAS`.
+- `ida/core/mundo.py`:
+  - Método en `Cuerpo`: `ir_por_el_mapa(self, ctx: "Contexto", clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Any]`. Por defecto devuelve `None`.
+- `ida/cuerpos/cuadricula/__init__.py`:
+  - `Cuadricula.ir_por_el_mapa` delega en `ida.cuerpos.cuadricula.mapa.ir_por_el_mapa`. Exporta `ir_por_el_mapa`.
+- `ida/core/arquitectura.py`:
+  - `Contexto.cuerpo: Optional[Cuerpo] = None`.
+- `ida/core/latido.py`:
+  - `Organismo.__init__`: almacena `self.cuerpo: Optional[Cuerpo] = reg.cuerpo`.
+  - `Organismo.latir`: pasa `cuerpo=self.cuerpo` a `Contexto`.
+- `ida/sistemas/s3.py`:
+  - `ir_por_el_mapa` consulta a `ctx.cuerpo.ir_por_el_mapa(ctx, ...)`. Sin cuerpo, devuelve `None`.
+  - `PerseguirMetas` sigue siendo general y llama a `ir_por_el_mapa`.
+- Tests adaptados para suministrar cuerpo en pruebas unitarias de mapa en cuadrícula (`test_planificador.py`, `test_deuda14.py`).
+- Comprobaciones: ruff OK, mypy ida OK, pytest (342 passed), equivalencia OK.
+
 ## Decisiones y desviaciones
 
-- Ninguna en E1. Todo se trasladó tal como especificaba el encargo.
+- Ninguna en E1, E2, E3 ni E4. Se trasladó todo preservando la lógica exacta e interfaces.
 
 ## Pendientes
 
-- E2: Mover `Recinto` y `SalirDelRecinto` a `ida/mundos/crafter/`; definir en `ida/sistemas/proteger.py` la constante del tipo de pieza de afordancia (TIPO_RECINTO / "recinto"); Proteger y SalirDelRecinto comparten `_proponer_abrir`.
-- E3: Geometría (`geometria.py`) y buscador (`buscador.py`) a `ida/cuerpos/cuadricula/`.
-- E4: Búsqueda de material en el mapa de S3 a `ida/cuerpos/cuadricula/mapa.py`, accesible mediante `Contexto.cuerpo`.
-- E5: Pureza (ast), actualizar `doc-repositorio/componentes.toml`, regenerar mapa, D16 en `DISENO_COMPONENTES.md`.
+- E5: Pureza (ast), actualizar `doc-repositorio/componentes.toml`, regenerar mapa, D16 en `DISENO_COMPONENTES.md`, verificación de `herramientas/conocimiento_mundo.py`.

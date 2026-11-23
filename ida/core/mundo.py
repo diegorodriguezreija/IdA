@@ -44,6 +44,12 @@ class Cuerpo:
         ejecutadas (``Motor.ejecutadas``, copia eferente)."""
         return None
 
+    def ir_por_el_mapa(
+        self, ctx: "Contexto", clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
+    ) -> Optional[Any]:
+        """Búsqueda de material en el mapa de la memoria si el cuerpo ofrece esa navegación (D16)."""
+        return None
+
 
 class Motor:
     """Capa motora de un cuerpo (D9): una biblioteca, no un Componente. Traduce la intención decidida (la pieza
