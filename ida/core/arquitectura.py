@@ -129,6 +129,14 @@ class Componente:
     def aprender(self, ctx: Contexto) -> None:
         pass
 
+    # Plasticidad con el efecto (D6, D7): un Componente con ``aprende_con_efecto`` no aprende en el gancho general sino en
+    # ``Organismo._aprender``, tras una acción y con experiencia, en el punto donde el Core aprendía lo que ahora es
+    # suyo; ``antes_de_actuar`` lo llama el Core justo antes de actuar (lo que había antes de la acción).
+    aprende_con_efecto: bool = False
+
+    def antes_de_actuar(self, ctx: Contexto) -> None:
+        pass
+
     # Memoria (D7): la sección de la que es dueño, como (nombre, sección), o None. El Organismo la registra al montarlo.
     def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
         return None

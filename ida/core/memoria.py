@@ -400,10 +400,6 @@ class Memoria:
         self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
         self._tenidos: Set[str] = set()
         self._tenidos_iniciado = False
-        # Paso 0b (aliestesia): qué necesidad satisface comer cada clase, del manual y de la experiencia.
-        self.satisface: Dict[Tuple[str, str], Satisface] = {}
-        self.linea_base: Dict[str, float] = {}      # necesidad -> P(sube | sin comer), media móvil
-        self.n_base: Dict[str, int] = {}            # latidos sin comer contados por necesidad
         # Paso 3 (proteger X): mapa local de esta vida (no se hereda). Es la versión
         # mínima del mapa cognitivo compartido: clase de cada casilla vista, qué clases son transitables, qué hace
         # cada acción con la casilla sobre la que actúa y cómo se mueve el propio cuerpo.
@@ -464,6 +460,29 @@ class Memoria:
     @property
     def peligros(self) -> Any:   # A2: sección «peligros» (dueño ``Amenaza``); None si no está montada
         return self._seccion_o_none("peligros")
+
+    @property
+    def satisface(self) -> Dict[Tuple[str, str], "Satisface"]:   # A2: sección «satisface» (dueño ``Apetencia``)
+        s = self._seccion_o_none("satisface")
+        return s.satisface if s is not None else {}
+
+    @property
+    def linea_base(self) -> Dict[str, float]:   # A2: sección «satisface»
+        s = self._seccion_o_none("satisface")
+        return s.linea_base if s is not None else {}
+
+    @property
+    def n_base(self) -> Dict[str, int]:   # A2: sección «satisface»
+        s = self._seccion_o_none("satisface")
+        return s.n_base if s is not None else {}
+
+    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
+        """A2: lectura de la sección «satisface»; sin ella (Apetencia no montada), None: no se sabe nada de la clase."""
+        s = self._seccion_o_none("satisface")
+        return s.satisfaccion(clase, previos) if s is not None else None
+
+    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:   # A2
+        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
 
     def _diferir(self, tipo: str, datos: Dict[str, Any], tasa: float = 1.0) -> int:
         """Guarda el manual o el legado para las secciones que aún no se han registrado y lo entrega a las que ya lo
@@ -1083,11 +1102,7 @@ class Memoria:
             if tipo == "proposicion":
                 p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
                 p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
-                if h.get("necesidad") and Relacion[h["relacion"]] == Relacion.NUTRITIVO:   # paso 0b: qué necesidad satisface
-                    s = self.satisface.setdefault((str(h["sujeto"]), str(h["necesidad"])), Satisface(str(h["sujeto"]), str(h["necesidad"])))
-                    afirma = str(h.get("veredicto", "afirma")) == "afirma"
-                    s.c_aut, s.w_aut = (self.CONFIANZA_MANUAL if afirma else 1.0 - self.CONFIANZA_MANUAL), self.PESO_MANUAL
-                n += 1
+                n += 1   # qué necesidad satisface (paso 0b): lo toma la sección «satisface» (Apetencia)
             elif tipo == "meta":
                 clave_m = (Verbo[h["verbo"]], str(h.get("objetivo", "")))
                 self.metas.setdefault(clave_m, Meta(clave_m[0], clave_m[1], str(h.get("id", ""))))
@@ -1112,54 +1127,6 @@ class Memoria:
                 n += 1
         self._diferir("manual", manual)   # D7: lo de las secciones, al registrarse cada una (o ya, si lo está)
         return n
-
-    # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
-    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
-        """Cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa clase (ni del manual
-        ni de la experiencia). ``previos``: lo que sugiere la percepción para cada necesidad (el previo de una clase
-        de la que el manual no habla). Las necesidades que no aparecen valen 0."""
-        if not self.activa:
-            return None
-        registros = {nec: s for (c, nec), s in self.satisface.items() if c == clase}
-        if not registros:
-            return None
-        manual = any(s.c_aut is not None for s in registros.values())
-        resultado: Dict[str, float] = {}
-        for nec in sorted(set(registros) | set(previos or {})):
-            s = registros.get(nec) or Satisface(clase, nec)
-            if s.c_aut is not None:
-                previo, peso = s.c_aut, s.w_aut
-            elif manual:
-                previo, peso = 0.0, Satisface.PREVIO
-            else:
-                previo, peso = (previos or {}).get(nec, 0.0), Satisface.PREVIO
-            resultado[nec] = s.estimacion(previo, peso)
-        return resultado
-
-    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:
-        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
-
-    def aprender_satisface(self, clase: str, subidas: Dict[str, bool]) -> None:
-        """Tras comer algo de ``clase`` con éxito: para cada necesidad, si subió alguna de sus constantes vitales."""
-        if not self.activa or not clase:
-            return
-        for necesidad, subio in subidas.items():
-            s = self.satisface.setdefault((clase, necesidad), Satisface(clase, necesidad))
-            s.n += 1
-            s.sube += int(bool(subio))
-            s.esperado += self.linea_base.get(necesidad, 0.0)
-
-    VENTANA_BASE = 10   # latidos de la media móvil de la línea base (media exacta mientras haya menos): lo reciente
-
-    def actualizar_linea_base(self, subidas: Dict[str, bool]) -> None:
-        """En un latido sin comer: para cada necesidad, si subió alguna de sus constantes (p. ej. sola, al amanecer)."""
-        if not self.activa:
-            return
-        for necesidad, subio in subidas.items():
-            k = self.n_base.get(necesidad, 0) + 1
-            self.n_base[necesidad] = k
-            previa = self.linea_base.get(necesidad, 0.0)
-            self.linea_base[necesidad] = previa + (float(bool(subio)) - previa) / min(k, self.VENTANA_BASE)
 
     def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
         """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
@@ -1396,11 +1363,6 @@ class Memoria:
         requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
         if requisitos:
             legado["requisitos"] = requisitos
-        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube, "esperado": round(s.esperado, 4)}
-                     for s in self.satisface.values() if s.n >= 2]       # paso 0b: solo lo vivido (el manual se vuelve a leer)
-        if satisface:
-            legado["satisface"] = satisface
-            legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
         for _, seccion in sorted(self._secciones.values(), key=lambda d: d[1].orden_legado):   # D7: cada sección, su parte
             legado.update(seccion.legado(ahora))
         return legado
@@ -1454,16 +1416,6 @@ class Memoria:
             )
             self.requisitos[(req.verbo, req.objetivo)] = req
             n += 1
-        for d in legado.get("satisface", []):   # paso 0b: como los registros, con la mitad de la evidencia
-            s = self.satisface.setdefault((str(d["clase"]), str(d["necesidad"])), Satisface(str(d["clase"]), str(d["necesidad"])))
-            veces = max(1, int(d["n"]) // 2)
-            s.n += veces
-            s.sube += round(veces * int(d["sube"]) / max(1, int(d["n"])))
-            s.esperado += veces * float(d.get("esperado", 0.0)) / max(1, int(d["n"]))
-            n += 1
-        for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
-            if necesidad not in self.linea_base:
-                self.linea_base[necesidad] = float(base)
         n += self._diferir("legado", legado, tasa)   # D7: las secciones toman lo suyo al registrarse (o ya, si lo están)
         self.heredados += n
         return n

@@ -9,14 +9,14 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Mecanismo de secciones, con tests | Hecha | `519916d` |
-| E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | (ver git log) |
-| E3 | «satisface» a Apetencia | Pendiente | |
+| E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | `a2db6f7` |
+| E3 | «satisface» a Apetencia | Hecha | (ver git log) |
 | E4 | «cuadricula» al cuerpo | Pendiente | |
 | E5 | `Requisito` y su sección | Pendiente | |
 | E6 | Escrituras delegadas y test estático | Pendiente | |
 | E7 | Especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E2)
+### Últimas comprobaciones (E3)
 
 ```
 ruff check .   All checks passed!
@@ -59,3 +59,21 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
 - `tests/test_pureza.py`: `test_importaciones_core`: `ida/core` no importa `ida.sistemas`, `ida.cuerpos` ni `ida.mundos`.
 - `tests/test_defensa.py` (sin tocar aserciones): la experiencia previa se rellena tras montar el Organismo (la sección
   no existe antes); la escala, con `Peligros(escala=...)`; el legado, con `legado_peligros`/`heredar_peligros`.
+
+## E3 · «satisface» → Apetencia
+
+- Sección `Aliestesia` (`ida/sistemas/s1.py`, `orden_legado = 2`): `satisface`, `linea_base`, `n_base` y los métodos que
+  estaban en `Memoria` (`satisfaccion`, `estimacion_satisface`, `aprender_satisface`, `actualizar_linea_base`,
+  `VENTANA_BASE`), más su parte de `aplicar_manual` (proposiciones `NUTRITIVO` con `necesidad`), `legado` y `heredar`.
+  Comprobado que en `aplicar_manual` el hecho de proposición escribe en `saber` (Core) y en `satisface` sin que una parte
+  lea la otra: el bucle no mezcla estado entre secciones.
+- `Apetencia.seccion_memoria` → `("satisface", Aliestesia())`. Su `aprender(ctx)` es el antiguo
+  `Organismo._aprender_satisface` y escribe con `seccion_propia("satisface", "Apetencia")`.
+- Core (`arquitectura.py`, `latido.py`): `Componente.aprende_con_efecto` y `Componente.antes_de_actuar(ctx)`. El Organismo
+  guarda `componentes_efecto` (orden de `montados`, sin los del cuerpo); `_plasticidad` los salta y `_aprender` los llama
+  en el punto exacto donde estaba `_aprender_satisface` (tras una acción, con experiencia); `antes_de_actuar`, junto a
+  `_antes_accion`. Sustituye la condición `"Apetencia" in self.registrados`.
+- `Memoria`: propiedades `# A2:` `satisface`, `linea_base`, `n_base`, `satisfaccion`, `estimacion_satisface` (vacías o None
+  sin Apetencia, igual que una sección vacía).
+- `tests/test_paso0.py` (aserciones intactas): la memoria de las pruebas unitarias registra la sección; las escrituras van
+  por la sección.

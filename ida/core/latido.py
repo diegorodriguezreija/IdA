@@ -184,6 +184,9 @@ class Organismo:
             for d in c.catalogo.todas()
         }
 
+        # Plasticidad con el efecto (D6, D7): los que aprenden en ``_aprender``, en el orden de ``montados``
+        self.componentes_efecto: List[Componente] = [c for c in self.montados() if c.aprende_con_efecto and not c.de_cuerpo]
+
         # Memoria (D7): las secciones de sus dueños (el cuerpo y después los Componentes montados, en orden), que reciben
         # al registrarse el manual y el legado que la Memoria guardó para ellas
         fuentes: List[Tuple[str, Any]] = [(reg.cuerpo.nombre, reg.cuerpo)] if reg.cuerpo is not None else []
@@ -331,6 +334,8 @@ class Organismo:
 
         # 6. Actuar
         self._antes_accion = self._situacion_inventario(ctx)   # paso 2: lo que había antes de actuar (requisitos)
+        for comp in self.componentes_efecto:
+            comp.antes_de_actuar(ctx)
         ctx.extra.pop("efecto", None)
         with onda.fase("actuar"):
             self.actuar.ejecutar(ctx)
@@ -384,7 +389,7 @@ class Organismo:
         """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``. Los del cuerpo
         no: su ``aprender`` lo llama ``_aprender`` en su punto del latido."""
         for c in self.montados():
-            if not c.de_cuerpo:
+            if not c.de_cuerpo and not c.aprende_con_efecto:
                 c.aprender(ctx)
 
     def _aprender(self, ctx: Contexto) -> None:
@@ -414,8 +419,8 @@ class Organismo:
             self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
                                             bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
                                             distancias=self._antes_accion[3])
-        if "Apetencia" in self.registrados:      # aliestesia: la tiene el mundo que registra Apetencia (D15)
-            self._aprender_satisface(ctx, c)
+        for comp in self.componentes_efecto:   # D6, D7: los dueños de lo que se aprende del efecto (Apetencia: aliestesia)
+            comp.aprender(ctx)
         if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
                                         self._antes_accion[0] if self._antes_accion is not None else None,
@@ -428,17 +433,6 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
-
-    def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
-        """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior
-        (``delta`` de la interocepción; cada ``Necesidad`` declara sus constantes). Tras comer algo con éxito, cuenta
-        para esa clase; en cualquier otro latido, para la línea base de cada necesidad (lo que sube sin comer)."""
-        delta = {k: float(p.carga.get("delta", 0.0)) for k, p in ctx.onda.ev("Interocepcion").items()}
-        subidas = {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes) for n in self.perfil.necesidades}
-        if c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
-            self.memoria.aprender_satisface(str(c["clase"]), subidas)
-        else:
-            self.memoria.actualizar_linea_base(subidas)
 
     @staticmethod
     def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:
