@@ -12,7 +12,7 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 | E3 | `ida/s1` | Hecha | `4daa83a` |
 | E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Hecha | `ba8a2f7` |
 | E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Hecha | `99326e4` |
-| E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Hecha | (este commit) |
+| E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Hecha | `8e80572` |
 
 ### Últimas comprobaciones (E6)
 
