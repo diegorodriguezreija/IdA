@@ -4,8 +4,9 @@ import pytest
 
 pytest.importorskip("crafter")
 
-from ida.core.memoria import Memoria  # noqa: E402
 from ida.core.vocabulario import Verbo  # noqa: E402
+
+from _secciones import memoria_con_secciones
 
 
 def test_crafter_lee_el_manual():
@@ -18,7 +19,7 @@ def test_crafter_lee_el_manual():
     assert req[("USAR", "place_table")]["requiere_inventario"] == {"wood": None}   # claves del inventario percibido
 
     ampliado = MundoCrafter(vista="oficial", manual="ampliado")
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(ampliado.manual())
     assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario == {"wood": 2}
     assert m.requisitos[(Verbo.COGER, "hierro")].requiere_inventario == {"stone_pickaxe": 1}
@@ -26,7 +27,7 @@ def test_crafter_lee_el_manual():
 
     estricto.reiniciar(1)
     assert not any("peligro" in e.rasgos for e in estricto.observar().entidades)   # paso 6: lo calcula la base
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(estricto.manual())
     assert all(m.peligrosa(c) for c in estricto.peligrosos)                       # el manual da el previo
     with pytest.raises(ValueError):

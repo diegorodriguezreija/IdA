@@ -11,17 +11,17 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 | E1 | Mecanismo de secciones, con tests | Hecha | `519916d` |
 | E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | `a2db6f7` |
 | E3 | «satisface» a Apetencia | Hecha | `7079997` |
-| E4 | «cuadricula» al cuerpo | Hecha | (ver git log) |
-| E5 | `Requisito` y su sección | Pendiente | |
+| E4 | «cuadricula» al cuerpo | Hecha | `9f2afa6` |
+| E5 | `Requisito` y su sección | Hecha | (ver git log) |
 | E6 | Escrituras delegadas y test estático | Pendiente | |
 | E7 | Especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E4)
+### Últimas comprobaciones (E5)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 62 source files
-pytest -q      385 passed, 1 warning
+mypy ida       Success: no issues found in 63 source files
+pytest -q      388 passed, 1 warning
 equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, ajedrez OK; EQUIVALENCIA: OK
 ```
 
@@ -97,3 +97,26 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
 - Pruebas (aserciones intactas): `tests/_secciones.py` (`memoria_con_secciones`) da una Memoria con las secciones que
   registrarían sus dueños; la usan `test_planificador.py` y `test_proteger.py`. `test_cuadricula.py` registra la sección
   y aplica la referencia sobre ella.
+
+## E5 · `Requisito` y la sección «requisitos»
+
+- Fichero nuevo `ida/sistemas/requisito.py`:
+  - Sección `Requisitos` (`orden_legado = 1`): `requisitos`, `intentos`, `claves_inventario`, `metas`,
+    `fallos_seguidos`, `_tenidos`, `_tenidos_iniciado`; constantes `PASO_CONFIANZA_REQUISITO`, `MAX_INTENTOS`,
+    `FALLOS_BLOQUEO`; métodos movidos literalmente de `Memoria` (`objetos` —antes `_objetos`—, `bloqueada`,
+    `declarada`, `puede_salir`, `tasa_estimada`, `aprender_requisito`, `registrar_meta`), y su parte de
+    `aplicar_manual` (inventario, metas, requisitos), `legado` (`requisitos`) y `heredar` (con `tasa`, como antes).
+  - Componente general `Requisito` (S3 · Interpretar, al final del módulo): `activo()` = False (sin barridos ni
+    operaciones), `aprende_con_efecto`; `antes_de_actuar` guarda lo que antes era `Organismo._antes_accion` y `aprender`
+    hace lo que hacía `Organismo._aprender` con requisitos y metas, en el mismo punto (bucle `componentes_efecto`, tras
+    Apetencia: las dos secciones son independientes). `situacion_inventario` y `distancias` salen de `latido.py`.
+- `Memoria.aplicar_manual` solo carga proposiciones y sigue contando metas y requisitos en el número devuelto.
+- `Requisito` (el dato, en `ida/core/memoria.py`) gana `ajustar_confianza(paso)`: `test_propiedad` prohíbe
+  `.confianza =` en `ida/sistemas` (regla pensada para piezas); en vez de añadir una excepción, el ajuste va en el
+  dato. `acotar(x + (-p))` es igual a `acotar(x - p)` en coma flotante.
+- `Memoria`: propiedades y métodos `# A2:` `requisitos`, `intentos`, `claves_inventario`, `metas`, `fallos_seguidos`,
+  `_objetos`, `bloqueada`, `declarada`, `puede_salir`, `tasa_estimada` (valores de una sección vacía sin ella).
+- `componentes.toml`: `Requisito` → `hoy = "S3.Interpretar"`, sin `paso`; mapa regenerado (lo exige
+  `test_mapa_componentes` desde esta etapa; las notas van en E7).
+- Pruebas (aserciones intactas): `test_manual`, `test_planificador`, `test_deuda14` y `test_crafter_manual` usan
+  `memoria_con_secciones()` y escriben por `requisitos(mem)` (`tests/_secciones.py`).

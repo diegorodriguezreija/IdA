@@ -7,11 +7,12 @@ Dos metas, «hacer_a» y «hacer_b», piden una unidad de «m» cada una y estar
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
-from ida.core.memoria import Memoria
 from ida.core.mundo import Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 from ida.sistemas.s3 import PerseguirMetas
+
+from _secciones import memoria_con_secciones
 
 MANUAL = {
     "inventario": ["m"],
@@ -42,7 +43,7 @@ def _entidad(id_: str, clase: str, proximidad: float, pos: tuple, lugar: float =
 
 
 def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1, manual: Optional[Dict[str, Any]] = None) -> Any:
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(manual or MANUAL)
     entidades: List[Pieza] = [
         _entidad("c_1", "c", 1.0, (0, -1)),

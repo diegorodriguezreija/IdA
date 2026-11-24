@@ -30,6 +30,7 @@ from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, Regis
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import Accion, Estrategia, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas.requisito import Requisito
 
 
 class Comunicacion(Componente):
@@ -1000,7 +1001,7 @@ def crear_s3() -> Sistema:
     catalogo = Catalogo(estrategias_s3())
     return Sistema("S3", "Verdad", [
         Modulo("Sentir", [Comunicacion()]),
-        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica(), Creencia()]),
+        Modulo("Interpretar", [Agente(), Predicado(), Proposicion(), Sentencia(), Logica(), Creencia(), Requisito()]),
         Modulo("Reaccionar", [Intencion(), Impulso(), Feedback(), Estrategia(catalogo)]),
         Modulo("Actuar", [Accion(catalogo)]),
     ])

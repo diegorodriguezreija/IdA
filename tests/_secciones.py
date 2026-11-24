@@ -6,13 +6,22 @@ manual y el legado aplicados antes o después llegan igual a las secciones (dife
 from ida.core.memoria import Memoria
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.core.mundo import Perfil
+from ida.sistemas.requisito import Requisitos
 
 
 def memoria_con_secciones(perfil_memoria: str = "completa", cuerpo: bool = True) -> Memoria:
     mem = Memoria(perfil_memoria)
+    mem.registrar_seccion("requisitos", "Requisito", Requisitos())   # general (S3 · Interpretar): está en todos los mundos
     if cuerpo:
         c = Cuadricula()
         declarada = c.seccion_memoria(Perfil())
         assert declarada is not None
         mem.registrar_seccion(declarada[0], c.nombre, declarada[1])
     return mem
+
+
+def requisitos(mem: Memoria) -> Requisitos:
+    """La sección «requisitos» para escribir en ella como su dueño (``Requisito``)."""
+    seccion = mem.seccion_propia("requisitos", "Requisito")
+    assert isinstance(seccion, Requisitos)
+    return seccion
