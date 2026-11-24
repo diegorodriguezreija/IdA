@@ -169,7 +169,7 @@ Excepción de orden: `Amenaza` aprende (daño, emisores, eficacia) en su propio 
 | Escritura | Quién la hace hoy | Dueño |
 |---|---|---|
 | `ver_clase` (clases vistas, para la novedad) | `Exterocepcion`, `sentidos.py:61` | Core (plasticidad); el sensor deja de escribir |
-| `recordar_lugar` (hogar) | `Proteger`, `proteger.py:556` | Core (lugares), autor `Proteger` |
+| `recordar_lugar` (hogar) | `Recinto` (Crafter, desde A6b) | Core (lugares), autor `Recinto` |
 | `olvidar_donde` (dónde estaba una clase) | `RecordarComida`, `s2.py:344` y `390` | Core (lugares), autor `RecordarComida` |
 | `lectura_activa`, `ultimo_fin_lectura` | `Estudio`, `s3.py:316-459` | S3, autor `Estudio` |
 
