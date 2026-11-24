@@ -9,7 +9,7 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 |---|---|---|---|
 | E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | `570e444` |
 | E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | `2bdb9e7` |
-| E3 | `ida/s1` | Hecha | `[este commit]` |
+| E3 | `ida/s1` | Hecha | `4daa83a` |
 | E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Pendiente | - |
 | E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Pendiente | - |
 | E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
