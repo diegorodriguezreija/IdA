@@ -150,7 +150,10 @@ class MundoCrafter(Mundo):
                                   golpes_previo=10.0,                 # golpes para derribar algo sin datos
                                   margen_lugar=3,                     # casillas tras el alcance de lo peligroso
                                   reserva=100.0 * 3.0 / 9.0,          # una lucha deja intactos 3 de 9
-                                  coste_sin_sitio=float(3 * ALCANCE_SITIO)))   # sin sitio: ir y volver al alcance de búsqueda
+                                  coste_sin_sitio=float(3 * ALCANCE_SITIO),   # sin sitio: ir y volver al alcance de búsqueda
+                                  coste_recordado=15.0,               # ir a algo recordado no visible
+                                  coste_por_proximidad=10.0,          # cruzar el alcance visible
+                                  coste_sin_productor=30.0))          # reponer sin acción conocida
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
                  manual: str = "estricto", **_):

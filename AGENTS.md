@@ -13,19 +13,22 @@ Implementa solo el bloque que te encarguen. Lo que el borrador describe para otr
 
 Los bloques A a F están terminados. Donde [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) decide algo distinto, manda ese documento.
 
-## Fase actual: reorganización por Componentes
+## Fase actual: cambios de conducta por Componentes (fase B)
 
-Desde el 22/11/2026 el trabajo sigue [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) (decisiones D1 a D17) y su plan (fases A y B). La etapa en la que la base estaba congelada y solo se tocaba `ida/mundos/` terminó con la fase de generalización de Crafter.
+Completada la reorganización estructural de la fase A (etiqueta `reorg-a8`), el trabajo entra en la **fase B** de [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) (pasos B1 a B5): cambios de conducta, uno por paso, medidos con el criterio de no inferioridad de D17. La referencia fija sigue siendo `main` (`eaeadaa`, `crafter-general-v4`).
 
 - **El mapa de Componentes es la especificación:** [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) dice dónde debe vivir cada Componente (`destino`) y dónde está hoy (`hoy`); `tests/test_mapa_componentes.py` comprueba que el código coincide con `hoy` en cada mundo.
   - Si mueves, añades o quitas un Componente o una estrategia, actualiza `hoy` (y `hoy_en`, `paso`) en el mismo PR y regenera el documento: `.venv\Scripts\python.exe herramientas/mapa_componentes.py --escribir`.
   - **No cambies `destino`, `clase`, `registran` ni `decision`** sin una decisión nueva o modificada en `docs/DISENO_COMPONENTES.md`, aprobada por el autor. Si el código no puede llegar al destino, para y explica por qué.
   - Nunca cambies la especificación para que pase un test.
-- **Ramas de la reorganización:** todo paso sale de `reorg/componentes` y su PR va contra `reorg/componentes`, **nunca contra `main`**. `main` es la referencia fija de la Score (`crafter-general-v4`) hasta que el autor decida fusionar la reorganización completa. No hagas push ni a `main` ni a `reorg/componentes`: sube solo la rama de tu paso.
-- **Implementa solo el paso que te encarguen** (A1, A2...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
-- **Comprobar la equivalencia:** `.venv\Scripts\python.exe herramientas/equivalencia.py` debe terminar en `EQUIVALENCIA: OK`. En la fase A, **no regeneres** `datos/equivalencia/` ni `datos/invariancia/referencia.json`: son la referencia de `eaeadaa`.
-- **Fase A: mismo resultado.** Con `--plazo-logico 40`, el JSON de `evaluar_crafter.py` (3000 pasos, semillas 31 y 32) debe ser idéntico al de `main`, `invariancia.py` debe dar OK y los tests deben pasar. Si algo cambia, para y explica por qué antes de seguir.
-- **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir.
+- **Ramas de trabajo:** todo paso sale de `reorg/componentes` y su PR va contra `reorg/componentes`, **nunca contra `main`**. `main` es la referencia fija de la Score (`crafter-general-v4`) hasta que el autor decida fusionar la reorganización completa. No hagas push ni a `main` ni a `reorg/componentes`: sube solo la rama de tu paso.
+- **Implementa solo el paso que te encarguen** (B1, B2...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
+- **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir. Comparación pareada conjunta de las semillas 31 y 32 a 100 000 pasos (`resumen_evaluacion.py --pareada-conjunta`):
+  - La diferencia de Score tiene una estimación ≥ −0,3 puntos **y** el límite inferior de su IC 95 % ≥ −1,0 puntos.
+  - En mínimo y archivos, `benchmark.py` pareado (N = 10) sin empeoramiento significativo.
+  - Se informa también de cada logro con un cambio significativo, aunque no decida.
+  - Si no se cumple: un diagnóstico y una ronda. Si sigue sin cumplirse, el cambio queda tras un parámetro del cuerpo o del `Perfil` con el valor de la fase A, y se documenta como resultado negativo.
+- **Comprobar la equivalencia antes de tocar conducta:** en pasos que no cambian conducta, `.venv\Scripts\python.exe herramientas/equivalencia.py` debe terminar en `EQUIVALENCIA: OK`.
 - **Componentes de mundo:**
   - se declaran en el registro del mundo (`añade` o `sustituye`), nunca por el nombre de un fichero;
   - pueden emitir y modificar piezas de un tipo de la base si son de ese tipo (propiedad por tipo);

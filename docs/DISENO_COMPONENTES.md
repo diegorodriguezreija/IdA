@@ -297,16 +297,16 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 
 | Paso | Qué | Notas |
 |---|---|---|
-| R0 | Inventario (`docs/R0_INVENTARIO.md`) y correcciones a este documento | Hecho el 23/11/2026: corrigió D4, D7, D15 y el orden A5 → A4 |
-| A1 | Registro declarado (D3): `añade` y `sustituye`, nombres únicos, orden, cuerpo, informe de conocimiento | Sobre el código actual; con los registros de hoy, todo idéntico |
-| A3 | Pasos del latido: preatención, plasticidad y regulación (D1, D5, D6, D12); `Amenaza` sustituye a `ida/core/peligro.py` | **Hecho** (23/11/2026, `docs/A3_PROGRESO.md`). Única dependencia de `ida/core` hacia `ida/sistemas`: `Memoria` importa `Peligros` en su constructor, hasta A7 |
-| A5a | Cuerpo cuadrícula (D10): el registro admite un cuerpo (`Registro(cuerpo=Cuadricula())`); `MapaLocal` y `ModeloDirecto` salen de `_aprender_mapa` a `ida/cuerpos/cuadricula/` y leen piezas, no la Observación | Su plasticidad se llama en el mismo punto del latido que hoy `_aprender_mapa`. La geometría y el buscador de posturas se mueven en A6, con `Recinto`: moverlos antes haría que `ida/sistemas` importara un cuerpo (D2) |
-| A5b | Actuar con primitivas (D9): el `Motor` del cuerpo traduce la intención a primitivas, con `max_sinergia = 2`; el Core ejecuta primitivas; el éxito de cada intención lo juzga Crafter, no su adaptador | Va antes que A4 (D4): da la cuenta de primitivas |
-| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | `rasgos_declarados` vacío en Crafter |
-| A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | **A6a hecho** (23/11/2026, `docs/A6A_PROGRESO.md`): opcionales por registro y `Perfil.escala`. Queda A6b: mover ficheros. Decide la DUDA de `PerseguirMetas` (lee `mem.casillas`, `s3.py:552`) |
-| A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia. `Peligros` recibe la escala al construirse (hoy la copia `Peligros.escalar()` en cada latido) y `Memoria` deja de importar `ida/sistemas` |
+| R0 | Inventario (`docs/R0_INVENTARIO.md`) y correcciones a este documento | **Hecho** (23/11/2026, `docs/R0_INVENTARIO.md`): corrigió D4, D7, D15 y el orden A5 → A4 |
+| A1 | Registro declarado (D3): `añade` y `sustituye`, nombres únicos, orden, cuerpo, informe de conocimiento | **Hecho** (23/11/2026, `docs/A1_PROGRESO.md`): registro declarado sobre el código existente; todo idéntico |
+| A3 | Pasos del latido: preatención, plasticidad y regulación (D1, D5, D6, D12); `Amenaza` sustituye a `ida/core/peligro.py` | **Hecho** (23/11/2026, `docs/A3_PROGRESO.md`). Pasos del latido introducidos; `Amenaza` como componente de preatención |
+| A5a | Cuerpo cuadrícula (D10): el registro admite un cuerpo (`Registro(cuerpo=Cuadricula())`); `MapaLocal` y `ModeloDirecto` salen de `_aprender_mapa` a `ida/cuerpos/cuadricula/` y leen piezas, no la Observación | **Hecho** (23/11/2026, `docs/A5A_PROGRESO.md`): cuerpo cuadrícula y componentes con plasticidad |
+| A5b | Actuar con primitivas (D9): el `Motor` del cuerpo traduce la intención a primitivas, con `max_sinergia = 2`; el Core ejecuta primitivas; el éxito de cada intención lo juzga Crafter, no su adaptador | **Hecho** (23/11/2026, `docs/A5B_PROGRESO.md`): motor y sinergias; desacoplamiento de intención y primitivas |
+| A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | **Hecho** (23/11/2026, `docs/A4_PROGRESO.md`): `ValoracionCrafter` en preatención; `rasgos_declarados` vacío en Crafter |
+| A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | **Hecho** (23/11/2026, `docs/A6A_PROGRESO.md` y `docs/A6B_PROGRESO.md`): opcionales por registro, constantes a `Perfil.escala`, ficheros de Crafter y geometría a sus destinos |
+| A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | **Hecho** (24/11/2026, `docs/A7A_PROGRESO.md` y `docs/A7B_PROGRESO.md`): secciones con dueño (`peligros`, `satisface`, `requisitos`, `cuadricula`); serialización y legado diferidos |
 | A2 | Estructura de paquetes (D2) | **Hecho** (24/11/2026, `docs/A2_PROGRESO.md`): estructura final de paquetes (`ida/nucleo`, `ida/core`, `ida/s1`-`s3`, `ida/sistemas_comun.py`, `ida/cuerpos/cuadricula`, mundos como paquetes); P1 (desacoplamiento de mapa y S3), P2 (eliminadas propiedades `# A2:`), P3 (tipos en núcleo), P4 (`test_pureza` con las nuevas reglas de importación). |
-| A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
+| A8 | Tests de criterios (D8, D5), constantes, informe de conocimiento, documentación y cierre | **Hecho** (24/11/2026, `docs/A8_PROGRESO.md`): tests AST en `test_criterios.py`, constantes clasificadas y de escala a `Perfil.escala`, informe con `--latidos`, documentación actualizada y medición de 100 000 pasos verificada en rama `reorg/medicion-a7b` |
 
 ### Fase B: cambios de conducta (uno por PR, criterio D17)
 
@@ -364,3 +364,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D15, sección 5 | Dos constantes, de diseño; `Peligros.escalar()` se resuelve en A7 | Resultado de A6a (`docs/A6A_PROGRESO.md`) |
 | 24/11/2026 | D7 | Transformaciones al cuerpo; secciones con dueño y manual y legado diferidos | A7b |
 | 24/11/2026 | D2 | El latido es del Core, no del núcleo | A2 E2: importarlo desde `nucleo` creaba un ciclo con los Componentes del Core |
+| 24/11/2026 | Fase A | Cierre de la fase A (paso A8) | Reorganización completa con equivalencia verificada; medición a 100 000 pasos idéntica a main en semillas 31 y 32 (rama reorg/medicion-a7b) |

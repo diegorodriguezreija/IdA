@@ -1,44 +1,57 @@
 # 02. Arquitectura y Mecanismo Vital 🧠⚙️
 
-Estado tras el rediseño de la base (bloques A a D de [`docs/PLAN_IMPLEMENTACION.md`](../docs/PLAN_IMPLEMENTACION.md); diseño en [`docs/REDISENO_BASE.md`](../docs/REDISENO_BASE.md)).
-
-> **En migración (22/11/2026).** Las secciones 1 a 6 describen el código actual (`crafter-general-v4`). El diseño objetivo, al que se migra sin cambiar la conducta, está resumido en la sección 7 y decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md).
+Estado tras la reorganización por Componentes (fase A de [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md); mapa en [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](06_MAPA_DE_COMPONENTES.md)).
 
 ## 1. El Latido Vital: La Unidad Fundamental del Tiempo
 
-En IdA, la vida discurre a través de una sucesión de **latidos** rítmicos (`ida/core/latido.py`). Cada latido es un ciclo completo de sentir, interpretar, reaccionar, actuar y cerrar.
+En IdA, la vida discurre a través de una sucesión de **latidos** rítmicos (`ida/core/latido.py`). Cada latido es un ciclo en ocho pasos (D1):
+
+1. **Onda (y memoria a corto plazo):** copia de la anterior; la anterior pasa a la memoria a corto plazo (cola de ondas, de la que salen los episodios).
+2. **Sentir (Core):** solo datos en bruto, sin valorar. La Observación del mundo solo la leen los sensores (`Interocepcion`, `Propiocepcion`, `Exterocepcion`, `Ambiente`).
+3. **Preatención (S1 · Sentir):** saliencia y valoración rápida de lo sentido (`Saliencia`, `Amenaza` y valoraciones de mundo como `ValoracionCrafter`). No paga atención y corre también dormido (vigilancia). Solo modifica las piezas de los sensores; no crea piezas ni propone acciones (D5).
+4. **Plasticidad:** cada Componente que aprende lo hace del efecto de la acción anterior, sin pagar atención (`MapaLocal`, `ModeloDirecto`, `Apetencia`, `Requisito`, etc.) (D6).
+5. **Regulación (Core):** reglas instantáneas que fijan frecuencia (plazo), amplitud y potencia (`Regulacion`, D12).
+6. **S1 → S2 → S3:** Sentir, Interpretar, Reaccionar y Actuar, con la guillotina cooperativa por plazo. Dormido, parálisis.
+7. **Actuar (Core):** el Tribunal selecciona la acción ganadora (o acepta una Actuación) y el Core ejecuta sus primitivas a través del Motor del cuerpo (`Tribunal`, `Actuador`, `Motor`) (D9).
+8. **Cierre:** marcar qué guardar (arousal y feedback), formación de episodios, actualización del soma e indicadores.
 
 ```mermaid
 sequenceDiagram
     autonumber
     participant Soma as 🫀 Soma
-    participant Marc as 💓 Marcapasos
-    participant Onda as 🌊 Onda
+    participant Onda as 🌊 Onda / Mem CP
     participant Sentir as 👁️ Sentidos (Core)
+    participant Preat as ⚡ Preatención (S1)
+    participant Plast as 🌱 Plasticidad
+    participant Reg as 💓 Regulación (Core)
     participant S1 as 🦎 S1 (Supervivencia)
     participant S2 as 🐺 S2 (Valor)
     participant S3 as 🐒 S3 (Verdad)
-    participant Trib as ⚖️ Tribunal
+    participant Trib as ⚖️ Tribunal / Actuador
+    participant Motor as ⚙️ Motor / Cuerpo
     participant Mundo as 🌍 Mundo
-    participant Mem as 📚 Memoria
 
     Soma->>Soma: Metabolismo basal, homeostasis
-    Soma->>Marc: Estado del cuerpo (energía, sueño, peligro)
-    Marc->>Onda: Frecuencia (plazo), amplitud y potencia; ei = ef anterior; estrategias activas
-    Onda->>Sentir: Interocepción, propiocepción, exterocepción y ambiente -> ev
-    Sentir->>Mem: El Core aprende del efecto de la acción anterior
-    Sentir->>S1: Interpretar, impulsos, estrategias, acciones
-    S1->>S2: Lo mismo con lo que sobra de amplitud y potencia
-    S2->>S3: Lo mismo con lo que sobra
+    Onda->>Onda: 1. Onda inicial: ei = ef anterior; archivo en memoria CP
+    Mundo->>Sentir: Observación en bruto
+    Sentir->>Onda: 2. Interocepción, propiocepción, exterocepción y ambiente -> ev
+    Onda->>Preat: 3. Preatención: Saliencia, Amenaza y valoración de mundo (no paga atención)
+    Preat->>Onda: Modifica arousal y rasgos en piezas de sensores
+    Onda->>Plast: 4. Plasticidad: componentes aprenden del efecto anterior en memoria
+    Soma->>Reg: Estado del cuerpo (energía, sueño, peligro)
+    Reg->>Onda: 5. Regulación: fija frecuencia (plazo), amplitud y potencia
+    Onda->>S1: 6. S1: Sentir, Interpretar, Reaccionar, Actuar
+    S1->>S2: S2: Lo mismo con lo que sobra de amplitud y potencia
+    S2->>S3: S3: Lo mismo con lo que sobra
     alt Plazo agotado
-        Note over S2,S3: ⚠️ Guillotina: se corta y el Tribunal decide con lo que haya
+        Note over S1,S3: ⚠️ Guillotina: se corta y el Tribunal decide con lo que haya
     end
-    Onda->>Trib: Acciones candidatas en acc (con su impulso y estrategia de origen)
-    Trib->>Mundo: Acción ganadora (MOVER, COMER, etc.)
-    Mundo-->>Trib: Efecto (delta somático, éxito, causa)
-    Trib->>Onda: Registra el resultado en ef["Accion"]
-    Trib->>Soma: Aplica los cambios fisiológicos
-    Onda->>Mem: Memoria rápida, episodios y expectativas
+    Onda->>Trib: 7. Acciones candidatas en acc
+    Trib->>Motor: Intención ganadora seleccionada
+    Motor->>Mundo: Primitivas ejecutadas en el entorno
+    Mundo-->>Motor: Resultado y delta somático
+    Motor->>Onda: Registro de ejecución y éxito
+    Onda->>Soma: 8. Cierre: cambios fisiológicos, episodios y métricas
 ```
 
 ---
@@ -47,16 +60,19 @@ sequenceDiagram
 
 Cada sistema tiene las mismas etapas y una meta propia. **Un impulso** es el porqué (nace del estado sentido y no se elige); **una estrategia** es el cómo (dura varios latidos, tiene fases, progreso y agotamiento); **una acción** es el candidato concreto (verbo y objetivo); **la decisión** la toma el Tribunal.
 
-| Etapa | S1 · Supervivencia | S2 · Valor | S3 · Verdad |
-|---|---|---|---|
-| Sentir | `Imagen` (el instante) | `Patron`, `Emocion` (valencia del cuerpo) | `Comunicacion` |
-| Interpretar | `Objeto`, `Supervivencia` (recurso, peligro o neutro, con habituación y sensibilización) | `Sujeto`, `Valor` (motivacional, potencia, sentimental y social) | `Agente`, `Predicado`, `Proposicion`, `Sentencia`, `Logica`, `Creencia` (lo que sostiene, con trust y fuentes) |
-| Reaccionar | `Reflejo` (solo ante saltos bruscos del peligro), `Impulso` (una necesidad por constante vital del mundo y Seguridad), `Feedback` (bajan los déficits), `Estrategia` | `Exteriorizacion`, `Impulso` (Exploración), `Feedback` (placer y estrés), `Estrategia` | `Intencion` (saber y las del mundo), `Impulso` (control gradual según la certeza), `Feedback` (error de predicción), `Estrategia` |
-| Actuar | `Accion` | `Accion` | `Accion` |
+La arquitectura se divide en paquetes modulares (`ida/nucleo/`, `ida/core/`, `ida/s1/`, `ida/s2/`, `ida/s3/`, `ida/cuerpos/` e `ida/mundos/`), organizados en cuatro etapas funcionales:
 
-- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y solo cede ante otra que la supere con un margen claro. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/s1/`, `ida/s2/` e `ida/s3/`; lo propio de cada mundo se declara en su registro (`Mundo.registro()`). Un mundo puede añadir o sustituir Componentes por destino (`"CORE.Sentir"`, `"S1.Interpretar"`...) y estrategias por sistema.
+| Etapa | Core | S1 · Supervivencia | S2 · Valor | S3 · Verdad |
+|---|---|---|---|---|
+| Sentir | `Interocepcion`, `Propiocepcion`, `Exterocepcion`, `Ambiente` | `Saliencia`, `Amenaza` (preatención), `Imagen` | `Patron`, `Emocion`, `Recuerdo` | `Comunicacion` |
+| Interpretar | — | `Objeto`, `Supervivencia`, `Apetencia` (aliestesia), `Recinto` (mundo), `MapaLocal` (cuerpo) | `Sujeto`, `Valor` (motivacional, potencia, sentimental y social) | `Agente`, `Predicado`, `Proposicion`, `Sentencia`, `Logica`, `Creencia`, `Requisito` |
+| Reaccionar | — | `Reflejo`, `Impulso`, `Feedback`, `Estrategia`, `Peticion`, estrategias (`Huir`, `Afrontar`, `Proteger`...) | `Exteriorizacion`, `Impulso` (Exploración), `Feedback`, `Estrategia`, `Peticion`, estrategias (`Explorar`...) | `Intencion`, `Impulso`, `Feedback`, `Estrategia`, estrategias (`PerseguirMetas`...) |
+| Actuar | `Tribunal`, `Actuador`, `ModeloDirecto` (cuerpo) | `Accion`, `Anticipacion` | `Accion`, `Anticipacion` | `Accion` |
+
+- **Intenciones y primitivas (D9):** Las estrategias emiten intenciones biológicas de alto nivel (como MOVER, COMER, COGER, ATACAR o FABRICAR). El `Motor` del cuerpo (`ida/cuerpos/cuadricula/motor.py`) traduce esas intenciones en secuencias de primitivas ejecutables en el mundo (girar, avanzar, golpear), gestionando sinergias motoras (`max_sinergia = 2` en la fase A). El `Actuador` del Core ejecuta las primitivas y el cuerpo evalúa el éxito de la intención.
+- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se activa por piezas de la Onda (nunca por el reloj del mundo), se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y compite en el Tribunal con margen. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/s1/`, `ida/s2/` e `ida/s3/`; lo propio de cada mundo se declara en su registro (`Mundo.registro()`). Un mundo puede añadir o sustituir Componentes por destino (`"CORE.Sentir"`, `"S1.Interpretar"`...) y estrategias por sistema.
 - **Acciones:** solo los componentes `Accion` proponen acciones, y cada una lleva su origen (impulso y estrategia).
-- **Propiedad:** cada componente solo emite y modifica piezas de su tipo, a través de la Onda, que lo comprueba y lo anota en el registro de la pieza. Los `Impulso` de S2 y S3 modulan piezas `Impulso`, no acciones.
+- **Propiedad por tipo (D3):** cada componente solo emite y modifica piezas de su tipo registrado, a través de la Onda, que lo comprueba y lo anota en el registro de la pieza. Los `Impulso` de S2 y S3 modulan piezas `Impulso`, no acciones.
 
 ---
 
@@ -119,29 +135,13 @@ $$\text{Puntuación}_i = \text{Arousal}^{*}_i \cdot \text{Estrés} + \text{Confi
 
 ---
 
-## 7. Diseño objetivo: Componentes generales y de cada mundo
+## 7. Principios de diseño y extensibilidad
 
-Decidido en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md). Qué Componente va en cada módulo, y dónde está hoy, lo dice el [mapa de Componentes](06_MAPA_DE_COMPONENTES.md), generado desde [`componentes.toml`](componentes.toml) y vigilado por un test. Se migra en dos fases: la A (reorganización con el mismo resultado, campo a campo) y la B (cambios de conducta medidos uno a uno).
+El marco de Componentes de IdA se rige por las decisiones de arquitectura detalladas en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md):
 
-**El latido, en ocho pasos:**
-1. **Onda:** copia de la anterior; la anterior pasa a la memoria a corto plazo (cola de ondas, de la que salen los episodios).
-2. **Sentir (Core):** solo datos en bruto, sin valorar. La Observación del mundo solo la leen los sensores.
-3. **Preatención (S1 · Sentir):** saliencia y valoración rápida de lo sentido. No paga atención y corre también dormido (vigilancia). Solo modifica las piezas de los sensores; no crea piezas ni propone acciones.
-4. **Plasticidad:** cada Componente que aprende lo hace del efecto de la acción anterior, sin pagar atención.
-5. **Regulación (Core):** reglas instantáneas que fijan frecuencia, amplitud y potencia.
-6. **S1 → S2 → S3:** Sentir, Interpretar, Reaccionar y Actuar, con la guillotina por plazo. Dormido, parálisis.
-7. **Actuar (Core):** el Tribunal acepta una Actuación y el Core ejecuta su primitiva (las teclas del mundo). La Actuación lleva la primitiva y la intención.
-8. **Cierre:** marcar qué guardar (arousal y feedback), episodios e indicadores.
-
-**Organización:**
-- `ida/nucleo/`: mecánica (Onda, piezas, Componentes, latido, Memoria como almacén).
-- `ida/core/`, `ida/s1/`, `ida/s2/`, `ida/s3/`: una carpeta por módulo y un fichero por Componente.
-- `ida/cuerpos/<familia>/`: lo compartido por los mundos con el mismo cuerpo (geometría, capa motora, modelo del cuerpo, mapa métrico).
-- `ida/mundos/<mundo>/`: adaptador, perfil, manual, registro y Componentes propios, con la misma estructura.
-
-**Reglas:**
-- **Registro declarado:** un mundo declara qué Componentes añade o sustituye y en qué módulo. Nada se activa por el nombre de un fichero ni por una condición dentro de un Componente general.
-- **Propiedad por tipo:** un Componente emite y modifica piezas de su tipo, sea general o del mundo; cada cambio queda en el registro de la pieza.
-- **Estrategias:** las generales hablan de intenciones; la capa motora del cuerpo las traduce a primitivas. Pueden tener fases si las transiciones las disparan piezas de la Onda, nunca el reloj del mundo.
-- **Memoria:** un solo almacén, con una sección por dueño. Lo aprendido y el legado son de cada mundo.
-- **Lo que un mundo sabe por diseño se mide:** Componentes registrados, sustituciones y rasgos que el mundo entrega ya valorados.
+- **Registro explícito y modular (D3):** Cada mundo declara qué Componentes añade o sustituye (`añade` o `sustituye`) en su método `registro()`. Ningún comportamiento se activa por nombres de fichero ni por cables en el Core.
+- **Propiedad estricta por tipo:** Los Componentes sólo crean o alteran piezas de su propio tipo registrado, garantizando trazabilidad y autoría auditable en la Onda.
+- **Percepción pura y preatención (D4, D5):** La Observación bruta del entorno sólo es accesible a los sensores del Core. La valoración rápida (`nutritivo`, `peligro`, `recurso`, `novedad`) se realiza en la preatención (S1) sin coste atencional ni propuestas de acción.
+- **Cuerpos desacoplados (D9, D10):** La física espacial y cinemática (rejillas, geometría, cinemática motora, traducción de intenciones a primitivas) reside en `ida/cuerpos/` y es compartida entre mundos con la misma naturaleza corporal.
+- **Memoria modular con dueños declarados (D7):** Un único almacén `Memoria` estructurado en secciones con dueño (`peligros`, `satisface`, `requisitos`, `cuadricula`), con serialización diferida y herencia limpia.
+- **Especificación viva:** El catálogo completo de componentes está formalizado en [`doc-repositorio/componentes.toml`](componentes.toml) y documentado en el [mapa de Componentes](06_MAPA_DE_COMPONENTES.md), verificado por `tests/test_mapa_componentes.py`.

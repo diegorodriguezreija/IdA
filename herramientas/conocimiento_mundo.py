@@ -4,14 +4,18 @@ Para cada mundo conectable en ida/mundos:
 - qué registra (componentes añadidos y sustituidos por destino, estrategias por sistema, cuerpo), con el conocimiento
   que cada Componente del mundo recibe declarado (``conocimiento_declarado()``, si lo tiene);
 - sus rasgos_declarados en Perfil;
-- las líneas no vacías de los ficheros de su módulo en ida/mundos.
+- las líneas no vacías de los ficheros de su módulo en ida/mundos;
+- con ``--latidos N``, vive N latidos en cada mundo (semilla fija) y cuenta las modificaciones que cada Componente del
+  mundo o del cuerpo hizo sobre piezas de tipos de la base desde el registro de autoría.
 
-No ejecuta vidas (es estática).
+Sin la opción ``--latidos``, es estática y no ejecuta vidas.
 """
 
+import argparse
 import sys
+import tempfile
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Tuple
 
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
@@ -20,6 +24,47 @@ from ida.nucleo.mundo import Alta, Registro  # noqa: E402
 from ida.mundos import MUNDOS, cargar  # noqa: E402
 
 ORDEN_MUNDOS = ("minimo", "archivos", "snake", "ajedrez", "crafter")
+
+TIPOS_BASE = {
+    "Interocepcion", "Propiocepcion", "Exterocepcion", "Ambiente",
+    "Imagen", "Objeto", "Supervivencia", "Reflejo", "Impulso", "Feedback",
+    "Estrategia", "Peticion", "Accion", "Anticipacion", "Expectativa",
+    "Patron", "Emocion", "Recuerdo", "Sujeto", "Valor", "Exteriorizacion",
+    "Comunicacion", "Agente", "Predicado", "Proposicion", "Sentencia",
+    "Logica", "Creencia", "Requisito", "Intencion",
+}
+
+
+def contar_modificaciones_vida(nombre: str, latidos: int, semilla: int = 31) -> Dict[str, int]:
+    """Ejecuta una vida de N latidos y cuenta modificaciones sobre piezas de tipos de la base por autor."""
+    from ida.ejecutor import ejecutar
+
+    mods_por_autor: Dict[str, int] = {}
+
+    def al_latir(_o: Any, onda: Any, _r: Any) -> None:
+        piezas = {}
+        for canal in (onda.reactiva.ev, onda.reactiva.acc, onda.reactiva.ef):
+            for grupo in canal.values():
+                for p in grupo.values():
+                    piezas[id(p)] = p
+
+        for p in piezas.values():
+            if p.tipo not in TIPOS_BASE:
+                continue
+            for r in p.registro:
+                if r.get("latido") == onda.ciclo and r.get("op") == "modificar":
+                    autor = r.get("autor", "")
+                    mods_por_autor[autor] = mods_por_autor.get(autor, 0) + 1
+
+    try:
+        with tempfile.TemporaryDirectory(prefix=f"ida_con_mundo_{nombre}_") as tmpdir:
+            ejecutar(nombre, latidos=latidos, semilla=semilla, generaciones=1,
+                     tabula_rasa=True, consola=False, datos=tmpdir, al_latir=al_latir)
+    except Exception as exc:
+        print(f"Advertencia: no se pudo simular vida en {nombre}: {exc}", file=sys.stderr)
+        return {}
+
+    return mods_por_autor
 
 
 def ficheros_del_modulo(nombre: str) -> List[Path]:
@@ -73,7 +118,7 @@ def formatear_alta(alta: Alta) -> str:
     return "; ".join(partes) if partes else "(vacío)"
 
 
-def informe_mundo(nombre: str) -> str:
+def informe_mundo(nombre: str, latidos: int = 0, semilla: int = 31) -> str:
     salida: List[str] = [f"## Mundo: `{nombre}`", ""]
     try:
         clase_mundo = cargar(nombre)
@@ -104,6 +149,28 @@ def informe_mundo(nombre: str) -> str:
             salida.append(f"  - `{destino}`: {formatear_alta(alta)}")
     else:
         salida.append("  - *(ninguno)*")
+
+    if latidos > 0:
+        nombres_cuerpo: List[str] = []
+        if reg.cuerpo:
+            for comps_c in reg.cuerpo.componentes().values():
+                nombres_cuerpo.extend(type(c).__name__ for c in comps_c)
+        nombres_mundo: List[str] = []
+        if reg.componentes:
+            for alta_c in reg.componentes.values():
+                nombres_mundo.extend(type(c).__name__ for c in alta_c.añade)
+                nombres_mundo.extend(type(c).__name__ for c in alta_c.sustituye.values())
+
+        salida.append(f"- **Modificaciones sobre la base ({latidos} latidos, semilla {semilla}):**")
+        todos_comps = [(c, "cuerpo") for c in nombres_cuerpo] + [(c, "mundo") for c in nombres_mundo]
+        if todos_comps:
+            mods_por_autor = contar_modificaciones_vida(nombre, latidos, semilla)
+            for c, origen in todos_comps:
+                n_mods = sum(v for k, v in mods_por_autor.items() if k == c or k.endswith(f".{c}"))
+                etiqueta = f" ({origen})" if origen == "cuerpo" else ""
+                salida.append(f"  - `{c}`{etiqueta}: {n_mods}")
+        else:
+            salida.append("  - *(ninguno)*")
 
     # Estrategias
     salida.append("- **Estrategias:**")
@@ -136,14 +203,23 @@ def informe_mundo(nombre: str) -> str:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--latidos", type=int, default=0, help="vive N latidos en cada mundo y cuenta modificaciones")
+    parser.add_argument("--semilla", type=int, default=31, help="semilla fija para la vida (por defecto 31)")
+    parser.add_argument("--mundo", choices=MUNDOS, help="limita el informe a un mundo")
+    args = parser.parse_args()
+
     print("# Conocimiento del mundo por diseño\n")
-    mundos_a_listar = [m for m in ORDEN_MUNDOS if m in MUNDOS]
-    for m in MUNDOS:
-        if m not in mundos_a_listar:
-            mundos_a_listar.append(m)
+    if args.mundo:
+        mundos_a_listar = [args.mundo]
+    else:
+        mundos_a_listar = [m for m in ORDEN_MUNDOS if m in MUNDOS]
+        for m in MUNDOS:
+            if m not in mundos_a_listar:
+                mundos_a_listar.append(m)
 
     for nombre in mundos_a_listar:
-        print(informe_mundo(nombre))
+        print(informe_mundo(nombre, latidos=args.latidos, semilla=args.semilla))
 
 
 if __name__ == "__main__":

@@ -192,6 +192,9 @@ class Escala:
     margen_lugar: int = 3                    # Amenaza: casillas más allá del alcance a las que se anula el peligro de un lugar
     reserva: float = 100.0 * 3.0 / 9.0       # Afrontar: vitalidad que una lucha debe dejar intacta
     coste_sin_sitio: float = 45.0            # Impulso (alostasis): horizonte del cobijo sin ningún sitio, en pasos
+    coste_recordado: float = 15.0            # S3: coste estimado de ir a una casilla recordada (en pasos)
+    coste_por_proximidad: float = 10.0       # S3: escala del coste por proximidad (en pasos)
+    coste_sin_productor: float = 30.0        # S3: coste de reponer algo sin acción conocida (2 * coste_recordado)
 
 
 @dataclass
