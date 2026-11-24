@@ -93,6 +93,7 @@ Clasificación de las constantes de `ida/s1/comun.py`, `ida/s2/`, `ida/s3/` e `i
 - **De diseño:** 35.
 - **De Crafter:** 0 (las propias de Crafter ya se movieron a `ida/mundos/crafter/` o al cuerpo en A6a/A6b).
 - **DUDAS:** 3 (`VENTANA_TENDENCIA`, `SIN_ACERCARSE`, `APARCAR`).
+  - Decisión del arquitecto (24/11/2026): las tres son de diseño. `VENTANA_TENDENCIA` ya se decidió en A6a (D15); `SIN_ACERCARSE` y `APARCAR`, por el mismo motivo.
 - **Cambios realizados:** Las 3 constantes de escala pasaron a `Escala` (`ida/nucleo/mundo.py`) con sus valores de base como valor por defecto, fijadas explícitamente en `MundoCrafter.perfil.escala`, y leídas desde `ctx.perfil.escala` en `ida/s3/comun.py` y `PerseguirMetas`.
 
 ## E3 · Informe de conocimiento con --latidos (D3)

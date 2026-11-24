@@ -236,7 +236,7 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
   Hoy solo Crafter los activa, así que solo Crafter los registra y los demás mundos no cambian.
 - **Las constantes de escala pasan al `Perfil`** del mundo o a parámetros del cuerpo, con los valores de hoy en Crafter: `ALCANCE_SITIO`, `MAX_INTERIOR`, `CANDIDATOS_EXACTOS`, `MAX_ESTADOS`, `DANO_PREVIO`, `GOLPES_PREVIO`, `MARGEN_LUGAR`... El inventario completo es parte de A6.
 - **Los interruptores de los bloques E y F** (`MecanismosMemoria`) se quedan como parámetros del `Perfil`: activan mecanismos generales por mundo, que es justo lo que debe decidir el mundo.
-- **Se quedan como diseño** (decisión del 23/11/2026, tras A6a): `TASA_PREVIA` (previo pesimista del organismo, que la experiencia corrige) y `VENTANA_TENDENCIA` (ventana en latidos: memoria del propio organismo, no escala del mundo).
+- **Se quedan como diseño** (decisión del 23/11/2026, tras A6a): `TASA_PREVIA` (previo pesimista del organismo, que la experiencia corrige) y `VENTANA_TENDENCIA` (ventana en latidos: memoria del propio organismo, no escala del mundo); y, tras A8, `SIN_ACERCARSE` y `APARCAR` (paciencia del organismo en su propio tiempo: intentos y latidos, no escala del mundo).
 
 ### D16. Estrategias de Crafter, una a una
 
