@@ -1,7 +1,7 @@
 """El mapa de Componentes (doc-repositorio/componentes.toml) es la especificación del diseño por Componentes.
 
 - La especificación es válida y cada decisión citada existe en docs/DISENO_COMPONENTES.md.
-- El documento generado (doc-repositorio/06_MAPA_DE_COMPONENTES.md) está al día.
+- Los documentos generados (doc-repositorio/06_MAPA_DE_COMPONENTES.md y 07_DISENO_VISUAL.md) están al día.
 - El código montado coincide con «hoy» en cada mundo: ni falta nada de lo que la especificación dice que
   está, ni hay nada montado que la especificación no declare.
 
@@ -90,6 +90,20 @@ def test_documento_al_dia() -> None:
     with open(mc.DOC, encoding="utf-8") as f:
         actual = f.read()
     assert actual == mc.generar(mc.cargar()), "Ejecuta: python herramientas/mapa_componentes.py --escribir"
+
+
+def test_diagramas_al_dia() -> None:
+    with open(mc.DOC_VISUAL, encoding="utf-8") as f:
+        actual = f.read()
+    assert actual == mc.generar_visual(mc.cargar()), "Ejecuta: python herramientas/mapa_componentes.py --escribir"
+
+
+def test_sustitucion_en_diagramas() -> None:
+    """Un mundo que sustituye una estrategia general no la monta (Archivos: AlimentarseConPrudencia)."""
+    espec = mc.cargar()
+    alimentarse = next(c for c in espec if c["nombre"] == "Alimentarse")
+    assert mc.montado_en(alimentarse, "", espec) and mc.montado_en(alimentarse, "crafter", espec)
+    assert not mc.montado_en(alimentarse, "archivos", espec)
 
 
 @pytest.mark.parametrize("mundo", sorted(MUNDOS))
