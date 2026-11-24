@@ -11,7 +11,7 @@ informe de conocimiento del mundo extendido con `--latidos` y documentación al 
 | E1 | Tests de criterios D8 y D5 (`tests/test_criterios.py`) | Hecha | `00f9bd9` |
 | E2 | Constantes y `Perfil.escala` | Hecha | `ee308aa` |
 | E3 | Informe de conocimiento con `--latidos` | Hecha | `d495207` |
-| E4 | Documentación al día y cierre de fase A | Hecha | Ver git log |
+| E4 | Documentación al día y cierre de fase A | Hecha | `3ff5606` |
 
 ### Comprobaciones E3 (24/11/2026)
 
