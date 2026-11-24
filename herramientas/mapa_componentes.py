@@ -4,8 +4,9 @@ La especificación es ``doc-repositorio/componentes.toml`` (dónde debe vivir ca
 está hoy). Esta herramienta:
 
 - valida sus campos y que cada decisión citada exista en ``docs/DISENO_COMPONENTES.md``;
-- genera ``doc-repositorio/06_MAPA_DE_COMPONENTES.md`` (``--escribir``) o comprueba que está al día
-  (``--comprobar``, el modo por defecto).
+- genera ``doc-repositorio/06_MAPA_DE_COMPONENTES.md`` (la tabla) y ``doc-repositorio/07_DISENO_VISUAL.md``
+  (los diagramas del latido, del núcleo y de cada mundo, en Mermaid) con ``--escribir``, o comprueba que
+  están al día (``--comprobar``, el modo por defecto).
 
 El test ``tests/test_mapa_componentes.py`` usa este módulo y además comprueba que el código montado
 coincide con «hoy» en cada mundo.
@@ -25,6 +26,7 @@ from typing import Any, Dict, List, Set
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ESPEC = os.path.join(RAIZ, "doc-repositorio", "componentes.toml")
 DOC = os.path.join(RAIZ, "doc-repositorio", "06_MAPA_DE_COMPONENTES.md")
+DOC_VISUAL = os.path.join(RAIZ, "doc-repositorio", "07_DISENO_VISUAL.md")
 DISENO = os.path.join(RAIZ, "docs", "DISENO_COMPONENTES.md")
 
 TIPOS = {"componente", "estrategia", "biblioteca"}
@@ -44,6 +46,8 @@ TITULOS = {
     "CORE.Actuar": "7 · Core · Actuar",
     "cuerpo": "Bibliotecas de los cuerpos",
 }
+MUNDOS = ("minimo", "archivos", "snake", "ajedrez", "crafter")
+NOMBRES_MUNDO = {"minimo": "Mínimo", "archivos": "Archivos", "snake": "Snake", "ajedrez": "Ajedrez", "crafter": "Crafter"}
 CAMPOS = ("nombre", "tipo", "clase", "dueno", "destino", "hoy", "hoy_en", "registran", "sustituye", "paso", "decision", "preatentivo", "aprende", "nota")
 
 
@@ -100,6 +104,9 @@ def validar(espec: List[Dict[str, Any]], decisiones: Set[str]) -> List[str]:
             errores.append(f"{n}: un Componente de {c['clase']} necesita «dueno»")
         if c["clase"] in ("opcional", "cuerpo") and not c.get("registran"):
             errores.append(f"{n}: un Componente {c['clase']} necesita «registran»")
+        for m in ([c["dueno"]] if c["clase"] == "mundo" else []) + list(c.get("registran", [])):
+            if m not in MUNDOS:
+                errores.append(f"{n}: mundo «{m}» desconocido (MUNDOS en herramientas/mapa_componentes.py)")
         destinos = UBICACIONES + (["cuerpo"] if c["tipo"] == "biblioteca" else [])
         if c["destino"] not in destinos:
             errores.append(f"{n}: destino «{c['destino']}» no válido")
@@ -188,6 +195,148 @@ def generar(espec: List[Dict[str, Any]]) -> str:
     return "\n".join(lineas)
 
 
+# --- Diseño visual (07_DISENO_VISUAL.md): diagramas Mermaid generados desde la especificación ---
+
+ESTILOS = [
+    "classDef general fill:#f1f5f9,stroke:#64748b,color:#0f172a",
+    "classDef opcional fill:#dbeafe,stroke:#2563eb,color:#0f172a",
+    "classDef cuerpo fill:#dcfce7,stroke:#16a34a,color:#0f172a",
+    "classDef mundo fill:#fef3c7,stroke:#d97706,color:#0f172a",
+    "classDef paso fill:#ede9fe,stroke:#7c3aed,color:#0f172a",
+]
+LEYENDA = (
+    "**Leyenda.** Rectángulo: Componente · óvalo: estrategia · doble borde: biblioteca del cuerpo · ✱: aprende (paso 4). "
+    "Color: gris, general · azul, opcional (general, montado solo por quien lo registra) · verde, del cuerpo · "
+    "ámbar, propio del mundo · violeta, paso del latido sin Componentes declarados."
+)
+
+
+def montado_en(c: Dict[str, Any], mundo: str, espec: List[Dict[str, Any]]) -> bool:
+    """Si el mundo monta este elemento en su destino (con las sustituciones aplicadas). ``mundo=""``: el núcleo."""
+    if c["clase"] == "general":
+        return not any(
+            o.get("sustituye") == c["nombre"] and o["destino"] == c["destino"] and montado_en(o, mundo, espec) for o in espec
+        )
+    return bool(mundo) and mundo in objetivo_en(c)
+
+
+def _id(*partes: str) -> str:
+    return "_".join(re.sub(r"[^A-Za-z0-9]", "", p) for p in partes)
+
+
+def _nodo(c: Dict[str, Any]) -> str:
+    texto = c["nombre"] + (" ✱" if c.get("aprende") else "")
+    ident = _id(_seccion(c), c["nombre"])
+    forma = {"estrategia": f'(["{texto}"])', "biblioteca": f'[["{texto}"]]'}.get(c["tipo"], f'["{texto}"]')
+    return f"{ident}{forma}:::{c['clase']}"
+
+
+def diagrama(espec: List[Dict[str, Any]], mundo: str) -> List[str]:
+    """Flujo de un latido con los Componentes que monta ``mundo`` (``""``: solo lo general, el núcleo)."""
+    hay = [c for c in espec if montado_en(c, mundo, espec)]
+
+    def en(sec: str, tipo: str = "") -> List[Dict[str, Any]]:
+        return [c for c in hay if _seccion(c) == sec and (not tipo or c["tipo"] == tipo)]
+
+    def caja(ident: str, titulo: str, filas: List[Dict[str, Any]], sangria: str = "  ") -> List[str]:
+        out = [f'{sangria}subgraph {ident}["{titulo}"]', f"{sangria}  direction TB"]
+        out += [f"{sangria}  {_nodo(c)}" for c in filas] or [f'{sangria}  {ident}_vacio["—"]:::general']
+        return out + [f"{sangria}end"]
+
+    aprenden = " · ".join(c["nombre"] for c in hay if c.get("aprende")) or "—"
+    L = ["```mermaid", "flowchart TB"]
+    L.append('  P1["1 · Onda<br/>copia de la anterior; la anterior pasa a la memoria a corto plazo"]:::paso')
+    L += caja("P2", "2 · Core · Sentir (en bruto)", en("CORE.Sentir"))
+    L += caja("P3", "3 · Preatención (S1 · Sentir; no paga atención; también dormido)", en("PREATENCION"))
+    L.append(f'  P4["4 · Plasticidad: aprende del efecto de la acción anterior<br/>{aprenden}"]:::paso')
+    L += caja("P5", "5 · Regulación de la Onda (Core)", en("CORE.Regulacion"))
+    for s, nombre in (("S1", "supervivencia"), ("S2", "valor"), ("S3", "verdad")):
+        L += [f'  subgraph {s}["6 · {s} · {nombre}"]', "    direction LR"]
+        for m in MODULOS:
+            sec = f"{s}.{m}"
+            ident = _id(sec)
+            if m == "Reaccionar":
+                L += [f'    subgraph {ident}["{m}"]', "      direction TB"]
+                L += [f"      {_nodo(c)}" for c in en(sec, "componente")]
+                est = en(sec, "estrategia")
+                if est:
+                    L += caja(_id(sec, "est"), "estrategias", est, "      ")
+                L.append("    end")
+            else:
+                L += caja(ident, m, en(sec), "    ")
+        L += [f"    {_id(f'{s}.{MODULOS[i]}')} --> {_id(f'{s}.{MODULOS[i + 1]}')}" for i in range(len(MODULOS) - 1)]
+        L.append("  end")
+    L += caja("P7", "7 · Core · Actuar", en("CORE.Actuar"))
+    L.append('  P8["8 · Cierre: marcar para guardar, episodios, indicadores<br/>→ siguiente latido (paso 1)"]:::paso')
+    L += [
+        '  P1 -->|"la Onda"| P2',
+        '  P2 -->|"piezas en bruto (arousal 0)"| P3',
+        '  P3 -->|"piezas anotadas: saliencia y valoración"| P4',
+        "  P4 --> P5",
+        '  P5 -->|"frecuencia · amplitud · potencia"| S1',
+        '  S1 -->|"la misma Onda, con lo que S1 añadió"| S2',
+        "  S2 --> S3",
+        '  S3 -->|"Actuaciones (guillotina si se agota el plazo)"| P7',
+        '  P7 -->|"una primitiva ejecutada"| P8',
+    ]
+    cuerpo = en("cuerpo")
+    if cuerpo:
+        usan = " y ".join(c["nombre"] for c in hay if c["clase"] == "cuerpo" and c["tipo"] == "componente")
+        L += caja("CU", f"Cuerpo · {cuerpo[0]['dueno']}: bibliotecas que usan {usan}", cuerpo)
+        L.append("  P8 ~~~ CU")
+    return L + [f"  {e}" for e in ESTILOS] + ["```"]
+
+
+def _propios(espec: List[Dict[str, Any]], mundo: str) -> List[str]:
+    filas = []
+    for c in espec:
+        if c["clase"] != "general" and montado_en(c, mundo, espec):
+            extra = f", sustituye a `{c['sustituye']}`" if c.get("sustituye") else ""
+            filas.append(f"- `{c['nombre']}` ({c['tipo']}, {_clase(c)}) en {TITULOS.get(_seccion(c), _seccion(c).replace('.', ' · '))}{extra}")
+    return filas
+
+
+def generar_visual(espec: List[Dict[str, Any]]) -> str:
+    """El documento de diagramas, determinista."""
+    L = [
+        "# Diseño visual: el latido, el núcleo y cada mundo",
+        "",
+        "> **Generado** por `herramientas/mapa_componentes.py --escribir` desde [`componentes.toml`](componentes.toml). No se edita a mano.",
+        "> Tabla completa: [`06_MAPA_DE_COMPONENTES.md`](06_MAPA_DE_COMPONENTES.md) · "
+        "Decisiones: [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md).",
+        "",
+        "## Cómo leerlo",
+        "",
+        "Cada latido es una **Onda** que recorre ocho pasos, siempre en el mismo orden (D1). La Onda lleva el plazo "
+        "(**frecuencia**; si se agota, la **guillotina** corta lo que quede), cuántas piezas caben en la atención "
+        "(**amplitud**) y cuánto arousal se puede dar o cambiar (**potencia**). Cada Componente solo produce y cambia "
+        "piezas de su tipo.",
+        "",
+        "- **Pasos 1–5 (Core y preatención):** sentir en bruto, anotar lo saliente y lo valorado, aprender del efecto de "
+        "la acción anterior y fijar la Onda. No pagan atención y corren también dormido.",
+        "- **Paso 6 (cognición):** S1 → S2 → S3, uno tras otro sobre la misma Onda. En cada sistema, Sentir → Interpretar → "
+        "Reaccionar (las estrategias, cada una con su Actuación) → Actuar. Pagan atención y la guillotina puede cortarlos.",
+        "- **Pasos 7–8 (Core):** el Tribunal elige una Actuación, el Core ejecuta su primitiva, y el cierre marca qué guardar.",
+        "",
+        "Un mundo no cambia este flujo: solo **registra** su cuerpo y sus Componentes propios, que se añaden a lo general o "
+        "lo sustituyen en el mismo sitio.",
+        "",
+        LEYENDA,
+        "",
+        "## El núcleo (lo que monta cualquier mundo)",
+        "",
+    ]
+    L += diagrama(espec, "")
+    for mundo in MUNDOS:
+        propios = _propios(espec, mundo)
+        L += ["", f"## {NOMBRES_MUNDO[mundo]}", ""]
+        if not propios:
+            L.append("Monta solo el núcleo: el diagrama es el de arriba.")
+            continue
+        L += ["Añade al núcleo:", ""] + propios + [""] + diagrama(espec, mundo)
+    return "\n".join(L) + "\n"
+
+
 def main(argv: List[str]) -> int:
     espec = cargar()
     errores = validar(espec, decisiones_existentes())
@@ -196,17 +345,22 @@ def main(argv: List[str]) -> int:
         for e in errores:
             print(f"  - {e}")
         return 1
-    texto = generar(espec)
+    documentos = ((DOC, generar(espec)), (DOC_VISUAL, generar_visual(espec)))
     if "--escribir" in argv:
-        with open(DOC, "w", encoding="utf-8", newline="\n") as f:
-            f.write(texto)
-        print(f"Escrito {os.path.relpath(DOC, RAIZ)}")
+        for ruta, texto in documentos:
+            with open(ruta, "w", encoding="utf-8", newline="\n") as f:
+                f.write(texto)
+            print(f"Escrito {os.path.relpath(ruta, RAIZ)}")
         return 0
-    actual = open(DOC, encoding="utf-8").read() if os.path.exists(DOC) else ""
-    if actual != texto:
-        print("doc-repositorio/06_MAPA_DE_COMPONENTES.md no está al día: ejecuta con --escribir.")
+    desfasados = []
+    for ruta, texto in documentos:
+        actual = open(ruta, encoding="utf-8").read() if os.path.exists(ruta) else ""
+        if actual != texto:
+            desfasados.append(os.path.relpath(ruta, RAIZ))
+    if desfasados:
+        print(f"No están al día: {', '.join(desfasados)}. Ejecuta con --escribir.")
         return 1
-    print("Mapa de Componentes válido y al día.")
+    print("Mapa de Componentes válido y al día (tabla y diagramas).")
     return 0
 
 

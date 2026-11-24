@@ -97,7 +97,7 @@ flowchart LR
 La **`Regulacion`** (`ida/core/regulacion.py`, Componente del Core, D12; antes `Marcapasos`) fija tres recursos por latido a partir del cuerpo. En la fase A se calcula al crear la Onda, con el soma y los indicadores del latido anterior:
 
 1. **Frecuencia (plazo):** tiempo máximo de cognición. Con peligro se acorta hasta un 30 %.
-2. **Amplitud:** cuántas piezas nuevas caben en `ev` y `acc` (cada una cuesta 1): 0,45 × la amplitud base del perfil del mundo (calibración en [`docs/CALIBRACION_ATENCION.md`](../docs/CALIBRACION_ATENCION.md)). La energía la escala; dormido baja a 20; si el latido anterior se quedó sin amplitud, el siguiente tiene un 50 % más («taquicardia»).
+2. **Amplitud:** cuántas piezas nuevas caben en `ev` y `acc` (cada una cuesta 1): 0,45 × la amplitud base del perfil del mundo (calibración en [`docs/historico/CALIBRACION_ATENCION.md`](../docs/historico/CALIBRACION_ATENCION.md)). La energía la escala; dormido baja a 20; si el latido anterior se quedó sin amplitud, el siguiente tiene un 50 % más («taquicardia»).
 3. **Potencia:** cuánto arousal se puede otorgar o cambiar (cuesta |Δ arousal|, al subir y al bajar). Lo máximo que un componente cambia una pieza en un latido es potencia / amplitud.
 
 Los recursos son un único fondo que S1, S2 y S3 gastan en ese orden: S1 usa lo que necesite y los demás, lo que sobre. Sin amplitud, la pieza nueva se rechaza; sin potencia, el cambio de arousal se recorta; lo demás sigue. El Core no paga atención ni se recorta.
@@ -137,11 +137,12 @@ $$\text{Puntuación}_i = \text{Arousal}^{*}_i \cdot \text{Estrés} + \text{Confi
 
 ## 7. Principios de diseño y extensibilidad
 
-El marco de Componentes de IdA se rige por las decisiones de arquitectura detalladas en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md):
+El marco de Componentes de IdA se formaliza en [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md) y se organiza en los siguientes pilares:
 
-- **Registro explícito y modular (D3):** Cada mundo declara qué Componentes añade o sustituye (`añade` o `sustituye`) en su método `registro()`. Ningún comportamiento se activa por nombres de fichero ni por cables en el Core.
-- **Propiedad estricta por tipo:** Los Componentes sólo crean o alteran piezas de su propio tipo registrado, garantizando trazabilidad y autoría auditable en la Onda.
-- **Percepción pura y preatención (D4, D5):** La Observación bruta del entorno sólo es accesible a los sensores del Core. La valoración rápida (`nutritivo`, `peligro`, `recurso`, `novedad`) se realiza en la preatención (S1) sin coste atencional ni propuestas de acción.
-- **Cuerpos desacoplados (D9, D10):** La física espacial y cinemática (rejillas, geometría, cinemática motora, traducción de intenciones a primitivas) reside en `ida/cuerpos/` y es compartida entre mundos con la misma naturaleza corporal.
-- **Memoria modular con dueños declarados (D7):** Un único almacén `Memoria` estructurado en secciones con dueño (`peligros`, `satisface`, `requisitos`, `cuadricula`), con serialización diferida y herencia limpia.
-- **Especificación viva:** El catálogo completo de componentes está formalizado en [`doc-repositorio/componentes.toml`](componentes.toml) y documentado en el [mapa de Componentes](06_MAPA_DE_COMPONENTES.md), verificado por `tests/test_mapa_componentes.py`.
+- **Estructura de paquetes acíclica (D2):** La jerarquía estricta de dependencias sigue la dirección `nucleo ← core ← s1–s3 ← cuerpos ← mundos`, vigilada de forma continua por `tests/test_pureza.py`. `nucleo` no importa a ningún otro paquete; el `core` sólo conoce al núcleo; los sistemas cognitivos `s1`–`s3` conocen a `core` y `nucleo`; y los paquetes base jamás importan mundos ni cuerpos concretos.
+- **Registro explícito y modular (D3):** Cada mundo declara en su método `registro()` una instancia de `Registro` con su cuerpo y sus declaraciones `añade` o `sustituye` (por destino como `"CORE.Sentir"`, `"S1.Interpretar"`...). Los componentes opcionales (como `Apetencia`) sólo se montan si el mundo los registra expresamente; no existen activaciones por nombre de fichero ni cables ocultos.
+- **Cuerpo desacoplado y familia Cuadrícula (D9, D10):** La física espacial y cinemática reside en `ida/cuerpos/`. El cuerpo `Cuadricula` (`ida/cuerpos/cuadricula/`) agrupa `ModeloDirecto` (evaluación de éxito y efectos cinemáticos), `MapaLocal` (percepción espacial y navegación) y `Motor` (traducción de intenciones biológicas de alto nivel a primitivas ejecutables con control de sinergias).
+- **Memoria por secciones con dueño (D7):** Un único almacén `Memoria` estructurado en secciones declaradas con dueño responsable (`peligros`, `satisface`, `requisitos`, `cuadricula`), con escrituras delegadas con autor y serialización limpia.
+- **Percepción pura y preatención (D4, D5):** La Observación bruta del entorno sólo es accesible a los sensores del Core (`CORE.Sentir`). La valoración rápida (`nutritivo`, `peligro`, `recurso`, `novedad`) se realiza en la preatención (S1) sin coste atencional ni propuestas de acción.
+- **Propiedad estricta por tipo (D3):** Cada Componente sólo crea o altera piezas de su propio tipo registrado, garantizando trazabilidad y autoría auditable en la Onda.
+- **Especificación viva:** El catálogo completo de componentes está formalizado en [`doc-repositorio/componentes.toml`](componentes.toml) y documentado en el [mapa de Componentes](06_MAPA_DE_COMPONENTES.md), verificado por `tests/test_mapa_componentes.py`. Para el detalle completo de las 17 decisiones de diseño, consultar [`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md).

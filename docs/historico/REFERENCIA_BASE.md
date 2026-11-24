@@ -1,11 +1,11 @@
 # Referencia congelada de la base
 
-Comparación para toda la fase de mejora de los mundos ([`AGENTS.md`](../AGENTS.md), «Fase de mejora de los mundos»). Cada mejora de un mundo se mide con `herramientas/benchmark.py` frente a estas cifras, pareado por semilla.
+Comparación para toda la fase de mejora de los mundos ([`AGENTS.md`](../../AGENTS.md), «Fase de mejora de los mundos»). Cada mejora de un mundo se mide con `herramientas/benchmark.py` frente a estas cifras, pareado por semilla.
 
 - **Código medido:** `feature/cierre-base` en `ce0e262` (bloques A a D y escasez de atención calibrada, `Marcapasos.FACTOR_AMPLITUD = 0,45`). Tras la fusión, etiqueta `base-v2.0`.
 - **Fecha:** 16/11/2026, Windows 10, Python 3.15.1. Reloj real.
 - **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F` (M = minimo, archivos, crafter) y `... comparar base.json nueva.json`.
-- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Perfiles Equilibrado, Valiente y Reactivo y control sin experiencia (Equilibrado con `sin_experiencia`). Media por linaje, IC 95 % con t(0,975; 9) = 2,262.
+- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Perfiles Equilibrado, Valiente y Reactivo y control sin experiencia (Equilibrado con `sin_experiencia`). Media por linaje, IC 95 % con t(0,975; 9) = 2,262.
 - **Invariancia:** la referencia de `herramientas/invariancia.py` (semillas 1 a 3, 400 latidos, cuatro mundos) se regeneró en este código y da OK.
 
 ## Valores de referencia (media ± IC 95 %, N = 10 linajes)

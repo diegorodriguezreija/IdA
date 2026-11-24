@@ -4,16 +4,12 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
-### Reorganización por Componentes (fase A)
-- **Reorganización modular por Componentes** ([`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md), decisiones D1 a D17) sin alteración de conducta (`EQUIVALENCIA: OK`).
-- **Estructura de paquetes limpia:** `ida/nucleo/` (mecánica y tipos base), `ida/core/` (sentidos en bruto, regulación, actuador y tribunal), `ida/s1/`, `ida/s2/`, `ida/s3/` (módulos cognitivos organizados en sentir, interpretar, reaccionar y actuar), `ida/cuerpos/` (familias de cuerpos e interfaces motoras) e `ida/mundos/` (mundos como paquetes autosuficientes con adaptadores, perfiles y componentes propios).
-- **Latido vital en ocho pasos (D1):** onda y memoria a corto plazo, sentir en bruto, preatención (S1 · Sentir: `Saliencia`, `Amenaza`, `ValoracionCrafter`), plasticidad de componentes, regulación de recursos (`Regulacion`), ejecución S1 → S2 → S3 con guillotina cooperativa, actuar (`Tribunal`, `Actuador` y `Motor`) y cierre.
-- **Capa motora y sinergias (D9, D10):** desacoplamiento de intenciones y primitivas. El `Motor` de `cuerpos/cuadricula` traduce intenciones a primitivas del mundo con sinergias (`max_sinergia = 2` en fase A) y cuenta primitivas ejecutadas.
-- **Memoria modular por secciones con dueño (D7):** un único almacén `Memoria` estructurado en secciones con dueño declarado (`peligros`, `satisface`, `requisitos`, `cuadricula`), con serialización y legado diferidos.
-- **La Observación solo la leen los sensores del Core (D4):** los rasgos valorados de Crafter pasaron a `ValoracionCrafter` en la preatención.
-- **Constantes de escala a `Perfil.escala` (D15):** desacopladas de componentes generales.
-- **Tests de criterios D8 y D5:** verificación estática mediante AST de que ninguna estrategia ni componente fuera de sentir lee la observación, el mundo ni su reloj; validación estática de componentes preatentivos.
-- **Verificación empírica:** Crafter Score idéntica a `main` a 100 000 pasos (15,86 % y 17,34 %, `datos/evaluacion/reorg_31.json` y `reorg_32.json` en rama `reorg/medicion-a7b`).
+### crafter-general-v5 (sin publicar)
+- **Reorganización modular por Componentes:** el framework base y los mundos se estructuran en paquetes desacoplados (`ida/nucleo/`, `ida/core/`, `ida/s1/`–`s3/`, `ida/cuerpos/cuadricula/`, `ida/mundos/`) organizados por etapas (Sentir, Interpretar, Reaccionar, Actuar) según [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) y [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml).
+- **Latido en 8 pasos y capa motora con sinergias:** preatención pura sin coste, plasticidad desacoplada, regulación de la Onda y ejecución con `Motor` (`max_sinergia = 2`).
+- **Memoria con dueños declarados:** secciones modulares con acceso auditado y serialización diferida.
+- **Conducta idéntica y misma Score:** preserva exactamente la Crafter Score de v4 (15,86 % y 17,34 % a 100 000 pasos en semillas 31 y 32) y la invariancia en mínimo, archivos y ajedrez ([`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md)).
+- **Validación continua:** arnés de equivalencia para cambios de limpieza y criterio de no inferioridad D17 para futuras variaciones de conducta ([`docs/PENDIENTES.md`](docs/PENDIENTES.md)).
 
 ### Material desde el mapa local (11c, sobre 14.2)
 - **`PerseguirMetas` (S3) busca el material también en el mapa local:** para un COGER o un COMER compara ir a lo visible o a lo que recuerda la memoria topológica con ir a la casilla recordada de esa clase (`ir_por_el_mapa`, con caché por latido), y se queda con la más barata. Siempre activo. Es el 11c de la deuda 11, medido ahora solo, sin 11a ni 11b.

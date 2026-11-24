@@ -40,7 +40,7 @@ Para que la memoria aporte, alguna decisión tendría que depender de lo que sol
 
 Fusión parcial (rama `feature/memoria-apagada`, desde `feature/bloque-f`):
 
-- **El código de E y F se fusiona con todos los mecanismos apagados** en todos los mundos. `MEMORIA_E` y `MEMORIA_EF` siguen definidos en [`ida/core/mundo.py`](../ida/core/mundo.py), pero ningún perfil los declara. Un test lo comprueba (`test_ningun_mundo_activa_los_mecanismos_de_memoria`).
+- **El código de E y F se fusiona con todos los mecanismos apagados** en todos los mundos. `MEMORIA_E` y `MEMORIA_EF` siguen definidos en [`ida/nucleo/mundo.py`](../../ida/nucleo/mundo.py), pero ningún perfil los declara. Un test lo comprueba (`test_ningun_mundo_activa_los_mecanismos_de_memoria`).
 - **Se mantienen** el tope de 64 Creencias por latido y la herencia configurable (E7, por defecto 1,0).
 - **La conducta es la de `base-v2.0`:** `herramientas/invariancia.py` da OK en mínimo, archivos, Crafter y ajedrez, y los perfiles de mínimo y archivos son idénticos a los de `base-v2.0`.
 - **Los mecanismos se activarán por mundo solo donde se demuestre su valor**, con benchmark pareado (N = 10) frente a la referencia.

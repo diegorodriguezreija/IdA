@@ -1,13 +1,13 @@
 # Resultados del framework base
 
-> **Este documento recoge la línea base**: los mundos recién conectados. Después se optimizó el código de cada mundo (sin tocar el framework base); la comparación entre la base y la versión optimizada, en varias semillas, está en [`doc-repositorio/05_METRICAS_E_HITOS.md`](../doc-repositorio/05_METRICAS_E_HITOS.md).
+> **Este documento recoge la línea base**: los mundos recién conectados. Después se optimizó el código de cada mundo (sin tocar el framework base); la comparación entre la base y la versión optimizada, en varias semillas, está en [`doc-repositorio/05_METRICAS_E_HITOS.md`](../../doc-repositorio/05_METRICAS_E_HITOS.md).
 
 Ejecuciones del 9 de noviembre de 2026, en Windows 10 y Python 3.15.1. Se cuentan tal como salieron. **No es un estudio:** son pocas vidas, casi siempre con una sola semilla, y sirven para ver que cada mundo funciona y cómo se comporta.
 
 ## Comprobaciones
 
 - **Tests:** `python -m pytest tests/` → 56 correctos en unos 10 s en esta línea base; 58 tras la optimización y 64 con la observabilidad y el test de licencias (core, extremo a extremo con el mundo mínimo, repetibilidad con semilla, pureza de capas, y los cuatro mundos; los de Snake no usan la red).
-- **Repetibilidad:** con la misma semilla, el mundo mínimo produce exactamente la misma vida (`tests/test_organismo.py`). Snake no es repetible: juega en una web en tiempo real. En esta línea base Crafter tampoco lo era entre procesos (se corrigió después; ver [`doc-repositorio/04`](../doc-repositorio/04_GUIA_TECNICA_Y_PATRONES.md)), así que sus cifras de abajo no se reproducen exactamente.
+- **Repetibilidad:** con la misma semilla, el mundo mínimo produce exactamente la misma vida (`tests/test_organismo.py`). Snake no es repetible: juega en una web en tiempo real. En esta línea base Crafter tampoco lo era entre procesos (se corrigió después; ver [`doc-repositorio/04`](../../doc-repositorio/04_GUIA_TECNICA_Y_PATRONES.md)), así que sus cifras de abajo no se reproducen exactamente.
 - **Guillotina:** con plazo 0 ms la cognición se corta y el Tribunal sigue decidiendo cada latido (test). En las ejecuciones de abajo no saltó ninguna guillotina: la cognición tarda alrededor de 1 ms por latido frente a plazos de 70 a 100 ms.
 
 ## Mundo mínimo: con y sin experiencia

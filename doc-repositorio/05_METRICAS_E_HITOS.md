@@ -22,6 +22,7 @@ Lo conseguido en cada mundo, con los comandos para repetirlo. Las cifras se publ
 | Telemetría en vivo sin dependencias: presupuesto del latido, reparto por sistema, memoria, carácter y conocimiento | `python -m ida --mundo X --ver` |
 | Observabilidad estándar: cada latido es una traza de OpenTelemetry con sus fases (Jaeger) y hay métricas en Prometheus y Grafana, sin que el núcleo dependa de ello | `docker compose up --build` |
 | Calidad automatizada: ruff, mypy y 85 tests (`python -m pytest -q` en `7e335ae`, 16/11/2026) en GitHub Actions (Python 3.12 y 3.15, con y sin dependencias de mundo) | `.github/workflows/ci.yml` |
+| Reorganización por Componentes (v5): misma Score, conducta idéntica | [`docs/COMPARACION_MUNDOS.md`](../docs/COMPARACION_MUNDOS.md) |
 
 ---
 
@@ -113,6 +114,7 @@ python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista ofici
 | Lote por estación de trabajo (deuda 14), semilla 32 | 15,98 % (14,81–16,96) | 22,8 % | `deuda14_K1_32.json` |
 | Material desde el mapa local (11c, sobre 14.2), semilla 31 | 15,86 % (14,58–17,07) | 19,4 % | `mapa_31.json` |
 | Material desde el mapa local (11c, sobre 14.2), semilla 32 | 17,34 % (16,06–18,47) | 25,6 % | `mapa_32.json` |
+| Reorganización por Componentes (v5), semillas 31 y 32 | 15,86 % / 17,34 % (idéntica) | 19,4 % / 25,6 % | [COMPARACION_MUNDOS.md](../docs/COMPARACION_MUNDOS.md) (`reorg_31.json`, `reorg_32.json`) |
 
 Desde el paso 6, el adaptador de Crafter no tiene estrategias propias (`estrategias_propias()` vacío, test `test_crafter_no_escribe_conducta`): la línea general es la conducta por defecto de `main`.
 
@@ -138,7 +140,7 @@ Desde el paso 6, el adaptador de Crafter no tiene estrategias propias (`estrateg
 
 > **Resultados recientes de la literatura:** Un agente de RL con modelo del mundo obtiene alrededor de un 28 % con 1M de pasos en Craftax-classic, una reimplementación no idéntica (arXiv 2502.01591), y EMERALD llega al 58,1 % con 10M de pasos (arXiv 2507.04075).
 
-#### Declaraciones del protocolo (sección 4.3 de `docs/FASE_GENERALIZACION_CRAFTER.md`)
+#### Declaraciones del protocolo (sección 4.3 de [`docs/historico/FASE_GENERALIZACION_CRAFTER.md`](../docs/historico/FASE_GENERALIZACION_CRAFTER.md))
 
 - **Entrada simbólica:** IdA recibe una descripción simbólica de la vista local oficial (9×7), sin estado oculto. Toda la información es visible en la imagen.
 - **Coordenadas absolutas:** IdA recibe del adaptador las coordenadas de su casilla. Un agente sin ellas podría obtenerlas por integración de trayecto (las acciones son deterministas y se observa si el movimiento tuvo efecto).

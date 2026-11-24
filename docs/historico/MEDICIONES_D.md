@@ -4,7 +4,7 @@ Encargo en [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), «Encargo del blo
 
 - **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F` y `... comparar base.json nueva.json` (desde `86a7d31` guarda la causa de muerte de cada vida).
 - **Versiones:** base = `main` (`05b30a2`, bloques A a C); nueva = `feature/bloque-d` (`86a7d31`).
-- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10), IC 95 % con t de Student, Δ pareado; mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Reloj real. 16/11/2026.
+- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10), IC 95 % con t de Student, Δ pareado; mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Reloj real. 16/11/2026.
 
 ## Resultado frente al criterio
 

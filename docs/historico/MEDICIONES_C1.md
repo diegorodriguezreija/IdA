@@ -4,7 +4,7 @@ Encargo en [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), parte C1; corresp
 
 - **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F` y `... comparar base.json nueva.json`.
 - **Versiones:** base = `main` (`b3a6ed6`, bloques A y B); nueva = `feature/bloque-c` (`434742a`, C1.1 a C1.6).
-- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600; perfiles Equilibrado, Valiente y Reactivo y control sin experiencia; IC 95 % con t(0,975; 9) = 2,262; Δ pareado por semilla. Reloj real. 16/11/2026, Windows 10, Python 3.15.1.
+- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600; perfiles Equilibrado, Valiente y Reactivo y control sin experiencia; IC 95 % con t(0,975; 9) = 2,262; Δ pareado por semilla. Reloj real. 16/11/2026, Windows 10, Python 3.15.1.
 
 ## Resultado frente al criterio de paso
 

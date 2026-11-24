@@ -773,7 +773,7 @@ El análisis empírico de los 65 episodios demuestra de forma concluyente que:
 
 ### 7.1 Subapartado A: Implementación del forrajeo oportunista
 
-- **Commit de la implementación:** [`d00d010`](file:///f:/code/IdA/ida/mundos/crafter.py) (`crafter: C.3d forrajeo oportunista de vacas en RefugioNocturno`).
+- **Commit de la implementación:** `d00d010` (`crafter: C.3d forrajeo oportunista de vacas en RefugioNocturno`).
 - **Ubicación:** Exclusivamente en `RefugioNocturno` (`ida/mundos/crafter.py`) y test sintético en `tests/test_crafter.py`. Cero cambios en `ida/core/` o `ida/sistemas/`.
 
 #### Lógica implementada
@@ -805,8 +805,8 @@ Implementado en `tests/test_crafter.py` (`test_c3d_forrajeo_oportunista`):
 
 ### 7.2 Subapartado B: Medición ANTES frente a DESPUÉS (muestras grandes)
 
-- **ANTES:** HEAD previo (C.3b, commit [`724b3fe`](file:///f:/code/IdA/docs/INFORME_C.md) ejecutado mediante `git worktree` en `F:\code\IdA_antes`).
-- **DESPUÉS:** Con forrajeo oportunista C.3d (commit [`d00d010`](file:///f:/code/IdA/ida/mundos/crafter.py)).
+- **ANTES:** HEAD previo (C.3b, commit `724b3fe` ejecutado mediante `git worktree` en `F:\code\IdA_antes`).
+- **DESPUÉS:** Con forrajeo oportunista C.3d (commit `d00d010`).
 
 #### B.1 Arnés largo (semillas 11–30, `--latidos 3000`, `--real`)
 - **Comandos:**
@@ -991,7 +991,7 @@ Implementado en `tests/test_crafter.py` (`test_c3d_forrajeo_oportunista`):
 
 ### 7.4 Subapartado D: ¿Qué mata después? (Arnés largo semillas 11–30, 3000 latidos, DESPUÉS)
 
-- **Script:** [herramientas/diagnostico_c3d_d_e.py](file:///f:/code/IdA/herramientas/diagnostico_c3d_d_e.py) (commit [`294d442`](file:///f:/code/IdA/herramientas/diagnostico_c3d_d_e.py)).
+- **Script:** `herramientas/diagnostico_c3d_d_e.py` (commit `294d442`).
 - **Comando:**
   ```powershell
   $t0 = Get-Date; & "C:\Users\diego\AppData\Local\Python\pythoncore-3.15-64\python.exe" herramientas/diagnostico_c3d_d_e.py; $t1 = Get-Date; Write-Host "Tiempo: $(($t1 - $t0).TotalSeconds) s"
@@ -1086,7 +1086,7 @@ Implementado en `tests/test_crafter.py` (`test_c3d_forrajeo_oportunista`):
 
 ## 8. C.4: Resultado negativo (huerto en bolsillos cerrados)
 
-La pieza C.4 planteó cultivar en bolsillos cerrados de 1 celda contiguos al refugio, protegidos por piedra exterior y abiertos únicamente para la cosecha cuando la planta estuviera madura. El desarrollo de C.4 fue evaluado en la rama `wip/c4-argon` en dos variantes sucesivas: la versión inicial dejada por el modelo anterior (WIP C.4, commit `c39cb4a`) y la versión tras cuatro ajustes de poda y restricción de presupuesto (C.4 Ajustado, commits `fecf4e0` a `2c93d47`), descritas en detalle en [`docs/MEDICION_WIP_C4.md`](docs/MEDICION_WIP_C4.md).
+La pieza C.4 planteó cultivar en bolsillos cerrados de 1 celda contiguos al refugio, protegidos por piedra exterior y abiertos únicamente para la cosecha cuando la planta estuviera madura. El desarrollo de C.4 fue evaluado en la rama `wip/c4-argon` en dos variantes sucesivas: la versión inicial dejada por el modelo anterior (WIP C.4, commit `c39cb4a`) y la versión tras cuatro ajustes de poda y restricción de presupuesto (C.4 Ajustado, commits `fecf4e0` a `2c93d47`), descritas en detalle en `MEDICION_WIP_C4.md` (superada, en el historial de git).
 
 ### 8.1 Cifras (WIP y Ajustado frente a C.3d)
 
@@ -1325,7 +1325,7 @@ A continuación se tabulan las mediciones empíricas requeridas por la sección 
 
 ### 9.3 Veredicto frente al criterio de la sección 10
 
-Evaluación sistemática frente a los cuatro criterios formales de éxito establecidos en la sección 10 de [`docs/ENCARGO_CRAFTER_C.md`](docs/ENCARGO_CRAFTER_C.md):
+Evaluación sistemática frente a los cuatro criterios formales de éxito establecidos en la sección 10 de [`ENCARGO_CRAFTER_C.md`](ENCARGO_CRAFTER_C.md):
 
 1. **Criterio 1 (Principal: días vividos en arnés largo y latidos en ≥ 2 grupos del benchmark): No se cumple.**  
    - En el benchmark de 600 latidos frente a `ref_c0`, la subida de latidos es estadísticamente significativa **solo en el grupo Valiente** (+73,60 ± 66,17); en Equilibrado (+39,00 ± 75,07) y Sin experiencia (+27,03 ± 72,52) el intervalo incluye el cero, y en Reactivo descienden (-21,30 ± 103,94).  
@@ -1344,7 +1344,7 @@ Evaluación sistemática frente a los cuatro criterios formales de éxito establ
    - **Descartadas / revertidas:** C.2 (revertida) y C.4 (rechazada por parada).
 
 **Conclusión:**  
-El encargo C queda **cumplido en parte**. Se gana el sellado del día 1 (del 55 % al 80 %, validado en 31–50) y la supervivencia a 600 latidos; el hambre sigue limitando la vida larga (huerto: punto 8 de [`docs/DEUDA_TECNICA_CRAFTER.md`](docs/DEUDA_TECNICA_CRAFTER.md)).
+El encargo C queda **cumplido en parte**. Se gana el sellado del día 1 (del 55 % al 80 %, validado en 31–50) y la supervivencia a 600 latidos; el hambre sigue limitando la vida larga (huerto: punto 8 de [`DEUDA_TECNICA_CRAFTER.md`](DEUDA_TECNICA_CRAFTER.md)).
 
 
 

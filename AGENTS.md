@@ -6,8 +6,8 @@ Gran parte del código de IdA se escribió con agentes de IA bajo la dirección 
 
 La base (Core y sistemas S1, S2, S3) se está rediseñando. Antes de cualquier cambio, lee:
 
-- [`docs/REDISENO_BASE.md`](docs/REDISENO_BASE.md): la referencia de diseño (24 decisiones). Da el contexto completo, aunque cada encargo implemente solo una parte.
-- [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md): qué se hace y en qué orden (preparación y bloques A a F). Cada bloque es un encargo cerrado con su objetivo, sus pasos, lo que queda fuera de alcance, su verificación y su condición de paso.
+- [`docs/historico/REDISENO_BASE.md`](docs/historico/REDISENO_BASE.md): la referencia de diseño (24 decisiones). Da el contexto completo, aunque cada encargo implemente solo una parte.
+- [`docs/historico/PLAN_IMPLEMENTACION.md`](docs/historico/PLAN_IMPLEMENTACION.md): qué se hace y en qué orden (preparación y bloques A a F). Cada bloque es un encargo cerrado con su objetivo, sus pasos, lo que queda fuera de alcance, su verificación y su condición de paso.
 
 Implementa solo el bloque que te encarguen. Lo que el borrador describe para otros bloques queda fuera de alcance aunque parezca relacionado. No empieces un bloque si el anterior no cumple su condición de paso.
 
@@ -17,6 +17,7 @@ Los bloques A a F están terminados. Donde [`docs/DISENO_COMPONENTES.md`](docs/D
 
 Completada la reorganización estructural de la fase A (etiqueta `reorg-a8`), el trabajo entra en la **fase B** de [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) (pasos B1 a B5): cambios de conducta, uno por paso, medidos con el criterio de no inferioridad de D17. La referencia fija sigue siendo `main` (`eaeadaa`, `crafter-general-v4`).
 
+- **Proceso de cambio de diseño:** la especificación vive en [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) y [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml). La pureza y los límites biológicos se vigilan con `tests/test_pureza.py` y `tests/test_criterios.py`. Los cambios de limpieza sin cambio de conducta se aceptan con `.venv\Scripts\python.exe herramientas/equivalencia.py` (`EQUIVALENCIA: OK`); los cambios de conducta, con el criterio de no inferioridad **D17**. La lista viva de tareas pendientes está en [`docs/PENDIENTES.md`](docs/PENDIENTES.md).
 - **El mapa de Componentes es la especificación:** [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) dice dónde debe vivir cada Componente (`destino`) y dónde está hoy (`hoy`); `tests/test_mapa_componentes.py` comprueba que el código coincide con `hoy` en cada mundo.
   - Si mueves, añades o quitas un Componente o una estrategia, actualiza `hoy` (y `hoy_en`, `paso`) en el mismo PR y regenera el documento: `.venv\Scripts\python.exe herramientas/mapa_componentes.py --escribir`.
   - **No cambies `destino`, `clase`, `registran` ni `decision`** sin una decisión nueva o modificada en `docs/DISENO_COMPONENTES.md`, aprobada por el autor. Si el código no puede llegar al destino, para y explica por qué.
@@ -38,7 +39,7 @@ Completada la reorganización estructural de la fase A (etiqueta `reorg-a8`), el
 - **Estrategias:** se activan por piezas de la Onda (nunca por el paso, el reloj ni el estado interno del mundo), pueden omitirse, compiten en el Tribunal y sus umbrales son parámetros o se aprenden. Pueden tener fases con esas condiciones.
 - **Las constantes de escala** van en el `Perfil` del mundo o en los parámetros de su cuerpo, no en los Componentes generales.
 - **Lo aprendido es de cada mundo:** no pasa de un mundo a otro.
-- **Mecanismos de memoria (bloques E y F):** siguen apagados por defecto; un mundo los activa en su `Perfil` si un benchmark pareado demuestra su valor ([`docs/VEREDICTO_E_F.md`](docs/VEREDICTO_E_F.md)).
+- **Mecanismos de memoria (bloques E y F):** siguen apagados por defecto; un mundo los activa en su `Perfil` si un benchmark pareado demuestra su valor ([`docs/historico/VEREDICTO_E_F.md`](docs/historico/VEREDICTO_E_F.md)).
 - Mientras se mide, en la máquina no corre ningún otro proceso de IdA (ni tests ni pruebas rápidas). Cada medición registra sus latidos cortados.
 - Los agentes no instalan paquetes sin permiso del autor.
 
@@ -51,7 +52,7 @@ Completada la reorganización estructural de la fase A (etiqueta `reorg-a8`), el
    - Las conductas adaptativas deben apoyarse en principios biológicos plausibles: mapas cognitivos/hipocampales, aliestesia homeostática, asimetrías lucha/huida reguladas por el estado somático y equipamiento, o aprendizaje de contingencias.
    - Prohibido parchear comportamientos mediante autómatas deterministas rígidos, "trampas" de juego, secuencias de acciones cableadas para un fin específico o saltos que ignoren el arbitraje del Tribunal.
    - Cualquier mecanismo orgánico candidato debe evaluarse empíricamente con mediciones repetibles con semilla antes y después. Si demuestra generalidad y rigor entre mundos, puede proponerse para su elevación al Core.
-5. **No toques el framework base (`ida/nucleo/`, `ida/core/`, `ida/s1/`-`ida/s3/`) sin permiso expreso del autor.** Si es imprescindible, en un commit propio, explicado, y comprobando que una vida con semilla da lo mismo antes y después cuando el cambio no busca cambiar la conducta. Cuenta como permiso expreso el que concede la sección «Permiso» de cada encargo de [`docs/PLAN_IMPLEMENTACION.md`](docs/PLAN_IMPLEMENTACION.md), y vale solo para los pasos de ese bloque y mientras dure su encargo. Ese permiso no cambia las reglas 1 a 3: la pureza de los paquetes base y sus tests se mantienen.
+5. **No toques el framework base (`ida/nucleo/`, `ida/core/`, `ida/s1/`-`ida/s3/`) sin permiso expreso del autor.** Si es imprescindible, en un commit propio, explicado, y comprobando que una vida con semilla da lo mismo antes y después cuando el cambio no busca cambiar la conducta. Cuenta como permiso expreso el que concede la sección «Permiso» de cada encargo de [`docs/historico/PLAN_IMPLEMENTACION.md`](docs/historico/PLAN_IMPLEMENTACION.md), y vale solo para los pasos de ese bloque y mientras dure su encargo. Ese permiso no cambia las reglas 1 a 3: la pureza de los paquetes base y sus tests se mantienen.
 6. **Verifica antes de afirmar.** Cada afirmación sobre el código cita fichero y línea o la salida de un comando. Lo que no hayas comprobado, márcalo como no verificado.
 7. **No inventes cifras, referencias ni mecanismos.** Toda cifra publicada lleva su comando, sus semillas, su número de vidas y su fecha, y se compara con la versión anterior en las mismas semillas. Publica también los resultados negativos.
 8. **Un commit por cambio**, con mensaje descriptivo. Nada de `push` sin que el autor lo pida.
