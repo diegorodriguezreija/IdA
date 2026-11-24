@@ -267,3 +267,4 @@ Comparaciones:
 - **Crafter Score:** 15,86 % (semilla base 31) y 17,34 % (semilla base 32) en ambas versiones.
 - **Episodios:** 737 episodios pareados idénticos (377 en semilla 31 y 360 en semilla 32).
 - **Diferencia pareada conjunta:** Δ Score = 0,00 pp, IC 95 % pareado [0,00, 0,00] pp. Diferencia en cada logro = 0,00 pp, IC 95 % [0,00, 0,00] pp.
+- **Medición final v5:** Commit `76ee97a` (`datos/evaluacion/v5_31.json` y `datos/evaluacion/v5_32.json`): idéntico a mapa_31/32 en toda la conducta (Score, episodios, causas de muerte, logros paso a paso). Rendimiento: 15,24 ms/paso (semilla 31) y 16,66 ms/paso (semilla 32) (frente a 12,63 y 12,52 ms/paso en mapa).
