@@ -9,18 +9,18 @@ from typing import List, Optional, Tuple, cast
 
 import pytest
 
-from ida.core.arquitectura import Contexto
-from ida.core.azar import Azar
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
-from ida.sistemas import crear_sistemas
-from ida.sistemas.s1 import Aliestesia
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
+from ida.sistemas_comun import crear_sistemas
+from ida.s1.interpretar.apetencia import Aliestesia
 
 # --- 0b: aliestesia en la base -------------------------------------------------------------------
 # Mundo de juguete: dos necesidades (hambre y sed) y dos clases (baya y charca) que satisfacen cada una la suya.
@@ -98,8 +98,8 @@ def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, 
 
 
 def _propuesta(ctx: Contexto, impulso: str):
-    from ida.core.estrategia import nueva
-    from ida.sistemas.s1 import Alimentarse
+    from ida.nucleo.estrategia import nueva
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     d = Alimentarse()
     i = float(ctx.onda.ef("Impulso")[impulso].carga["intensidad"])
@@ -110,7 +110,7 @@ def _propuesta(ctx: Contexto, impulso: str):
 
 
 def _apetencia(ctx: Contexto) -> None:
-    from ida.sistemas.s1 import Apetencia
+    from ida.s1.interpretar.apetencia import Apetencia
 
     a = Apetencia()
     a.sistema = "S1"
@@ -144,10 +144,11 @@ def test_aliestesia_solo_donde_se_registra_apetencia():
 def test_satisface_del_manual():
     mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
-    assert mem.satisfaccion("baya") == {"hambre": pytest.approx(Memoria.CONFIANZA_MANUAL)}
-    assert mem.satisfaccion("charca") == {"sed": pytest.approx(Memoria.CONFIANZA_MANUAL)}
-    assert mem.satisfaccion("piedra") is None
-    assert mem.satisface[("baya", "hambre")].fuente == "manual"
+    al = _aliestesia(mem)
+    assert al.satisfaccion("baya") == {"hambre": pytest.approx(Memoria.CONFIANZA_MANUAL)}
+    assert al.satisfaccion("charca") == {"sed": pytest.approx(Memoria.CONFIANZA_MANUAL)}
+    assert al.satisfaccion("piedra") is None
+    assert al.satisface[("baya", "hambre")].fuente == "manual"
 
 
 def test_satisface_de_la_experiencia_corrige_al_manual():
@@ -155,12 +156,13 @@ def test_satisface_de_la_experiencia_corrige_al_manual():
     mem.aplicar_manual(MANUAL_JUGUETE)
     for _ in range(4):
         _aliestesia(mem).aprender_satisface("charca", {"hambre": False, "sed": True})
-    s = mem.satisfaccion("charca")
+    al = _aliestesia(mem)
+    s = al.satisfaccion("charca")
     assert s is not None
     # Línea base 0 (nada sube sin comer): ΔP = 1, combinado con el manual (peso 1), como antes.
     assert s["sed"] == pytest.approx((4 * 1.0 + Memoria.CONFIANZA_MANUAL) / 5)
     assert s["hambre"] == 0.0                                   # el manual no la declara y nunca subió
-    assert mem.satisface[("charca", "sed")].fuente == "manual+experiencia"
+    assert al.satisface[("charca", "sed")].fuente == "manual+experiencia"
 
 
 def _vivir_contingencia(latidos: int = 600) -> Memoria:
@@ -178,15 +180,17 @@ def _vivir_contingencia(latidos: int = 600) -> Memoria:
 
 def test_contingencia_una_necesidad_que_sube_sola_no_se_atribuye_a_la_clase():
     mem = _vivir_contingencia()
-    s = mem.satisface[("baya", "luz")]
+    al = _aliestesia(mem)
+    s = al.satisface[("baya", "luz")]
     assert s.sube / s.n > 0.15                                   # coincidencia: muchas comidas caen al «amanecer»
-    assert mem.estimacion_satisface("baya", "luz") <= 0.1       # contingencia: ΔP ≈ 0
+    assert al.estimacion_satisface("baya", "luz") <= 0.1       # contingencia: ΔP ≈ 0
 
 
 def test_contingencia_una_necesidad_que_solo_sube_al_comer_si_se_atribuye():
     mem = _vivir_contingencia()
-    assert mem.linea_base["comida"] == 0.0
-    assert mem.estimacion_satisface("baya", "comida") >= 0.9
+    al = _aliestesia(mem)
+    assert al.linea_base["comida"] == 0.0
+    assert al.estimacion_satisface("baya", "comida") >= 0.9
 
 
 def test_una_coincidencia_aislada_no_basta_en_una_clase_del_manual():
@@ -197,21 +201,23 @@ def test_una_coincidencia_aislada_no_basta_en_una_clase_del_manual():
     for t in range(80):
         _aliestesia(mem).actualizar_linea_base({"comida": False, "luz": (t % 40) < 10})
     _aliestesia(mem).aprender_satisface("vaca", {"comida": True, "luz": True})
-    assert mem.estimacion_satisface("vaca", "luz") <= 0.25
-    assert mem.estimacion_satisface("vaca", "comida") >= 0.8
+    al = _aliestesia(mem)
+    assert al.estimacion_satisface("vaca", "luz") <= 0.25
+    assert al.estimacion_satisface("vaca", "comida") >= 0.8
 
 
 def test_sin_manual_el_previo_es_la_percepcion():
     """Una clase de la que el manual no habla: el rasgo perceptivo es el previo y la experiencia lo corrige."""
     mem = _memoria()
     previos = {"comida": 0.6, "agua": 0.6}
-    assert mem.satisfaccion("baya", previos) is None
+    al = _aliestesia(mem)
+    assert al.satisfaccion("baya", previos) is None
     _aliestesia(mem).aprender_satisface("baya", {"comida": True, "agua": False})
-    s = mem.satisfaccion("baya", previos)
+    s = al.satisfaccion("baya", previos)
     assert s == {"comida": pytest.approx((1.0 + 3 * 0.6) / 4), "agua": pytest.approx(3 * 0.6 / 4)}
     for _ in range(40):
         _aliestesia(mem).aprender_satisface("baya", {"comida": True, "agua": False})
-    assert mem.estimacion_satisface("baya", "agua", previos) < 0.1
+    assert al.estimacion_satisface("baya", "agua", previos) < 0.1
 
 
 def test_la_contingencia_compara_con_la_linea_base_del_mismo_momento():
@@ -224,9 +230,10 @@ def test_la_contingencia_compara_con_la_linea_base_del_mismo_momento():
             _aliestesia(mem).aprender_satisface("baya", {"luz": True})
         else:
             _aliestesia(mem).actualizar_linea_base({"luz": fase_sube})
-    assert mem.satisface[("baya", "luz")].sube / mem.satisface[("baya", "luz")].n == 1.0
-    assert mem.linea_base["luz"] < 0.5                 # al final, en la fase de bajada
-    assert mem.estimacion_satisface("baya", "luz") <= 0.2      # residuo: la línea base tarda unos latidos en seguir la fase
+    al = _aliestesia(mem)
+    assert al.satisface[("baya", "luz")].sube / al.satisface[("baya", "luz")].n == 1.0
+    assert al.linea_base["luz"] < 0.5                 # al final, en la fase de bajada
+    assert al.estimacion_satisface("baya", "luz") <= 0.2      # residuo: la línea base tarda unos latidos en seguir la fase
 
 
 def test_la_linea_base_es_una_media_movil():
@@ -235,7 +242,7 @@ def test_la_linea_base_es_una_media_movil():
         _aliestesia(mem).actualizar_linea_base({"luz": True})
     for _ in range(Aliestesia.VENTANA_BASE * 3):
         _aliestesia(mem).actualizar_linea_base({"luz": False})
-    assert mem.linea_base["luz"] < 0.1                          # olvida lo antiguo: no es la media de toda la vida
+    assert _aliestesia(mem).linea_base["luz"] < 0.1                          # olvida lo antiguo: no es la media de toda la vida
 
 
 def test_apetencia_depende_del_estado_interno():
@@ -277,7 +284,7 @@ def test_lo_que_no_parece_comestible_no_apetece_aunque_su_clase_satisfaga():
 
 
 def test_sin_nada_que_satisfaga_su_necesidad_la_estrategia_no_es_elegible():
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     mem = _memoria()
     mem.aplicar_manual({"hechos": [MANUAL_JUGUETE["hechos"][0],
@@ -303,7 +310,7 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
             comidas.append((o.ciclo, ej.carga["clase"], inten.get("hambre", 0.0), inten.get("sed", 0.0)))
 
     org.vivir(300, al_latir=anotar)
-    e = org.memoria.estimacion_satisface
+    e = cast(Aliestesia, org.memoria.seccion("satisface")).estimacion_satisface
     assert e("baya", "hambre") >= 0.9 and e("charca", "sed") >= 0.9
     assert e("baya", "sed") <= 0.1 and e("charca", "hambre") <= 0.1
     tarde = [c for c in comidas if c[0] > 150]

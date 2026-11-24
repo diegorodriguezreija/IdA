@@ -3,10 +3,10 @@
 Las pruebas unitarias que no montan un Organismo y escriben en el mapa local o en los requisitos usan esta memoria. El
 manual y el legado aplicados antes o después llegan igual a las secciones (diferidos o al momento)."""
 
-from ida.core.memoria import Memoria
+from ida.nucleo.memoria import Memoria
 from ida.cuerpos.cuadricula import Cuadricula
-from ida.core.mundo import Perfil
-from ida.sistemas.requisito import Requisitos
+from ida.nucleo.mundo import Perfil
+from ida.s3.interpretar.requisito import Requisitos
 
 
 def memoria_con_secciones(perfil_memoria: str = "completa", cuerpo: bool = True) -> Memoria:

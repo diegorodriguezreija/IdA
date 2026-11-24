@@ -78,8 +78,8 @@ def cavable(mem: Any, aqui: Tuple[int, int], inv: Dict[str, float]) -> Dict[str,
     from ida.cuerpos.cuadricula.geometria import _vecinas
     from ida.mundos.crafter.s1.interpretar.recinto import ALCANCE_SITIO, Modelo, candidatos, rutas
     modelo = Modelo(mem, inv, set())
-    clases = sorted(c for c in set(mem.casillas.values()) if modelo.abre(c))
-    celdas = [p for p, c in mem.casillas.items() if c in clases]
+    clases = sorted(c for c in set(modelo.casillas.values()) if modelo.abre(c))
+    celdas = [p for p, c in modelo.casillas.items() if c in clases]
     if not celdas:
         return {"caso": "nunca vista", "clases": clases, "distancia": None, "motivo": ""}
     cerca = min(celdas, key=lambda p: (abs(p[0] - aqui[0]) + abs(p[1] - aqui[1]), p))
@@ -87,11 +87,11 @@ def cavable(mem: Any, aqui: Tuple[int, int], inv: Dict[str, float]) -> Dict[str,
     dist, _ = rutas(modelo, aqui)
     alcance = set(dist)
     for _ in range(2):
-        alcance |= {v for p in list(alcance) for v in _vecinas(p) if mem.casillas.get(v) in clases}
+        alcance |= {v for p in list(alcance) for v in _vecinas(p) if modelo.casillas.get(v) in clases}
     dentro = [p for p in celdas if p in alcance]
     if not dentro:
         return {"caso": "lejos", "clases": clases, "distancia": d, "motivo": f"más allá de {ALCANCE_SITIO} pasos"}
-    falta = {k: v for c in sorted({mem.casillas[p] for p in dentro}) for k, v in (modelo.falta_para_cavar(c) or {}).items()}
+    falta = {k: v for c in sorted({modelo.casillas[p] for p in dentro}) for k, v in (modelo.falta_para_cavar(c) or {}).items()}
     formas = _formas(modelo, dist)
     if falta:
         motivo = "falta para cavar: " + ", ".join(sorted(falta))

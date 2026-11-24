@@ -60,13 +60,14 @@ Ocho pasos. En negrita, lo que no existe hoy con ese nombre.
 
 ### D2. Estructura de paquetes
 
-La estructura del código es el diagrama de la arquitectura. Un Componente por fichero.
+La estructura del código es el diagrama de la arquitectura. Un Componente por fichero. **Estructura implantada en el paso A2.**
 
 ```text
 ida/
   nucleo/            mecánica sin cognición: onda, pieza, arquitectura (Componente, Módulo, Sistema),
-                     latido, memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia
+                     memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia, azar, estrategia...
   core/
+    latido.py        el latido: crea la Onda, siente, regula, lanza la Onda a los sistemas y actúa (Organismo)
     sentir/          interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
     actuar/          tribunal.py, actuador.py
     regulacion.py    reglas de la Onda (hoy Marcapasos)
@@ -86,7 +87,7 @@ ida/
 ```
 
 - El paquete raíz sigue siendo `ida` (minúsculas, convención de Python). `ida/core` pasa a ser el sistema Core; la mecánica que hoy vive en `ida/core/*.py` se mueve a `ida/nucleo/`.
-- **Importaciones permitidas:** `nucleo` ← `core`, `s1`-`s3` ← `cuerpos` ← `mundos`. Nada de `nucleo`, `core` ni `sN` importa `cuerpos` ni `mundos`; `cuerpos` no importa `mundos`. Lo vigila `test_pureza`.
+- **Importaciones permitidas:** `nucleo` ← `core` (que incluye el latido) ← `s1`-`s3` ← `cuerpos` ← `mundos`. Ningún paquete importa a los que van detrás de él. Lo vigila `test_pureza`.
 
 ### D3. Registro declarado de Componentes
 
@@ -304,7 +305,7 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 | A4 | La Observación, solo para los sensores (D4): los rasgos de Crafter, a `ValoracionCrafter`; los requisitos leen piezas | `rasgos_declarados` vacío en Crafter |
 | A6 | Crafter a su carpeta (D16), con la geometría y el buscador de posturas a `ida/cuerpos/cuadricula/`; activaciones por registro y constantes al `Perfil` (D15) | **A6a hecho** (23/11/2026, `docs/A6A_PROGRESO.md`): opcionales por registro y `Perfil.escala`. Queda A6b: mover ficheros. Decide la DUDA de `PerseguirMetas` (lee `mem.casillas`, `s3.py:552`) |
 | A7 | Memoria por secciones con dueño (D7); `Peticion` a Reaccionar (D11); memoria a corto plazo (D13) | Legado por sección; misma herencia. `Peligros` recibe la escala al construirse (hoy la copia `Peligros.escalar()` en cada latido) y `Memoria` deja de importar `ida/sistemas` |
-| A2 | Estructura de paquetes (D2) | Al final de la fase A, porque solo mueve ficheros; `test_pureza` con las nuevas reglas de importación. También: `ida/cuerpos/cuadricula/mapa.py` devuelve la casilla siguiente y S3 construye su `Paso` (hoy el cuerpo importa `ida.sistemas.s3`); y `test_pureza` comprueba también `ida/core` y `ida/cuerpos`. |
+| A2 | Estructura de paquetes (D2) | **Hecho** (24/11/2026, `docs/A2_PROGRESO.md`): estructura final de paquetes (`ida/nucleo`, `ida/core`, `ida/s1`-`s3`, `ida/sistemas_comun.py`, `ida/cuerpos/cuadricula`, mundos como paquetes); P1 (desacoplamiento de mapa y S3), P2 (eliminadas propiedades `# A2:`), P3 (tipos en núcleo), P4 (`test_pureza` con las nuevas reglas de importación). |
 | A8 | Tests de criterios (D8, D5), documentación y medición de 100 000 pasos | Etiqueta `reorg-a8`; el autor decide si se fusiona en `main` ya o tras la fase B |
 
 ### Fase B: cambios de conducta (uno por PR, criterio D17)
@@ -362,3 +363,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |
 | 23/11/2026 | D15, sección 5 | Dos constantes, de diseño; `Peligros.escalar()` se resuelve en A7 | Resultado de A6a (`docs/A6A_PROGRESO.md`) |
 | 24/11/2026 | D7 | Transformaciones al cuerpo; secciones con dueño y manual y legado diferidos | A7b |
+| 24/11/2026 | D2 | El latido es del Core, no del núcleo | A2 E2: importarlo desde `nucleo` creaba un ciclo con los Componentes del Core |

@@ -16,33 +16,33 @@ from typing import Dict, FrozenSet, List, Set, Tuple
 
 import pytest
 
-from ida.core.memoria import Memoria
+from ida.nucleo.memoria import Memoria
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 IDA = RAIZ / "ida"
 FICHEROS = sorted(IDA.rglob("*.py"))
 
-CUERPO = frozenset(str(p.relative_to(RAIZ).as_posix()) for p in (IDA / "cuerpos" / "cuadricula").glob("*.py"))
+CUERPO = frozenset(str(p.relative_to(RAIZ).as_posix()) for p in (IDA / "cuerpos" / "cuadricula").rglob("*.py"))
 
 # Sección -> (ficheros del dueño, métodos que escriben en ella, datos de la sección)
 SECCIONES: Dict[str, Tuple[FrozenSet[str], FrozenSet[str], FrozenSet[str]]] = {
-    "peligros": (frozenset({"ida/sistemas/amenaza.py"}), frozenset({"heredar_peligros"}), frozenset({"peligros"})),
-    "satisface": (frozenset({"ida/sistemas/s1.py"}), frozenset({"aprender_satisface", "actualizar_linea_base"}),
+    "peligros": (frozenset({"ida/s1/sentir/amenaza.py"}), frozenset({"heredar_peligros"}), frozenset({"peligros"})),
+    "satisface": (frozenset({"ida/s1/interpretar/apetencia.py"}), frozenset({"aprender_satisface", "actualizar_linea_base"}),
                   frozenset({"satisface", "linea_base", "n_base"})),
     "cuadricula": (CUERPO, frozenset({"ver_casillas", "aprender_transformacion", "aprender_cuerpo"}),
                    frozenset({"casillas", "version_mapa", "paso_libre", "paso_bloqueado", "peligro_sobre",
                               "transformaciones", "cuerpo", "cierres", "yo_previo"})),
-    "requisitos": (frozenset({"ida/sistemas/requisito.py"}), frozenset({"aprender_requisito", "registrar_meta"}),
+    "requisitos": (frozenset({"ida/s3/interpretar/requisito.py"}), frozenset({"aprender_requisito", "registrar_meta"}),
                    frozenset({"requisitos", "intentos", "claves_inventario", "metas", "fallos_seguidos"})),
 }
 
 # Escritura delegada -> ficheros del dueño y de los autores admitidos (D7, tabla de escrituras delegadas)
 DELEGADAS: Dict[str, FrozenSet[str]] = {
-    "ver_clase": frozenset({"ida/core/memoria.py", "ida/core/latido.py"}),                 # Core (plasticidad)
-    "recordar_lugar": frozenset({"ida/core/memoria.py", "ida/core/latido.py",
+    "ver_clase": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py"}),                 # Core (plasticidad)
+    "recordar_lugar": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py",
                                  "ida/mundos/crafter/s1/interpretar/recinto.py"}),          # Core, autor Recinto
-    "olvidar_donde": frozenset({"ida/core/memoria.py", "ida/sistemas/s2.py"}),             # Core, autor RecordarComida
-    "fijar_lectura": frozenset({"ida/core/memoria.py", "ida/sistemas/s3.py"}),             # autor Estudio
+    "olvidar_donde": frozenset({"ida/nucleo/memoria.py", "ida/s2/reaccionar/estrategias/recordar_comida.py"}),             # Core, autor RecordarComida
+    "fijar_lectura": frozenset({"ida/nucleo/memoria.py", "ida/s3/reaccionar/estrategias/estudio.py"}),             # autor Estudio
 }
 
 MUTADORES = {"add", "discard", "update", "clear", "pop", "popitem", "setdefault", "append", "extend", "remove", "insert"}

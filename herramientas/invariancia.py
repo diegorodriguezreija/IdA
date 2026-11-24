@@ -24,7 +24,7 @@ from typing import Any, Dict, List, Optional
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-from ida.core.onda import Onda  # noqa: E402
+from ida.nucleo.onda import Onda  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
 
 MUNDOS = ("minimo", "archivos", "crafter", "ajedrez")
@@ -39,7 +39,7 @@ def _apagar_mecanismos(mundos, activos=()) -> None:
     los que se pidan con ``--mecanismos`` (p. ej. ``buffer``)."""
     from dataclasses import replace
 
-    from ida.core.mundo import MecanismosMemoria
+    from ida.nucleo.mundo import MecanismosMemoria
     from ida.mundos import cargar
 
     for m in mundos:

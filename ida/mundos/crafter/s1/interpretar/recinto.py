@@ -5,16 +5,18 @@ Construcción y búsqueda de recintos, cavar y cerrar accesos.
 
 from collections import deque
 from dataclasses import dataclass
-from typing import Any, Deque, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from typing import Any, Deque, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import DIRECCIONES, Memoria, Pos, pos_de
-from ida.core.pieza import acotar
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.memoria import DIRECCIONES, Memoria, Pos, pos_de
+from ida.nucleo.pieza import acotar
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula.buscador import mover
 from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
-from ida.sistemas.proteger import TIPO_RECINTO
-from ida.sistemas.s3 import PerseguirMetas
+from ida.cuerpos.cuadricula.memoria import MapaCuadricula
+from ida.s1.comun import TIPO_RECINTO
+from ida.s3.interpretar.requisito import Requisitos
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 MAX_INTERIOR = 3          # un recinto tiene 1-3 casillas (encargo, sección 2)
 ALCANCE_SITIO = 15        # pasos máximos hasta un sitio candidato (3.3)
@@ -73,26 +75,28 @@ class Modelo:
 
     def __init__(self, mem: Memoria, inv: Dict[str, float], peligros: Set[Pos]):
         self.mem = mem
-        self.casillas = mem.casillas
+        self.mapa = cast(MapaCuadricula, mem.seccion("cuadricula"))
+        self.req = cast(Requisitos, mem.seccion("requisitos"))
+        self.casillas = self.mapa.casillas
         self.inv = inv
         self.peligros = peligros
-        self.mover_libre = mem.modelo_cuerpo("mover", True)
-        self.mover_bloqueado = mem.modelo_cuerpo("mover", False)
-        self.interactuar = mem.modelo_cuerpo("interactuar", True)
+        self.mover_libre = self.mapa.modelo_cuerpo("mover", True)
+        self.mover_bloqueado = self.mapa.modelo_cuerpo("mover", False)
+        self.interactuar = self.mapa.modelo_cuerpo("interactuar", True)
         self.cerradores = self._cerradores()
         self._cavables: Dict[str, Optional[Dict[str, float]]] = {}
         self._libre: Dict[Optional[str], bool] = {}
         self._acceso: Dict[Optional[str], bool] = {}
         self._cerrable: Dict[Optional[str], bool] = {}
         self._unidades: Dict[FrozenSet[Pos], int] = {}
-        relevantes = {k for r in mem.requisitos.values() for k in r.requiere_inventario} | {k for c in self.cerradores for k, _ in c.requiere}
+        relevantes = {k for r in self.req.requisitos.values() for k in r.requiere_inventario} | {k for c in self.cerradores for k, _ in c.requiere}
         # Lo que determina un plan local, además del sitio y el inicio (clave de la caché de planes de ``Recinto``).
-        self.firma = (mem.version_mapa, frozenset(peligros), tuple(sorted((k, inv.get(k, 0.0)) for k in relevantes)),
+        self.firma = (self.mapa.version_mapa, frozenset(peligros), tuple(sorted((k, inv.get(k, 0.0)) for k in relevantes)),
                       self.mover_libre, self.mover_bloqueado, self.interactuar)
         # Clases no transitables cuyo resultado al cogerlas se ha observado, y cuántas quedaron transitables (inducción).
-        observadas = {a for (v, _), t in self.mem.transformaciones.items() if v == Verbo.COGER for (a, _d) in t
-                      if self.mem.transitable(a) is False}
-        abren = {a for a in observadas if self.mem.transitable(self.mem.resultado(Verbo.COGER, a, a)) is True}
+        observadas = {a for (v, _), t in self.mapa.transformaciones.items() if v == Verbo.COGER for (a, _d) in t
+                      if self.mapa.transitable(a) is False}
+        abren = {a for a in observadas if self.mapa.transitable(self.mapa.resultado(Verbo.COGER, a, a)) is True}
         self._abre_alguna = bool(abren)
         self.induccion = (len(abren) + 1.0) / (len(observadas) + 2.0)    # regla de sucesión de Laplace
 
@@ -101,7 +105,7 @@ class Modelo:
         clase = self.casillas.get(p)
         v = self._libre.get(clase)
         if v is None:
-            v = self._libre[clase] = self.mem.transitable(clase) is True
+            v = self._libre[clase] = self.mapa.transitable(clase) is True
         return v and p not in self.peligros
 
     def conocida(self, p: Pos) -> bool:
@@ -111,7 +115,7 @@ class Modelo:
         clase = self.casillas.get(p)
         v = self._acceso.get(clase)
         if v is None:
-            v = self._acceso[clase] = self.mem.transitable_peligro(clase)
+            v = self._acceso[clase] = self.mapa.transitable_peligro(clase)
         return v
 
     def rinde(self, p: Pos) -> Optional[Dict[str, float]]:
@@ -127,29 +131,29 @@ class Modelo:
         """Si cavar ``clase`` la deja transitable: lo observado (True o False); sin observarlo, True por inducción si coger
         otra clase no transitable la dejó transitable y esta se sabe recogible (su COGER tiene efecto, del manual o de la
         experiencia); None si no hay base para decirlo. El primer intento real (con éxito) lo sustituye por lo observado."""
-        if self.mem.transitable(clase) is not False:
+        if self.mapa.transitable(clase) is not False:
             return None
-        despues = self.mem.resultado(Verbo.COGER, clase, clase)
+        despues = self.mapa.resultado(Verbo.COGER, clase, clase)
         if despues is not None:
-            return self.mem.transitable(despues) is True
-        r = self.mem.requisitos.get((Verbo.COGER, clase))
+            return self.mapa.transitable(despues) is True
+        r = self.req.requisitos.get((Verbo.COGER, clase))
         return True if self._abre_alguna and r is not None and any(n > 0 for n in r.efecto.values()) else None
 
     def inferida(self, clase: str) -> bool:
         """Que cavar ``clase`` abre espacio se infiere (inducción), no se ha observado."""
-        return self.mem.resultado(Verbo.COGER, clase, clase) is None and self.abre(clase) is True
+        return self.mapa.resultado(Verbo.COGER, clase, clase) is None and self.abre(clase) is True
 
     def confianza_cavar(self, clase: str) -> float:
         """Tasa estimada de cavar la clase; si que abre espacio es inferido, por la confianza de la inducción
         (``induccion``, menor que 1): lo inferido pesa menos que lo observado."""
-        c = self.mem.tasa_estimada(Verbo.COGER, clase)
+        c = self.req.tasa_estimada(Verbo.COGER, clase)
         return c * self.induccion if self.inferida(clase) else c
 
     def falta_para_cavar(self, clase: str) -> Optional[Dict[str, float]]:
         """Lo que falta en el inventario para cavar ``clase`` (vacío si nada); None si cavarla no abre espacio."""
         if not self.abre(clase):
             return None
-        r = self.mem.requisitos.get((Verbo.COGER, clase))
+        r = self.req.requisitos.get((Verbo.COGER, clase))
         if r is None:
             return {}
         return {k: float(max(1, n or 1)) - self.inv.get(k, 0.0) for k, n in r.requiere_inventario.items()
@@ -159,20 +163,20 @@ class Modelo:
         """Cavar ``clase`` ahora: abre espacio (``abre``) y se cumple su requisito. Devuelve lo que da al inventario."""
         if self.falta_para_cavar(clase) != {}:
             return None
-        r = self.mem.requisitos.get((Verbo.COGER, clase))
+        r = self.req.requisitos.get((Verbo.COGER, clase))
         return {k: float(n) for k, n in (r.efecto if r is not None else {}).items() if n > 0}
 
     # Cierre
     def _cerradores(self) -> List[Cerrador]:
         salida: List[Cerrador] = []
-        for (verbo, objetivo), r in sorted(self.mem.requisitos.items(), key=lambda kv: (kv[0][0].value, kv[0][1])):
+        for (verbo, objetivo), r in sorted(self.req.requisitos.items(), key=lambda kv: (kv[0][0].value, kv[0][1])):
             if verbo != Verbo.USAR or r.requiere_cerca or not r.requiere_inventario:
                 continue
-            aprendidas = {d for (_, d) in self.mem.transformaciones.get((verbo, objetivo), {})}
+            aprendidas = {d for (_, d) in self.mapa.transformaciones.get((verbo, objetivo), {})}
             if aprendidas:
-                cierra = any(not self.mem.transitable_peligro(d) for d in aprendidas)
+                cierra = any(not self.mapa.transitable_peligro(d) for d in aprendidas)
             else:
-                cierra = any(self.mem.transitable(a) is False and a not in self.mem.peligro_sobre for a in r.aparece)
+                cierra = any(self.mapa.transitable(a) is False and a not in self.mapa.peligro_sobre for a in r.aparece)
             if not cierra:
                 continue
             requiere = {k: max(1, n or 1) for k, n in r.requiere_inventario.items()}
@@ -269,13 +273,13 @@ def accesos_de(modelo: Modelo, interior: Iterable[Pos]) -> Optional[FrozenSet[Po
 
 def recinto_actual(modelo: Modelo, aqui: Pos) -> Optional[Tuple[Pos, ...]]:
     """Si ``aqui`` está en un recinto: sus casillas (conjunto conectado de casillas transitables, 1-3, sin accesos)."""
-    if modelo.mem.transitable(modelo.casillas.get(aqui)) is not True:
+    if modelo.mapa.transitable(modelo.casillas.get(aqui)) is not True:
         return None
     comp, frontera = {aqui}, [aqui]
     while frontera:
         p = frontera.pop()
         for v in _vecinas(p):
-            if v not in comp and modelo.mem.transitable(modelo.casillas.get(v)) is True:
+            if v not in comp and modelo.mapa.transitable(modelo.casillas.get(v)) is True:
                 comp.add(v)
                 if len(comp) > MAX_INTERIOR:
                     return None
@@ -391,7 +395,7 @@ def _abrir(modelo: Modelo, interior: Tuple[Pos, ...], aqui: Pos) -> List[Dict[st
     """Cómo salir del recinto: COGER sobre una pared que se pueda cavar y esté al lado (primero las que cerró el propio
     individuo); si ninguna está al lado, MOVER a la casilla interior que tiene una (COGER solo actúa sobre lo vecino)."""
     paredes = sorted({v for p in interior for v in _vecinas(p) if v not in interior and modelo.rinde(v) is not None},
-                     key=lambda p: (p not in modelo.mem.cierres, p))
+                     key=lambda p: (p not in modelo.mapa.cierres, p))
     vecinas = [p for p in paredes if _manhattan(p, aqui) == 1]
     if vecinas:
         return [{"verbo": Verbo.COGER, "objetivo": f"{modelo.casillas[p]}_{p[0]}_{p[1]}", "clase": modelo.casillas[p]} for p in vecinas]
@@ -429,7 +433,8 @@ class Recinto(Componente):
         if not ctx.con_experiencia or not ctx.memoria.activa:
             return
         aqui = posicion(ctx)
-        if aqui is None or not ctx.memoria.casillas:
+        sec_cuad = cast(MapaCuadricula, ctx.memoria.seccion("cuadricula")) if ctx.memoria.tiene_seccion("cuadricula") else None
+        if aqui is None or sec_cuad is None or not sec_cuad.casillas:
             return
         if self._memoria != id(ctx.memoria):          # vida nueva
             self._memoria, self._sitio, self._ultima = id(ctx.memoria), None, -10**9
@@ -437,11 +442,12 @@ class Recinto(Componente):
             self._planes.clear()
         cara = orientacion(ctx)
         inv = inventario(ctx)
-        objetos = ctx.memoria._objetos(inv)
+        sec_req = cast(Requisitos, ctx.memoria.seccion("requisitos")) if ctx.memoria.tiene_seccion("requisitos") else None
+        objetos = sec_req.objetos(inv) if sec_req is not None else {k: float(v) for k, v in inv.items()}
         if objetos != self._inventario:   # los objetos que se tienen cambian qué sitios son completables: se reevalúa ya
             self._inventario, self._ultima, self._ultimo_requisitos = objetos, -10**9, -10**9
         modelo = Modelo(ctx.memoria, inv, _peligros(ctx))
-        if len(self._planes) > 2000 or any(k[-1][0] != ctx.memoria.version_mapa for k in list(self._planes)[:1]):
+        if len(self._planes) > 2000 or any(k[-1][0] != sec_cuad.version_mapa for k in list(self._planes)[:1]):
             self._planes.clear()      # el mapa ha cambiado: los planes guardados ya no valen
         hogar = pos_de(ctx.memoria.hogar()) if ctx.perfil.hogar else None
         dentro = recinto_actual(modelo, aqui)
@@ -620,8 +626,8 @@ class Recinto(Componente):
             c *= modelo.confianza_cavar(clase)
         if sitio.accesos:
             cerrador = next((modelo.cerrador_para(p) for p in sorted(sitio.accesos) if modelo.cerrador_para(p) is not None), None)
-            if cerrador is not None:
-                c *= ctx.memoria.tasa_estimada(Verbo.USAR, cerrador.objetivo)
+            if cerrador is not None and ctx.memoria.tiene_seccion("requisitos"):
+                c *= cast(Requisitos, ctx.memoria.seccion("requisitos")).tasa_estimada(Verbo.USAR, cerrador.objetivo)
         return acotar(c)
 
     @staticmethod

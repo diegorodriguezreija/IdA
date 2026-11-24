@@ -2,14 +2,14 @@
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.onda import LatidoAgotado, Onda
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import LatidoAgotado, Onda
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
 
 
 class _Valor(Componente):
@@ -102,8 +102,8 @@ def test_solo_el_plazo_corta_el_latido():
 
 
 def test_el_core_escribe_con_autor_sin_pagar_y_percibir_devuelve_none_si_se_rechaza():
-    from ida.core.onda import AutorCore
-    from ida.core.pieza import Pieza
+    from ida.nucleo.onda import AutorCore
+    from ida.nucleo.pieza import Pieza
 
     onda = Onda(1, 1, 1e9, potencia_max=0.1)
     ctx, v = _ctx(onda), _comp(_Valor)

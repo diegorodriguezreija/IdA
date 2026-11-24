@@ -79,7 +79,7 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
     if amplitud is not None:      # barrido de la Regulación: amplitud base del perfil del mundo (potencia = amplitud)
         clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
     if mecanismos is not None or tasa_herencia is not None:   # bloque E: interruptores de memoria
-        from ida.core.mundo import MecanismosMemoria
+        from ida.nucleo.mundo import MecanismosMemoria
         activos: Dict[str, Any] = {m: True for m in (mecanismos or []) if m != "ninguno"}
         if tasa_herencia is not None:
             activos["tasa_herencia"] = tasa_herencia

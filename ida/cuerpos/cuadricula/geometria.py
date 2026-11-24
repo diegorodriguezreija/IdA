@@ -3,7 +3,7 @@
 from collections import deque
 from typing import Any, Callable, Deque, Dict, Hashable, Iterable, List, Optional, Set, Tuple
 
-from ida.core.memoria import Pos
+from ida.nucleo.memoria import Pos
 
 MAX_ESTADOS = 6000        # coste de cálculo: estados máximos por búsqueda
 Accion = Tuple[str, Pos]  # ("mover", destino) | ("coger", casilla) | ("usar", casilla)

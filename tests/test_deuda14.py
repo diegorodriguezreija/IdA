@@ -7,10 +7,10 @@ Dos metas, «hacer_a» y «hacer_b», piden una unidad de «m» cada una y estar
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
-from ida.core.mundo import Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
-from ida.sistemas.s3 import PerseguirMetas
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 from _secciones import memoria_con_secciones
 

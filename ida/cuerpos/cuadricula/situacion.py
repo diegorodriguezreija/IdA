@@ -9,9 +9,9 @@ cuerpo, de la ``Propiocepcion`` «yo».
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
-from ida.core.arquitectura import Contexto
-from ida.core.memoria import Pos, pos_de
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.memoria import Pos, pos_de
+from ida.nucleo.vocabulario import Verbo
 
 
 @dataclass

@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Set
 import chess
 import chess.engine
 
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
-from ida.core.vocabulario import Verbo
+from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.nucleo.vocabulario import Verbo
 from ida.mundos.ajedrez.rival import VALOR, RivalLocal
 
 NOMBRE = {chess.PAWN: "peon", chess.KNIGHT: "caballo", chess.BISHOP: "alfil", chess.ROOK: "torre", chess.QUEEN: "dama", chess.KING: "rey"}

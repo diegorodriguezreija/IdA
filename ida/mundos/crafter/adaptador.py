@@ -12,7 +12,7 @@ Traducción al vocabulario común:
 - Manual declarativo (paso 2, ``crafter_manual.json`` o ``crafter_manual_ampliado.json``, opción
   ``manual``): lo que declara NUTRITIVO y UTIL lo recibe ``ValoracionCrafter`` (valor 0,6). Sus proposiciones y
   requisitos entran en la memoria al nacer (``manual()``).
-- El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.sistemas.amenaza``), con el previo de
+- El mundo no da ``peligro`` (paso 6): lo calcula la base con lo que aprende (``ida.s1.sentir.amenaza``), con el previo de
   lo que el manual declara PELIGROSO. La causa de un daño es lo peligroso **en contacto** (``_contacto``), sin geometría
   de alcance.
 - Sin estrategias propias (paso 6d): la conducta de Crafter es la general de la base.
@@ -35,12 +35,12 @@ import json
 import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
 from ida.mundos.crafter.s1.interpretar.recinto import ALCANCE_SITIO, Recinto
 from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
-from ida.core.vocabulario import Verbo
+from ida.nucleo.vocabulario import Verbo
 
 MATERIALES = {"tree": "arbol", "water": "agua", "stone": "piedra", "coal": "carbon", "iron": "hierro",
               "diamond": "diamante", "table": "mesa", "furnace": "horno", "lava": "lava"}

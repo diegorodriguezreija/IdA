@@ -16,7 +16,7 @@ from typing import Any, List, Tuple
 RAIZ = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(RAIZ))
 
-from ida.core.mundo import Alta, Registro  # noqa: E402
+from ida.nucleo.mundo import Alta, Registro  # noqa: E402
 from ida.mundos import MUNDOS, cargar  # noqa: E402
 
 ORDEN_MUNDOS = ("minimo", "archivos", "snake", "ajedrez", "crafter")

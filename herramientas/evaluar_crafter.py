@@ -37,14 +37,14 @@ from typing import Any, Dict, List, Optional, Tuple
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
 
-from ida.core.azar import Azar  # noqa: E402
+from ida.nucleo.azar import Azar  # noqa: E402
 from ida.core.latido import Organismo  # noqa: E402
-from ida.core.linaje import Arquetipo, Linaje  # noqa: E402
-from ida.core.memoria import Memoria  # noqa: E402
-from ida.core.mundo import Registro  # noqa: E402
-from ida.core.persistencia import Persistencia  # noqa: E402
+from ida.nucleo.linaje import Arquetipo, Linaje  # noqa: E402
+from ida.nucleo.memoria import Memoria  # noqa: E402
+from ida.nucleo.mundo import Registro  # noqa: E402
+from ida.nucleo.persistencia import Persistencia  # noqa: E402
 from ida.mundos import cargar  # noqa: E402
-from ida.sistemas import crear_sistemas  # noqa: E402
+from ida.sistemas_comun import crear_sistemas  # noqa: E402
 
 PERFILES = {
     "Equilibrado": {"apertura": 0.50, "responsabilidad": 0.50, "neuroticismo": 0.50, "extraversion": 0.50, "umbral_miedo": 0.60},

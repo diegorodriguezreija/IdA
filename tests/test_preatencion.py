@@ -4,16 +4,16 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema
-from ida.core.azar import Azar
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.onda import PiezaAjena
-from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Verbo
-from ida.sistemas import crear_sistemas
-from ida.sistemas.saliencia import Saliencia
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.onda import PiezaAjena
+from ida.nucleo.pieza import Pieza, acotar
+from ida.nucleo.vocabulario import Verbo
+from ida.sistemas_comun import crear_sistemas
+from ida.s1.sentir.saliencia import Saliencia
 
 
 def _organismo(mundo: Any = None) -> Organismo:
@@ -209,7 +209,7 @@ def test_exterocepcion_en_bruto_y_saliencia_de_antes() -> None:
 # --- Amenaza (D5, D7) -------------------------------------------------------------------------------
 def test_amenaza_va_antes_que_saliencia() -> None:
     """Amenaza es opcional (D3): el mínimo no la registra; quien la registra la tiene antes que Saliencia."""
-    from ida.core.mundo import Registro
+    from ida.nucleo.mundo import Registro
     from ida.mundos.minimo import MundoMinimo
 
     class MundoConAmenaza(MundoMinimo):
@@ -231,8 +231,8 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
     import copy
 
     from ida.mundos.crafter import MundoCrafter
-    from ida.sistemas import amenaza as pel
-    from ida.sistemas.amenaza import Amenaza
+    from ida.s1.sentir import amenaza as pel
+    from ida.s1.sentir.amenaza import Amenaza
 
     mundo = MundoCrafter()
     mundo.reiniciar(31)
@@ -258,7 +258,7 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
         entidades = copy.deepcopy(obs_vista[-1].entidades)
         aqui = pel.pos_de(obs_vista[-1].ubicacion)
         assert aqui is not None
-        pel.estimar(entidades, aqui, ctx.memoria.peligros, ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
+        pel.estimar(entidades, aqui, ctx.memoria.seccion("peligros"), ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
         esperados.append({e.id: e.rasgos["peligro"] for e in entidades if "peligro" in e.rasgos})
 
     amenaza.reactiva = comprobar  # type: ignore[method-assign]

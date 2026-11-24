@@ -54,7 +54,7 @@ Cada sistema tiene las mismas etapas y una meta propia. **Un impulso** es el por
 | Reaccionar | `Reflejo` (solo ante saltos bruscos del peligro), `Impulso` (una necesidad por constante vital del mundo y Seguridad), `Feedback` (bajan los déficits), `Estrategia` | `Exteriorizacion`, `Impulso` (Exploración), `Feedback` (placer y estrés), `Estrategia` | `Intencion` (saber y las del mundo), `Impulso` (control gradual según la certeza), `Feedback` (error de predicción), `Estrategia` |
 | Actuar | `Accion` | `Accion` | `Accion` |
 
-- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y solo cede ante otra que la supere con un margen claro. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/sistemas`; lo propio de cada mundo se declara en su registro (`Mundo.registro()`). Un mundo puede añadir o sustituir Componentes por destino (`"CORE.Sentir"`, `"S1.Interpretar"`...) y estrategias por sistema.
+- **Estrategias:** el componente `Estrategia` de cada sistema elige, mantiene y abandona estrategias (una por impulso). Una estrategia se cierra al bajar la necesidad, al dejar de ser elegible o al agotarse (progreso lento), y solo cede ante otra que la supere con un margen claro. Su valor se aprende durante la vida por el feedback de su sistema. Las genéricas viven en `ida/s1/`, `ida/s2/` e `ida/s3/`; lo propio de cada mundo se declara en su registro (`Mundo.registro()`). Un mundo puede añadir o sustituir Componentes por destino (`"CORE.Sentir"`, `"S1.Interpretar"`...) y estrategias por sistema.
 - **Acciones:** solo los componentes `Accion` proponen acciones, y cada una lleva su origen (impulso y estrategia).
 - **Propiedad:** cada componente solo emite y modifica piezas de su tipo, a través de la Onda, que lo comprueba y lo anota en el registro de la pieza. Los `Impulso` de S2 y S3 modulan piezas `Impulso`, no acciones.
 
@@ -62,7 +62,7 @@ Cada sistema tiene las mismas etapas y una meta propia. **Un impulso** es el por
 
 ## 3. La Onda: Información y Atención de un Latido
 
-Toda la información de un latido viaja en una **`Onda`** (`ida/core/onda.py`), en cuatro fases que avanzan en un solo sentido:
+Toda la información de un latido viaja en una **`Onda`** (`ida/nucleo/onda.py`), en cuatro fases que avanzan en un solo sentido:
 
 ```mermaid
 flowchart LR
@@ -100,7 +100,7 @@ La **Guillotina** (`LatidoAgotado`) es cooperativa y solo mira el **plazo**: cad
 
 ## 5. El Tribunal: la Física de la Decisión
 
-El **Tribunal** (`ida/core/sentidos.py`) es el único que decide qué se ejecuta.
+El **Tribunal** (`ida/core/actuar/tribunal.py`) es el único que decide qué se ejecuta.
 
 $$\text{Puntuación}_i = \text{Arousal}^{*}_i \cdot \text{Estrés} + \text{Confianza}_i \cdot (1 - \text{Estrés}) + \Delta_{\text{experiencia}} + \text{plus}_i$$
 

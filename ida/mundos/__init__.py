@@ -1,4 +1,4 @@
-"""Mundos conectables. Cada uno es un paquete que implementa ``ida.core.mundo.Mundo``."""
+"""Mundos conectables. Cada uno es un paquete que implementa ``ida.nucleo.mundo.Mundo``."""
 
 MUNDOS = {
     "minimo": "ida.mundos.minimo:MundoMinimo",

@@ -5,12 +5,12 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
-from ida.sistemas.s3 import PerseguirMetas
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 from _secciones import memoria_con_secciones, requisitos
 
@@ -77,14 +77,14 @@ def test_meta_conseguida_por_inventario_o_por_vital():
     assert requisitos(m).registrar_meta(Verbo.USAR, "hacer_a", True, {"b": 1.0}, {"b": 0.0}, {})
     assert not requisitos(m).registrar_meta(Verbo.COMER, "agua", False, None, None, {"alimentacion": 11.0})
     assert requisitos(m).registrar_meta(Verbo.COMER, "agua", True, None, None, {"alimentacion": 11.0})     # cambia una vital
-    assert all(meta.conseguida for meta in m.metas.values())
+    assert all(meta.conseguida for meta in requisitos(m).metas.values())
 
 
 def test_induccion_por_diferencia():
     m = memoria_con_secciones()
     requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)                     # falla sin llave
     requisitos(m).aprender_requisito(Verbo.COGER, "c", {"llave": 1.0}, {"llave": 1.0, "b": 1.0}, set(), True)
-    r = m.requisitos[(Verbo.COGER, "c")]
+    r = requisitos(m).requisitos[(Verbo.COGER, "c")]
     assert r.fuente == "experiencia" and r.requiere_inventario == {"llave": 1} and r.efecto == {"b": 1}
 
 
@@ -92,9 +92,9 @@ def test_reintento_tras_novedad():
     m = memoria_con_secciones()
     for _ in range(3):
         requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)
-    assert m.bloqueada(Verbo.COGER, "c")
+    assert requisitos(m).bloqueada(Verbo.COGER, "c")
     requisitos(m).aprender_requisito(Verbo.COGER, "otra", {}, {"llave": 1.0}, set(), True)      # gana un objeto nuevo
-    assert not m.bloqueada(Verbo.COGER, "c")
+    assert not requisitos(m).bloqueada(Verbo.COGER, "c")
 
 
 def test_efecto_probabilistico_no_se_bloquea():
@@ -102,7 +102,7 @@ def test_efecto_probabilistico_no_se_bloquea():
     requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {"b": 1.0}, set(), True)
     for _ in range(5):
         requisitos(m).aprender_requisito(Verbo.COGER, "c", {"b": 1.0}, {"b": 1.0}, set(), True)
-    assert not m.bloqueada(Verbo.COGER, "c")
+    assert not requisitos(m).bloqueada(Verbo.COGER, "c")
 
 
 def test_meta_del_manual_no_se_bloquea():
@@ -113,10 +113,10 @@ def test_meta_del_manual_no_se_bloquea():
     for _ in range(3):
         requisitos(m).aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
         requisitos(m).aprender_requisito(Verbo.COGER, "piedra", {}, {}, set(), False)
-    assert m.puede_salir(Verbo.COGER, "hierba") and not m.bloqueada(Verbo.COGER, "hierba")
-    assert m.tasa_estimada(Verbo.COGER, "hierba") == 1.0 / 4.0          # (0 + 1) / (0 + 3 + 1)
-    assert not m.puede_salir(Verbo.COGER, "piedra") and m.bloqueada(Verbo.COGER, "piedra")
-    assert m.tasa_estimada(Verbo.COGER, "piedra") == 0.0
+    assert requisitos(m).puede_salir(Verbo.COGER, "hierba") and not requisitos(m).bloqueada(Verbo.COGER, "hierba")
+    assert requisitos(m).tasa_estimada(Verbo.COGER, "hierba") == 1.0 / 4.0          # (0 + 1) / (0 + 3 + 1)
+    assert not requisitos(m).puede_salir(Verbo.COGER, "piedra") and requisitos(m).bloqueada(Verbo.COGER, "piedra")
+    assert requisitos(m).tasa_estimada(Verbo.COGER, "piedra") == 0.0
 
 
 def test_el_coste_del_paso_es_uno_entre_la_tasa():
@@ -139,7 +139,7 @@ def test_donde_se_puede_colocar_y_lo_que_aparece():
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 1.0}, set(), True, delante="agua")
     requisitos(m).aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 0.0}, set(), True, cerca_despues={"a"}, delante="suelo")
-    r = m.requisitos[(Verbo.USAR, "hacer_a")]
+    r = requisitos(m).requisitos[(Verbo.USAR, "hacer_a")]
     assert r.requiere_delante == {"suelo"} and r.delante_fallido == {"agua"} and r.aparece == {"a"}
 
 
@@ -172,7 +172,7 @@ def test_prueba_antes_de_caminar_y_aprende_el_radio():
     m2 = memoria_con_secciones()
     m2.aplicar_manual(MANUAL_CERCA)
     requisitos(m2).aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)})   # funciona
-    assert m2.requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
+    assert requisitos(m2).requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
 
 
 def test_antibloqueo_aparca_un_destino_que_no_se_acerca():
@@ -195,7 +195,7 @@ class MundoRetono:
     no es éxito. El manual solo declara la meta (coger hierba con efecto), no la probabilidad."""
 
     def __new__(cls, *a, **k):
-        from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+        from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 
         class _Mundo(Mundo):
             nombre = "retono"
@@ -236,17 +236,17 @@ class MundoRetono:
 
 
 def _vivir_retono(semilla: int, latidos: int = 150):
-    from ida.core.azar import Azar
+    from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
-    from ida.core.linaje import Arquetipo
-    from ida.sistemas import crear_sistemas
+    from ida.nucleo.linaje import Arquetipo
+    from ida.sistemas_comun import crear_sistemas
 
     mundo = MundoRetono(p=0.1, semilla=semilla)
     memoria = memoria_con_secciones()
     memoria.aplicar_manual(mundo.manual())
     org = Organismo(mundo, crear_sistemas(), Arquetipo(), memoria, Azar(semilla), con_experiencia=True)
     bloqueos = []
-    org.vivir(latidos, al_latir=lambda o, _onda: bloqueos.append(o.memoria.bloqueada(Verbo.COGER, "hierba")))
+    org.vivir(latidos, al_latir=lambda o, _onda: bloqueos.append(requisitos(o.memoria).bloqueada(Verbo.COGER, "hierba")))
     return mundo, org.memoria, bloqueos
 
 
@@ -256,7 +256,7 @@ def test_efecto_con_probabilidad_0_1_no_se_bloquea_y_acaba_saliendo(semilla):
     dice que puede salir: no se bloquea nunca y se sigue intentando hasta conseguirlo."""
     mundo, memoria, bloqueos = _vivir_retono(semilla)
     assert not any(bloqueos)
-    assert memoria.metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1
+    assert requisitos(memoria).metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1
 
 
 # --- reutilizar lo construido: ir a la X recordada frente a producir otra -----------------------------------------
@@ -276,10 +276,11 @@ def _pasillo(banco_en: int, consumo_aprendido: bool = True) -> Any:
     Con ``consumo_aprendido``, la experiencia ya sabe que poner un banco gasta una madera."""
     m = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     m.aplicar_manual(MANUAL_BANCO)
-    m.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
-    m.casillas[(banco_en, 0)] = "banco"
-    m.paso_libre["suelo"] = 1
-    m.paso_bloqueado["banco"] = 1
+    mapa = m.seccion("cuadricula")
+    mapa.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
+    mapa.casillas[(banco_en, 0)] = "banco"
+    mapa.paso_libre["suelo"] = 1
+    mapa.paso_bloqueado["banco"] = 1
     if consumo_aprendido:
         requisitos(m).aprender_requisito(Verbo.USAR, "poner_banco", {"madera": 2.0}, {"madera": 1.0}, set(), True, cerca_despues={"banco"})
     lugar = _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))
@@ -326,14 +327,15 @@ def test_el_material_se_busca_tambien_en_el_mapa_local():
         {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_b", "requiere_inventario": {"madera": None}},
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "arbol", "requiere_inventario": {}, "efecto": {"madera": 1}},
     ]})
-    m.casillas.update({(x, 0): "suelo" for x in range(6)})
-    m.casillas[(6, 0)] = "arbol"
-    m.paso_libre["suelo"] = 1
-    m.paso_bloqueado["arbol"] = 1
+    mapa = m.seccion("cuadricula")
+    mapa.casillas.update({(x, 0): "suelo" for x in range(6)})
+    mapa.casillas[(6, 0)] = "arbol"
+    mapa.paso_libre["suelo"] = 1
+    mapa.paso_bloqueado["arbol"] = 1
     entidades = [_entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
     propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", cuerpo=Cuadricula()), None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
     assert "volver a arbol (mapa, 5 pasos)" in propuestas[0].motivo
-    m.casillas[(6, 0)] = "suelo"          # el mapa ya no recuerda ningún árbol
+    mapa.casillas[(6, 0)] = "suelo"          # el mapa ya no recuerda ningún árbol
     sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", latido=2, cuerpo=Cuadricula()), None)
     assert not any("(mapa," in p.motivo for p in sin_mapa), [p.motivo for p in sin_mapa]

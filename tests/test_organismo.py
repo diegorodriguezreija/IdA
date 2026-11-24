@@ -1,12 +1,12 @@
 """Tests de extremo a extremo con el mundo mínimo: el organismo vive, decide, aprende y es repetible."""
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.vocabulario import Relacion, Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 
 def _vida(semilla=3, latidos=200, con_experiencia=True, frecuencia=None):

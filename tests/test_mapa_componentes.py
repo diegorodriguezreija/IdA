@@ -19,12 +19,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 import mapa_componentes as mc  # noqa: E402
 
-from ida.core.azar import Azar  # noqa: E402
+from ida.nucleo.azar import Azar  # noqa: E402
 from ida.core.latido import Organismo  # noqa: E402
-from ida.core.linaje import Arquetipo  # noqa: E402
-from ida.core.memoria import Memoria  # noqa: E402
-from ida.sistemas import crear_sistemas  # noqa: E402
-from ida.sistemas.comun import Estrategia  # noqa: E402
+from ida.nucleo.linaje import Arquetipo  # noqa: E402
+from ida.nucleo.memoria import Memoria  # noqa: E402
+from ida.sistemas_comun import crear_sistemas  # noqa: E402
+from ida.sistemas_comun import Estrategia  # noqa: E402
 
 Montado = Set[Tuple[str, str, str]]   # (tipo, ubicación, nombre)
 

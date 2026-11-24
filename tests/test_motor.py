@@ -10,15 +10,15 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula, MotorCuadricula
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 Pos = Tuple[int, int]
 DISPONIBLES = ["noop", "move_left", "move_right", "move_up", "move_down", "do", "sleep", "place_table", "make_wood_pickaxe"]
