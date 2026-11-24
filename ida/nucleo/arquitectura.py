@@ -16,14 +16,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Cuerpo, Observacion, Perfil
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Cuerpo, Observacion, Perfil
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
 
 ETAPAS = ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 BARRIDOS = ("reactiva", "activa", "proactiva")

@@ -19,12 +19,12 @@ import shutil
 from collections import Counter
 from typing import Any, Dict, List, Optional, Set
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.estrategia import Definicion, Propuesta
-from ida.core.azar import Azar
-from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Relacion, Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.estrategia import Definicion, Propuesta
+from ida.nucleo.azar import Azar
+from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.sistemas.s1 import Alimentarse
 
 COMESTIBLES = ["Boletus_edulis.brote", "Taraxacum_officinale.brote", "Vaccinium_myrtillus.fruto"]

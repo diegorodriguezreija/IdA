@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("crafter")
 
-from ida.core.vocabulario import Verbo  # noqa: E402
+from ida.nucleo.vocabulario import Verbo  # noqa: E402
 
 from _secciones import memoria_con_secciones
 

@@ -65,8 +65,9 @@ La estructura del código es el diagrama de la arquitectura. Un Componente por f
 ```text
 ida/
   nucleo/            mecánica sin cognición: onda, pieza, arquitectura (Componente, Módulo, Sistema),
-                     latido, memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia
+                     memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia, azar, estrategia...
   core/
+    latido.py        el latido: crea la Onda, siente, regula, lanza la Onda a los sistemas y actúa (Organismo)
     sentir/          interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
     actuar/          tribunal.py, actuador.py
     regulacion.py    reglas de la Onda (hoy Marcapasos)
@@ -86,7 +87,7 @@ ida/
 ```
 
 - El paquete raíz sigue siendo `ida` (minúsculas, convención de Python). `ida/core` pasa a ser el sistema Core; la mecánica que hoy vive en `ida/core/*.py` se mueve a `ida/nucleo/`.
-- **Importaciones permitidas:** `nucleo` ← `core`, `s1`-`s3` ← `cuerpos` ← `mundos`. Nada de `nucleo`, `core` ni `sN` importa `cuerpos` ni `mundos`; `cuerpos` no importa `mundos`. Lo vigila `test_pureza`.
+- **Importaciones permitidas:** `nucleo` ← `core` (que incluye el latido) ← `s1`-`s3` ← `cuerpos` ← `mundos`. Ningún paquete importa a los que van detrás de él. Lo vigila `test_pureza`.
 
 ### D3. Registro declarado de Componentes
 
@@ -362,3 +363,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |
 | 23/11/2026 | D15, sección 5 | Dos constantes, de diseño; `Peligros.escalar()` se resuelve en A7 | Resultado de A6a (`docs/A6A_PROGRESO.md`) |
 | 24/11/2026 | D7 | Transformaciones al cuerpo; secciones con dueño y manual y legado diferidos | A7b |
+| 24/11/2026 | D2 | El latido es del Core, no del núcleo | A2 E2: importarlo desde `nucleo` creaba un ciclo con los Componentes del Core |

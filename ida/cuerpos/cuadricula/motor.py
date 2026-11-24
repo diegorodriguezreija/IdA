@@ -21,11 +21,11 @@ nuevo entra en el inventario (de las claves que el mundo mide como ``objetos``);
 
 from typing import Any, Dict, List, Optional
 
-from ida.core.arquitectura import Contexto
-from ida.core.memoria import Pos, pos_de
-from ida.core.mundo import Efecto, Motor
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.memoria import Pos, pos_de
+from ida.nucleo.mundo import Efecto, Motor
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 
 MOVIMIENTOS: Dict[Pos, str] = {(-1, 0): "move_left", (1, 0): "move_right", (0, -1): "move_up", (0, 1): "move_down"}
 INTERACTUAR = "do"

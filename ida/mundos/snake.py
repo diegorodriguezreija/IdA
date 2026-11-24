@@ -21,8 +21,8 @@ from collections import deque
 from dataclasses import replace
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
-from ida.core.vocabulario import Verbo
+from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.nucleo.vocabulario import Verbo
 
 URL = "https://playsnake.org/"
 ANCHO, ALTO = 21, 15

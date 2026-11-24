@@ -2,11 +2,11 @@
 
 from unittest.mock import MagicMock
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.vocabulario import Relacion
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.vocabulario import Relacion
 from ida.mundos.snake import ALTO, MundoSnake, espacio_libre
 from ida.sistemas import crear_sistemas
 

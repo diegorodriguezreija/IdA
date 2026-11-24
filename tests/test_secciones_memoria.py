@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from ida.core.memoria import Memoria, Seccion
+from ida.nucleo.memoria import Memoria, Seccion
 
 
 class Anotadora(Seccion):

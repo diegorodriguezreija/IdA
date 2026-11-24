@@ -3,8 +3,8 @@
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Tuple
 
-from ida.core.pieza import acotar
-from ida.core.vocabulario import Afecto
+from ida.nucleo.pieza import acotar
+from ida.nucleo.vocabulario import Afecto
 
 VITALES = ("vitalidad", "alimentacion", "energia", "descanso")
 

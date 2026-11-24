@@ -9,16 +9,16 @@ from typing import List, Optional, Tuple, cast
 
 import pytest
 
-from ida.core.arquitectura import Contexto
-from ida.core.azar import Azar
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.s1 import Aliestesia
 
@@ -98,7 +98,7 @@ def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, 
 
 
 def _propuesta(ctx: Contexto, impulso: str):
-    from ida.core.estrategia import nueva
+    from ida.nucleo.estrategia import nueva
     from ida.sistemas.s1 import Alimentarse
 
     d = Alimentarse()

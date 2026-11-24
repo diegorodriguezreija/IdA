@@ -40,7 +40,7 @@ def main() -> int:
     sys.path.insert(0, os.path.join(args.raiz, "herramientas"))
     import evaluar_crafter as ev
     from ida.core import latido
-    from ida.core.vocabulario import Verbo
+    from ida.nucleo.vocabulario import Verbo
 
     eps: List[Dict[str, Any]] = []
     vivir_original = latido.Organismo.vivir

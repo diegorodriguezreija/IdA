@@ -13,13 +13,13 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pytest
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas import crear_sistemas
 from ida.cuerpos.cuadricula.buscador import buscar_postura

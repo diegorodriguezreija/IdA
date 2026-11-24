@@ -2,7 +2,7 @@
 
 from typing import Dict, Optional, Tuple, cast
 
-from ida.core.arquitectura import Contexto
+from ida.nucleo.arquitectura import Contexto
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 
 MAX_RUTA_MAPA = 40         # pasos máximos de una ruta por el mapa local hasta algo recordado

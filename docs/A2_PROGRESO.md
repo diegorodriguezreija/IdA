@@ -7,19 +7,19 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
-| E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | (este commit) |
-| E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Pendiente | - |
+| E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | `570e444` |
+| E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | (este commit) |
 | E3 | `ida/s1` | Pendiente | - |
 | E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Pendiente | - |
 | E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Pendiente | - |
 | E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
 
-### Últimas comprobaciones (E1)
+### Últimas comprobaciones (E2)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 63 source files
-pytest -q      516 passed, 1 warning in 62.57s
+mypy ida       Success: no issues found in 71 source files
+pytest -q      522 passed, 1 warning in 63.98s
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -32,6 +32,19 @@ ajedrez: OK
 EQUIVALENCIA: OK
 mapa_componentes.py: Mapa de Componentes válido y al día.
 ```
+
+## E2 · ida/nucleo e ida/core (sentir, actuar, regulacion)
+
+- `ida/nucleo/`: trasladada la mecánica sin cognición con `git mv`:
+  `arquitectura.py`, `azar.py`, `biblioteca.py`, `estrategia.py`, `linaje.py`, `memoria.py`, `mundo.py`, `onda.py`, `persistencia.py`, `pieza.py`, `soma.py`, `vocabulario.py`. Creado `ida/nucleo/__init__.py`.
+- `ida/core/`:
+  - `latido.py` permanece en `ida/core/latido.py` (decisión del arquitecto tras consulta: el latido es del Core, orquesta Onda, regulación, sentir y actuar, evitando un ciclo de dependencias si viviese en `nucleo`). Se verificó que `Organismo` no importa mundos, cuerpos ni sistemas.
+  - `regulacion.py` permanece en `ida/core/regulacion.py`.
+  - `ida/core/sentir/`: componentes de sensores extraídos de `sentidos.py`: `interocepcion.py`, `propiocepcion.py`, `exterocepcion.py`, `ambiente.py`.
+  - `ida/core/actuar/`: componentes de actuación extraídos de `sentidos.py`: `tribunal.py`, `actuador.py` (con `aplicar_efecto`).
+  - Eliminado `ida/core/sentidos.py`.
+- Actualizadas importaciones en todo el código base (`ida/`, `tests/`, `herramientas/`) de `ida.core.<mecanica>` a `ida.nucleo.<mecanica>` y de `ida.core.sentidos` a `ida.core.sentir.*` / `ida.core.actuar.*`.
+- Actualizado `docs/DISENO_COMPONENTES.md` (D2 y registro de cambios) con la decisión arquitectónica sobre `latido.py` y las reglas de importación.
 
 ## E1 · Arreglos P1, P2 y P3
 

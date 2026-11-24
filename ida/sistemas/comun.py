@@ -2,10 +2,10 @@
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from ida.core.arquitectura import SIN_EXPECTATIVA, Componente, Contexto, variables_proactivas
-from ida.core import estrategia as est
-from ida.core.estrategia import Catalogo, Definicion
-from ida.core.pieza import Pieza, acotar
+from ida.nucleo.arquitectura import SIN_EXPECTATIVA, Componente, Contexto, variables_proactivas
+from ida.nucleo import estrategia as est
+from ida.nucleo.estrategia import Catalogo, Definicion
+from ida.nucleo.pieza import Pieza, acotar
 
 ALCANCE = 0.9          # proximidad a partir de la cual algo está al alcance
 MAX_OBJETOS = 7        # atención limitada: 7 ± 2 objetos por latido

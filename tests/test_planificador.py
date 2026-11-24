@@ -5,10 +5,10 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas.s3 import PerseguirMetas
 
@@ -195,7 +195,7 @@ class MundoRetono:
     no es éxito. El manual solo declara la meta (coger hierba con efecto), no la probabilidad."""
 
     def __new__(cls, *a, **k):
-        from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+        from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 
         class _Mundo(Mundo):
             nombre = "retono"
@@ -236,9 +236,9 @@ class MundoRetono:
 
 
 def _vivir_retono(semilla: int, latidos: int = 150):
-    from ida.core.azar import Azar
+    from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
-    from ida.core.linaje import Arquetipo
+    from ida.nucleo.linaje import Arquetipo
     from ida.sistemas import crear_sistemas
 
     mundo = MundoRetono(p=0.1, semilla=semilla)

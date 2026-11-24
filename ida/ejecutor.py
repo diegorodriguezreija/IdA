@@ -6,11 +6,11 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from ida.consola import linea, resumen_latido
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo, Linaje
-from ida.core.memoria import Memoria
-from ida.core.persistencia import Persistencia
+from ida.nucleo.linaje import Arquetipo, Linaje
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.persistencia import Persistencia
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
 from ida.sistemas import crear_sistemas

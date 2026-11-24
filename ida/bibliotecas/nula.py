@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from ida.core.biblioteca import (
+from ida.nucleo.biblioteca import (
     Biblioteca,
     Consulta,
     ElementoRespuesta,

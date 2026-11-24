@@ -2,15 +2,15 @@
 
 import pytest
 
-from ida.core import estrategia as est
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.onda import Onda, PiezaAjena
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
+from ida.nucleo import estrategia as est
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import Onda, PiezaAjena
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
 
 
 class _Estrategia(Componente):
@@ -72,8 +72,9 @@ def test_la_onda_conserva_las_estrategias_entre_latidos_y_comprueba_la_propiedad
 
 
 def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final():
-    from ida.core.mundo import Efecto
-    from ida.core.sentidos import Tribunal, aplicar_efecto
+    from ida.nucleo.mundo import Efecto
+    from ida.core.actuar.actuador import aplicar_efecto
+    from ida.core.actuar.tribunal import Tribunal
     from ida.sistemas.comun import Accion
 
     class _HuirA(est.Definicion):
@@ -101,8 +102,8 @@ def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final()
 
 
 def test_necesidades_declaradas_y_feedback_de_s1():
-    from ida.core.mundo import NECESIDADES_BASE, Necesidad
-    from ida.core.pieza import Pieza
+    from ida.nucleo.mundo import NECESIDADES_BASE, Necesidad
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s1 import Feedback, deficits
 
     sed = Necesidad("sed", ("agua",), 95.0)
@@ -127,8 +128,8 @@ def test_necesidades_declaradas_y_feedback_de_s1():
 
 
 def test_tribunal_suma_el_plus_a_la_estrategia_en_curso():
-    from ida.core.pieza import Pieza
-    from ida.core.sentidos import Tribunal
+    from ida.nucleo.pieza import Pieza
+    from ida.core.actuar.tribunal import Tribunal
 
     def candidato(id_, conf, origen=None):
         carga = {"verbo": Verbo.MOVER, "objetivo": id_, "clase": "", "motivo": "", "datos": {}}
@@ -154,7 +155,7 @@ def test_tribunal_suma_el_plus_a_la_estrategia_en_curso():
 
 # --- C1.5: S1 con impulsos, estrategias y reflejo ------------------------------------------------
 def _s1_latido(n, activas, previo_ef, estrategia_comp, intensidad, perfil, ejecutada=None, alarmas=(None, None)):
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
 
     ef_anterior = dict(previo_ef or {})
     if ejecutada is not None:
@@ -223,7 +224,7 @@ def test_sustituir_la_estrategia_activa_exige_un_margen_claro():
 
 
 def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s1 import Reflejo
 
     def sobresalto(antes, ahora, umbral_miedo=0.6):
@@ -244,7 +245,7 @@ def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
 
 
 def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s1 import Estrategia, SeguirEnMovimiento
 
     comp = _comp(lambda: Estrategia(est.Catalogo([_def("comer", 10, elegible=lambda n: n >= 3), SeguirEnMovimiento()])))
@@ -262,7 +263,7 @@ def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
 
 
 def test_alimentarse_elige_el_objeto_por_valor_y_si_se_valora_mal_vuelve_a_buscar():
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s1 import Alimentarse
 
     def fase(valencia):
@@ -284,7 +285,7 @@ def test_alimentarse_elige_el_objeto_por_valor_y_si_se_valora_mal_vuelve_a_busca
 
 # --- Decisión 7 del autor sobre C1 ---------------------------------------------------------------
 def _latido_con_feedback(n, activas, comp, intensidad, feedback, ejecutada):
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
 
     ef_anterior = {}
     if ejecutada is not None:
@@ -315,8 +316,8 @@ def test_el_valor_se_aprende_por_feedback_y_al_alcanzar_el_objetivo_queda_comple
 
 
 def test_el_plus_por_estrategia_activa_se_apaga_al_acercarse_al_objetivo():
-    from ida.core.pieza import Pieza
-    from ida.core.sentidos import Tribunal
+    from ida.nucleo.pieza import Pieza
+    from ida.core.actuar.tribunal import Tribunal
 
     def plus(progreso, agotamiento=0.0):
         e = est.nueva("S1", _Huir(), "seguridad", 0.8, 0.0, 1)
@@ -349,7 +350,7 @@ def test_cerrar_una_estrategia_desde_un_autor_ajeno_se_rechaza():
 def test_con_la_seta_rechazada_al_alcance_y_una_baya_a_la_vista_va_hacia_la_baya():
     """Caso de la semilla 7 del Valiente en el mínimo: el olor del lugar lleva a la seta (0,7, al lado),
     más que a la baya (0,6, a tres casillas); la estrategia debe ir hacia la baya, no buscar ni volver."""
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s1 import Alimentarse
 
     ef_anterior = {"Valor": {"seta": Pieza("seta", "Valor", carga={"valencia": -0.2})}}
@@ -385,9 +386,9 @@ def test_feedback_de_s2_placer_y_estres():
 
 
 def test_intencion_saber_y_las_del_mundo():
-    from ida.core.memoria import Proposicion
-    from ida.core.pieza import Pieza
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.pieza import Pieza
+    from ida.nucleo.vocabulario import Relacion
     from ida.sistemas.s3 import Intencion
 
     mem = Memoria()
@@ -403,7 +404,7 @@ def test_intencion_saber_y_las_del_mundo():
 
 
 def test_estrategias_de_conocimiento_de_s3_actuan_sobre_la_conclusion_de_logica():
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s3 import ComerLoNutritivo
 
     onda = Onda(1, 100, 1e9)
@@ -417,9 +418,9 @@ def test_estrategias_de_conocimiento_de_s3_actuan_sobre_la_conclusion_de_logica(
 
 
 def test_alimentarse_con_prudencia_rechaza_indicios_de_dano_y_lo_desconocido():
-    from ida.core.memoria import Proposicion
-    from ida.core.pieza import Pieza
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.pieza import Pieza
+    from ida.nucleo.vocabulario import Relacion
     from ida.mundos.archivos import AlimentarseConPrudencia
 
     mem = Memoria()
@@ -440,10 +441,10 @@ def test_alimentarse_con_prudencia_rechaza_indicios_de_dano_y_lo_desconocido():
 
 
 def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
-    from ida.core.memoria import Proposicion
-    from ida.core.pieza import Pieza
-    from ida.core.sentidos import Tribunal
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.pieza import Pieza
+    from ida.core.actuar.tribunal import Tribunal
+    from ida.nucleo.vocabulario import Relacion
     from ida.sistemas.s3 import Creencia
     from ida.sistemas.s3 import Impulso as ImpulsoS3
 
@@ -499,9 +500,9 @@ def test_valencia_explicita_en_soma_y_emocion():
 
 
 def test_habituacion_y_sensibilizacion_en_supervivencia():
-    from ida.core.memoria import Proposicion
-    from ida.core.pieza import Pieza
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.pieza import Pieza
+    from ida.nucleo.vocabulario import Relacion
     from ida.sistemas.s1 import relacion_supervivencia
 
     mem = Memoria()
@@ -517,7 +518,7 @@ def test_habituacion_y_sensibilizacion_en_supervivencia():
 
 
 def test_valor_con_cuatro_dimensiones_y_valencia_combinada():
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.sistemas.s2 import Valor
 
     onda = Onda(1, 100, 1e9)
@@ -531,9 +532,9 @@ def test_valor_con_cuatro_dimensiones_y_valencia_combinada():
 
 
 def test_creencia_con_trust_y_fuentes_incluida_la_afectiva():
-    from ida.core.memoria import Proposicion
-    from ida.core.pieza import Pieza
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.pieza import Pieza
+    from ida.nucleo.vocabulario import Relacion
     from ida.sistemas.s3 import Creencia
 
     mem = Memoria()

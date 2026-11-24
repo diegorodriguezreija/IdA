@@ -3,7 +3,7 @@
 from typing import Any, Dict, List, cast
 
 from ida.core.latido import Organismo
-from ida.core.onda import Onda
+from ida.nucleo.onda import Onda
 
 
 def resumen_latido(org: Organismo, onda: Onda) -> Dict[str, Any]:

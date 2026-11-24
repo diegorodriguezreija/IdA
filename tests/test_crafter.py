@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("crafter")
 
-from ida.core.vocabulario import RASGOS, Verbo  # noqa: E402
+from ida.nucleo.vocabulario import RASGOS, Verbo  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
 from ida.mundos.crafter import MundoCrafter  # noqa: E402
 
@@ -32,7 +32,7 @@ def test_dormido_lo_decide_el_juego(mundo):
 
 
 def test_coger_sin_obtener_nada_no_es_exito(mundo):
-    from ida.core.pieza import Pieza
+    from ida.nucleo.pieza import Pieza
     from ida.cuerpos.cuadricula import MotorCuadricula
     intencion = Pieza(id="decision", tipo="Decision", carga={"verbo": Verbo.COGER, "objetivo": "suelo_0_0"})
     ef = mundo.ejecutar_primitivas(["do"], Verbo.COGER)

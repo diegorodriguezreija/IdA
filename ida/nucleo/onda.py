@@ -46,7 +46,7 @@ from contextlib import contextmanager
 from types import MappingProxyType
 from typing import Any, Callable, Dict, Iterator, List, Optional, Protocol, Tuple
 
-from ida.core.pieza import MAX_REGISTRO, Pieza, acotar
+from ida.nucleo.pieza import MAX_REGISTRO, Pieza, acotar
 
 Canales = Dict[str, Dict[str, Pieza]]
 

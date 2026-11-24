@@ -4,14 +4,14 @@ from typing import Any, Callable, Dict, List, Tuple
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema
-from ida.core.azar import Azar
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.onda import PiezaAjena
-from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.onda import PiezaAjena
+from ida.nucleo.pieza import Pieza, acotar
+from ida.nucleo.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.saliencia import Saliencia
 
@@ -209,7 +209,7 @@ def test_exterocepcion_en_bruto_y_saliencia_de_antes() -> None:
 # --- Amenaza (D5, D7) -------------------------------------------------------------------------------
 def test_amenaza_va_antes_que_saliencia() -> None:
     """Amenaza es opcional (D3): el mínimo no la registra; quien la registra la tiene antes que Saliencia."""
-    from ida.core.mundo import Registro
+    from ida.nucleo.mundo import Registro
     from ida.mundos.minimo import MundoMinimo
 
     class MundoConAmenaza(MundoMinimo):

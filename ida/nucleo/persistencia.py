@@ -5,7 +5,7 @@ import os
 import sqlite3
 from typing import Optional
 
-from ida.core.memoria import Memoria
+from ida.nucleo.memoria import Memoria
 
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS piezas (individuo TEXT, latido INTEGER, tipo TEXT, id TEXT, clase TEXT, sistema TEXT, arousal REAL);

@@ -10,12 +10,12 @@ Nada de eso se le dice a IdA: el daño, el emisor, su alcance y la eficacia del 
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 from ida.sistemas import amenaza as pel
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
-from ida.core.vocabulario import Relacion, Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.sistemas import crear_sistemas
 
 Pos = Tuple[int, int]
@@ -426,7 +426,7 @@ def test_crafter_no_escribe_conducta():
     import pytest
 
     pytest.importorskip("crafter")
-    from ida.core.estrategia import ConPropuestas, Definicion, Plan
+    from ida.nucleo.estrategia import ConPropuestas, Definicion, Plan
     from ida.mundos.crafter import MundoCrafter, adaptador
 
     clases = [c for _, c in inspect.getmembers(adaptador, inspect.isclass) if c.__module__ == adaptador.__name__]
@@ -440,7 +440,7 @@ def test_crafter_no_escribe_conducta():
 
 def test_la_escala_del_perfil_llega_a_peligros():
     """D15: las constantes de escala de Amenaza son parámetros del mundo (``Perfil.escala``)."""
-    from ida.core.mundo import Escala
+    from ida.nucleo.mundo import Escala
 
     p = pel.Peligros()
     assert (p.dano_previo, p.golpes_previo, p.margen_lugar, p.c_escala) == (pel.DANO_PREVIO, pel.GOLPES_PREVIO, pel.MARGEN_LUGAR, pel.ESCALA)
@@ -456,7 +456,7 @@ def test_crafter_fija_la_escala_de_antes():
     import pytest
 
     pytest.importorskip("crafter")
-    from ida.core.mundo import Escala
+    from ida.nucleo.mundo import Escala
     from ida.mundos.crafter import MundoCrafter
 
     assert MundoCrafter.perfil.escala == Escala()

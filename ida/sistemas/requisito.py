@@ -10,13 +10,13 @@ False): no cobra ni cuenta operaciones en el latido. «Delante» y «cerca» los
 import math
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, Meta, Seccion, desplazamiento
-from ida.core.memoria import Requisito as RequisitoAccion
-from ida.core.mundo import Perfil
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, Meta, Seccion, desplazamiento
+from ida.nucleo.memoria import Requisito as RequisitoAccion
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 
 Situacion = Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]
 

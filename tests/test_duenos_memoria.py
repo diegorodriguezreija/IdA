@@ -16,7 +16,7 @@ from typing import Dict, FrozenSet, List, Set, Tuple
 
 import pytest
 
-from ida.core.memoria import Memoria
+from ida.nucleo.memoria import Memoria
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 IDA = RAIZ / "ida"

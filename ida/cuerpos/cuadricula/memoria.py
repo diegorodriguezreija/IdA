@@ -6,8 +6,8 @@ propio cuerpo. Escriben en ella ``ModeloDirecto`` y ``MapaLocal``; leerla es lib
 
 from typing import Dict, List, Optional, Set, Tuple
 
-from ida.core.memoria import DIRECCIONES, Pos, Seccion
-from ida.core.vocabulario import Verbo
+from ida.nucleo.memoria import DIRECCIONES, Pos, Seccion
+from ida.nucleo.vocabulario import Verbo
 
 
 class MapaCuadricula(Seccion):

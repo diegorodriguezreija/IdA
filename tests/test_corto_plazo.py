@@ -3,11 +3,11 @@
 import pytest
 from dataclasses import replace
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas import crear_sistemas
 
@@ -18,7 +18,7 @@ def test_perfil_defecto_corto_plazo():
 
 
 def test_corto_plazo_en_contexto():
-    from ida.core.arquitectura import Componente, Contexto
+    from ida.nucleo.arquitectura import Componente, Contexto
 
     vistos_en_ctx = []
 

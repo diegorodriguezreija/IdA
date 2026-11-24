@@ -9,8 +9,8 @@ import os
 from dataclasses import asdict, dataclass
 from typing import Any, Dict, List, Optional
 
-from ida.core.azar import Azar
-from ida.core.pieza import acotar
+from ida.nucleo.azar import Azar
+from ida.nucleo.pieza import acotar
 
 RASGOS_CARACTER = ("apertura", "responsabilidad", "neuroticismo", "extraversion", "umbral_miedo")
 

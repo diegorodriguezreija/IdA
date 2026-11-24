@@ -12,9 +12,9 @@ from collections import deque
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
-from ida.core.biblioteca import RegistroLectura
-from ida.core.pieza import Episodio, acotar
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.nucleo.biblioteca import RegistroLectura
+from ida.nucleo.pieza import Episodio, acotar
+from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 

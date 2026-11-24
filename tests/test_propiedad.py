@@ -7,14 +7,14 @@ import re
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.onda import EXCEPCIONES_TRANSITORIAS, Onda, PiezaAjena
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import EXCEPCIONES_TRANSITORIAS, Onda, PiezaAjena
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent / "ida"
 
@@ -90,7 +90,7 @@ def test_el_core_queda_exento():
 
 
 def test_metadatos_origen_registro_acotado_y_audit():
-    from ida.core.pieza import MAX_REGISTRO, Pieza
+    from ida.nucleo.pieza import MAX_REGISTRO, Pieza
 
     ctx = _ctx(Onda(5, 100, 1e9))
     v = _montar(_Valor())

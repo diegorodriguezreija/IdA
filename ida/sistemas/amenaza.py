@@ -50,11 +50,11 @@ Ninguna cifra es de un mundo: los previos están declarados aquí y valen para c
 from dataclasses import InitVar, dataclass, field
 from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import Seccion, pos_de
-from ida.core.mundo import Escala, Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.memoria import Seccion, pos_de
+from ida.nucleo.mundo import Escala, Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.sistemas.requisito import Requisitos
 
 

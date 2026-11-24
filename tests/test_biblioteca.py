@@ -7,22 +7,22 @@ import pytest
 from ida.bibliotecas.erronea import BibliotecaErronea
 from ida.bibliotecas.fija import BibliotecaFija
 from ida.bibliotecas.nula import BibliotecaNula
-from ida.core.arquitectura import Contexto
-from ida.core.azar import Azar
-from ida.core.biblioteca import (
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.azar import Azar
+from ida.nucleo.biblioteca import (
     Consulta,
     ElementoConsulta,
     EstadoLectura,
     Veredicto,
 )
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria, Proposicion
-from ida.core.mundo import Perfil
-from ida.core.onda import Onda
-from ida.core.persistencia import Persistencia
-from ida.core.pieza import Pieza
-from ida.core.soma import Soma
-from ida.core.vocabulario import Relacion, Verbo
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria, Proposicion
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import Onda
+from ida.nucleo.persistencia import Persistencia
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.sistemas.s3 import Estudio
 
 

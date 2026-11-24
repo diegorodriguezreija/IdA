@@ -3,13 +3,13 @@
 from typing import Any
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.azar import Azar
-from ida.core.estrategia import Definicion
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.azar import Azar
+from ida.nucleo.estrategia import Definicion
 from ida.core.latido import DESTINOS_VALIDOS_COMPONENTES, Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Alta, Cuerpo, Registro
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Alta, Cuerpo, Registro
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas import crear_sistemas
 from ida.sistemas.s1 import crear_s1

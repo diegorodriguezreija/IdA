@@ -17,12 +17,12 @@
 
 from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada
-from ida.core.memoria import Memoria, Satisface, Seccion
-from ida.core.mundo import Perfil
-from ida.core.estrategia import Catalogo, Definicion, Propuesta
-from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Sistema, expectativa_ejecutada
+from ida.nucleo.memoria import Memoria, Satisface, Seccion
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.estrategia import Catalogo, Definicion, Propuesta
+from ida.nucleo.pieza import Pieza, acotar
+from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
 from ida.sistemas.proteger import COBIJO, Proteger, recinto

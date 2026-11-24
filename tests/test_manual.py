@@ -2,7 +2,7 @@
 
 import pytest
 
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas.requisito import RequisitoAccion as Requisito
 

@@ -2,7 +2,7 @@
 
 from typing import Any, Iterable, List, Optional, Protocol, Tuple
 
-from ida.core.memoria import DIRECCIONES, Pos
+from ida.nucleo.memoria import DIRECCIONES, Pos
 from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma
 
 MAX_PASOS_POSTURA = 12    # buscador: «qué secuencia de MOVER me deja en A mirando a C»

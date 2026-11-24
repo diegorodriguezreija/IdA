@@ -12,9 +12,9 @@ actualice. Escribe en la sección «cuadricula» de la Memoria (D7), cuyo dueño
 
 from typing import cast
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.onda import Onda
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.onda import Onda
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.cuerpos.cuadricula.situacion import accion_previa, situacion, vecina
 

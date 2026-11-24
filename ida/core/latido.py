@@ -19,17 +19,22 @@ from collections import deque
 from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Cuerpo, Efecto, Mundo
-from ida.core.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
-from ida.core.pieza import Episodio, Pieza
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Cuerpo, Efecto, Mundo
+from ida.nucleo.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
+from ida.nucleo.pieza import Episodio, Pieza
+from ida.core.actuar.actuador import Actuador, aplicar_efecto
+from ida.core.actuar.tribunal import Tribunal
 from ida.core.regulacion import Regulacion
-from ida.core.sentidos import Actuador, Ambiente, Exterocepcion, Interocepcion, Propiocepcion, Tribunal, aplicar_efecto
-from ida.core.soma import Soma, VITALES
-from ida.core.vocabulario import Afecto, Verbo
+from ida.core.sentir.ambiente import Ambiente
+from ida.core.sentir.exterocepcion import Exterocepcion
+from ida.core.sentir.interocepcion import Interocepcion
+from ida.core.sentir.propiocepcion import Propiocepcion
+from ida.nucleo.soma import Soma, VITALES
+from ida.nucleo.vocabulario import Afecto, Verbo
 
 DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
     f"{sis}.{etapa}"

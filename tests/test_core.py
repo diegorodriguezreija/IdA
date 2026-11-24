@@ -2,17 +2,17 @@
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto, Modulo
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
 from ida.core.regulacion import Regulacion
-from ida.core.memoria import Memoria, Proposicion
-from ida.core.mundo import Entidad, Perfil
-from ida.core.onda import LatidoAgotado, Onda
-from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Tribunal
-from ida.core.soma import Soma
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.nucleo.memoria import Memoria, Proposicion
+from ida.nucleo.mundo import Entidad, Perfil
+from ida.nucleo.onda import LatidoAgotado, Onda
+from ida.nucleo.pieza import Episodio, Pieza
+from ida.core.actuar.tribunal import Tribunal
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 
 
 class RelojFalso:

@@ -2,8 +2,8 @@
 
 import pytest
 
-from ida.core.memoria import Memoria
-from ida.core.mundo import MecanismosMemoria, Perfil
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import MecanismosMemoria, Perfil
 
 
 def test_interruptores_apagados_por_defecto():
@@ -46,8 +46,8 @@ def test_conceptos_con_prototipo_promediado_e_ids_sin_significado():
 
 
 def test_reduccion_nocturna_proporcional_y_poda():
-    from ida.core.memoria import Proposicion
-    from ida.core.vocabulario import Relacion
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.vocabulario import Relacion
 
     mem = Memoria()
     mem.grafo = {"Objeto:a": {"fuerza": 1.0}, "Objeto:b": {"fuerza": 0.05}}
@@ -64,14 +64,14 @@ def test_reduccion_nocturna_proporcional_y_poda():
 def test_recuperacion_evocada_trae_y_reconsolida():
     from dataclasses import replace
 
-    from ida.core.arquitectura import Contexto
-    from ida.core.azar import Azar
-    from ida.core.linaje import Arquetipo
-    from ida.core.memoria import Proposicion
-    from ida.core.onda import Onda
-    from ida.core.pieza import Pieza
-    from ida.core.soma import Soma
-    from ida.core.vocabulario import Relacion, Verbo
+    from ida.nucleo.arquitectura import Contexto
+    from ida.nucleo.azar import Azar
+    from ida.nucleo.linaje import Arquetipo
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.onda import Onda
+    from ida.nucleo.pieza import Pieza
+    from ida.nucleo.soma import Soma
+    from ida.nucleo.vocabulario import Relacion, Verbo
     from ida.sistemas.s2 import Recuerdo
 
     mem = Memoria()
@@ -97,13 +97,13 @@ def test_recuperacion_evocada_trae_y_reconsolida():
 def test_repaso_en_calma_refuerza_lo_reciente():
     from dataclasses import replace
 
-    from ida.core.arquitectura import Contexto
-    from ida.core.azar import Azar
-    from ida.core.linaje import Arquetipo
-    from ida.core.memoria import Proposicion
-    from ida.core.onda import Onda
-    from ida.core.soma import Soma
-    from ida.core.vocabulario import Afecto, Relacion, Verbo
+    from ida.nucleo.arquitectura import Contexto
+    from ida.nucleo.azar import Azar
+    from ida.nucleo.linaje import Arquetipo
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.onda import Onda
+    from ida.nucleo.soma import Soma
+    from ida.nucleo.vocabulario import Afecto, Relacion, Verbo
     from ida.sistemas.s2 import Recuerdo
 
     mem = Memoria()
@@ -136,13 +136,13 @@ def test_tasa_de_herencia_filtra_lo_de_mas_confianza():
 
 
 def test_emision_de_creencias_acotada():
-    from ida.core.arquitectura import Contexto
-    from ida.core.azar import Azar
-    from ida.core.linaje import Arquetipo
-    from ida.core.memoria import Proposicion
-    from ida.core.onda import Onda
-    from ida.core.soma import Soma
-    from ida.core.vocabulario import Relacion, Verbo
+    from ida.nucleo.arquitectura import Contexto
+    from ida.nucleo.azar import Azar
+    from ida.nucleo.linaje import Arquetipo
+    from ida.nucleo.memoria import Proposicion
+    from ida.nucleo.onda import Onda
+    from ida.nucleo.soma import Soma
+    from ida.nucleo.vocabulario import Relacion, Verbo
     from ida.sistemas.s3 import Creencia
 
     mem = Memoria()
@@ -158,7 +158,7 @@ def test_emision_de_creencias_acotada():
 
 
 def test_reduccion_respeta_el_decay_del_dano():
-    from ida.core.vocabulario import Relacion, Verbo
+    from ida.nucleo.vocabulario import Relacion, Verbo
 
     mem = Memoria()
     mem.aprender(Verbo.COMER, "toxico", {"vitalidad": -10.0}, None, None, True, 1)      # daño alto: arousal 1
@@ -197,9 +197,9 @@ def test_expectativa_modelo_y_generalizacion_por_concepto():
 def test_expectativas_en_una_vida_con_el_interruptor():
     from dataclasses import replace
 
-    from ida.core.azar import Azar
+    from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
-    from ida.core.linaje import Arquetipo
+    from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
     from ida.sistemas import crear_sistemas
 
@@ -226,8 +226,8 @@ def test_camino_completo_por_el_mapa():
 def test_plan_consume_pasos_rehace_y_falla():
     from types import SimpleNamespace
 
-    from ida.core.estrategia import Plan, Propuesta, nueva, paso_actual, progreso_plan
-    from ida.core.vocabulario import Verbo
+    from ida.nucleo.estrategia import Plan, Propuesta, nueva, paso_actual, progreso_plan
+    from ida.nucleo.vocabulario import Verbo
 
     class Contar(Plan):
         nombre = "contar"
@@ -267,9 +267,9 @@ def test_plan_consume_pasos_rehace_y_falla():
 def test_planes_en_una_vida_con_el_interruptor():
     from dataclasses import replace
 
-    from ida.core.azar import Azar
+    from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
-    from ida.core.linaje import Arquetipo
+    from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
     from ida.sistemas import crear_sistemas
 

@@ -3,8 +3,8 @@
 from typing import Dict, Optional, Tuple, Union
 
 from ida.bibliotecas.fija import BibliotecaFija, TicketFijo
-from ida.core.azar import Azar
-from ida.core.biblioteca import (
+from ida.nucleo.azar import Azar
+from ida.nucleo.biblioteca import (
     Biblioteca,
     Consulta,
     ElementoRespuesta,

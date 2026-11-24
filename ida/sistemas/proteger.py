@@ -7,10 +7,10 @@ de la pieza de afordancia de protección.
 
 from typing import Any, Dict, List, Optional, Tuple, cast
 
-from ida.core.arquitectura import Contexto
-from ida.core.estrategia import ConPropuestas
-from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.estrategia import ConPropuestas
+from ida.nucleo.pieza import Pieza, acotar
+from ida.nucleo.vocabulario import Verbo
 from ida.sistemas.requisito import Requisitos
 
 COBIJO = "cobijo"

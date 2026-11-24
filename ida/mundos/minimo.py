@@ -12,12 +12,12 @@ Los lugares son las cuatro casillas vecinas. Para cada una, el mundo calcula sus
 
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.arquitectura import Contexto
-from ida.core.estrategia import Definicion, Propuesta
-from ida.core.azar import Azar
-from ida.core.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.estrategia import Definicion, Propuesta
+from ida.nucleo.azar import Azar
+from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 
 TAM = 9
 VISION = 4

@@ -24,8 +24,8 @@ latido es menor que el esperado y baja si es mejor (teorema del valor marginal).
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from ida.core.pieza import Pieza, acotar
-from ida.core.vocabulario import Verbo
+from ida.nucleo.pieza import Pieza, acotar
+from ida.nucleo.vocabulario import Verbo
 
 ACTIVA = "activa"
 COMPLETADA = "completada"        # la necesidad bajó del objetivo

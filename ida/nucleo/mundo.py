@@ -1,6 +1,6 @@
 """Contrato entre el framework y un mundo.
 
-Un mundo traduce su realidad al vocabulario común (``ida.core.vocabulario``):
+Un mundo traduce su realidad al vocabulario común (``ida.nucleo.vocabulario``):
 - en cada latido entrega una ``Observacion`` con entidades que llevan ``rasgos`` con significado;
 - ejecuta los verbos que declara y devuelve un ``Efecto``; o, si declara primitivas (``primitivas()``), ejecuta las que
   le pide el Core (traducidas por el Motor de su cuerpo) y devuelve el ``Efecto`` en bruto.
@@ -13,11 +13,11 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
 
-from ida.core.vocabulario import RASGOS, Verbo
+from ida.nucleo.vocabulario import RASGOS, Verbo
 
 if TYPE_CHECKING:
-    from ida.core.arquitectura import Componente, Contexto
-    from ida.core.pieza import Pieza
+    from ida.nucleo.arquitectura import Componente, Contexto
+    from ida.nucleo.pieza import Pieza
 
 
 @dataclass

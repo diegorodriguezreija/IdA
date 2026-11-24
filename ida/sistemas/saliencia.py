@@ -10,7 +10,7 @@ Corre siempre la última de la preatención (``integrador``, D5): integra los ra
 generales (``Amenaza``, el ``peligro`` aprendido) o del mundo. Coste lineal en lo percibido.
 """
 
-from ida.core.arquitectura import Componente, Contexto
+from ida.nucleo.arquitectura import Componente, Contexto
 
 
 class Saliencia(Componente):

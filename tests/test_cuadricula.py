@@ -11,11 +11,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from ida.core.memoria import Memoria, pos_de
-from ida.core.mundo import Perfil
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
+from ida.nucleo.memoria import Memoria, pos_de
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula, MapaLocal, ModeloDirecto
 
 Pos = Tuple[int, int]

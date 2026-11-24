@@ -19,10 +19,10 @@ del entorno. Coste lineal en lo percibido y en lo que hay a la vista.
 
 from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Tuple
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import Pos, pos_de
-from ida.core.mundo import Cuerpo
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.memoria import Pos, pos_de
+from ida.nucleo.mundo import Cuerpo
+from ida.nucleo.vocabulario import Verbo
 
 ORDEN_COSA = ("proximidad", "nutritivo", "recurso", "agente")
 ORDEN_LUGAR = ("lugar", "proximidad", "nutritivo", "novedad")

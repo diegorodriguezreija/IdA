@@ -21,8 +21,8 @@ Valores por defecto (bloque B, sin algoritmo adaptativo):
 
 from typing import Tuple
 
-from ida.core.arquitectura import Componente
-from ida.core.soma import Soma
+from ida.nucleo.arquitectura import Componente
+from ida.nucleo.soma import Soma
 
 
 class Regulacion(Componente):

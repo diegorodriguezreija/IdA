@@ -13,8 +13,8 @@ La geometría y el buscador de posturas se mueven en A6, con ``Recinto``.
 
 from typing import Any, Dict, List, Optional, Tuple
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.mundo import Cuerpo, Motor, Perfil
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.mundo import Cuerpo, Motor, Perfil
 from ida.cuerpos.cuadricula.buscador import buscar_postura, mover
 from ida.cuerpos.cuadricula.geometria import _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.mapa import ir_por_el_mapa

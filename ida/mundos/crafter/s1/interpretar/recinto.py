@@ -7,10 +7,10 @@ from collections import deque
 from dataclasses import dataclass
 from typing import Any, Deque, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
-from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import DIRECCIONES, Memoria, Pos, pos_de
-from ida.core.pieza import acotar
-from ida.core.vocabulario import Verbo
+from ida.nucleo.arquitectura import Componente, Contexto
+from ida.nucleo.memoria import DIRECCIONES, Memoria, Pos, pos_de
+from ida.nucleo.pieza import acotar
+from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula.buscador import mover
 from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
