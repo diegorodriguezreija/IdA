@@ -95,7 +95,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 aprende = true
-nota = "ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); datos en Memoria.cuerpo hasta A7"
+nota = "ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b)"
 
 [[componente]]
 nombre = "Saliencia"
@@ -118,7 +118,7 @@ registran = ["crafter"]
 decision = "D5"
 preatentivo = true
 aprende = true
-nota = "ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6"
+nota = "ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b)"
 
 [[componente]]
 nombre = "ValoracionCrafter"
@@ -166,7 +166,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D15"
 aprende = true
-nota = "Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a"
+nota = "Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a. Dueño de la sección «satisface» de la Memoria (satisface, linea_base, n_base); aprende en el punto del efecto (D7, A7b)"
 
 [[componente]]
 nombre = "Recinto"
@@ -190,7 +190,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 aprende = true
-nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter"
+nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter"
 
 [[componente]]
 nombre = "Reflejo"
@@ -541,11 +541,10 @@ nombre = "Requisito"
 tipo = "componente"
 clase = "general"
 destino = "S3.Interpretar"
-hoy = "fuera:ida/core/memoria.py"
-paso = "A7"
+hoy = "S3.Interpretar"
 decision = "D7"
 aprende = true
-nota = "Requisitos, transformaciones y metas; hoy latido.py _aprender, _aprender_mapa y _situacion_inventario. «delante» y «cerca» los da el cuerpo"
+nota = "ida/sistemas/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo"
 
 [[componente]]
 nombre = "Intencion"

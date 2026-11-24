@@ -60,9 +60,7 @@ class Exterocepcion(Componente):
             return
         for e in ctx.observacion.entidades:
             p = self.pieza(ctx, e.id, arousal=0.0, carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
-            self.percibir(ctx, p)
-            if ctx.memoria.activa:
-                ctx.memoria.ver_clase(e.clase)
+            self.percibir(ctx, p)   # D7: las clases vistas (novedad) las cuenta la plasticidad del Core, no el sensor
 
 
 class Ambiente(Componente):

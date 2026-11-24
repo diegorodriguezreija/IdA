@@ -103,6 +103,7 @@ def ejecutar(
             elif biblioteca is not None:
                 org_biblioteca = biblioteca
             org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia, biblioteca=org_biblioteca)
+            heredados = memoria.heredados   # D7: con lo que tomaron las secciones al montarse sus dueños
             persistencia.nueva_vida()
             org.al_dormir = lambda o: persistencia.volcar(o.memoria, o.arquetipo.id, o.ciclo)
             if consola:

@@ -39,6 +39,10 @@ class Cuerpo:
     def componentes(self) -> Dict[str, List["Componente"]]:
         return {}
 
+    def seccion_memoria(self, perfil: "Perfil") -> Optional[Tuple[str, Any]]:
+        """Memoria (D7): la sección de la que el cuerpo es dueño, como (nombre, sección), o None."""
+        return None
+
     def motor(self) -> Optional["Motor"]:
         """Capa motora del cuerpo (D9), o None: sin ella, el Core ejecuta verbos. Expone la cuenta de primitivas
         ejecutadas (``Motor.ejecutadas``, copia eferente)."""

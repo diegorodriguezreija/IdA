@@ -11,19 +11,21 @@ mundo, con como mucho ``max_sinergia`` primitivas por Actuación, y juzga su éx
 La geometría y el buscador de posturas se mueven en A6, con ``Recinto``.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from ida.core.arquitectura import Componente, Contexto
-from ida.core.mundo import Cuerpo, Motor
+from ida.core.mundo import Cuerpo, Motor, Perfil
 from ida.cuerpos.cuadricula.buscador import buscar_postura, mover
 from ida.cuerpos.cuadricula.geometria import _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.mapa import ir_por_el_mapa
 from ida.cuerpos.cuadricula.mapa_local import MapaLocal
+from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.cuerpos.cuadricula.modelo_directo import ModeloDirecto
 from ida.cuerpos.cuadricula.motor import MotorCuadricula
 
 __all__ = [
     "Cuadricula",
+    "MapaCuadricula",
     "MapaLocal",
     "ModeloDirecto",
     "MotorCuadricula",
@@ -46,6 +48,10 @@ class Cuadricula(Cuerpo):
 
     def motor(self) -> Optional[Motor]:
         return self._motor
+
+    def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
+        """D7: el cuerpo es dueño de la sección «cuadricula» (mapa local, transformaciones y modelo del cuerpo)."""
+        return "cuadricula", MapaCuadricula()
 
     def componentes(self) -> Dict[str, List[Componente]]:
         return {"CORE.Actuar": [ModeloDirecto()], "S1.Interpretar": [MapaLocal()]}

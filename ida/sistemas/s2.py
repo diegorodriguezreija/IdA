@@ -342,7 +342,7 @@ class RecordarComida(Plan):
             )
         for clase, confianza, destino in candidatos:
             if destino == aqui and not any(o.clase == clase for o in objetos(ctx)):
-                ctx.memoria.olvidar_donde(clase)
+                ctx.memoria.olvidar_donde(clase, autor="RecordarComida")
                 continue
             if destino and destino != aqui:
                 salto = ctx.memoria.ruta(aqui, destino)
@@ -388,7 +388,7 @@ class RecordarComida(Plan):
         aqui = ctx.ubicacion()
         if paso["meta"] == "encontrar":
             if aqui == paso["en"]:
-                ctx.memoria.olvidar_donde(paso["clase"])    # llegó y no está
+                ctx.memoria.olvidar_donde(paso["clase"], autor=type(self).__name__)    # llegó y no está
             return True                                     # llegó y no está, o se alejó del destino
         i = int(estado["i"])
         previo = estado["pasos"][i - 1]["meta"] if i > 0 else None

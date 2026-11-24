@@ -449,7 +449,7 @@ class Recinto(Componente):
                                  "accion": None, "explicacion": "", "abrir": [], "requiere": {}}
         if dentro is not None:
             if ctx.perfil.hogar:
-                ctx.memoria.recordar_lugar(ctx.ubicacion(), 1.0)
+                ctx.memoria.recordar_lugar(ctx.ubicacion(), 1.0, autor=type(self).__name__)
             carga.update(coste=0.0, confianza=1.0, explicacion="dentro del recinto",
                          abrir=_abrir(modelo, dentro, aqui))
             self._sitio = dentro

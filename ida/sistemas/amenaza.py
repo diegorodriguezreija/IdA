@@ -47,12 +47,12 @@ La **estimación** del rasgo ``peligro`` (revisión del 21/11/2026):
 Ninguna cifra es de un mundo: los previos están declarados aquí y valen para cualquiera.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
+from dataclasses import InitVar, dataclass, field
+from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto
-from ida.core.memoria import pos_de
-from ida.core.mundo import Escala
+from ida.core.memoria import Seccion, pos_de
+from ida.core.mundo import Escala, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
 
@@ -60,7 +60,7 @@ from ida.core.vocabulario import Verbo
 Pos = Tuple[int, int]
 
 VITALIDAD_MAXIMA = 100.0
-# De escala (D15): valen los de ``Perfil.escala``, que ``Peligros.escalar`` copia; estos son los valores por defecto.
+# De escala (D15): valen los de ``Perfil.escala``, con la que se construye ``Peligros``; estos son los valores por defecto.
 DANO_PREVIO = Escala().dano_previo           # daño desconocido de lo peligroso, en vitalidad
 PESO_PREVIO = 2.0                            # peso (en daños) del previo
 VENTANA = 20                                 # media móvil: los últimos ~20 daños de cada clase
@@ -129,8 +129,9 @@ class Emision:
 
 
 @dataclass
-class Peligros:
-    """Lo que la base aprende del peligro (paso 6). Vive en ``Memoria.peligros``; la escribe el Core cada latido."""
+class Peligros(Seccion):
+    """Lo que la base aprende del peligro (paso 6): la sección «peligros» de la Memoria (D7), cuyo dueño es ``Amenaza``.
+    Se construye con la escala del mundo (``Perfil.escala``, D15)."""
 
     dano: Dict[str, Media] = field(default_factory=dict)          # por encuentro
     dano_golpe: Dict[str, Media] = field(default_factory=dict)    # por daño atribuido, despierto
@@ -148,17 +149,20 @@ class Peligros:
     aqui_previo: Optional[Pos] = None
     dormido_previo: bool = False
     objetos_previos: FrozenSet[str] = frozenset()
-    # Escala del mundo (D15): la copia ``escalar`` desde ``Perfil.escala``; no se hereda
+    # Escala del mundo (D15): la da ``Perfil.escala`` al construirla; no se hereda
     dano_previo: float = DANO_PREVIO
     golpes_previo: float = GOLPES_PREVIO
     margen_lugar: int = MARGEN_LUGAR
     c_escala: float = ESCALA
+    escala: InitVar[Optional[Escala]] = None
 
-    def escalar(self, e: Escala) -> None:
-        """Toma las constantes de escala del mundo (``Perfil.escala``). La llaman ``Amenaza`` y ``Afrontar`` cada latido."""
-        if e.dano_previo != self.dano_previo:
-            self.c_escala = constante_escala(e.dano_previo)
-        self.dano_previo, self.golpes_previo, self.margen_lugar = e.dano_previo, e.golpes_previo, e.margen_lugar
+    orden_legado = 3     # D7: su parte va la última en ``Memoria.legado`` (la forma de antes)
+
+    def __post_init__(self, escala: Optional[Escala]) -> None:
+        if escala is not None:
+            if escala.dano_previo != self.dano_previo:
+                self.c_escala = constante_escala(escala.dano_previo)
+            self.dano_previo, self.golpes_previo, self.margen_lugar = escala.dano_previo, escala.golpes_previo, escala.margen_lugar
 
     # --- estimaciones ---------------------------------------------------------
     def emitidas(self, x: str) -> List[str]:
@@ -377,7 +381,17 @@ class Peligros:
             "golpes_sin_objetos": {c: round(self.golpes(c, (), red)[0], 2) for c in sorted(self.derribos)},
         }
 
-    def legado(self) -> Dict[str, Any]:
+    # --- sección de la Memoria (D7) ---------------------------------------------
+    def legado(self, ahora: int) -> Dict[str, Any]:
+        """Su parte del legado: ``peligros``, solo si hay algo aprendido (mundos sin peligro propio)."""
+        peligros = self.legado_peligros()
+        return {"peligros": peligros} if peligros else {}
+
+    def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
+        """Toma ``peligros`` del legado (sin ``tasa``: como antes)."""
+        return self.heredar_peligros(legado["peligros"]) if legado.get("peligros") else 0
+
+    def legado_peligros(self) -> Dict[str, Any]:
         """Lo aprendido con al menos ``MINIMO_LEGADO`` observaciones."""
         out: Dict[str, Any] = {}
         dano = {c: {"n": m.n, "media": round(m.media, 4)} for c, m in self.dano.items() if m.n >= MINIMO_LEGADO}
@@ -404,7 +418,7 @@ class Peligros:
             out["derribos"] = derribos
         return out
 
-    def heredar(self, legado: Dict[str, Any]) -> int:
+    def heredar_peligros(self, legado: Dict[str, Any]) -> int:
         """Con la mitad de la evidencia, como el resto de lo heredado."""
         n = 0
         for c, d in legado.get("dano", {}).items():
@@ -479,15 +493,18 @@ class Amenaza(Componente):
     Actúa si el mundo da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y deja
     ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``). Lee de las piezas: la ubicación,
     el cuerpo (``casillas``) y el inventario, de la ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su
-    ``Exterocepcion``. Es el único que escribe en ``memoria.peligros``. Coste lineal en lo percibido (más lo que cueste
+    ``Exterocepcion``. Es el dueño de la sección «peligros» de la Memoria (D7): el único que escribe en ella. Coste lineal en lo percibido (más lo que cueste
     ``Peligros.aprender``, igual que antes)."""
 
     tipo = "Exterocepcion"
     preatentivo = True
     opcional = True     # D3, D15: solo la monta el mundo que la registra
 
+    def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
+        """D7: es el dueño de la sección «peligros», que se construye con la escala del mundo."""
+        return "peligros", Peligros(escala=perfil.escala)
+
     def reactiva(self, ctx: Contexto) -> None:
-        ctx.memoria.peligros.escalar(ctx.perfil.escala)
         yo = ctx.onda.ev("Propiocepcion").get("yo")
         aqui = pos_de(yo.carga.get("ubicacion")) if yo is not None else None
         piezas = list(ctx.onda.ev("Exterocepcion").values())
@@ -497,6 +514,7 @@ class Amenaza(Componente):
         if not con_pos:
             return
         mem = ctx.memoria
+        peligros = cast(Peligros, mem.seccion_propia("peligros", type(self).__name__))
         dormido = bool(ctx.soma.dormido)
         if ctx.con_experiencia and mem.activa:
             agentes = {p.id: (str(p.carga.get("clase", "")), q) for p, q in con_pos
@@ -511,11 +529,11 @@ class Amenaza(Componente):
             c = previa.carga if previa is not None else {}
             verbo = c.get("verbo")
             golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
-            mem.peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
+            peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
                                   c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa,
                                   dormido=dormido)
         entidades = [(str(p.carga.get("clase", "")), p.carga.get("rasgos", {}), p.carga.get("datos", {})) for p in piezas]
-        for i, v in estimaciones(entidades, aqui, mem.peligros, ctx.soma.vitalidad, mem.peligrosa, dormido=dormido):
+        for i, v in estimaciones(entidades, aqui, peligros, ctx.soma.vitalidad, mem.peligrosa, dormido=dormido):
             p = piezas[i]
             self.modificar(ctx, p, carga={"rasgos": {**p.carga["rasgos"], "peligro": v}})
         ctx.extra["peligro_aprendido"] = True

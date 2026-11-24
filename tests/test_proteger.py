@@ -26,6 +26,8 @@ from ida.cuerpos.cuadricula.buscador import buscar_postura
 from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto
 from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
 
+from _secciones import memoria_con_secciones
+
 Pos = Tuple[int, int]
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 LIBRES = {"suelo", "hueco"}
@@ -143,15 +145,15 @@ def _campo(ancho: int = 14, alto: int = 11, roca: Optional[Set[Pos]] = None) -> 
 
 
 def _memoria(mundo: MundoCueva, aprendida: bool) -> Memoria:
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     mem.aplicar_manual(mundo.manual())
     if aprendida:      # lo que se aprende en los primeros latidos de una vida, dado para aislar la elección del sitio
         mem.paso_libre.update({"suelo": 1, "hueco": 1})
         mem.paso_bloqueado["roca"] = 1
-        mem.aprender_cuerpo("mover", True, True, True)
-        mem.aprender_cuerpo("mover", False, False, True)
-        mem.aprender_cuerpo("interactuar", True, False, True)
-        mem.aprender_transformacion(Verbo.COGER, "roca", "roca", "hueco")
+        _mapa(mem).aprender_cuerpo("mover", True, True, True)
+        _mapa(mem).aprender_cuerpo("mover", False, False, True)
+        _mapa(mem).aprender_cuerpo("interactuar", True, False, True)
+        _mapa(mem).aprender_transformacion(Verbo.COGER, "roca", "roca", "hueco")
     return mem
 
 
@@ -181,14 +183,20 @@ def _aprender_mapa(mem: Memoria, obs: Observacion, accion: Optional[Dict[str, An
     ctx = SimpleNamespace(memoria=mem, observacion=obs, onda=onda)
     for comp in Cuadricula().componentes().values():
         for c in comp:
+            c.de_cuerpo = "cuadricula"   # lo pone el Organismo al montarlos
             c.aprender(ctx)   # type: ignore[arg-type]
+
+
+def _mapa(mem: Memoria) -> Any:
+    """D7: la sección «cuadricula» (del cuerpo), para escribir en ella lo ya aprendido."""
+    return mem.seccion_propia("cuadricula", "cuadricula")
 
 
 def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
     """Tras MOVER hacia una casilla libre, la posición cambia y queda mirando hacia allí; hacia una bloqueada, solo gira.
     La memoria lo aprende de lo percibido antes y después (``ModeloDirecto`` del cuerpo cuadrícula), sin que nadie se lo diga."""
     mapa = {(x, 0): "suelo" for x in range(4)} | {(4, 0): "roca"} | {(x, y): "roca" for x in range(5) for y in (-1, 1)}
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     secuencia = [  # (posición, orientación) percibidas y la acción del latido anterior
         ((1, 0), (0, 1), None),
         ((2, 0), (1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
@@ -267,9 +275,9 @@ def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
     mem = _memoria(mundo, aprendida=False)
     mem.paso_libre.update({"suelo": 1})
     mem.paso_bloqueado.update({"roca": 1, "cantera": 1})
-    mem.aprender_cuerpo("mover", True, True, True)
-    mem.aprender_cuerpo("mover", False, False, True)
-    mem.aprender_cuerpo("interactuar", True, False, True)
+    _mapa(mem).aprender_cuerpo("mover", True, True, True)
+    _mapa(mem).aprender_cuerpo("mover", False, False, True)
+    _mapa(mem).aprender_cuerpo("interactuar", True, False, True)
     motivos: List[str] = []
 
     def al_latir(o, onda):
@@ -344,14 +352,14 @@ def test_crafter_no_tiene_refugio_propio():
 # --- inducción entre clases: menos confianza que lo observado y se corrige con el primer intento -------------
 def _memoria_induccion() -> Memoria:
     """Coger «tronco» lo dejó transitable (observado). «Bloque» es no transitable y recogible (su COGER da algo), sin observar."""
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     mem.aplicar_manual({"inventario": ["tronco", "bloque"], "hechos": [
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "tronco", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"tronco": 1}},
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "bloque", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"bloque": 1}},
     ]})
     mem.paso_libre.update({"suelo": 1})
     mem.paso_bloqueado.update({"tronco": 1, "bloque": 1})
-    mem.aprender_transformacion(Verbo.COGER, "tronco", "tronco", "suelo")
+    _mapa(mem).aprender_transformacion(Verbo.COGER, "tronco", "tronco", "suelo")
     return mem
 
 
@@ -366,12 +374,12 @@ def test_lo_inferido_se_corrige_con_el_primer_intento_real():
     """Si coger «bloque» sale pero la casilla no cambia, ya no se cree que abra espacio; si la deja transitable, pasa a ser
     observado y pesa como lo observado."""
     mem = _memoria_induccion()
-    mem.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "bloque")     # intento real: no cambia
+    _mapa(mem).aprender_transformacion(Verbo.COGER, "bloque", "bloque", "bloque")     # intento real: no cambia
     m = Modelo(mem, {}, set())
     assert m.abre("bloque") is False
     assert m.falta_para_cavar("bloque") is None
     mem2 = _memoria_induccion()
-    mem2.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "suelo")     # intento real: abre
+    _mapa(mem2).aprender_transformacion(Verbo.COGER, "bloque", "bloque", "suelo")     # intento real: abre
     m2 = Modelo(mem2, {}, set())
     assert m2.abre("bloque") is True and not m2.inferida("bloque")
     assert m2.confianza_cavar("bloque") == m2.confianza_cavar("tronco")
@@ -379,7 +387,7 @@ def test_lo_inferido_se_corrige_con_el_primer_intento_real():
 
 def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
     mapa = {(0, 0): "suelo", (1, 0): "bloque"} | {(x, y): "bloque" for x in range(-1, 2) for y in (-1, 1)} | {(-1, 0): "bloque"}
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), None)
     accion = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "bloque", "exito": True}
     _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), accion)

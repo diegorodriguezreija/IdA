@@ -22,7 +22,7 @@ from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 from ida.core.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
-from ida.core.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, desplazamiento
+from ida.core.memoria import Memoria
 from ida.core.mundo import Cuerpo, Efecto, Mundo
 from ida.core.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
 from ida.core.pieza import Episodio, Pieza
@@ -184,6 +184,18 @@ class Organismo:
             for d in c.catalogo.todas()
         }
 
+        # Plasticidad con el efecto (D6, D7): los que aprenden en ``_aprender``, en el orden de ``montados``
+        self.componentes_efecto: List[Componente] = [c for c in self.montados() if c.aprende_con_efecto and not c.de_cuerpo]
+
+        # Memoria (D7): las secciones de sus dueños (el cuerpo y después los Componentes montados, en orden), que reciben
+        # al registrarse el manual y el legado que la Memoria guardó para ellas
+        fuentes: List[Tuple[str, Any]] = [(reg.cuerpo.nombre, reg.cuerpo)] if reg.cuerpo is not None else []
+        fuentes += [(c.__class__.__name__, c) for c in self.montados() if not c.de_cuerpo]
+        for dueño, fuente in fuentes:
+            declarada = fuente.seccion_memoria(self.perfil)
+            if declarada is not None and self.memoria.dueño(declarada[0]) != dueño:   # una memoria ya montada por el
+                self.memoria.registrar_seccion(declarada[0], dueño, declarada[1])     # mismo dueño conserva su sección
+
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
         self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos
@@ -194,7 +206,6 @@ class Organismo:
         self._ali_ep = self.soma.alimentacion
         self.contadores: Dict[str, int] = {"miedo": 0, "calma": 0, "hambre": 0, "guillotinas": 0, "dormido": 0, "plus_decide": 0}
         self._ubicacion_previa: Optional[str] = None
-        self._antes_accion: Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]] = None   # inv., cerca, delante, desplaz.
         self.al_dormir: Optional[Callable[["Organismo"], Any]] = None   # callback opcional (persistencia)
         self._corto_plazo: deque[Any] = deque(maxlen=max(0, self.perfil.corto_plazo))
 
@@ -296,6 +307,7 @@ class Organismo:
             self.preatencion.ejecutar(ctx)
         # 4. Aprender del efecto de la acción anterior (el cuarteto)
         with onda.fase("aprender"):
+            self._ver_clases(ctx)
             self._aprender(ctx)
             if self.con_experiencia and self.perfil.mecanismos.expectativa:
                 self._contrastar(ctx)
@@ -321,7 +333,8 @@ class Organismo:
         onda.notas["ms_cognicion"] = round(onda.ms_transcurridos(), 2)
 
         # 6. Actuar
-        self._antes_accion = self._situacion_inventario(ctx)   # paso 2: lo que había antes de actuar (requisitos)
+        for comp in self.componentes_efecto:   # paso 2: lo que había antes de actuar (Requisito)
+            comp.antes_de_actuar(ctx)
         ctx.extra.pop("efecto", None)
         with onda.fase("actuar"):
             self.actuar.ejecutar(ctx)
@@ -375,8 +388,15 @@ class Organismo:
         """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``. Los del cuerpo
         no: su ``aprender`` lo llama ``_aprender`` en su punto del latido."""
         for c in self.montados():
-            if not c.de_cuerpo:
+            if not c.de_cuerpo and not c.aprende_con_efecto:
                 c.aprender(ctx)
+
+    def _ver_clases(self, ctx: Contexto) -> None:
+        """Plasticidad del Core (D7): familiaridad por clase de cada entidad percibida (una pieza ``Exterocepcion`` por
+        entidad, del sensor del Core). Antes la escribía el propio sensor; nadie la lee entre el Sentir y este punto."""
+        if self.memoria.activa:
+            for e in ctx.onda.ev("Exterocepcion").values():
+                self.memoria.ver_clase(e.clase)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.ubicacion()
@@ -399,18 +419,8 @@ class Organismo:
             if clase_obj:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
-        ahora_inv = self._situacion_inventario(ctx)
-        objetivo = str(c.get("clase") or c.get("objetivo") or "")
-        if c["verbo"] in (Verbo.USAR, Verbo.COGER) and self._antes_accion is not None and ahora_inv is not None:
-            self.memoria.aprender_requisito(c["verbo"], objetivo, self._antes_accion[0], ahora_inv[0], self._antes_accion[1],
-                                            bool(c.get("exito")), cerca_despues=ahora_inv[1], delante=self._antes_accion[2],
-                                            distancias=self._antes_accion[3])
-        if "Apetencia" in self.registrados:      # aliestesia: la tiene el mundo que registra Apetencia (D15)
-            self._aprender_satisface(ctx, c)
-        if self.memoria.metas:   # paso 5: metas del manual (solo si el mundo las declara)
-            self.memoria.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")),
-                                        self._antes_accion[0] if self._antes_accion is not None else None,
-                                        ahora_inv[0] if ahora_inv is not None else None, dict(c.get("delta", {})))
+        for comp in self.componentes_efecto:   # D6, D7: los dueños de lo que se aprende del efecto (Apetencia: aliestesia;
+            comp.aprender(ctx)                 # Requisito: requisitos, intentos y metas), en el orden de ``montados``
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))
@@ -419,55 +429,6 @@ class Organismo:
             ctx.onda.percibir("Sorpresa", s, autor=AutorCore("Sorpresa"))   # el Core la pone en el foco sin peaje
         if ap.textos:
             ctx.onda.notas["aprendizaje"] = ap.textos
-
-    def _aprender_satisface(self, ctx: Contexto, c: Dict[str, Any]) -> None:
-        """Paso 0b (aliestesia), aprendizaje por contingencia: qué necesidades subieron respecto al latido anterior
-        (``delta`` de la interocepción; cada ``Necesidad`` declara sus constantes). Tras comer algo con éxito, cuenta
-        para esa clase; en cualquier otro latido, para la línea base de cada necesidad (lo que sube sin comer)."""
-        delta = {k: float(p.carga.get("delta", 0.0)) for k, p in ctx.onda.ev("Interocepcion").items()}
-        subidas = {n.nombre: any(delta.get(k, 0.0) > 0.0 for k in n.constantes) for n in self.perfil.necesidades}
-        if c["verbo"] == Verbo.COMER and bool(c.get("exito")) and c.get("clase"):
-            self.memoria.aprender_satisface(str(c["clase"]), subidas)
-        else:
-            self.memoria.actualizar_linea_base(subidas)
-
-    @staticmethod
-    def _situacion_inventario(ctx: Contexto) -> Optional[Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]]:
-        """Inventario percibido, clases al alcance (no lugares) y clase de lo que hay delante (``cuerpo["delante"]``,
-        si el mundo lo da), si el mundo da inventario. Para los requisitos y las metas. Lee piezas (D4): la
-        ``Propiocepcion`` «yo» y las ``Exterocepcion``."""
-        yo = ctx.onda.ev("Propiocepcion").get("yo")
-        if yo is None or yo.carga.get("inventario") is None:
-            return None
-        piezas = list(ctx.onda.ev("Exterocepcion").values())
-        cerca = {e.clase for e in piezas if e.rasgo("lugar") < 0.5 and e.rasgo("proximidad") >= 0.9}
-        delante = (yo.carga.get("cuerpo") or {}).get("delante")
-        return (dict(yo.carga["inventario"]), cerca,
-                (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
-                Organismo._distancias(str(yo.carga.get("ubicacion") or ""), piezas))
-
-    @staticmethod
-    def _distancias(ubicacion: str, piezas: List[Pieza]) -> Dict[str, Desplazamiento]:
-        """Desplazamiento ``(|dx|, |dy|)`` ordenado a la instancia más cercana de cada clase, hasta ``RADIO_PRUEBA``
-        casillas (a igual distancia, el más diagonal). Con posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``)
-        se calcula; sin ellas, lo que está al alcance (proximidad ≥ 0,9) cuenta como (0, 1)."""
-        partes = ubicacion.rsplit("_", 2)
-        aqui = (int(partes[1]), int(partes[2])) if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]) else None
-        dist: Dict[str, Desplazamiento] = {}
-        for e in piezas:
-            if e.rasgo("lugar") >= 0.5:
-                continue
-            pos = (e.carga.get("datos") or {}).get("pos")
-            if aqui is not None and isinstance(pos, (list, tuple)) and len(pos) == 2:
-                d = desplazamiento(int(pos[0]) - aqui[0], int(pos[1]) - aqui[1])
-            elif e.rasgo("proximidad") >= 0.9:
-                d = (0, 1)
-            else:
-                continue
-            previo = dist.get(e.clase)
-            if sum(d) <= RADIO_PRUEBA and (previo is None or (sum(d), -d[0]) < (sum(previo), -previo[0])):
-                dist[e.clase] = d
-        return dist
 
     def _causa_de_muerte(self, onda: Onda) -> str:
         """Siempre una causa: la que dio el mundo (``Efecto.causa``); si no hay, la necesidad declarada

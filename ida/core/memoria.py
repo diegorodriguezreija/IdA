@@ -10,14 +10,11 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.biblioteca import RegistroLectura
 from ida.core.pieza import Episodio, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-
-if TYPE_CHECKING:
-    from ida.sistemas.amenaza import Peligros
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 
@@ -252,6 +249,10 @@ class Requisito:
             return False
         return sum(desp) <= RADIO_PRUEBA
 
+    def ajustar_confianza(self, paso: float) -> None:
+        """Sube (``paso`` > 0) o baja la confianza en el requisito, acotada a [0, 1]."""
+        self.confianza = acotar(self.confianza + paso)
+
     @property
     def tasa(self) -> float:
         """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
@@ -329,6 +330,30 @@ def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
 
+class Seccion:
+    """Protocolo de una sección de la Memoria con dueño (D7): lo que la sección sabe hacer con la memoria común. Todo es
+    opcional: por defecto no da legado, no hereda y no lee el manual.
+
+    - ``legado(ahora)``: su parte del legado (claves propias), que ``Memoria.legado`` junta con lo del Core;
+    - ``heredar(legado, tasa)``: toma del legado entero lo suyo y devuelve cuántos hechos cargó;
+    - ``aplicar_manual(manual)``: toma del manual entero lo suyo (la dotación innata).
+
+    La Memoria fija ``activa`` al registrarla (una memoria apagada no aprende ni hereda). ``orden_legado`` da la
+    posición de su parte en ``Memoria.legado`` (la forma del legado no cambia con las secciones)."""
+
+    activa: bool = True
+    orden_legado: int = 0
+
+    def legado(self, ahora: int) -> Dict[str, Any]:
+        return {}
+
+    def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
+        return 0
+
+    def aplicar_manual(self, manual: Dict[str, Any]) -> None:
+        return None
+
+
 class Memoria:
     MAX_NODOS_MAPA = 200
     EDAD_OLVIDO_MAPA = 300
@@ -351,8 +376,8 @@ class Memoria:
         self.episodios: List[Episodio] = []
         self._ultimo_consolidar_ep: int = 0
         self.lecturas: List[RegistroLectura] = []
-        self.lectura_activa: Optional[RegistroLectura] = None
-        self.ultimo_fin_lectura: int = -100
+        self._lectura_activa: Optional[RegistroLectura] = None
+        self._ultimo_fin_lectura: int = -100
         self.aciertos = 0
         self.fallos = 0
         # Bloque E (decisión 19): búfer diurno de tamaño fijo y episodio del día (secuencia de ondas).
@@ -370,37 +395,189 @@ class Memoria:
         # F1: modelo de transiciones (sistema, verbo, clase) -> cambio medio de cada variable, aprendido de lo vivido.
         self.modelo: Dict[Tuple[str, str, str], Dict[str, Any]] = {}
         self._modelo_por: Dict[Tuple[str, str], Set[str]] = {}
-        # Paso 2 (fase de generalización): requisitos de las acciones e intentos fallidos (para el planificador).
-        self.requisitos: Dict[Tuple[Verbo, str], Requisito] = {}
-        self.intentos: Dict[Tuple[Verbo, str], List[Dict[str, float]]] = {}
-        self.claves_inventario: Optional[Set[str]] = None   # si el manual las declara, solo esas cuentan como objetos
-        # Paso 5: metas del manual (se consiguen en cada vida), bloqueo por fallos seguidos y objetos ya tenidos.
-        self.metas: Dict[Tuple[Verbo, str], Meta] = {}
-        self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
-        self._tenidos: Set[str] = set()
-        self._tenidos_iniciado = False
-        # Paso 0b (aliestesia): qué necesidad satisface comer cada clase, del manual y de la experiencia.
-        self.satisface: Dict[Tuple[str, str], Satisface] = {}
-        self.linea_base: Dict[str, float] = {}      # necesidad -> P(sube | sin comer), media móvil
-        self.n_base: Dict[str, int] = {}            # latidos sin comer contados por necesidad
-        # Paso 3 (proteger X): mapa local de esta vida (no se hereda). Es la versión
-        # mínima del mapa cognitivo compartido: clase de cada casilla vista, qué clases son transitables, qué hace
-        # cada acción con la casilla sobre la que actúa y cómo se mueve el propio cuerpo.
-        self.casillas: Dict[Pos, str] = {}
-        self.version_mapa = 0                       # sube cada vez que cambia una casilla recordada
-        self.paso_libre: Dict[str, int] = {}        # clase -> veces que una vecina de esa clase era un lugar (transitable)
-        self.paso_bloqueado: Dict[str, int] = {}    # clase -> veces que una vecina vacía de esa clase no lo era
-        self.peligro_sobre: Set[str] = set()        # clases de casilla sobre las que se ha visto un peligro que se mueve
-        self.transformaciones: Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]] = {}   # (verbo, objetivo) -> {(antes, después): n}
-        self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
-        self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
-        self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
-        # Paso 6 (peligro aprendido): daño, alcance, emisores y eficacia de ataque, desde la experiencia. Solo escribe
-        # en ella su dueño, ``Amenaza`` (ida/sistemas/amenaza.py). A7: la sección pasará a su dueño; hasta entonces se
-        # importa aquí, en diferido, porque importar ``ida.sistemas`` al cargar este módulo cerraría un ciclo
-        # (``ida.sistemas`` importa ``ida.core.arquitectura``, que importa este módulo).
-        from ida.sistemas.amenaza import Peligros
-        self.peligros: "Peligros" = Peligros()
+        # D7: secciones con dueño. No existen hasta que su dueño se monta (``Organismo``), pero el manual y el legado
+        # llegan antes: la Memoria guarda ambos, en orden, y se los entrega a cada sección al registrarse.
+        self._secciones: Dict[str, Tuple[str, Seccion]] = {}
+        self._diferido: List[Tuple[str, Dict[str, Any], float]] = []   # ("manual" | "legado", datos, tasa)
+        self.heredados = 0                                             # hechos heredados, con los de las secciones
+
+    # --- secciones con dueño (D7) ------------------------------------------------
+    def registrar_seccion(self, nombre: str, dueño: str, seccion: Seccion) -> None:
+        """Registra la sección ``nombre`` de ``dueño`` y le entrega lo diferido: el manual y el legado recibidos antes,
+        en el orden en que llegaron. Un nombre repetido es un error."""
+        if nombre in self._secciones:
+            raise ValueError(f"La sección de memoria '{nombre}' ya está registrada (dueño: {self._secciones[nombre][0]})")
+        seccion.activa = self.activa
+        self._secciones[nombre] = (dueño, seccion)
+        for tipo, datos, tasa in self._diferido:
+            if tipo == "manual":
+                seccion.aplicar_manual(datos)
+            else:
+                self.heredados += seccion.heredar(datos, tasa)
+
+    def seccion(self, nombre: str) -> Seccion:
+        """Lectura libre de una sección registrada (``KeyError`` si su dueño no está montado)."""
+        if nombre not in self._secciones:
+            raise KeyError(f"No hay sección de memoria '{nombre}': su dueño no está montado")
+        return self._secciones[nombre][1]
+
+    def tiene_seccion(self, nombre: str) -> bool:
+        return nombre in self._secciones
+
+    def dueño(self, nombre: str) -> Optional[str]:
+        d = self._secciones.get(nombre)
+        return d[0] if d is not None else None
+
+    def seccion_propia(self, nombre: str, autor: str) -> Seccion:
+        """La sección ``nombre`` para escribir en ella: solo su dueño (``autor``), como en la Onda."""
+        dueño, seccion = self._secciones[nombre]
+        if autor != dueño:
+            raise PermissionError(f"'{autor}' no puede escribir en la sección de memoria '{nombre}' (dueño: {dueño})")
+        return seccion
+
+    def _seccion_o_none(self, nombre: str) -> Optional[Any]:
+        d = self._secciones.get(nombre)
+        return d[1] if d is not None else None
+
+    # --- A2: lecturas con el nombre de antes (solo lectura), mientras dure la fase A -------------------------------
+    @property
+    def peligros(self) -> Any:   # A2: sección «peligros» (dueño ``Amenaza``); None si no está montada
+        return self._seccion_o_none("peligros")
+
+    @property
+    def satisface(self) -> Dict[Tuple[str, str], "Satisface"]:   # A2: sección «satisface» (dueño ``Apetencia``)
+        s = self._seccion_o_none("satisface")
+        return s.satisface if s is not None else {}
+
+    @property
+    def linea_base(self) -> Dict[str, float]:   # A2: sección «satisface»
+        s = self._seccion_o_none("satisface")
+        return s.linea_base if s is not None else {}
+
+    @property
+    def n_base(self) -> Dict[str, int]:   # A2: sección «satisface»
+        s = self._seccion_o_none("satisface")
+        return s.n_base if s is not None else {}
+
+    def _req(self, atributo: str, vacio: Any) -> Any:
+        s = self._seccion_o_none("requisitos")
+        return getattr(s, atributo) if s is not None else vacio
+
+    @property
+    def requisitos(self) -> Dict[Tuple[Verbo, str], "Requisito"]:   # A2: sección «requisitos» (dueño ``Requisito``)
+        return cast(Dict[Tuple[Verbo, str], Requisito], self._req("requisitos", {}))
+
+    @property
+    def intentos(self) -> Dict[Tuple[Verbo, str], List[Dict[str, float]]]:   # A2: sección «requisitos»
+        return cast(Dict[Tuple[Verbo, str], List[Dict[str, float]]], self._req("intentos", {}))
+
+    @property
+    def claves_inventario(self) -> Optional[Set[str]]:   # A2: sección «requisitos»
+        return cast(Optional[Set[str]], self._req("claves_inventario", None))
+
+    @property
+    def metas(self) -> Dict[Tuple[Verbo, str], "Meta"]:   # A2: sección «requisitos»
+        return cast(Dict[Tuple[Verbo, str], Meta], self._req("metas", {}))
+
+    @property
+    def fallos_seguidos(self) -> Dict[Tuple[Verbo, str], int]:   # A2: sección «requisitos»
+        return cast(Dict[Tuple[Verbo, str], int], self._req("fallos_seguidos", {}))
+
+    def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:   # A2: sección «requisitos» (sin ella, todo)
+        s = self._seccion_o_none("requisitos")
+        return cast(Dict[str, float], s.objetos(inventario)) if s is not None else {k: float(v) for k, v in inventario.items()}
+
+    def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
+        s = self._seccion_o_none("requisitos")
+        return bool(s.bloqueada(verbo, objetivo)) if s is not None else False
+
+    def declarada(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
+        s = self._seccion_o_none("requisitos")
+        return bool(s.declarada(verbo, objetivo)) if s is not None else False
+
+    def puede_salir(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
+        s = self._seccion_o_none("requisitos")
+        return bool(s.puede_salir(verbo, objetivo)) if s is not None else False
+
+    def tasa_estimada(self, verbo: Verbo, objetivo: str) -> float:   # A2: sección «requisitos» (sin intentos, 1)
+        s = self._seccion_o_none("requisitos")
+        return float(s.tasa_estimada(verbo, objetivo)) if s is not None else 1.0
+
+    def _mapa(self, atributo: str, vacio: Any) -> Any:
+        s = self._seccion_o_none("cuadricula")
+        return getattr(s, atributo) if s is not None else vacio
+
+    @property
+    def casillas(self) -> Dict[Pos, str]:   # A2: sección «cuadricula» (dueño: el cuerpo cuadrícula)
+        return cast(Dict[Pos, str], self._mapa("casillas", {}))
+
+    @property
+    def version_mapa(self) -> int:   # A2: sección «cuadricula»
+        return cast(int, self._mapa("version_mapa", 0))
+
+    @property
+    def paso_libre(self) -> Dict[str, int]:   # A2: sección «cuadricula»
+        return cast(Dict[str, int], self._mapa("paso_libre", {}))
+
+    @property
+    def paso_bloqueado(self) -> Dict[str, int]:   # A2: sección «cuadricula»
+        return cast(Dict[str, int], self._mapa("paso_bloqueado", {}))
+
+    @property
+    def peligro_sobre(self) -> Set[str]:   # A2: sección «cuadricula»
+        return cast(Set[str], self._mapa("peligro_sobre", set()))
+
+    @property
+    def transformaciones(self) -> Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]]:   # A2: sección «cuadricula»
+        return cast(Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]], self._mapa("transformaciones", {}))
+
+    @property
+    def cuerpo(self) -> Dict[Tuple[str, bool], List[int]]:   # A2: sección «cuadricula»
+        return cast(Dict[Tuple[str, bool], List[int]], self._mapa("cuerpo", {}))
+
+    @property
+    def cierres(self) -> Set[Pos]:   # A2: sección «cuadricula»
+        return cast(Set[Pos], self._mapa("cierres", set()))
+
+    @property
+    def yo_previo(self) -> Optional[Tuple[Pos, Optional[Pos]]]:   # A2: sección «cuadricula»
+        return cast(Optional[Tuple[Pos, Optional[Pos]]], self._mapa("yo_previo", None))
+
+    def transitable(self, clase: Optional[str]) -> Optional[bool]:   # A2: sección «cuadricula» (None sin ella)
+        s = self._seccion_o_none("cuadricula")
+        return s.transitable(clase) if s is not None else None
+
+    def transitable_peligro(self, clase: Optional[str]) -> bool:   # A2: sección «cuadricula» (sin ella, abierto)
+        s = self._seccion_o_none("cuadricula")
+        return bool(s.transitable_peligro(clase)) if s is not None else True
+
+    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:   # A2: «cuadricula»
+        s = self._seccion_o_none("cuadricula")
+        return s.resultado(verbo, objetivo, antes) if s is not None else None
+
+    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:   # A2: sección «cuadricula»
+        s = self._seccion_o_none("cuadricula")
+        return s.modelo_cuerpo(accion, libre) if s is not None else None
+
+    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
+        """A2: lectura de la sección «satisface»; sin ella (Apetencia no montada), None: no se sabe nada de la clase."""
+        s = self._seccion_o_none("satisface")
+        return s.satisfaccion(clase, previos) if s is not None else None
+
+    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:   # A2
+        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
+
+    def _diferir(self, tipo: str, datos: Dict[str, Any], tasa: float = 1.0) -> int:
+        """Guarda el manual o el legado para las secciones que aún no se han registrado y lo entrega a las que ya lo
+        están. Devuelve los hechos que cargaron las secciones registradas."""
+        self._diferido.append((tipo, datos, tasa))
+        n = 0
+        for _, seccion in self._secciones.values():
+            if tipo == "manual":
+                seccion.aplicar_manual(datos)
+            else:
+                n += seccion.heredar(datos, tasa)
+        return n
 
     @property
     def activa(self) -> bool:
@@ -732,11 +909,37 @@ class Memoria:
             elif arousal > self.diurno[0][0]:
                 heapq.heapreplace(self.diurno, (arousal, self._orden_diurno, pieza))
 
+    # --- escrituras delegadas (D7): el autor de cada una debe estar entre los que admite su dueño -----------------
+    AUTORES_LUGARES = frozenset({"CORE", "Recinto"})         # hogar: el Core (episodios) y Recinto (dentro del recinto)
+    AUTORES_DONDE = frozenset({"RecordarComida"})            # olvidar dónde estaba una clase
+    AUTORES_LECTURA = frozenset({"Estudio"})                 # lectura activa y fin de la última (S3)
+
+    @staticmethod
+    def _admitir(autor: str, admitidos: frozenset, que: str) -> None:
+        if autor not in admitidos:
+            raise PermissionError(f"'{autor}' no puede escribir {que} en la memoria (admitidos: {sorted(admitidos)})")
+
+    @property
+    def lectura_activa(self) -> Optional[RegistroLectura]:
+        return self._lectura_activa
+
+    @property
+    def ultimo_fin_lectura(self) -> int:
+        return self._ultimo_fin_lectura
+
+    def fijar_lectura(self, registro: Optional[RegistroLectura], autor: str, fin: Optional[int] = None) -> None:
+        """La lectura activa (None: ninguna) y, con ``fin``, el latido en que terminó la última. Autor: ``Estudio``."""
+        self._admitir(autor, self.AUTORES_LECTURA, "la lectura activa")
+        self._lectura_activa = registro
+        if fin is not None:
+            self._ultimo_fin_lectura = fin
+
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1
         return self.clases_vistas[clase]
 
-    def recordar_lugar(self, lugar: str, bienestar: float) -> None:
+    def recordar_lugar(self, lugar: str, bienestar: float, autor: str = "CORE") -> None:
+        self._admitir(autor, self.AUTORES_LUGARES, "lugares")
         previo = self.lugares.get(lugar, 0.0)
         self.lugares[lugar] = 0.7 * previo + 0.3 * bienestar
 
@@ -788,7 +991,8 @@ class Memoria:
         rec = self.donde.get(clase)
         return rec.ubicacion if rec is not None else None
 
-    def olvidar_donde(self, clase: str) -> None:
+    def olvidar_donde(self, clase: str, autor: str) -> None:
+        self._admitir(autor, self.AUTORES_DONDE, "dónde está una clase")
         self.donde.pop(clase, None)
 
     def valor_lugar(self, lugar: str) -> float:
@@ -988,9 +1192,6 @@ class Memoria:
     # --- manual del mundo y requisitos de las acciones (paso 2) ----------------
     CONFIANZA_MANUAL = 0.8      # c_aut de lo que declara el manual (y confianza inicial de sus requisitos)
     PESO_MANUAL = 1.0           # w_aut del manual: pesa como una experiencia propia
-    PASO_CONFIANZA_REQUISITO = 0.1
-    MAX_INTENTOS = 50           # intentos fallidos recordados por (verbo, objetivo); se olvidan los más antiguos
-    FALLOS_BLOQUEO = 3          # paso 5: fallos seguidos sin ningún éxito que bloquean una acción
 
     def aplicar_manual(self, manual: Dict[str, Any]) -> int:
         """Al nacer, antes de heredar: las proposiciones del manual entran como autoridad (``c_aut``), refutables
@@ -1000,306 +1201,17 @@ class Memoria:
         percibido son objetos. Devuelve cuántos hechos se cargaron."""
         if not self.activa or not manual:
             return 0
-        if manual.get("inventario") is not None:
-            self.claves_inventario = {str(k) for k in manual["inventario"]}
         n = 0
         for h in manual.get("hechos", []):
             tipo = h.get("tipo")
             if tipo == "proposicion":
                 p = cast(Proposicion, self.proposicion(str(h["sujeto"]), Relacion[h["relacion"]], crear=True))
                 p.aplicar_autoridad(str(h.get("veredicto", "afirma")), self.CONFIANZA_MANUAL, self.PESO_MANUAL, ahora=0)
-                if h.get("necesidad") and Relacion[h["relacion"]] == Relacion.NUTRITIVO:   # paso 0b: qué necesidad satisface
-                    s = self.satisface.setdefault((str(h["sujeto"]), str(h["necesidad"])), Satisface(str(h["sujeto"]), str(h["necesidad"])))
-                    afirma = str(h.get("veredicto", "afirma")) == "afirma"
-                    s.c_aut, s.w_aut = (self.CONFIANZA_MANUAL if afirma else 1.0 - self.CONFIANZA_MANUAL), self.PESO_MANUAL
-                n += 1
-            elif tipo == "meta":
-                clave_m = (Verbo[h["verbo"]], str(h.get("objetivo", "")))
-                self.metas.setdefault(clave_m, Meta(clave_m[0], clave_m[1], str(h.get("id", ""))))
-                n += 1
-            elif tipo == "requisito":
-                clave = (Verbo[h["verbo"]], str(h["objetivo"]))
-                inv = {str(k): (None if v is None else int(v)) for k, v in (h.get("requiere_inventario") or {}).items()}
-                cerca = {str(c) for c in h.get("requiere_cerca") or []}
-                efecto = {str(k): int(v) for k, v in (h.get("efecto") or {}).items()}
-                aparece = {str(c) for c in h.get("aparece") or []}
-                r = self.requisitos.get(clave)
-                if r is None:
-                    self.requisitos[clave] = Requisito(clave[0], clave[1], inv, cerca, efecto, fuente="manual",
-                                                       confianza=self.CONFIANZA_MANUAL, aparece=aparece)
-                else:
-                    for k, v in inv.items():
-                        previo = r.requiere_inventario.get(k)
-                        r.requiere_inventario[k] = v if previo is None else (previo if v is None else max(previo, v))
-                    r.requiere_cerca |= cerca
-                    r.efecto.update(efecto)
-                    r.aparece |= aparece
-                n += 1
+                n += 1   # qué necesidad satisface (paso 0b): lo toma la sección «satisface» (Apetencia)
+            elif tipo in ("meta", "requisito"):
+                n += 1   # D7: los toma la sección «requisitos» (Requisito), como el inventario que declara el manual
+        self._diferir("manual", manual)   # D7: lo de las secciones, al registrarse cada una (o ya, si lo está)
         return n
-
-    # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
-    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
-        """Cuánto satisface comer ``clase`` cada necesidad, o ``None`` si no se sabe nada de esa clase (ni del manual
-        ni de la experiencia). ``previos``: lo que sugiere la percepción para cada necesidad (el previo de una clase
-        de la que el manual no habla). Las necesidades que no aparecen valen 0."""
-        if not self.activa:
-            return None
-        registros = {nec: s for (c, nec), s in self.satisface.items() if c == clase}
-        if not registros:
-            return None
-        manual = any(s.c_aut is not None for s in registros.values())
-        resultado: Dict[str, float] = {}
-        for nec in sorted(set(registros) | set(previos or {})):
-            s = registros.get(nec) or Satisface(clase, nec)
-            if s.c_aut is not None:
-                previo, peso = s.c_aut, s.w_aut
-            elif manual:
-                previo, peso = 0.0, Satisface.PREVIO
-            else:
-                previo, peso = (previos or {}).get(nec, 0.0), Satisface.PREVIO
-            resultado[nec] = s.estimacion(previo, peso)
-        return resultado
-
-    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:
-        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
-
-    def aprender_satisface(self, clase: str, subidas: Dict[str, bool]) -> None:
-        """Tras comer algo de ``clase`` con éxito: para cada necesidad, si subió alguna de sus constantes vitales."""
-        if not self.activa or not clase:
-            return
-        for necesidad, subio in subidas.items():
-            s = self.satisface.setdefault((clase, necesidad), Satisface(clase, necesidad))
-            s.n += 1
-            s.sube += int(bool(subio))
-            s.esperado += self.linea_base.get(necesidad, 0.0)
-
-    VENTANA_BASE = 10   # latidos de la media móvil de la línea base (media exacta mientras haya menos): lo reciente
-
-    def actualizar_linea_base(self, subidas: Dict[str, bool]) -> None:
-        """En un latido sin comer: para cada necesidad, si subió alguna de sus constantes (p. ej. sola, al amanecer)."""
-        if not self.activa:
-            return
-        for necesidad, subio in subidas.items():
-            k = self.n_base.get(necesidad, 0) + 1
-            self.n_base[necesidad] = k
-            previa = self.linea_base.get(necesidad, 0.0)
-            self.linea_base[necesidad] = previa + (float(bool(subio)) - previa) / min(k, self.VENTANA_BASE)
-
-    def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:
-        """Las claves del inventario que son objetos (todas, si el manual no lo declara)."""
-        if self.claves_inventario is None:
-            return {k: float(v) for k, v in inventario.items()}
-        return {k: float(v) for k, v in inventario.items() if k in self.claves_inventario}
-
-    # --- paso 3: mapa local, transitabilidad, transformaciones y modelo del cuerpo -------------
-    def transitable(self, clase: Optional[str]) -> Optional[bool]:
-        """Si se puede pasar por una casilla de ``clase``: sí si alguna vez fue un lugar (casilla a la que ir); no si,
-        vacía, nunca lo fue; None si no hay pruebas."""
-        if not clase:
-            return None
-        if self.paso_libre.get(clase, 0) > 0:
-            return True
-        if self.paso_bloqueado.get(clase, 0) > 0:
-            return False
-        return None
-
-    def transitable_peligro(self, clase: Optional[str]) -> bool:
-        """Si un peligro puede llegar por una casilla de ``clase``. Previo: por donde pasa uno mismo pasa un peligro que se
-        mueve, y lo desconocido se supone abierto; la experiencia añade las clases sobre las que se ha visto uno."""
-        return self.transitable(clase) is not False or clase in self.peligro_sobre
-
-    def ver_casillas(self, aqui: Pos, casillas: Dict[Pos, str], libres: Set[Pos], ocupadas: Set[Pos], peligros: Set[Pos]) -> None:
-        """Actualiza el mapa local con lo visto. ``libres``: casillas que son lugares; ``ocupadas``: con algo encima (no
-        dicen nada de su clase); ``peligros``: casillas con un peligro que se mueve encima."""
-        for p, c in casillas.items():
-            if self.casillas.get(p) != c:
-                self.casillas[p] = c
-                self.version_mapa += 1
-        for dx, dy in DIRECCIONES:
-            v = (aqui[0] + dx, aqui[1] + dy)
-            vecina = casillas.get(v)
-            if vecina is None:
-                continue
-            if v in libres:
-                self.paso_libre[vecina] = self.paso_libre.get(vecina, 0) + 1
-            elif v not in ocupadas:
-                self.paso_bloqueado[vecina] = self.paso_bloqueado.get(vecina, 0) + 1
-        for p in peligros:
-            if p in casillas:
-                self.peligro_sobre.add(casillas[p])
-
-    def aprender_transformacion(self, verbo: Verbo, objetivo: str, antes: str, despues: str) -> None:
-        """La acción cambió la clase de la casilla sobre la que actuó."""
-        t = self.transformaciones.setdefault((verbo, objetivo), {})
-        t[(antes, despues)] = t.get((antes, despues), 0) + 1
-
-    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:
-        """Clase en la que la acción ha convertido más veces la casilla (de clase ``antes``, si se da)."""
-        t = {k: n for k, n in self.transformaciones.get((verbo, objetivo), {}).items() if antes is None or k[0] == antes}
-        return max(t, key=lambda k: (t[k], k))[1] if t else None
-
-    def aprender_cuerpo(self, accion: str, libre: bool, avanza: bool, mira: bool) -> None:
-        """Propiocepción: tras ``accion`` hacia una casilla libre o no, si cambió la posición y si quedó mirando hacia ella."""
-        r = self.cuerpo.setdefault((accion, libre), [0, 0, 0])
-        r[0] += 1
-        r[1] += int(avanza)
-        r[2] += int(mira)
-
-    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:
-        """(avanza, queda mirando hacia allí) más frecuentes tras ``accion`` hacia una casilla libre o no; None sin experiencia."""
-        r = self.cuerpo.get((accion, libre))
-        if not r or r[0] == 0:
-            return None
-        return 2 * r[1] > r[0], 2 * r[2] > r[0]
-
-    def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:
-        """Paso 5 (5.2 b): una acción que nunca ha funcionado y ha fallado ``FALLOS_BLOQUEO`` veces seguidas
-        no se vuelve a intentar hasta que el inventario gane un tipo de objeto nuevo. Una acción cuyo efecto
-        puede salir (``puede_salir``) no se bloquea: si es probabilística, fallar seguido no dice que no
-        funcione; lo que dicen los fallos lo recoge su coste (``tasa_estimada``)."""
-        if self.puede_salir(verbo, objetivo):
-            return False
-        return self.fallos_seguidos.get((verbo, objetivo), 0) >= self.FALLOS_BLOQUEO
-
-    def declarada(self, verbo: Verbo, objetivo: str) -> bool:
-        """El manual declara la acción: es una de sus metas o tiene un requisito suyo (fuente «manual»)."""
-        r = self.requisitos.get((verbo, objetivo))
-        return (verbo, objetivo) in self.metas or (r is not None and r.fuente == "manual")
-
-    def puede_salir(self, verbo: Verbo, objetivo: str) -> bool:
-        """Según la experiencia (algún éxito) o el manual (``declarada``), el efecto de la acción puede salir,
-        aunque sea con poca probabilidad."""
-        r = self.requisitos.get((verbo, objetivo))
-        return (r is not None and r.exitos > 0) or self.declarada(verbo, objetivo)
-
-    def tasa_estimada(self, verbo: Verbo, objetivo: str) -> float:
-        """Tasa de éxito estimada: (éxitos + w) / (éxitos + fallos + w), con w = ``PESO_MANUAL`` si el manual
-        declara la acción (su declaración pesa como un éxito propio, como sus proposiciones) y 0 si no. Los
-        fallos son los del requisito o, sin requisito aún, los intentos fallidos recordados (hasta
-        ``MAX_INTENTOS``). 1 sin intentos."""
-        clave = (verbo, objetivo)
-        r = self.requisitos.get(clave)
-        exitos = r.exitos if r is not None else 0
-        fallos = r.fallos if r is not None else len(self.intentos.get(clave, []))
-        w = self.PESO_MANUAL if self.declarada(verbo, objetivo) else 0.0
-        total = exitos + fallos + w
-        return (exitos + w) / total if total > 0 else 1.0
-
-    def aprender_requisito(
-        self,
-        verbo: Verbo,
-        objetivo: str,
-        inv_antes: Dict[str, float],
-        inv_despues: Dict[str, float],
-        cerca: Set[str],
-        exito: bool,
-        cerca_despues: Optional[Set[str]] = None,
-        delante: Optional[str] = None,
-        distancias: Optional[Dict[str, Desplazamiento]] = None,
-    ) -> None:
-        """Tras una acción con objetivo: contrasta el inventario de antes y de después.
-
-        - Hay efecto si la acción tuvo éxito **y** el inventario cambió. Lo consumido fija la cantidad exacta;
-          un requisito que no se conocía se descubre (fuente «experiencia»). Lo que aparece cerca y antes no
-          estaba queda en ``aparece``. Si antes había fallado, lo que hay ahora y faltaba en todos los fallos
-          se induce como requisito (5.2 a) y esos intentos se olvidan.
-        - Sin efecto, el intento se recuerda. Si se creía cumplir el requisito, alguna cantidad desconocida
-          es mayor: sube a lo que había + 1, salvo las que ya fijó lo consumido en un éxito.
-        - ``delante``: la clase de lo que había delante; las clases donde funcionó forman ``requiere_delante``
-          y aquellas donde solo ha fallado, ``delante_fallido`` (5.2 d).
-        - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
-        - Un requisito descubierto por un primer éxito sin fallos previos solo registra el efecto: los requisitos
-          de inventario los añade la inducción por diferencia.
-        - ``distancias`` (clase → desplazamiento ``(|dx|, |dy|)`` ordenado, hasta ``RADIO_PRUEBA`` casillas): con
-          éxito, el desplazamiento queda como válido para cada requisito de cercanía; con fallo y el inventario
-          cumplido, como fallido (salvo si ya funcionó desde ahí).
-        - Inducción por diferencia: solo cuentan los fallos que no explica ya un requisito conocido (con el
-          inventario del fallo por debajo de una cantidad conocida o estimada, el fallo ya tiene causa).
-        - ``delante`` solo cuenta para USAR (COGER y COMER se orientan hacia su objetivo antes de actuar).
-        """
-        if not self.activa or not objetivo:
-            return
-        if verbo != Verbo.USAR:
-            delante = None
-        distancias = distancias or {}
-        antes_obj, despues_obj = self._objetos(inv_antes), self._objetos(inv_despues)
-        claves = sorted(set(antes_obj) | set(despues_obj))
-        antes = {k: antes_obj.get(k, 0.0) for k in claves}
-        delta = {k: int(round(despues_obj.get(k, 0.0) - antes[k])) for k in claves}
-        delta = {k: d for k, d in delta.items() if d}
-        nuevos = {k for k, v in despues_obj.items() if v >= 1} - self._tenidos - {k for k, v in antes_obj.items() if v >= 1}
-        if nuevos and self._tenidos_iniciado:
-            self.fallos_seguidos.clear()          # novedad: se vuelve a probar lo bloqueado
-        self._tenidos |= {k for k, v in antes_obj.items() if v >= 1} | nuevos
-        self._tenidos_iniciado = True
-        clave = (verbo, objetivo)
-        r = self.requisitos.get(clave)
-        if exito and delta:
-            nuevo = r is None
-            if r is None:
-                r = self.requisitos[clave] = Requisito(verbo, objetivo, {}, set(), fuente="experiencia")
-            r.exitos += 1
-            r.efecto = dict(delta)
-            for k, d in delta.items():
-                if d < 0 and not nuevo:
-                    r.requiere_inventario[k] = -d   # lo consumido es la cantidad exacta (corrige estimaciones por fallos)
-            if cerca_despues is not None:
-                r.aparece |= set(cerca_despues) - set(cerca)
-            for c in r.requiere_cerca:
-                if c in distancias:
-                    r.cerca_ok.setdefault(c, set()).add(distancias[c])
-                    r.cerca_fallida.get(c, set()).discard(distancias[c])
-            if delante:
-                r.requiere_delante.add(delante)
-                r.delante_fallido.discard(delante)
-            fallidos = [f for f in self.intentos.pop(clave, []) if r.cumple_inventario(f)]   # sin causa conocida
-            if fallidos:                          # 5.2 a: inducción por diferencia
-                for k, v in antes.items():
-                    if v >= 1 and k not in r.requiere_inventario and all(f.get(k, 0.0) < 1 for f in fallidos):
-                        r.requiere_inventario[k] = 1
-            self.fallos_seguidos.pop(clave, None)
-            r.confianza = acotar(r.confianza + self.PASO_CONFIANZA_REQUISITO)
-            return
-        lista = self.intentos.setdefault(clave, [])
-        lista.append({k: v for k, v in antes.items() if v})
-        del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
-        self.fallos_seguidos[clave] = self.fallos_seguidos.get(clave, 0) + 1
-        if r is not None and r.cumple_inventario(antes):
-            for c in r.requiere_cerca:
-                dc = distancias.get(c)
-                if dc is not None and sum(dc) > 1 and dc not in r.cerca_ok.get(c, set()):
-                    r.cerca_fallida.setdefault(c, set()).add(dc)
-        if r is not None and delante and delante not in r.requiere_delante:
-            r.delante_fallido.add(delante)
-        if r is not None and r.cumple(antes, cerca):
-            r.fallos += 1
-            for k, n in list(r.requiere_inventario.items()):
-                if r.efecto.get(k, 0) < 0:
-                    continue
-                if n is None or n <= antes.get(k, 0.0):
-                    r.requiere_inventario[k] = int(antes.get(k, 0.0)) + 1
-            r.confianza = acotar(r.confianza - self.PASO_CONFIANZA_REQUISITO)
-
-    def registrar_meta(
-        self,
-        verbo: Verbo,
-        objetivo: str,
-        exito: bool,
-        inv_antes: Optional[Dict[str, float]],
-        inv_despues: Optional[Dict[str, float]],
-        delta_vitales: Dict[str, float],
-    ) -> bool:
-        """Paso 5 (5.0): una meta se consigue con el primer ``Efecto`` con éxito de su verbo sobre su objetivo
-        que además cambia algo: el inventario de objetos o alguna constante vital que sube (beber, comer,
-        descansar). Devuelve si se ha conseguido ahora."""
-        meta = self.metas.get((verbo, objetivo))
-        if meta is None or meta.conseguida or not exito:
-            return False
-        cambio_inv = inv_antes is not None and inv_despues is not None and self._objetos(inv_antes) != self._objetos(inv_despues)
-        if cambio_inv or any(float(v) > 0.0 for v in delta_vitales.values()):
-            meta.conseguida = True
-            return True
-        return False
 
     # --- herencia dentro del linaje (barrera de Weismann) ----------------------
     def legado(self, ahora: int) -> Dict[str, Any]:
@@ -1317,17 +1229,8 @@ class Memoria:
                 if r.n >= 2
             ],
         }
-        requisitos = [r.a_dict() for r in self.requisitos.values() if r.exitos >= 1]
-        if requisitos:
-            legado["requisitos"] = requisitos
-        satisface = [{"clase": s.clase, "necesidad": s.necesidad, "n": s.n, "sube": s.sube, "esperado": round(s.esperado, 4)}
-                     for s in self.satisface.values() if s.n >= 2]       # paso 0b: solo lo vivido (el manual se vuelve a leer)
-        if satisface:
-            legado["satisface"] = satisface
-            legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
-        peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (mundos sin peligro propio)
-        if peligros:
-            legado["peligros"] = peligros
+        for _, seccion in sorted(self._secciones.values(), key=lambda d: d[1].orden_legado):   # D7: cada sección, su parte
+            legado.update(seccion.legado(ahora))
         return legado
 
     def peligrosa(self, clase: str) -> bool:
@@ -1344,14 +1247,12 @@ class Memoria:
             return 0
         proposiciones = list(legado.get("proposiciones", []))
         registros = list(legado.get("registros", []))
-        requisitos = list(legado.get("requisitos", []))
         if tasa < 1.0:
             def parte(xs: List[Dict[str, Any]], clave: str) -> List[Dict[str, Any]]:
                 k = math.ceil(max(0.0, tasa) * len(xs))
                 return sorted(xs, key=lambda d: -float(d[clave]))[:k]
             proposiciones = parte(proposiciones, "confianza")
             registros = parte(registros, "n")
-            requisitos = parte(requisitos, "exitos")
         n = 0
         for d in proposiciones:
             clave = (d["sujeto"], Relacion[d["relacion"]])
@@ -1368,27 +1269,6 @@ class Memoria:
             r.suma = float(d["media"]) * r.n
             self.registros[(Verbo[d["verbo"]], d["clase"])] = r
             n += 1
-        for d in requisitos:   # lo heredado sustituye a lo del manual: la experiencia del linaje lo ha corregido
-            req = Requisito(
-                Verbo[d["verbo"]], str(d["objetivo"]),
-                {str(k): (None if v is None else int(v)) for k, v in d.get("requiere_inventario", {}).items()},
-                {str(c) for c in d.get("requiere_cerca", [])},
-                {str(k): int(v) for k, v in d.get("efecto", {}).items()},
-                fuente=str(d.get("fuente", "experiencia")), confianza=float(d.get("confianza", 0.5)) * 0.8,
-                exitos=max(1, int(d.get("exitos", 1)) // 2), fallos=int(d.get("fallos", 0)) // 2, heredado=True,
-            )
-            self.requisitos[(req.verbo, req.objetivo)] = req
-            n += 1
-        for d in legado.get("satisface", []):   # paso 0b: como los registros, con la mitad de la evidencia
-            s = self.satisface.setdefault((str(d["clase"]), str(d["necesidad"])), Satisface(str(d["clase"]), str(d["necesidad"])))
-            veces = max(1, int(d["n"]) // 2)
-            s.n += veces
-            s.sube += round(veces * int(d["sube"]) / max(1, int(d["n"])))
-            s.esperado += veces * float(d.get("esperado", 0.0)) / max(1, int(d["n"]))
-            n += 1
-        for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
-            if necesidad not in self.linea_base:
-                self.linea_base[necesidad] = float(base)
-        if legado.get("peligros"):
-            n += self.peligros.heredar(legado["peligros"])
+        n += self._diferir("legado", legado, tasa)   # D7: las secciones toman lo suyo al registrarse (o ya, si lo están)
+        self.heredados += n
         return n

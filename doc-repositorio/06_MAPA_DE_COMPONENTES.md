@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 73 · **pendientes:** 1 (A7: 1)
+**Total:** 74 · **en su destino:** 74 · **pendientes:** 0
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -23,7 +23,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
 | `Saliencia` | componente | general | ✓ |  | D5 | ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
-| `Amenaza` ✱ | componente | opcional (crafter) | ✓ |  | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); se monta en todos con la condición de antes (posiciones y sin peligro del mundo): su activación por registro es A6 |
+| `Amenaza` ✱ | componente | opcional (crafter) | ✓ |  | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b) |
 | `ValoracionCrafter` | componente | mundo: crafter | ✓ |  | D4 | ida/mundos/crafter/s1/sentir/valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual |
 
 ## 5 · Regulación de la Onda (Core)
@@ -44,9 +44,9 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Objeto` | componente | general | ✓ |  | previo |  |
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
-| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a |
+| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a. Dueño de la sección «satisface» de la Memoria (satisface, linea_base, n_base); aprende en el punto del efecto (D7, A7b) |
 | `Recinto` | componente | mundo: crafter | ✓ |  | D16 | ida/mundos/crafter/s1/interpretar/recinto.py: emite la afordancia de protección. Lo registra Crafter (A6a, A6b) |
-| `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); datos en Memoria (casillas, cierres, yo_previo) hasta A7. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter |
 
 ## S1 · Reaccionar
 
@@ -128,7 +128,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Sentencia` | componente | general | ✓ |  | previo |  |
 | `Logica` | componente | general | ✓ |  | previo |  |
 | `Creencia` | componente | general | ✓ |  | previo |  |
-| `Requisito` ✱ | componente | general | fuera: `ida/core/memoria.py` | A7 | D7 | Requisitos, transformaciones y metas; hoy latido.py _aprender, _aprender_mapa y _situacion_inventario. «delante» y «cerca» los da el cuerpo |
+| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/sistemas/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo |
 
 ## S3 · Reaccionar
 
@@ -158,7 +158,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Tribunal` | componente | general | ✓ |  | previo |  |
 | `Actuador` | componente | general | ✓ |  | previo | Ejecuta primitivas del mundo (A5, D9) |
-| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); datos en Memoria.cuerpo hasta A7 |
+| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b) |
 
 ## Bibliotecas de los cuerpos
 
