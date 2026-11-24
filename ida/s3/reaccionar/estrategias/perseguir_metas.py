@@ -7,7 +7,6 @@ from ida.nucleo.estrategia import ConPropuestas
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.s3.comun import (
-    COSTE_SIN_PRODUCTOR,
     Paso,
     _cantidad,
     _cosas,
@@ -235,7 +234,7 @@ class PerseguirMetas(ConPropuestas):
             productoras = sorted((k for k, q in reqs.items() if q.efecto.get(objeto, 0) > 0),
                                  key=lambda k: (k[0].value, k[1]))
             pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
-            self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
+            self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else ctx.perfil.escala.coste_sin_productor
         return self._costes_unidad[clave]
 
     # --- deuda 14.2: metas que comparten una estación, planificadas en lote ---------------------------------------

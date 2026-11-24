@@ -447,3 +447,6 @@ def test_crafter_fija_la_escala_de_antes():
     assert MundoCrafter.perfil.escala.dano_previo == 100.0 * 2.0 / 9.0
     assert MundoCrafter.perfil.escala.reserva == 100.0 * 3.0 / 9.0
     assert MundoCrafter.perfil.escala.coste_sin_sitio == 45.0
+    assert MundoCrafter.perfil.escala.coste_recordado == 15.0
+    assert MundoCrafter.perfil.escala.coste_por_proximidad == 10.0
+    assert MundoCrafter.perfil.escala.coste_sin_productor == 30.0

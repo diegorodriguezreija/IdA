@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
 
 from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.mundo import Escala
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.s3.interpretar.requisito import desplazamiento
@@ -12,9 +13,10 @@ from ida.sistemas_comun import al_alcance, exterocepcion, lugares
 SABER = "saber"
 INTENSIDAD_INTENCION_DEL_MUNDO = 0.5
 
-COSTE_RECORDADO = 15.0     # ir adonde se recuerda algo que no se ve
-COSTE_POR_PROXIMIDAD = 10.0
-COSTE_SIN_PRODUCTOR = 2 * COSTE_RECORDADO   # reponer una unidad de algo que ninguna acción conocida da
+# Constantes de escala por defecto (D15): cada mundo las puede fijar en Perfil.escala
+COSTE_RECORDADO = Escala().coste_recordado     # ir adonde se recuerda algo que no se ve
+COSTE_POR_PROXIMIDAD = Escala().coste_por_proximidad
+COSTE_SIN_PRODUCTOR = Escala().coste_sin_productor   # reponer una unidad de algo que ninguna acción conocida da
 
 
 def _yo(ctx: Contexto) -> Dict[str, Any]:
@@ -123,7 +125,7 @@ def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir
             if candidatos:
                 lp, lugar = min(candidatos, key=lambda c: _dist(c[0], destino))
                 if _dist(lp, destino) < _dist(aqui, destino):
-                    coste = COSTE_POR_PROXIMIDAD * (1.0 - objetivo.rasgo("proximidad"))
+                    coste = ctx.perfil.escala.coste_por_proximidad * (1.0 - objetivo.rasgo("proximidad"))
                     return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"],
                                 destino=objetivo.id, distancia=_dist(aqui, destino))
     ubicacion = ctx.ubicacion()
@@ -133,7 +135,7 @@ def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir
         puerta = next((lugar for lugar in sitios if lugar.id == salto), None)
         if puerta is not None:
             camino = ctx.memoria.camino(ubicacion, destino_nodo)
-            return Paso(Verbo.MOVER, puerta.id, puerta.clase, COSTE_RECORDADO, confianza, [f"volver a {clase} (recordado)"],
+            return Paso(Verbo.MOVER, puerta.id, puerta.clase, ctx.perfil.escala.coste_recordado, confianza, [f"volver a {clase} (recordado)"],
                         destino=destino_nodo, distancia=len(camino) - 1 if camino else None)
     return None
 
