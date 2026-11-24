@@ -5,7 +5,7 @@
 
 Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el orden del latido. **Destino** es dónde debe vivir; **Hoy**, dónde está en el código (lo comprueba `tests/test_mapa_componentes.py`). Si no coinciden, **Paso** dice qué paso del plan lo lleva a su destino.
 
-**Total:** 74 · **en su destino:** 71 · **pendientes:** 3 (A7: 3)
+**Total:** 74 · **en su destino:** 73 · **pendientes:** 1 (A7: 1)
 
 **Clase:** general (todos los mundos) · opcional (general, pero solo lo monta quien lo registra) · cuerpo (familia de cuerpos) · mundo (propio de un mundo).
 
@@ -56,7 +56,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Impulso` | componente | general | ✓ |  | previo |  |
 | `Feedback` | componente | general | ✓ |  | previo |  |
 | `Estrategia` | componente | general | ✓ |  | previo |  |
-| `Peticion` | componente | general | S1.Actuar | A7 | D11 |  |
+| `Peticion` | componente | general | ✓ |  | D11 |  |
 | `Huir` | estrategia | general | ✓ |  | previo |  |
 | `Defenderse` | estrategia | general | ✓ |  | previo |  |
 | `Sobresalto` | estrategia | general | ✓ |  | previo |  |
@@ -100,7 +100,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Impulso` | componente | general | ✓ |  | previo |  |
 | `Feedback` | componente | general | ✓ |  | previo |  |
 | `Estrategia` | componente | general | ✓ |  | previo |  |
-| `Peticion` | componente | general | S2.Actuar | A7 | D11 |  |
+| `Peticion` | componente | general | ✓ |  | D11 |  |
 | `Explorar` | estrategia | general | ✓ |  | previo |  |
 | `Refugiarse` | estrategia | general | ✓ |  | previo |  |
 | `RecordarComida` | estrategia | general | ✓ |  | previo |  |

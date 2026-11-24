@@ -204,6 +204,7 @@ class Perfil:
     vitales_propios: bool = False     # el mundo marca las constantes del cuerpo (no el metabolismo interno)
     umbral_apertura_episodio: float = 0.65
     latidos_por_episodio: int = 6
+    corto_plazo: int = 8              # N ondas en la memoria a corto plazo (D13)
     necesidades: Tuple[Necesidad, ...] = NECESIDADES_BASE   # de cada una sale un impulso de S1
     intenciones: Tuple[str, ...] = ()         # intenciones deliberadas propias del mundo (S3), además de «saber»
     mecanismos: MecanismosMemoria = MecanismosMemoria()   # memoria del bloque E (interruptores)

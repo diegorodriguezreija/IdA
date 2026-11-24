@@ -14,7 +14,7 @@ import os
 import subprocess
 import sys
 import tempfile
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, List, Optional, Set
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, RAIZ)
@@ -33,7 +33,13 @@ def resolver_hash_git(ref: str) -> str:
     return res.stdout.strip()
 
 
-def ejecutar_evaluacion(raiz_arbol: str, semilla: int, salida_json: str) -> None:
+def ejecutar_evaluacion(
+    raiz_arbol: str,
+    semilla: int,
+    salida_json: str,
+    con_herencia: bool = False,
+    legado_salida: Optional[str] = None,
+) -> None:
     """Ejecuta evaluar_crafter.py del árbol indicado con los parámetros fijados."""
     script_evaluar = os.path.join(raiz_arbol, "herramientas", "evaluar_crafter.py")
     cmd = [
@@ -45,7 +51,7 @@ def ejecutar_evaluacion(raiz_arbol: str, semilla: int, salida_json: str) -> None
         str(semilla),
         "--vista",
         "oficial",
-        "--sin-herencia",
+        *([] if con_herencia else ["--sin-herencia"]),
         "--manual",
         "estricto",
         "--plazo-logico",
@@ -53,11 +59,12 @@ def ejecutar_evaluacion(raiz_arbol: str, semilla: int, salida_json: str) -> None
         "--quiet",
         "--salida",
         salida_json,
+        *(["--legado-salida", legado_salida] if legado_salida else []),
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, check=True, cwd=raiz_arbol)
 
 
-def generar_base(ref: str) -> int:
+def generar_base(ref: str, solo_faltan: bool = False) -> int:
     """Genera la línea base en datos/equivalencia/ clonando ref en un worktree temporal fuera del repo."""
     os.makedirs(DIR_DATOS, exist_ok=True)
     hash_ref = resolver_hash_git(ref)
@@ -69,11 +76,17 @@ def generar_base(ref: str) -> int:
         subprocess.run(["git", "worktree", "add", "--detach", wt_dir, ref], capture_output=True, text=True, check=True, cwd=RAIZ)
         for s in SEMILLAS:
             salida = os.path.join(DIR_DATOS, f"base_{s}.json")
-            ejecutar_evaluacion(wt_dir, s, salida)
+            if not (solo_faltan and os.path.exists(salida)):
+                ejecutar_evaluacion(wt_dir, s, salida, con_herencia=False)
 
-        ref_txt = os.path.join(DIR_DATOS, "base_ref.txt")
-        with open(ref_txt, "w", encoding="utf-8") as f:
-            f.write(f"{hash_ref}\n{comando_exacto}\n")
+        salida_herencia = os.path.join(DIR_DATOS, "base_herencia_31.json")
+        if not (solo_faltan and os.path.exists(salida_herencia)):
+            ejecutar_evaluacion(wt_dir, 31, salida_herencia, con_herencia=True)
+
+        if not solo_faltan:
+            ref_txt = os.path.join(DIR_DATOS, "base_ref.txt")
+            with open(ref_txt, "w", encoding="utf-8") as f:
+                f.write(f"{hash_ref}\n{comando_exacto}\n")
     finally:
         subprocess.run(["git", "worktree", "remove", "--force", wt_dir], capture_output=True, text=True, cwd=RAIZ)
     return 0
@@ -108,8 +121,13 @@ def comparar_estructuras(base: Any, actual: Any, ruta: str = "") -> List[str]:
 
 def comparar_con_base() -> int:
     """Ejecuta las mediciones en el árbol actual y las compara con la línea base."""
-    for s in SEMILLAS:
-        base_path = os.path.join(DIR_DATOS, f"base_{s}.json")
+    ficheros_base = [
+        os.path.join(DIR_DATOS, f"base_{s}.json") for s in SEMILLAS
+    ] + [
+        os.path.join(DIR_DATOS, "base_herencia_31.json"),
+        os.path.join(DIR_DATOS, "legado_herencia_31.json"),
+    ]
+    for base_path in ficheros_base:
         if not os.path.exists(base_path):
             print(f"Error: falta el fichero de base {base_path}. Ejecuta primero con --base.", file=sys.stderr)
             print("EQUIVALENCIA: FALLA")
@@ -119,7 +137,7 @@ def comparar_con_base() -> int:
     with tempfile.TemporaryDirectory(prefix="ida_equiv_actual_") as tmp_actual:
         for s in SEMILLAS:
             salida_actual = os.path.join(tmp_actual, f"actual_{s}.json")
-            ejecutar_evaluacion(RAIZ, s, salida_actual)
+            ejecutar_evaluacion(RAIZ, s, salida_actual, con_herencia=False)
 
             base_path = os.path.join(DIR_DATOS, f"base_{s}.json")
             with open(base_path, encoding="utf-8") as fb, open(salida_actual, encoding="utf-8") as fa:
@@ -133,6 +151,37 @@ def comparar_con_base() -> int:
                 todas_identicas = False
                 for d in diffs[:20]:
                     print(d)
+
+        # Medición Crafter con herencia (semilla 31, 3000 pasos)
+        salida_actual_h = os.path.join(tmp_actual, "actual_herencia_31.json")
+        salida_actual_legado = os.path.join(tmp_actual, "actual_legado_31.json")
+        ejecutar_evaluacion(RAIZ, 31, salida_actual_h, con_herencia=True, legado_salida=salida_actual_legado)
+
+        base_h_path = os.path.join(DIR_DATOS, "base_herencia_31.json")
+        with open(base_h_path, encoding="utf-8") as fb, open(salida_actual_h, encoding="utf-8") as fa:
+            base_h_json: Dict[str, Any] = json.load(fb)
+            actual_h_json: Dict[str, Any] = json.load(fa)
+
+        diffs_h = comparar_estructuras(base_h_json, actual_h_json)
+        if not diffs_h:
+            print("31h: IDÉNTICO")
+        else:
+            todas_identicas = False
+            for d in diffs_h[:20]:
+                print(d)
+
+        base_legado_path = os.path.join(DIR_DATOS, "legado_herencia_31.json")
+        with open(base_legado_path, encoding="utf-8") as fb, open(salida_actual_legado, encoding="utf-8") as fa:
+            base_legado_json = json.load(fb)
+            actual_legado_json = json.load(fa)
+
+        diffs_legado = comparar_estructuras(base_legado_json, actual_legado_json)
+        if not diffs_legado:
+            print("31h legado: IDÉNTICO")
+        else:
+            todas_identicas = False
+            for d in diffs_legado[:20]:
+                print(d)
 
     proc_inv = subprocess.run([sys.executable, os.path.join(RAIZ, "herramientas", "invariancia.py")], capture_output=True, text=True, cwd=RAIZ)
     if proc_inv.stdout:
@@ -151,11 +200,12 @@ def comparar_con_base() -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--base", action="store_true", help="genera la línea base")
+    parser.add_argument("--solo-faltan", action="store_true", help="con --base, solo genera los ficheros base que falten")
     parser.add_argument("--ref", default=REF_DEFECTO, help=f"referencia git para la base (por defecto {REF_DEFECTO})")
     args = parser.parse_args()
 
     if args.base:
-        return generar_base(args.ref)
+        return generar_base(args.ref, solo_faltan=args.solo_faltan)
     return comparar_con_base()
 
 

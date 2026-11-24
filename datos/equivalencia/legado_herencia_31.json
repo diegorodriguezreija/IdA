@@ -1,0 +1,7281 @@
+[
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.719
+      },
+      {
+        "sujeto": "piedra",
+        "relacion": "UTIL",
+        "confianza": 0.834
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.809
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 121,
+        "media": -0.298
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierba",
+        "n": 7,
+        "media": -0.794
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 8,
+        "media": -0.694
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 3,
+        "media": 0.0
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 9,
+        "media": 0.617
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_furnace",
+        "n": 4,
+        "media": 0.0
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_stone",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 8,
+        "media": -2.083
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "camino",
+        "n": 3,
+        "media": 0.0
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 1.0,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "piedra"
+        ],
+        "requiere_delante": [
+          "camino"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 2,
+        "fallos": 1,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.6,
+        "exitos": 1,
+        "fallos": 3,
+        "aparece": [
+          "horno"
+        ],
+        "requiere_delante": [
+          "camino"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "mesa"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "mesa"
+        ]
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 1.0,
+        "exitos": 9,
+        "fallos": 0,
+        "aparece": [
+          "zombi"
+        ],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 8,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 2,
+          "media": 0.0
+        },
+        "zombi": {
+          "n": 4,
+          "media": 16.665
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 4,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 10,
+          "eventos": 0
+        },
+        "flecha": {
+          "expuestos": 3,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 10,
+          "eventos": 0
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 6,
+          "junto": 5,
+          "esperado": 0.5079
+        },
+        {
+          "x": "flecha",
+          "y": "zombi",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.1587
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 7,
+          "junto": 0,
+          "esperado": 1.0768
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 13,
+          "junto": 0,
+          "esperado": 2.3086
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          14,
+          4,
+          2,
+          2
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.711
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.816
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 230,
+        "media": -0.295
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierba",
+        "n": 9,
+        "media": -0.265
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 8,
+        "media": -0.347
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 4,
+        "media": 0.617
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_furnace",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 7,
+        "media": -4.365
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 3,
+        "media": 5.555
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.8,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.82,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.48,
+        "exitos": 1,
+        "fallos": 1,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [
+          "planta"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.82,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.72,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.82,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.72,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.8,
+        "exitos": 4,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 8,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 6,
+          "media": 11.11
+        },
+        "zombi": {
+          "n": 3,
+          "media": 25.9233
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 4,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 3,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 8,
+          "eventos": 1
+        },
+        "flecha": {
+          "expuestos": 3,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 10,
+          "eventos": 1
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 7,
+          "junto": 5,
+          "esperado": 0.7301
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.5384
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 8,
+          "junto": 0,
+          "esperado": 1.4343
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.3994
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          14,
+          4,
+          2,
+          2,
+          8,
+          3,
+          3
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.781
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.819
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 260,
+        "media": -0.034
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierba",
+        "n": 5,
+        "media": -0.212
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 8,
+        "media": -0.521
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 5,
+        "media": -0.309
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 8,
+        "media": -1.637
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 4,
+        "media": -1.389
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.74,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "piedra"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.756,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.384,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.72,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.756,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.576,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.656,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.576,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.94,
+        "exitos": 5,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 8,
+        "fallos": 0,
+        "aparece": [
+          "zombi"
+        ],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.62,
+        "exitos": 1,
+        "fallos": 1,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 6,
+          "media": 20.3683
+        },
+        "zombi": {
+          "n": 3,
+          "media": 30.8611
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 5,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 5,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 16,
+          "eventos": 4
+        },
+        "flecha": {
+          "expuestos": 2,
+          "eventos": 1
+        },
+        "zombi": {
+          "expuestos": 21,
+          "eventos": 1
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 10,
+          "junto": 7,
+          "esperado": 0.9682
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.4692
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 4,
+          "junto": 0,
+          "esperado": 0.7171
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 5,
+          "junto": 0,
+          "esperado": 0.5489
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          2,
+          8,
+          3,
+          3,
+          2,
+          4,
+          4,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.826
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.906
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 287,
+        "media": -0.199
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierba",
+        "n": 5,
+        "media": -0.085
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 12,
+        "media": -0.637
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 2,
+        "media": -0.309
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 10,
+        "media": -5.654
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 2,
+        "media": -1.389
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 5,
+        "media": -0.555
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_sword",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 6,
+        "media": 5.555
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.592,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.705,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.307,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.576,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 1.0,
+        "exitos": 5,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "mesa"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.461,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.625,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "mesa"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.461,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.752,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 12,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.196,
+        "exitos": 1,
+        "fallos": 3,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 3,
+        "sube": 3,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 3,
+        "sube": 0,
+        "esperado": 1.0003
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0206,
+      "cobijo": 0.0
+    },
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 3,
+          "media": 20.3683
+        },
+        "zombi": {
+          "n": 4,
+          "media": 29.9353
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 6,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 2,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 8,
+          "eventos": 2
+        },
+        "zombi": {
+          "expuestos": 18,
+          "eventos": 2
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 5,
+          "junto": 3,
+          "esperado": 0.4841
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.3585
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.2745
+        },
+        {
+          "x": "vaca",
+          "y": "zombi",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.2063
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          2,
+          8,
+          3,
+          3,
+          2,
+          4,
+          4,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.858
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 293,
+        "media": -0.182
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierba",
+        "n": 2,
+        "media": -0.085
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 6,
+        "media": -0.637
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 15,
+        "media": -0.576
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 15,
+        "media": -4.107
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -0.555
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 6,
+        "media": 3.703
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 2,
+        "media": 5.555
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "esqueleto",
+        "n": 4,
+        "media": 0.0
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.474,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.564,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.246,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.461,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.8,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.369,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.5,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.369,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.602,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.8,
+        "exitos": 6,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.157,
+        "exitos": 1,
+        "fallos": 1,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 1,
+        "esperado": 1.3334
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 1,
+        "esperado": 1.819
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0379,
+      "cobijo": 0.0
+    },
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 3,
+          "media": 6.7894
+        },
+        "zombi": {
+          "n": 4,
+          "media": 37.1877
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 8,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 21,
+          "eventos": 1
+        },
+        "zombi": {
+          "expuestos": 24,
+          "eventos": 3
+        },
+        "flecha": {
+          "expuestos": 2,
+          "eventos": 0
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 8,
+          "junto": 7,
+          "esperado": 0.9087
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          4,
+          4,
+          2,
+          4,
+          6,
+          4,
+          2,
+          6,
+          5,
+          3
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "agua",
+        "relacion": "NUTRITIVO",
+        "confianza": 0.744
+      },
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.828
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 319,
+        "media": -0.153
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 8,
+        "media": -0.933
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 9,
+        "media": -0.448
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 12,
+        "media": -2.859
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -0.278
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 6,
+        "media": 2.777
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 7,
+        "media": 5.158
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "esqueleto",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "flecha",
+        "n": 4,
+        "media": -16.665
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.479,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "piedra"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.551,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.197,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.369,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.74,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.295,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.4,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.295,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.682,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 8,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.126,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 7,
+        "sube": 7,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 1,
+        "esperado": 1.6667
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 7,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 7,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 7,
+        "sube": 0,
+        "esperado": 0.1068
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 7,
+        "sube": 1,
+        "esperado": 1.9242
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0096,
+      "cobijo": 0.6513
+    },
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 6,
+          "media": 12.2416
+        },
+        "zombi": {
+          "n": 3,
+          "media": 32.1985
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 7,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 3,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 27,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 19,
+          "eventos": 2
+        },
+        "flecha": {
+          "expuestos": 8,
+          "eventos": 3
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 6,
+          "junto": 5,
+          "esperado": 0.5813
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 6,
+          "junto": 0,
+          "esperado": 0.7581
+        },
+        {
+          "x": "flecha",
+          "y": "zombi",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.36
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.6
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          4,
+          6,
+          4,
+          2,
+          6,
+          5,
+          3,
+          11,
+          8
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.795
+      },
+      {
+        "sujeto": "piedra",
+        "relacion": "UTIL",
+        "confianza": 0.808
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 295,
+        "media": -0.186
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 9,
+        "media": -0.415
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 15,
+        "media": -0.49
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 11,
+        "media": -2.569
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -0.139
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 6,
+        "media": 2.777
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 3,
+        "media": 5.158
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "flecha",
+        "n": 4,
+        "media": -19.442
+      },
+      {
+        "verbo": "COGER",
+        "clase": "carbon",
+        "n": 7,
+        "media": -0.794
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_stone",
+        "n": 2,
+        "media": -1.389
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.583,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [
+          "piedra"
+        ],
+        "requiere_delante": [
+          "camino",
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.641,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "camino",
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.258,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "horno"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.295,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.692,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.236,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.32,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.236,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 1.0,
+        "exitos": 9,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 9,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.101,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.9,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 3,
+        "sube": 3,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 0,
+        "esperado": 1.2686
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.0458
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 3,
+        "sube": 0,
+        "esperado": 0.8247
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.03,
+      "salud": 0.0,
+      "cobijo": 0.9921
+    },
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 6,
+          "media": 17.2308
+        },
+        "zombi": {
+          "n": 3,
+          "media": 25.5462
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 5,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 4,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 34,
+          "eventos": 1
+        },
+        "zombi": {
+          "expuestos": 15,
+          "eventos": 2
+        },
+        "flecha": {
+          "expuestos": 6,
+          "eventos": 3
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 10,
+          "junto": 7,
+          "esperado": 1.0773
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 5,
+          "junto": 0,
+          "esperado": 0.5219
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 6,
+          "junto": 0,
+          "esperado": 0.8663
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 4,
+          "junto": 0,
+          "esperado": 0.3016
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          6,
+          5,
+          3,
+          11,
+          8,
+          2,
+          2,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "agua",
+        "relacion": "NUTRITIVO",
+        "confianza": 0.778
+      },
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.808
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 329,
+        "media": -0.201
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 7,
+        "media": -0.237
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 7,
+        "media": -0.49
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 10,
+        "media": -3.229
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 9,
+        "media": 2.469
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 17,
+        "media": 2.427
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "flecha",
+        "n": 2,
+        "media": -19.442
+      },
+      {
+        "verbo": "COGER",
+        "clase": "carbon",
+        "n": 3,
+        "media": -0.794
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 2,
+        "media": 0.0
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.466,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.613,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.206,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.236,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.554,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.189,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.256,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.189,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.8,
+        "exitos": 4,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 7,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.081,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.72,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 8,
+        "sube": 8,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.7239
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.1267
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 8,
+        "sube": 2,
+        "esperado": 2.099
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0949,
+      "cobijo": 0.9419
+    },
+    "peligros": {
+      "dano": {
+        "flecha": {
+          "n": 3,
+          "media": 17.2308
+        },
+        "zombi": {
+          "n": 3,
+          "media": 49.2554
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 4,
+          "media": 22.22
+        },
+        "flecha": {
+          "n": 2,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 17,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 16,
+          "eventos": 2
+        },
+        "flecha": {
+          "expuestos": 3,
+          "eventos": 1
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 5,
+          "junto": 3,
+          "esperado": 0.5386
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.261
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.4331
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 2,
+          "junto": 0,
+          "esperado": 0.1508
+        },
+        {
+          "x": "zombi",
+          "y": "vaca",
+          "n": 2,
+          "junto": 1,
+          "esperado": 0.4
+        },
+        {
+          "x": "vaca",
+          "y": "zombi",
+          "n": 2,
+          "junto": 1,
+          "esperado": 0.4
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          6,
+          5,
+          3,
+          11,
+          8,
+          2,
+          2,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.854
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.736
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 362,
+        "media": -0.26
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 9,
+        "media": -0.079
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 3,
+        "media": -0.49
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 10,
+        "media": -4.947
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 8,
+        "media": 5.401
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 8,
+        "media": 2.427
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 3,
+        "media": 0.0
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 16,
+        "media": -0.174
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.373,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.69,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.165,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.189,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.443,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.151,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.205,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.151,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.64,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 9,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.065,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.576,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 4,
+        "sube": 4,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.362
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0634
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 4,
+        "sube": 1,
+        "esperado": 1.0495
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0,
+      "cobijo": 0.7176
+    },
+    "peligros": {
+      "dano": {
+        "zombi": {
+          "n": 3,
+          "media": 46.0451
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 7,
+          "media": 19.0457
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 8,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 22,
+          "eventos": 5
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 2,
+          "junto": 1,
+          "esperado": 0.2693
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          6,
+          5,
+          3,
+          11,
+          8,
+          2,
+          2,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "agua",
+        "relacion": "NUTRITIVO",
+        "confianza": 0.744
+      },
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.865
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.845
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 342,
+        "media": -0.251
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 10,
+        "media": -0.032
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 10,
+        "media": -3.862
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 7,
+        "media": 5.467
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 11,
+        "media": 3.913
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 4,
+        "media": -0.694
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 8,
+        "media": -0.174
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -2.777
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.298,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.652,
+        "exitos": 3,
+        "fallos": 1,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.132,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.151,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.454,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "mesa"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.121,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.164,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.121,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.512,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 10,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.052,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.461,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 8,
+        "sube": 8,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.2398
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.0747
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 8,
+        "sube": 0,
+        "esperado": 0.682
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0033,
+      "cobijo": 0.0
+    },
+    "peligros": {
+      "dano": {
+        "zombi": {
+          "n": 5,
+          "media": 29.207
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 8,
+          "media": 19.6409
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 4,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 28,
+          "eventos": 3
+        }
+      },
+      "recorridos": {
+        "esqueleto": [
+          2,
+          6,
+          5,
+          3,
+          11,
+          8,
+          2,
+          2,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.76
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.856
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 356,
+        "media": -0.292
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 10,
+        "media": -0.016
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 5,
+        "media": -3.862
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 3,
+        "media": 5.467
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 5,
+        "media": 3.913
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 4,
+        "media": -0.347
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 4,
+        "media": -0.174
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -1.389
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 4,
+        "media": 0.0
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "flecha",
+        "n": 5,
+        "media": -6.111
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "esqueleto",
+        "n": 3,
+        "media": 0.0
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_plant",
+        "n": 4,
+        "media": -1.389
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_stone",
+        "n": 2,
+        "media": 5.555
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "camino",
+        "n": 30,
+        "media": -0.648
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.438,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [
+          "piedra"
+        ],
+        "requiere_delante": [
+          "camino"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.722,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.106,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.0,
+        "exitos": 1,
+        "fallos": 4,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.463,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.097,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.131,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.097,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.81,
+        "exitos": 5,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 10,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.042,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.369,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 4,
+        "sube": 4,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.0374
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 4,
+        "sube": 0,
+        "esperado": 0.341
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0,
+      "cobijo": 0.9943
+    },
+    "peligros": {
+      "dano": {
+        "zombi": {
+          "n": 2,
+          "media": 29.207
+        },
+        "flecha": {
+          "n": 10,
+          "media": 6.666
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 4,
+          "media": 19.6409
+        },
+        "flecha": {
+          "n": 3,
+          "media": 22.22
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 53,
+          "eventos": 2
+        },
+        "zombi": {
+          "expuestos": 14,
+          "eventos": 1
+        },
+        "flecha": {
+          "expuestos": 9,
+          "eventos": 1
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 8,
+          "junto": 7,
+          "esperado": 0.6032
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 15,
+          "junto": 0,
+          "esperado": 2.1003
+        },
+        {
+          "x": "zombi",
+          "y": "flecha",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.2063
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 7,
+          "junto": 0,
+          "esperado": 0.4603
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          2,
+          4,
+          4,
+          6,
+          5,
+          3,
+          6,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "sapling",
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "agua",
+        "relacion": "NUTRITIVO",
+        "confianza": 0.808
+      },
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.861
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.914
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 322,
+        "media": -0.23
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 13,
+        "media": -0.006
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 16,
+        "media": -4.649
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 7,
+        "media": 2.368
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 10,
+        "media": 5.227
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 7,
+        "media": -0.099
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 2,
+        "media": -0.174
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -0.695
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 2,
+        "media": 0.0
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "flecha",
+        "n": 2,
+        "media": -6.111
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_plant",
+        "n": 2,
+        "media": -1.389
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "camino",
+        "n": 15,
+        "media": -0.648
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.35,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.678,
+        "exitos": 4,
+        "fallos": 2,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.085,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.0,
+        "exitos": 1,
+        "fallos": 2,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.47,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.078,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.105,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.078,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.648,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 13,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.034,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.295,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 10,
+        "sube": 10,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.2113
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 10,
+        "sube": 1,
+        "esperado": 2.0137
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0305
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 1,
+        "esperado": 1.0347
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0,
+      "salud": 0.0098,
+      "cobijo": 0.9722
+    },
+    "peligros": {
+      "dano": {
+        "zombi": {
+          "n": 3,
+          "media": 39.3623
+        },
+        "flecha": {
+          "n": 5,
+          "media": 6.666
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 8,
+          "media": 21.5752
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 26,
+          "eventos": 1
+        },
+        "zombi": {
+          "expuestos": 27,
+          "eventos": 2
+        },
+        "flecha": {
+          "expuestos": 4,
+          "eventos": 0
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 4,
+          "junto": 3,
+          "esperado": 0.3016
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 7,
+          "junto": 0,
+          "esperado": 1.0501
+        },
+        {
+          "x": "zombi",
+          "y": "esqueleto",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.2301
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          2,
+          4,
+          4,
+          6,
+          5,
+          3,
+          6,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "sapling",
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  },
+  {
+    "proposiciones": [
+      {
+        "sujeto": "agua",
+        "relacion": "NUTRITIVO",
+        "confianza": 0.838
+      },
+      {
+        "sujeto": "zombi",
+        "relacion": "PELIGROSO",
+        "confianza": 0.779
+      },
+      {
+        "sujeto": "madera",
+        "relacion": "UTIL",
+        "confianza": 0.914
+      }
+    ],
+    "registros": [
+      {
+        "verbo": "MOVER",
+        "clase": "suelo",
+        "n": 280,
+        "media": -0.231
+      },
+      {
+        "verbo": "COGER",
+        "clase": "arbol",
+        "n": 13,
+        "media": -0.43
+      },
+      {
+        "verbo": "ATACAR",
+        "clase": "zombi",
+        "n": 18,
+        "media": -1.912
+      },
+      {
+        "verbo": "COMER",
+        "clase": "vaca",
+        "n": 9,
+        "media": 2.024
+      },
+      {
+        "verbo": "COMER",
+        "clase": "agua",
+        "n": 10,
+        "media": 5.391
+      },
+      {
+        "verbo": "USAR",
+        "clase": "place_table",
+        "n": 8,
+        "media": -0.037
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "hierba",
+        "n": 11,
+        "media": -0.016
+      },
+      {
+        "verbo": "USAR",
+        "clase": "make_wood_pickaxe",
+        "n": 2,
+        "media": -0.347
+      },
+      {
+        "verbo": "COGER",
+        "clase": "piedra",
+        "n": 3,
+        "media": 0.0
+      },
+      {
+        "verbo": "MOVER",
+        "clase": "camino",
+        "n": 9,
+        "media": -0.504
+      },
+      {
+        "verbo": "COGER",
+        "clase": "hierro",
+        "n": 4,
+        "media": 0.0
+      }
+    ],
+    "requisitos": [
+      {
+        "verbo": "USAR",
+        "objetivo": "place_stone",
+        "requiere_inventario": {
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.28,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_table",
+        "requiere_inventario": {
+          "wood": 2,
+          "stone": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": -2
+        },
+        "fuente": "manual",
+        "confianza": 0.642,
+        "exitos": 5,
+        "fallos": 3,
+        "aparece": [
+          "mesa"
+        ],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_furnace",
+        "requiere_inventario": {
+          "stone": 4
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": -4
+        },
+        "fuente": "manual",
+        "confianza": 0.068,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "place_plant",
+        "requiere_inventario": {
+          "sapling": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.0,
+        "exitos": 1,
+        "fallos": 1,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_pickaxe",
+        "requiere_inventario": {
+          "wood": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_pickaxe": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.476,
+        "exitos": 2,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": [
+          "hierba"
+        ]
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_pickaxe",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_pickaxe": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.062,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_wood_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "wood": -1,
+          "wood_sword": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.084,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "USAR",
+        "objetivo": "make_stone_sword",
+        "requiere_inventario": {
+          "wood": 1,
+          "stone": 1
+        },
+        "requiere_cerca": [
+          "mesa"
+        ],
+        "efecto": {
+          "stone": -1,
+          "stone_sword": 1,
+          "wood": -1
+        },
+        "fuente": "manual",
+        "confianza": 0.062,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "piedra",
+        "requiere_inventario": {
+          "wood_pickaxe": null
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "stone": 1
+        },
+        "fuente": "manual",
+        "confianza": 0.718,
+        "exitos": 3,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "arbol",
+        "requiere_inventario": {},
+        "requiere_cerca": [],
+        "efecto": {
+          "wood": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 1.0,
+        "exitos": 13,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "hierba",
+        "requiere_inventario": {
+          "wood_pickaxe": 5
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "sapling": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.027,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      },
+      {
+        "verbo": "COGER",
+        "objetivo": "carbon",
+        "requiere_inventario": {
+          "wood_pickaxe": 1
+        },
+        "requiere_cerca": [],
+        "efecto": {
+          "coal": 1
+        },
+        "fuente": "experiencia",
+        "confianza": 0.236,
+        "exitos": 1,
+        "fallos": 0,
+        "aparece": [],
+        "requiere_delante": []
+      }
+    ],
+    "satisface": [
+      {
+        "clase": "agua",
+        "necesidad": "sed",
+        "n": 10,
+        "sube": 10,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "hambre",
+        "n": 2,
+        "sube": 2,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "hambre",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cansancio",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "agua",
+        "necesidad": "salud",
+        "n": 10,
+        "sube": 0,
+        "esperado": 0.1056
+      },
+      {
+        "clase": "agua",
+        "necesidad": "cobijo",
+        "n": 10,
+        "sube": 0,
+        "esperado": 1.1248
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "sed",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cansancio",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "salud",
+        "n": 2,
+        "sube": 0,
+        "esperado": 0.0152
+      },
+      {
+        "clase": "vaca",
+        "necesidad": "cobijo",
+        "n": 2,
+        "sube": 0,
+        "esperado": 1.1144
+      }
+    ],
+    "linea_base": {
+      "hambre": 0.0,
+      "sed": 0.0,
+      "cansancio": 0.0001,
+      "salud": 0.0,
+      "cobijo": 1.0
+    },
+    "peligros": {
+      "dano": {
+        "zombi": {
+          "n": 3,
+          "media": 27.9341
+        },
+        "flecha": {
+          "n": 2,
+          "media": 6.666
+        }
+      },
+      "dano_golpe": {
+        "zombi": {
+          "n": 6,
+          "media": 21.7901
+        }
+      },
+      "tasa": {
+        "esqueleto": {
+          "expuestos": 13,
+          "eventos": 0
+        },
+        "zombi": {
+          "expuestos": 23,
+          "eventos": 1
+        },
+        "flecha": {
+          "expuestos": 2,
+          "eventos": 0
+        }
+      },
+      "emision": [
+        {
+          "x": "esqueleto",
+          "y": "flecha",
+          "n": 2,
+          "junto": 1,
+          "esperado": 0.1508
+        },
+        {
+          "x": "flecha",
+          "y": "esqueleto",
+          "n": 3,
+          "junto": 0,
+          "esperado": 0.5251
+        },
+        {
+          "x": "zombi",
+          "y": "vaca",
+          "n": 6,
+          "junto": 0,
+          "esperado": 1.127
+        }
+      ],
+      "recorridos": {
+        "esqueleto": [
+          2,
+          2,
+          4,
+          4,
+          6,
+          5,
+          3,
+          6,
+          2,
+          4
+        ]
+      },
+      "derribos": {
+        "zombi": [
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "stone",
+              "stone_pickaxe",
+              "stone_sword",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            3
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "coal",
+              "stone",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            5
+          ]
+        ],
+        "vaca": [
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [
+              "wood_pickaxe",
+              "wood_sword"
+            ],
+            2
+          ],
+          [
+            [],
+            2
+          ],
+          [
+            [
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [
+              "wood",
+              "wood_pickaxe"
+            ],
+            3
+          ],
+          [
+            [],
+            3
+          ],
+          [
+            [
+              "wood"
+            ],
+            3
+          ]
+        ],
+        "flecha": [
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "stone",
+              "wood",
+              "wood_pickaxe"
+            ],
+            1
+          ],
+          [
+            [
+              "sapling",
+              "stone",
+              "wood_pickaxe"
+            ],
+            1
+          ]
+        ]
+      }
+    }
+  }
+]

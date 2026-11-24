@@ -14,7 +14,7 @@
 
 import time
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.core.azar import Azar
 from ida.core.linaje import Arquetipo
@@ -75,6 +75,7 @@ class Contexto:
     extra: Dict[str, Any] = field(default_factory=dict)
     registrados: Set[str] = field(default_factory=set)
     cuerpo: Optional[Cuerpo] = None
+    corto_plazo: Tuple[Any, ...] = ()
 
     @property
     def latido(self) -> int:
