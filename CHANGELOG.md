@@ -4,7 +4,7 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
-### crafter-general-v5 (sin publicar)
+### crafter-general-v5 (24/11/2026)
 - **Reorganización modular por Componentes** ([`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md), decisiones D1 a D17) sin alteración de conducta (`EQUIVALENCIA: OK`).
 - **Estructura de paquetes limpia:** `ida/nucleo/` (mecánica y tipos base), `ida/core/` (sentidos en bruto, regulación, actuador y tribunal), `ida/s1/`, `ida/s2/`, `ida/s3/` (módulos cognitivos organizados en sentir, interpretar, reaccionar y actuar), `ida/cuerpos/` (familias de cuerpos e interfaces motoras) e `ida/mundos/` (mundos como paquetes autosuficientes con adaptadores, perfiles y componentes propios).
 - **Latido vital en ocho pasos (D1):** onda y memoria a corto plazo, sentir en bruto, preatención (S1 · Sentir: `Saliencia`, `Amenaza`, `ValoracionCrafter`), plasticidad de componentes, regulación de recursos (`Regulacion`), ejecución S1 → S2 → S3 con guillotina cooperativa, actuar (`Tribunal`, `Actuador` y `Motor`) y cierre.
