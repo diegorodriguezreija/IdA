@@ -5,12 +5,13 @@ la interpretación del espacio (recintos, cavar, cerrar accesos) la aporta el mu
 de la pieza de afordancia de protección.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from ida.core.arquitectura import Contexto
 from ida.core.estrategia import ConPropuestas
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Verbo
+from ida.sistemas.requisito import Requisitos
 
 COBIJO = "cobijo"
 TIPO_RECINTO = "Recinto"
@@ -34,7 +35,8 @@ def _proponer_abrir(estrategia: ConPropuestas, ctx: Contexto, c: Dict[str, Any],
     """Abrir el recinto: la primera pared que se puede cavar (``Recinto``, ``abrir``), con arousal = déficit de la necesidad que
     saca y confianza = tasa estimada de cavarla."""
     pared = c["abrir"][0]
-    confianza = ctx.memoria.tasa_estimada(Verbo.COGER, pared["clase"]) if pared["verbo"] == Verbo.COGER else 1.0
+    sec_req = cast(Requisitos, ctx.memoria.seccion("requisitos")) if ctx.memoria.tiene_seccion("requisitos") else None
+    confianza = sec_req.tasa_estimada(Verbo.COGER, pared["clase"]) if (sec_req is not None and pared["verbo"] == Verbo.COGER) else 1.0
     que = f"abrir {pared['clase']}" if pared["verbo"] == Verbo.COGER else "ir junto a la pared para abrir"
     estrategia.proponer(ctx, pared["verbo"], pared["objetivo"], deficit, confianza,
                         f"{origen}: {que} ({necesidad} {deficit:.2f} > cobijo {cobijo:.2f})", clase=pared["clase"])

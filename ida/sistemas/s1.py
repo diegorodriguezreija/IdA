@@ -26,7 +26,8 @@ from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import (PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, MAX_OBJETOS, al_alcance, alarma, apetito,
                                 exterocepcion, lugares, mejor, objetos)
 from ida.sistemas.proteger import COBIJO, Proteger, recinto
-from ida.sistemas.amenaza import Amenaza
+from ida.sistemas.amenaza import Amenaza, Peligros
+from ida.sistemas.requisito import Requisitos
 from ida.sistemas.saliencia import Saliencia
 
 
@@ -165,7 +166,10 @@ def satisface_de(ctx: Contexto, o: Pieza) -> Dict[str, float]:
     satisface cada necesidad (``Necesidad.rasgo``) es el previo: si la memoria no sabe nada de la clase, es
     todo lo que hay, como hasta ahora."""
     previos = {n.nombre: (o.rasgo(n.rasgo) if n.rasgo else 0.0) for n in ctx.perfil.necesidades}
-    conocida = ctx.memoria.satisfaccion(o.clase, previos)
+    if ctx.memoria.tiene_seccion("satisface"):
+        conocida = cast(Aliestesia, ctx.memoria.seccion("satisface")).satisfaccion(o.clase, previos)
+    else:
+        conocida = None
     if conocida is not None:
         return {n.nombre: conocida.get(n.nombre, 0.0) for n in ctx.perfil.necesidades}
     return previos
@@ -392,15 +396,22 @@ def _objetos_llevados(ctx: Contexto) -> FrozenSet[str]:
     """Lo que se lleva (inventario percibido), solo las claves que son objetos."""
     yo = ctx.onda.ev("Propiocepcion").get("yo")
     inv = dict(yo.carga.get("inventario", {})) if yo is not None else {}
-    return frozenset(k for k, v in ctx.memoria._objetos(inv).items() if v >= 1.0)
+    if ctx.memoria.tiene_seccion("requisitos"):
+        req = cast(Requisitos, ctx.memoria.seccion("requisitos"))
+        return frozenset(k for k, v in req.objetos(inv).items() if v >= 1.0)
+    return frozenset(k for k, v in inv.items() if v >= 1.0)
 
 
 def objetos_peligrosos(ctx: Contexto) -> List[Pieza]:
     """Los Objetos con peligro que se pueden afrontar (orden estable): los de una clase cuyo derribo se ha observado o que el
     manual declara meta de ATACAR. Atacar algo que nunca se ha visto caer y que nada pide derribar no es luchar."""
     mem = ctx.memoria
+    pel: Optional[Peligros] = cast(Peligros, mem.seccion("peligros")) if mem.tiene_seccion("peligros") else None
+    req: Optional[Requisitos] = cast(Requisitos, mem.seccion("requisitos")) if mem.tiene_seccion("requisitos") else None
+    derribos = pel.derribos if pel is not None else {}
+    metas = req.metas if req is not None else {}
     return sorted((o for o in objetos(ctx) if o.rasgo("peligro") > 0.0
-                   and (mem.peligros.derribos.get(o.clase) or (Verbo.ATACAR, o.clase) in mem.metas)), key=lambda o: o.id)
+                   and (derribos.get(o.clase) or (Verbo.ATACAR, o.clase) in metas)), key=lambda o: o.id)
 
 
 class Afrontar(Definicion):
@@ -440,13 +451,16 @@ class Afrontar(Definicion):
         if pos is None or len(pos) != 2:
             return None
         mem = ctx.memoria
-        pel = mem.peligros
+        if not mem.tiene_seccion("peligros"):
+            return None
+        pel = cast(Peligros, mem.seccion("peligros"))
+        req = cast(Requisitos, mem.seccion("requisitos")) if mem.tiene_seccion("requisitos") else None
         d = int(abs(pos[0] - aqui[0]) + abs(pos[1] - aqui[1]))
         golpes, n_golpes = pel.golpes(o.clase, llevados, reductores)
         tasa, n_tasa = pel.tasa(o.clase)
         exposicion = golpes + max(0, d - 1)
         recibido = pel.dano_por_golpe(o.clase, mem.peligrosa) * exposicion * tasa
-        meta = mem.metas.get((Verbo.ATACAR, o.clase))
+        meta = req.metas.get((Verbo.ATACAR, o.clase)) if req is not None else None
         beneficio = o.rasgo("peligro") + (1.0 if meta is not None and not meta.conseguida else 0.0)
         return {"pieza": o, "d": d, "golpes": golpes, "n_golpes": n_golpes, "tasa": tasa, "n_tasa": n_tasa,
                 "margen": salud - recibido, "beneficio": beneficio, "alcance": pel.alcance(o.clase, mem.peligrosa)}
@@ -458,10 +472,11 @@ class Afrontar(Definicion):
         res: Optional[Dict[str, Any]] = None
         aqui = _yo(ctx)
         reserva = ctx.perfil.escala.reserva
-        if ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
+        if ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos and ctx.memoria.tiene_seccion("peligros"):
             salud = float(ctx.soma.vitalidad)
             llevados = _objetos_llevados(ctx)
-            reductores = ctx.memoria.peligros.reductores()
+            pel = cast(Peligros, ctx.memoria.seccion("peligros"))
+            reductores = pel.reductores()
             valoradas = [v for o in objetos_peligrosos(ctx) if (v := self._valorar(ctx, o, aqui, salud, llevados, reductores)) is not None]
             favorables = [v for v in valoradas if v["margen"] > reserva and v["beneficio"] > 0.0]
             if favorables:
@@ -470,7 +485,7 @@ class Afrontar(Definicion):
             elif valoradas:
                 principal = max(valoradas, key=lambda v: (v["pieza"].rasgo("peligro"), v["pieza"].id))
                 elegido: Optional[Tuple[str, Dict[str, Any]]] = None
-                for x in sorted((set(reductores) - llevados) & ctx.memoria.peligros.distinguibles()):
+                for x in sorted((set(reductores) - llevados) & pel.distinguibles()):
                     w = self._valorar(ctx, principal["pieza"], aqui, salud, llevados | {x}, reductores)
                     if w is not None and w["margen"] > reserva and (elegido is None or w["golpes"] < elegido[1]["golpes"]):
                         elegido = (x, w)

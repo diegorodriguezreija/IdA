@@ -21,16 +21,15 @@ proposiciones **demostradas**.
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from ida.core.arquitectura import Componente, Contexto, Modulo, Sistema
 from ida.core.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
-from ida.core.memoria import desplazamiento
 from ida.core.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.core.pieza import Pieza, acotar
 from ida.core.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
 from ida.sistemas.comun import Accion, Estrategia, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
-from ida.sistemas.requisito import Requisito
+from ida.sistemas.requisito import Requisito, Requisitos, desplazamiento
 
 
 class Comunicacion(Componente):
@@ -542,7 +541,15 @@ def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: f
     cuerpo = getattr(ctx, "cuerpo", None)
     if cuerpo is None:
         return None
-    return cuerpo.ir_por_el_mapa(ctx, clase, confianza, excluir)
+    ruta = cuerpo.ir_por_el_mapa(ctx, clase, confianza, excluir)
+    if ruta is None:
+        return None
+    primero, d, (x, y) = ruta
+    puerta = next((lugar for lugar in lugares(ctx) if _pos(lugar) == primero and lugar.rasgo("peligro") < 0.5), None)
+    if puerta is None:
+        return None
+    return Paso(Verbo.MOVER, puerta.id, puerta.clase, float(d), confianza, [f"volver a {clase} (mapa, {d} pasos)"],
+                destino=f"{clase}@{x}_{y}", distancia=d)
 
 
 def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
@@ -648,8 +655,16 @@ class PerseguirMetas(ConPropuestas):
         else:
             self._seguimiento = (destino, mejor_d, n)
 
+    @staticmethod
+    def _requisitos(ctx: Contexto) -> Optional[Requisitos]:
+        if ctx.memoria.tiene_seccion("requisitos"):
+            return cast(Requisitos, ctx.memoria.seccion("requisitos"))
+        return None
+
     def elegible(self, ctx: Contexto, impulso: str, intensidad: float) -> bool:
-        return bool(ctx.con_experiencia) and (any(not m.conseguida and m.verbo in self.VERBOS_PLAN for m in ctx.memoria.metas.values())
+        req = self._requisitos(ctx)
+        metas = req.metas if req is not None else {}
+        return bool(ctx.con_experiencia) and (any(not m.conseguida and m.verbo in self.VERBOS_PLAN for m in metas.values())
                                               or bool(self._peticiones(ctx, inventario(ctx))))
 
     @staticmethod
@@ -660,7 +675,9 @@ class PerseguirMetas(ConPropuestas):
     def conseguir(self, ctx: Contexto, objeto: str, inv: Dict[str, float]) -> Optional[Paso]:
         """Primer paso del plan más barato para tener una unidad más de ``objeto``: la mejor de las acciones cuyo efecto
         lo da (requisitos), resuelta hacia atrás como cualquier carencia de inventario. None si nada lo da."""
-        productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+        req = self._requisitos(ctx)
+        reqs = req.requisitos if req is not None else {}
+        productoras = sorted((k for k, q in reqs.items() if q.efecto.get(objeto, 0) > 0),
                              key=lambda k: (k[0].value, k[1]))
         pasos = [p for p in (self._resolver(ctx, k, inv, frozenset(), 0) for k in productoras) if p is not None]
         return min(pasos, key=lambda q: q.coste) if pasos else None
@@ -670,7 +687,9 @@ class PerseguirMetas(ConPropuestas):
         mejor_paso: Optional[Paso] = None
         meta_mejor = ""
         resueltas: List[Tuple[Verbo, str]] = []
-        for meta in ctx.memoria.metas.values():
+        req = self._requisitos(ctx)
+        metas = req.metas if req is not None else {}
+        for meta in metas.values():
             if meta.conseguida or meta.verbo not in self.VERBOS_PLAN:
                 continue
             paso = self._resolver(ctx, (meta.verbo, meta.objetivo), inv, frozenset(), 0)
@@ -717,11 +736,12 @@ class PerseguirMetas(ConPropuestas):
 
     def _resolver(self, ctx: Contexto, accion: Tuple[Verbo, str], inv: Dict[str, float], visitado: frozenset,
                   prof: int) -> Optional[Paso]:
-        if prof > self.PROFUNDIDAD or accion in visitado or ctx.memoria.bloqueada(*accion):
+        req = self._requisitos(ctx)
+        bloqueada = req.bloqueada(*accion) if req is not None else False
+        if prof > self.PROFUNDIDAD or accion in visitado or bloqueada:
             return None
         visitado = visitado | {accion}
-        mem = ctx.memoria
-        r = mem.requisitos.get(accion)
+        r = req.requisitos.get(accion) if req is not None else None
         faltan_inv = {k: (n or 1) - inv.get(k, 0.0) for k, n in (r.requiere_inventario if r else {}).items()
                       if inv.get(k, 0.0) < (n or 1)}
         faltan_cerca = []
@@ -744,7 +764,7 @@ class PerseguirMetas(ConPropuestas):
             return p
 
         for item in sorted(faltan_inv):
-            productoras = sorted((k for k, q in mem.requisitos.items() if q.efecto.get(item, 0) > 0), key=lambda k: (k[0].value, k[1]))
+            productoras = sorted((k for k, q in (req.requisitos if req else {}).items() if q.efecto.get(item, 0) > 0), key=lambda k: (k[0].value, k[1]))
             p = mejor_de([self._resolver(ctx, k, inv, visitado, prof + 1) for k in productoras], f"falta {item}")
             if p is None:
                 return None
@@ -752,7 +772,7 @@ class PerseguirMetas(ConPropuestas):
         for clase in faltan_cerca:
             # Ir a una que se ve o se recuerda (mapa local, con el coste de la ruta) frente a producir otra, con el coste de
             # reponer lo que consume. Así no se coloca una nueva mientras ir a la conocida cueste menos.
-            colocadoras = sorted((k for k, q in mem.requisitos.items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
+            colocadoras = sorted((k for k, q in (req.requisitos if req else {}).items() if clase in q.aparece), key=lambda k: (k[0].value, k[1]))
             confianza = r.confianza if r else 0.5
             opciones = [acercarse_a_clase(ctx, clase, confianza, self._excluir(ctx)), self._por_el_mapa(ctx, clase, confianza)]
             opciones += [self._con_consumo(ctx, k, self._resolver(ctx, k, inv, visitado, prof + 1), inv, visitado, prof)
@@ -771,7 +791,8 @@ class PerseguirMetas(ConPropuestas):
                      visitado: frozenset, prof: int) -> Optional[Paso]:
         """Producir algo cuesta también reponer lo que consume: lo que su efecto aprendido resta del inventario
         (``Requisito.efecto`` negativo), por el coste de conseguir cada unidad. Sin experiencia de su efecto, nada."""
-        r = ctx.memoria.requisitos.get(accion)
+        req = self._requisitos(ctx)
+        r = req.requisitos.get(accion) if req is not None else None
         if paso is None or r is None:
             return paso
         for k, d in sorted(r.efecto.items()):
@@ -786,7 +807,9 @@ class PerseguirMetas(ConPropuestas):
             if len(self._costes_unidad) > 200:
                 self._costes_unidad.clear()
             sin = {**inv, objeto: 0.0}
-            productoras = sorted((k for k, q in ctx.memoria.requisitos.items() if q.efecto.get(objeto, 0) > 0),
+            req = self._requisitos(ctx)
+            reqs = req.requisitos if req is not None else {}
+            productoras = sorted((k for k, q in reqs.items() if q.efecto.get(objeto, 0) > 0),
                                  key=lambda k: (k[0].value, k[1]))
             pasos = [q for q in (self._resolver(ctx, k, sin, visitado, prof) for k in productoras) if q is not None]
             self._costes_unidad[clave] = min(q.coste for q in pasos) + 1.0 if pasos else COSTE_SIN_PRODUCTOR
@@ -801,23 +824,24 @@ class PerseguirMetas(ConPropuestas):
         meta; se reparte entre las metas. El primer paso es el material («primero lo que se lleva»); con todo, ir a X o
         colocarla; con todo y junto a X, ninguno (lo hacen las metas sueltas). ``solo``: el lote en curso (su estación
         y, de sus metas, las que siguen valiendo)."""
-        mem = ctx.memoria
-        estaciones = sorted({c for k in resueltas if (r := mem.requisitos.get(k)) is not None for c in r.requiere_cerca})
+        req = self._requisitos(ctx)
+        reqs = req.requisitos if req is not None else {}
+        estaciones = sorted({c for k in resueltas if (r := reqs.get(k)) is not None for c in r.requiere_cerca})
         if solo is not None:
             estaciones = [x for x in estaciones if x == solo[0]]
         mejor_lote: Optional[Tuple[Paso, float, str, Tuple[str, frozenset]]] = None
         for x in estaciones:
-            lote = [k for k in resueltas if (r := mem.requisitos.get(k)) is not None and r.requiere_cerca == {x}
+            lote = [k for k in resueltas if (r := reqs.get(k)) is not None and r.requiere_cerca == {x}
                     and (solo is None or k in solo[1])
                     and all(inv.get(i, 0.0) >= _cantidad(r, i) or self._de_campo(ctx, i, inv, 0) for i in r.requiere_inventario)]
             if len(lote) < 2:
                 continue
             material: Dict[str, float] = {}
             for k in lote:
-                r = mem.requisitos[k]
+                r = reqs[k]
                 for i in r.requiere_inventario:
                     material[i] = material.get(i, 0.0) + _cantidad(r, i)
-            r0 = mem.requisitos[lote[0]]
+            r0 = reqs[lote[0]]
             cerca_ya = any(r0.cerca_basta(x, d) for d in desplazamientos_a_clase(ctx, x))
             # Opciones para la estación: (paso si ya se tiene el material, coste, material propio).
             opciones: List[Tuple[Optional[Paso], float, Dict[str, float]]] = []
@@ -828,12 +852,13 @@ class PerseguirMetas(ConPropuestas):
                 for ir in (acercarse_a_clase(ctx, x, r0.confianza, excluir), ir_por_el_mapa(ctx, x, r0.confianza, excluir)):
                     if ir is not None:
                         opciones.append((ir, ir.coste, {}))
-                for k in sorted((k for k, q in mem.requisitos.items() if x in q.aparece), key=lambda k: (k[0].value, k[1])):
-                    rk = mem.requisitos[k]
-                    if rk.requiere_cerca or mem.bloqueada(*k):
+                for k in sorted((k for k, q in reqs.items() if x in q.aparece), key=lambda k: (k[0].value, k[1])):
+                    rk = reqs[k]
+                    if rk.requiere_cerca or (req.bloqueada(*k) if req else False):
                         continue
                     propio = {i: _cantidad(rk, i) for i in rk.requiere_inventario}
-                    opciones.append((self._colocar(ctx, k, inv, propio, material), 1.0 / max(mem.tasa_estimada(*k), 1e-6), propio))
+                    tasa = req.tasa_estimada(*k) if req else 1.0
+                    opciones.append((self._colocar(ctx, k, inv, propio, material), 1.0 / max(tasa, 1e-6), propio))
             for paso_est, coste_est, propio in opciones:
                 total = dict(material)
                 for i, n in propio.items():
@@ -882,11 +907,13 @@ class PerseguirMetas(ConPropuestas):
         o es también de campo (hasta 3 niveles)."""
         if prof > 3:
             return False
-        for q in ctx.memoria.requisitos.values():
-            if q.efecto.get(objeto, 0) > 0 and not q.requiere_cerca and not ctx.memoria.bloqueada(q.verbo, q.objetivo):
-                if all(inv.get(i, 0.0) >= _cantidad(q, i) or (i != objeto and self._de_campo(ctx, i, inv, prof + 1))
-                       for i in q.requiere_inventario):
-                    return True
+        req = self._requisitos(ctx)
+        if req is not None:
+            for q in req.requisitos.values():
+                if q.efecto.get(objeto, 0) > 0 and not q.requiere_cerca and not req.bloqueada(q.verbo, q.objetivo):
+                    if all(inv.get(i, 0.0) >= _cantidad(q, i) or (i != objeto and self._de_campo(ctx, i, inv, prof + 1))
+                           for i in q.requiere_inventario):
+                        return True
         return False
 
     def _por_el_mapa(self, ctx: Contexto, clase: str, confianza: float) -> Optional[Paso]:
@@ -904,7 +931,9 @@ class PerseguirMetas(ConPropuestas):
         confianza = float(r.confianza) if r is not None else 0.5
         # Coste en intentos: 1 / tasa estimada. El primer intento ya cuenta como el paso (coste 0, como cualquier
         # acción que siempre funciona); se suman los fallos esperados antes del éxito, 1 / tasa − 1.
-        penal = 1.0 / max(ctx.memoria.tasa_estimada(verbo, objetivo), 1e-6) - 1.0
+        req = self._requisitos(ctx)
+        tasa = req.tasa_estimada(verbo, objetivo) if req is not None else 1.0
+        penal = 1.0 / max(tasa, 1e-6) - 1.0
         texto = f"{verbo.value} {objetivo}"
         if verbo == Verbo.USAR:
             d = delante(ctx)
@@ -941,7 +970,10 @@ class PerseguirMetas(ConPropuestas):
         if d is None:
             return
         clave = (Verbo.COGER, str(d["clase"]))
-        if clave in ctx.memoria.requisitos or clave in ctx.memoria.intentos:
+        req = self._requisitos(ctx)
+        reqs = req.requisitos if req is not None else {}
+        intentos = req.intentos if req is not None else {}
+        if clave in reqs or clave in intentos:
             return
         self.proponer(ctx, Verbo.COGER, str(d["id"]), 0.3, 0.5, f"metas: probar a coger {d['clase']} (sin plan)", clase=str(d["clase"]))
 

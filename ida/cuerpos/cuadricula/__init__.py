@@ -58,5 +58,5 @@ class Cuadricula(Cuerpo):
 
     def ir_por_el_mapa(
         self, ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
-    ) -> Optional[Any]:
+    ) -> Optional[Tuple[Tuple[int, int], int, Tuple[int, int]]]:
         return ir_por_el_mapa(ctx, clase, confianza, excluir)

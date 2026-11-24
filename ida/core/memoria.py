@@ -191,15 +191,6 @@ class RecuerdoLugar:
     confianza: float = 1.0
 
 
-RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
-Desplazamiento = Tuple[int, int]   # (|dx|, |dy|) ordenados de menor a mayor: (0, 1) al lado, (1, 1) diagonal, (0, 2) a dos en línea
-
-
-def desplazamiento(dx: int, dy: int) -> Desplazamiento:
-    a, b = sorted((abs(int(dx)), abs(int(dy))))
-    return (a, b)
-
-
 Pos = Tuple[int, int]
 DIRECCIONES: Tuple[Pos, ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
 
@@ -210,6 +201,15 @@ def pos_de(texto: Any) -> Optional[Pos]:
     if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
         return int(partes[1]), int(partes[2])
     return None
+
+
+RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
+Desplazamiento = Tuple[int, int]   # (|dx|, |dy|) ordenados de menor a mayor: (0, 1) al lado, (1, 1) diagonal, (0, 2) a dos en línea
+
+
+def desplazamiento(dx: int, dy: int) -> Desplazamiento:
+    a, b = sorted((abs(int(dx)), abs(int(dy))))
+    return (a, b)
 
 
 @dataclass
@@ -434,138 +434,6 @@ class Memoria:
         if autor != dueño:
             raise PermissionError(f"'{autor}' no puede escribir en la sección de memoria '{nombre}' (dueño: {dueño})")
         return seccion
-
-    def _seccion_o_none(self, nombre: str) -> Optional[Any]:
-        d = self._secciones.get(nombre)
-        return d[1] if d is not None else None
-
-    # --- A2: lecturas con el nombre de antes (solo lectura), mientras dure la fase A -------------------------------
-    @property
-    def peligros(self) -> Any:   # A2: sección «peligros» (dueño ``Amenaza``); None si no está montada
-        return self._seccion_o_none("peligros")
-
-    @property
-    def satisface(self) -> Dict[Tuple[str, str], "Satisface"]:   # A2: sección «satisface» (dueño ``Apetencia``)
-        s = self._seccion_o_none("satisface")
-        return s.satisface if s is not None else {}
-
-    @property
-    def linea_base(self) -> Dict[str, float]:   # A2: sección «satisface»
-        s = self._seccion_o_none("satisface")
-        return s.linea_base if s is not None else {}
-
-    @property
-    def n_base(self) -> Dict[str, int]:   # A2: sección «satisface»
-        s = self._seccion_o_none("satisface")
-        return s.n_base if s is not None else {}
-
-    def _req(self, atributo: str, vacio: Any) -> Any:
-        s = self._seccion_o_none("requisitos")
-        return getattr(s, atributo) if s is not None else vacio
-
-    @property
-    def requisitos(self) -> Dict[Tuple[Verbo, str], "Requisito"]:   # A2: sección «requisitos» (dueño ``Requisito``)
-        return cast(Dict[Tuple[Verbo, str], Requisito], self._req("requisitos", {}))
-
-    @property
-    def intentos(self) -> Dict[Tuple[Verbo, str], List[Dict[str, float]]]:   # A2: sección «requisitos»
-        return cast(Dict[Tuple[Verbo, str], List[Dict[str, float]]], self._req("intentos", {}))
-
-    @property
-    def claves_inventario(self) -> Optional[Set[str]]:   # A2: sección «requisitos»
-        return cast(Optional[Set[str]], self._req("claves_inventario", None))
-
-    @property
-    def metas(self) -> Dict[Tuple[Verbo, str], "Meta"]:   # A2: sección «requisitos»
-        return cast(Dict[Tuple[Verbo, str], Meta], self._req("metas", {}))
-
-    @property
-    def fallos_seguidos(self) -> Dict[Tuple[Verbo, str], int]:   # A2: sección «requisitos»
-        return cast(Dict[Tuple[Verbo, str], int], self._req("fallos_seguidos", {}))
-
-    def _objetos(self, inventario: Dict[str, float]) -> Dict[str, float]:   # A2: sección «requisitos» (sin ella, todo)
-        s = self._seccion_o_none("requisitos")
-        return cast(Dict[str, float], s.objetos(inventario)) if s is not None else {k: float(v) for k, v in inventario.items()}
-
-    def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
-        s = self._seccion_o_none("requisitos")
-        return bool(s.bloqueada(verbo, objetivo)) if s is not None else False
-
-    def declarada(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
-        s = self._seccion_o_none("requisitos")
-        return bool(s.declarada(verbo, objetivo)) if s is not None else False
-
-    def puede_salir(self, verbo: Verbo, objetivo: str) -> bool:   # A2: sección «requisitos»
-        s = self._seccion_o_none("requisitos")
-        return bool(s.puede_salir(verbo, objetivo)) if s is not None else False
-
-    def tasa_estimada(self, verbo: Verbo, objetivo: str) -> float:   # A2: sección «requisitos» (sin intentos, 1)
-        s = self._seccion_o_none("requisitos")
-        return float(s.tasa_estimada(verbo, objetivo)) if s is not None else 1.0
-
-    def _mapa(self, atributo: str, vacio: Any) -> Any:
-        s = self._seccion_o_none("cuadricula")
-        return getattr(s, atributo) if s is not None else vacio
-
-    @property
-    def casillas(self) -> Dict[Pos, str]:   # A2: sección «cuadricula» (dueño: el cuerpo cuadrícula)
-        return cast(Dict[Pos, str], self._mapa("casillas", {}))
-
-    @property
-    def version_mapa(self) -> int:   # A2: sección «cuadricula»
-        return cast(int, self._mapa("version_mapa", 0))
-
-    @property
-    def paso_libre(self) -> Dict[str, int]:   # A2: sección «cuadricula»
-        return cast(Dict[str, int], self._mapa("paso_libre", {}))
-
-    @property
-    def paso_bloqueado(self) -> Dict[str, int]:   # A2: sección «cuadricula»
-        return cast(Dict[str, int], self._mapa("paso_bloqueado", {}))
-
-    @property
-    def peligro_sobre(self) -> Set[str]:   # A2: sección «cuadricula»
-        return cast(Set[str], self._mapa("peligro_sobre", set()))
-
-    @property
-    def transformaciones(self) -> Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]]:   # A2: sección «cuadricula»
-        return cast(Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]], self._mapa("transformaciones", {}))
-
-    @property
-    def cuerpo(self) -> Dict[Tuple[str, bool], List[int]]:   # A2: sección «cuadricula»
-        return cast(Dict[Tuple[str, bool], List[int]], self._mapa("cuerpo", {}))
-
-    @property
-    def cierres(self) -> Set[Pos]:   # A2: sección «cuadricula»
-        return cast(Set[Pos], self._mapa("cierres", set()))
-
-    @property
-    def yo_previo(self) -> Optional[Tuple[Pos, Optional[Pos]]]:   # A2: sección «cuadricula»
-        return cast(Optional[Tuple[Pos, Optional[Pos]]], self._mapa("yo_previo", None))
-
-    def transitable(self, clase: Optional[str]) -> Optional[bool]:   # A2: sección «cuadricula» (None sin ella)
-        s = self._seccion_o_none("cuadricula")
-        return s.transitable(clase) if s is not None else None
-
-    def transitable_peligro(self, clase: Optional[str]) -> bool:   # A2: sección «cuadricula» (sin ella, abierto)
-        s = self._seccion_o_none("cuadricula")
-        return bool(s.transitable_peligro(clase)) if s is not None else True
-
-    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:   # A2: «cuadricula»
-        s = self._seccion_o_none("cuadricula")
-        return s.resultado(verbo, objetivo, antes) if s is not None else None
-
-    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:   # A2: sección «cuadricula»
-        s = self._seccion_o_none("cuadricula")
-        return s.modelo_cuerpo(accion, libre) if s is not None else None
-
-    def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
-        """A2: lectura de la sección «satisface»; sin ella (Apetencia no montada), None: no se sabe nada de la clase."""
-        s = self._seccion_o_none("satisface")
-        return s.satisfaccion(clase, previos) if s is not None else None
-
-    def estimacion_satisface(self, clase: str, necesidad: str, previos: Optional[Dict[str, float]] = None) -> float:   # A2
-        return (self.satisfaccion(clase, previos) or {}).get(necesidad, 0.0)
 
     def _diferir(self, tipo: str, datos: Dict[str, Any], tasa: float = 1.0) -> int:
         """Guarda el manual o el legado para las secciones que aún no se han registrado y lo entrega a las que ya lo

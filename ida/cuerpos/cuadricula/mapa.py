@@ -3,19 +3,10 @@
 from typing import Dict, Optional, Tuple, cast
 
 from ida.core.arquitectura import Contexto
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
-from ida.sistemas.comun import lugares
-from ida.sistemas.s3 import Paso
 
 MAX_RUTA_MAPA = 40         # pasos máximos de una ruta por el mapa local hasta algo recordado
 VECINAS = ((1, 0), (-1, 0), (0, 1), (0, -1))
-
-
-def _pos(p: Pieza) -> Optional[Tuple[int, int]]:
-    pos = p.carga.get("datos", {}).get("pos")
-    return (int(pos[0]), int(pos[1])) if isinstance(pos, (list, tuple)) and len(pos) == 2 else None
 
 
 def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
@@ -26,11 +17,13 @@ def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
     return None
 
 
-def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
-    """Un paso hacia la casilla recordada de ``clase`` más cercana por el mapa local de la memoria (paso 3), con el coste en
-    pasos de la ruta hasta quedar al lado. La ruta solo pasa por casillas de clases que se sabe transitables. Destino
-    ``<clase>@x_y`` (``excluir`` lo aparca). None sin posiciones, sin mapa, sin ninguna recordada a menos de
-    ``MAX_RUTA_MAPA`` pasos, si ya está al lado o si el primer paso no es un lugar percibido sin peligro."""
+def ir_por_el_mapa(
+    ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
+) -> Optional[Tuple[Tuple[int, int], int, Tuple[int, int]]]:
+    """La casilla siguiente hacia la recordada de ``clase`` más cercana por el mapa local de la memoria (paso 3),
+    con el coste en pasos de la ruta hasta quedar al lado y la casilla objetivo ``(x, y)``. La ruta solo pasa por
+    casillas de clases que se sabe transitables. None sin posiciones, sin mapa, sin ninguna recordada a menos de
+    ``MAX_RUTA_MAPA`` pasos o si ya está al lado."""
     if not ctx.memoria.tiene_seccion("cuadricula"):
         return None
     mem = cast(MapaCuadricula, ctx.memoria.seccion("cuadricula"))
@@ -66,9 +59,5 @@ def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: f
     primero = llegada
     while previo[primero] != aqui:
         primero = previo[primero]
-    puerta = next((lugar for lugar in lugares(ctx) if _pos(lugar) == primero and lugar.rasgo("peligro") < 0.5), None)
-    if puerta is None:
-        return None
     x, y = junto[llegada]
-    return Paso(Verbo.MOVER, puerta.id, puerta.clase, float(d), confianza, [f"volver a {clase} (mapa, {d} pasos)"],
-                destino=f"{clase}@{x}_{y}", distancia=d)
+    return (primero, d, (x, y))

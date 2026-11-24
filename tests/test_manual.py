@@ -2,9 +2,9 @@
 
 import pytest
 
-from ida.core.memoria import Requisito
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
+from ida.sistemas.requisito import RequisitoAccion as Requisito
 
 from _secciones import memoria_con_secciones, requisitos
 
@@ -25,7 +25,7 @@ def test_manual_vacio_no_cambia_nada():
     m = memoria_con_secciones()
     assert MundoMinimo.manual(MundoMinimo.__new__(MundoMinimo)) == {}
     assert m.aplicar_manual({}) == 0
-    assert m.saber == {} and m.requisitos == {} and m.claves_inventario is None
+    assert m.saber == {} and requisitos(m).requisitos == {} and requisitos(m).claves_inventario is None
     assert m.legado(0) == memoria_con_secciones().legado(0)
     assert "requisitos" not in m.legado(0)
 
@@ -33,10 +33,10 @@ def test_manual_vacio_no_cambia_nada():
 def test_carga_proposiciones_y_requisitos_sin_notas():
     m = memoria_con_secciones()
     assert m.aplicar_manual(MANUAL) == 3
-    assert set(m.requisitos) == {(Verbo.USAR, "place_table"), (Verbo.USAR, "make_pico")}
-    r = m.requisitos[(Verbo.USAR, "make_pico")]
+    assert set(requisitos(m).requisitos) == {(Verbo.USAR, "place_table"), (Verbo.USAR, "make_pico")}
+    r = requisitos(m).requisitos[(Verbo.USAR, "make_pico")]
     assert r.fuente == "manual" and r.requiere_inventario == {"madera": None} and r.requiere_cerca == {"mesa"}
-    assert m.claves_inventario == {"madera", "piedra", "pico"}
+    assert requisitos(m).claves_inventario == {"madera", "piedra", "pico"}
 
 
 def test_proposicion_del_manual_es_autoridad_refutable():
@@ -55,7 +55,7 @@ def test_exito_fija_la_cantidad_consumida():
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 3.0}, {"madera": 1.0}, set(), True)
-    r = m.requisitos[(Verbo.USAR, "place_table")]
+    r = requisitos(m).requisitos[(Verbo.USAR, "place_table")]
     assert r.requiere_inventario["madera"] == 2
     assert r.exitos == 1 and r.efecto == {"madera": -2}
     assert r.confianza == pytest.approx(0.9)
@@ -65,28 +65,28 @@ def test_fallo_creyendo_que_bastaba_sube_la_cantidad():
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 1.0}, {"madera": 1.0}, set(), True)   # sin efecto
-    r = m.requisitos[(Verbo.USAR, "place_table")]
+    r = requisitos(m).requisitos[(Verbo.USAR, "place_table")]
     assert r.requiere_inventario["madera"] == 2
     assert r.fallos == 1 and r.confianza == pytest.approx(0.7)
-    assert m.intentos[(Verbo.USAR, "place_table")] == [{"madera": 1.0}]
+    assert requisitos(m).intentos[(Verbo.USAR, "place_table")] == [{"madera": 1.0}]
 
 
 def test_exito_corrige_la_estimacion_por_fallos():
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 2.0}, {"madera": 2.0}, set(), True)   # fallo: sube a 3
-    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 3
+    assert requisitos(m).requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 3
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 3.0}, {"madera": 1.0}, set(), True)   # consume 2
-    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 2
+    assert requisitos(m).requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 2
 
 
 def test_fallo_sin_cumplir_lo_creido_no_toca_cantidades():
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), False)   # sin mesa cerca
-    r = m.requisitos[(Verbo.USAR, "make_pico")]
+    r = requisitos(m).requisitos[(Verbo.USAR, "make_pico")]
     assert r.requiere_inventario == {"madera": None} and r.fallos == 0
-    assert len(m.intentos[(Verbo.USAR, "make_pico")]) == 1
+    assert len(requisitos(m).intentos[(Verbo.USAR, "make_pico")]) == 1
 
 
 def test_lo_consumido_no_se_reinterpreta_tras_un_fallo():
@@ -94,14 +94,14 @@ def test_lo_consumido_no_se_reinterpreta_tras_un_fallo():
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 3.0}, {"madera": 1.0}, set(), True)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 5.0}, {"madera": 5.0}, set(), True)   # p. ej. sitio no válido
-    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 2
+    assert requisitos(m).requisitos[(Verbo.USAR, "place_table")].requiere_inventario["madera"] == 2
 
 
 def test_solo_cuentan_las_claves_de_objetos_del_manual():
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_table", {"madera": 3.0, "comida": 5.0}, {"madera": 1.0, "comida": 4.0}, set(), True)
-    assert m.requisitos[(Verbo.USAR, "place_table")].requiere_inventario == {"madera": 2}
+    assert requisitos(m).requisitos[(Verbo.USAR, "place_table")].requiere_inventario == {"madera": 2}
 
 
 def test_requisito_descubierto_por_experiencia():
@@ -111,7 +111,7 @@ def test_requisito_descubierto_por_experiencia():
     m = memoria_con_secciones()
     requisitos(m).aprender_requisito(Verbo.COGER, "piedra", {"pico": 1.0, "madera": 2.0}, {"pico": 1.0, "madera": 1.0, "piedra": 1.0},
                          {"piedra", "mesa"}, True)
-    r = m.requisitos[(Verbo.COGER, "piedra")]
+    r = requisitos(m).requisitos[(Verbo.COGER, "piedra")]
     assert r.fuente == "experiencia" and r.efecto == {"madera": -1, "piedra": 1}
     assert r.requiere_cerca == set() and r.requiere_inventario == {}
 
@@ -120,7 +120,7 @@ def test_desplazamientos_de_cercania_aprendidos():
     """La diagonal (1, 1) y dos casillas en línea (0, 2) no se confunden."""
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)                      # make_pico requiere mesa cerca
-    r = m.requisitos[(Verbo.USAR, "make_pico")]
+    r = requisitos(m).requisitos[(Verbo.USAR, "make_pico")]
     assert r.cerca_basta("mesa", (0, 1)) and r.cerca_basta("mesa", (1, 1)) and r.cerca_basta("mesa", (0, 2))   # se prueba
     assert not r.cerca_basta("mesa", (1, 2))
     requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": (0, 2)})
@@ -138,13 +138,13 @@ def test_induccion_descarta_fallos_explicados():
     for n in (1.0, 2.0, 3.0):                     # falla con 1, 2 y 3 piedras, sin pico: la cantidad sube a 4
         requisitos(m).aprender_requisito(Verbo.USAR, "place_horno", {"piedra": n}, {"piedra": n}, set(), True)
     requisitos(m).aprender_requisito(Verbo.USAR, "place_horno", {"piedra": 4.0, "pico": 1.0}, {"pico": 1.0}, set(), True)
-    assert m.requisitos[(Verbo.USAR, "place_horno")].requiere_inventario == {"piedra": 4}
+    assert requisitos(m).requisitos[(Verbo.USAR, "place_horno")].requiere_inventario == {"piedra": 4}
 
 
 def test_delante_solo_cuenta_para_usar():
     m = memoria_con_secciones()
     requisitos(m).aprender_requisito(Verbo.COGER, "piedra", {}, {"piedra": 1.0}, set(), True, delante="hierba")
-    assert m.requisitos[(Verbo.COGER, "piedra")].requiere_delante == set()
+    assert requisitos(m).requisitos[(Verbo.COGER, "piedra")].requiere_delante == set()
 
 
 def test_legado_solo_con_exitos_y_herencia():
@@ -157,9 +157,9 @@ def test_legado_solo_con_exitos_y_herencia():
     hija = memoria_con_secciones()
     hija.aplicar_manual(MANUAL)            # al nacer, antes de heredar
     hija.heredar(legado)
-    r = hija.requisitos[(Verbo.USAR, "place_table")]
+    r = requisitos(hija).requisitos[(Verbo.USAR, "place_table")]
     assert isinstance(r, Requisito) and r.heredado and r.requiere_inventario == {"madera": 2}
-    assert hija.requisitos[(Verbo.USAR, "make_pico")].fuente == "manual"
+    assert requisitos(hija).requisitos[(Verbo.USAR, "make_pico")].fuente == "manual"
 
 
 def test_herencia_conserva_la_autoridad_del_manual():
@@ -172,4 +172,4 @@ def test_herencia_conserva_la_autoridad_del_manual():
 
 def test_memoria_apagada_no_carga_nada():
     m = memoria_con_secciones("apagada")
-    assert m.aplicar_manual(MANUAL) == 0 and m.requisitos == {}
+    assert m.aplicar_manual(MANUAL) == 0 and requisitos(m).requisitos == {}

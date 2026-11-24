@@ -7,7 +7,7 @@ Mundos de juguete en cuadrícula, sin nada de Crafter:
 Nada de eso se le dice a IdA: el daño, el emisor, su alcance y la eficacia del bastón los aprende de lo que percibe.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from ida.sistemas import amenaza as pel
 from ida.core.azar import Azar
@@ -246,8 +246,9 @@ def test_viviendo_se_aprende_el_dano_por_contacto():
             break
         org.latir()
     mem = org.memoria
-    assert mem.peligros.dano_golpe["erizo"].n >= 1
-    assert abs(mem.peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
+    peligros = mem.seccion("peligros")
+    assert peligros.dano_golpe["erizo"].n >= 1
+    assert abs(peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
     assert mem.proposicion("erizo", Relacion.PELIGROSO) is not None
 
 
@@ -259,7 +260,7 @@ def _organismo_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int],
     org = _organismo(mundo)
     if not org.memoria.tiene_seccion("peligros"):
         return org          # un mundo que da su peligro no registra Amenaza: no hay sección «peligros» que rellenar
-    p = org.memoria.peligros
+    p = org.memoria.seccion("peligros")
     p.dano_golpe["erizo"] = pel.Media(5, 20.0)
     p.dano["erizo"] = pel.Media(5, 40.0)
     p.expuestos["erizo"], p.eventos["erizo"] = 20, eventos
@@ -303,8 +304,9 @@ def test_sin_datos_de_eficacia_no_lucha():
     mundo = MundoErizos(quieto=True, salud=100.0)
     mundo.erizo = (5, 6)
     org = _organismo_con_experiencia(mundo, {})
-    org.memoria.peligros.expuestos.clear()
-    org.memoria.peligros.eventos.clear()
+    p = org.memoria.seccion("peligros")
+    p.expuestos.clear()
+    p.eventos.clear()
     acciones, activas = _decisiones(mundo, org, latidos=1)
     assert not any("afrontar" in x for x in activas)
 
@@ -371,15 +373,17 @@ def test_no_se_pide_un_objeto_que_no_se_distingue():
     mundo.erizo = (5, 6)
     org = _organismo_con_experiencia(mundo, derribos, eventos=9)
     mem = org.memoria
-    assert set(mem.peligros.reductores()) == {"baston", "cuerda"} and mem.peligros.distinguibles() == set()
+    p = mem.seccion("peligros")
+    assert set(p.reductores()) == {"baston", "cuerda"} and p.distinguibles() == set()
     onda = org.latir()
     assert not onda.ef("Peticion")
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
     org = _organismo_con_experiencia(mundo, derribos, eventos=9)
     mem = org.memoria
-    mem.peligros.derribos["erizo"].append((frozenset({"baston"}), 2))
-    assert mem.peligros.distinguibles() == {"baston", "cuerda"}
+    p = mem.seccion("peligros")
+    p.derribos["erizo"].append((frozenset({"baston"}), 2))
+    assert p.distinguibles() == {"baston", "cuerda"}
     onda = org.latir()
     assert set(onda.ef("Peticion")) == {"peticion:baston"}
 
@@ -401,15 +405,15 @@ def test_el_emisor_pide_tres_veces_junto_y_contingencia():
 def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
     """Con una tasa de daño muy baja la lucha saldría favorable incluso con el previo de golpes; aun así, sin derribos de la
     clase ni meta del manual, Afrontar no la considera. Con la meta, sí."""
-    from ida.core.memoria import Meta
+    from ida.sistemas.requisito import Meta, Requisitos
     for meta in (False, True):
         mundo = MundoErizos(quieto=True, salud=100.0)
         mundo.erizo = (5, 6)
         org = _organismo_con_experiencia(mundo, {}, eventos=0)
         mem = org.memoria
-        mem.peligros.expuestos["erizo"] = 1000
+        mem.seccion("peligros").expuestos["erizo"] = 1000
         if meta:
-            mem.metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
+            cast(Requisitos, mem.seccion("requisitos")).metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
         _, activas = _decisiones(mundo, org, latidos=1)
         assert any("afrontar" in x for x in activas) == meta
 

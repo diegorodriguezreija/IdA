@@ -258,7 +258,7 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
         entidades = copy.deepcopy(obs_vista[-1].entidades)
         aqui = pel.pos_de(obs_vista[-1].ubicacion)
         assert aqui is not None
-        pel.estimar(entidades, aqui, ctx.memoria.peligros, ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
+        pel.estimar(entidades, aqui, ctx.memoria.seccion("peligros"), ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
         esperados.append({e.id: e.rasgos["peligro"] for e in entidades if "peligro" in e.rasgos})
 
     amenaza.reactiva = comprobar  # type: ignore[method-assign]

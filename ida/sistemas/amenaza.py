@@ -55,6 +55,7 @@ from ida.core.memoria import Seccion, pos_de
 from ida.core.mundo import Escala, Perfil
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
+from ida.sistemas.requisito import Requisitos
 
 
 Pos = Tuple[int, int]
@@ -524,7 +525,9 @@ class Amenaza(Componente):
                 visibles = {(int(k[0]), int(k[1])) for k in crudas}
             else:
                 visibles = {q for _, q in con_pos}
-            objetos = frozenset(k for k, v in mem._objetos(dict(yo.carga.get("inventario") or {})).items() if v >= 1.0)
+            inv = dict(yo.carga.get("inventario") or {})
+            req = cast(Requisitos, mem.seccion("requisitos")) if mem.tiene_seccion("requisitos") else None
+            objetos = frozenset(k for k, v in (req.objetos(inv) if req else inv).items() if v >= 1.0)
             previa = ctx.onda.ei("Accion").get("Accion")
             c = previa.carga if previa is not None else {}
             verbo = c.get("verbo")

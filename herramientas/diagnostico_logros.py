@@ -56,7 +56,8 @@ def main() -> int:
         mem = org.memoria
         if verbo == "COGER" and clase == "hierba":
             e["coger_hierba"].append([n, int(bool(c.get("exito")))])
-        if hasattr(mem, "bloqueada") and mem.bloqueada(Verbo.COGER, "hierba"):
+        req = mem.seccion("requisitos") if mem.tiene_seccion("requisitos") else None
+        if req is not None and req.bloqueada(Verbo.COGER, "hierba"):
             e["latidos_bloqueada"] += 1
         px, py = int(jug.pos[0]), int(jug.pos[1])
 

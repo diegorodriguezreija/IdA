@@ -99,7 +99,8 @@ def _percepcion(pos: Pos, cara: Pos, mapa: Dict[Pos, str], cosas: List[Ent]) -> 
 
 
 def _estado(mem: Memoria) -> Dict[str, Any]:
-    return {k: copy.deepcopy(getattr(mem, k)) for k in ("casillas", "cuerpo", "cierres", "yo_previo", "transformaciones",
+    sec = mem.seccion("cuadricula") if mem.tiene_seccion("cuadricula") else None
+    return {k: copy.deepcopy(getattr(sec, k)) if sec else None for k in ("casillas", "cuerpo", "cierres", "yo_previo", "transformaciones",
                                                          "peligro_sobre", "paso_libre", "paso_bloqueado", "version_mapa")}
 
 
@@ -126,7 +127,7 @@ def test_cuerpo_cuadricula_igual_que_aprender_mapa() -> None:
     for mem in (ref, nuevo):   # D7: la sección «cuadricula» es del cuerpo; aquí se registra como al montarlo
         nombre, seccion = cuerpo.seccion_memoria(Perfil())   # type: ignore[misc]
         mem.registrar_seccion(nombre, cuerpo.nombre, seccion)
-        mem.paso_bloqueado["roca"] = 1   # la roca ya se sabe no transitable: el USAR que la pone cierra
+        seccion.paso_bloqueado["roca"] = 1   # la roca ya se sabe no transitable: el USAR que la pone cierra
     componentes = [c for comps in cuerpo.componentes().values() for c in comps]
     for c in componentes:
         c.de_cuerpo = cuerpo.nombre      # lo pone el Organismo al montarlos
@@ -141,9 +142,10 @@ def test_cuerpo_cuadricula_igual_que_aprender_mapa() -> None:
             c.aprender(ctx)  # type: ignore[arg-type]
         assert _estado(nuevo) == _estado(ref)
     # La secuencia ejerce lo que se partió: modelo del cuerpo, transformación, cierre y peligros sobre casillas
-    assert nuevo.cuerpo and nuevo.transformaciones and nuevo.peligro_sobre
-    assert (4, 0) in nuevo.cierres
-    assert nuevo.modelo_cuerpo("mover", True) == (True, True) and nuevo.modelo_cuerpo("mover", False) == (False, True)
+    sec = nuevo.seccion("cuadricula")
+    assert sec.cuerpo and sec.transformaciones and sec.peligro_sobre
+    assert (4, 0) in sec.cierres
+    assert sec.modelo_cuerpo("mover", True) == (True, True) and sec.modelo_cuerpo("mover", False) == (False, True)
 
 
 @pytest.mark.parametrize("comp", [ModeloDirecto(), MapaLocal()], ids=lambda c: type(c).__name__)
