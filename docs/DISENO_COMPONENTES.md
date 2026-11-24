@@ -293,6 +293,8 @@ Sustituye a R1-R7 del plan. R0 (auditoría) se mantiene, con esta clasificación
 - Las etiquetas intermedias (`reorg-a8`, `reorg-b1`…) se ponen en `reorg/componentes`.
 - Solo cuando se cumpla el criterio de D17 sobre la rama completa, `reorg/componentes` se fusiona en `main` con un único PR, y entonces se etiqueta `crafter-general-v5`.
 
+**Desde `crafter-general-v5` (24/11/2026).** La fase A está en `main` y `crafter-general-v5` es la nueva referencia fija. Cada paso posterior (limpieza C o conducta B, en el orden de [`PENDIENTES.md`](PENDIENTES.md)) sale de `main` en su propia rama y vuelve a `main` solo cuando cumple su criterio (equivalencia para la limpieza, D17 para la conducta) y el autor lo autoriza.
+
 ### Fase A: reorganización, mismo JSON (etiqueta `reorg-a8` en `reorg/componentes`)
 
 | Paso | Qué | Notas |
@@ -351,6 +353,8 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 
 ### Registro de cambios del diseño
 
+Los `docs/*_PROGRESO.md` citados abajo se retiraron al cerrar la fase A; siguen en el historial de git (etiqueta `reorg-a8`).
+
 | Fecha | Decisión | Cambio | Motivo |
 |---|---|---|---|
 | 22/11/2026 | D1–D17 | Versión inicial | Sección 0 del plan; flujo de alto nivel del autor |
@@ -366,3 +370,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 24/11/2026 | D2 | El latido es del Core, no del núcleo | A2 E2: importarlo desde `nucleo` creaba un ciclo con los Componentes del Core |
 | 24/11/2026 | D15 | Constantes SIN_ACERCARSE y APARCAR clasificadas como de diseño | A8 E2: mismo criterio que VENTANA_TENDENCIA |
 | 24/11/2026 | Fase A | Cierre de la fase A (paso A8) | Reorganización completa con equivalencia verificada; medición a 100 000 pasos idéntica a main en semillas 31 y 32 (rama reorg/medicion-a7b) |
+| 24/11/2026 | Sección 5 | Fusión en `main` como `crafter-general-v5`; los pasos siguientes salen de `main` y vuelven a `main` uno a uno | Medición final idéntica a v4 (`datos/evaluacion/v5_31.json` y `v5_32.json`) |

@@ -141,7 +141,7 @@ Un segundo test con AST (`tests/test_licencias.py`) vigila la frontera de licenc
 El ciclo de desarrollo de Componentes y mundos está gobernado por especificación y validación empírica:
 
 1. **Especificación en `componentes.toml`:** Todo Componente nuevo, movido o sustituido debe declararse en [`doc-repositorio/componentes.toml`](componentes.toml) con su clase, destino, registro y decisión de respaldo.
-2. **Generación del mapa y comprobación:** Ejecutar `python herramientas/mapa_componentes.py --escribir` para regenerar [`06_MAPA_DE_COMPONENTES.md`](06_MAPA_DE_COMPONENTES.md) y verificar la conformidad con `tests/test_mapa_componentes.py`.
+2. **Generación del mapa y comprobación:** Ejecutar `python herramientas/mapa_componentes.py --escribir` para regenerar [`06_MAPA_DE_COMPONENTES.md`](06_MAPA_DE_COMPONENTES.md) (la tabla) y [`07_DISENO_VISUAL.md`](07_DISENO_VISUAL.md) (los diagramas) y verificar la conformidad con `tests/test_mapa_componentes.py`.
 3. **Criterios de validación según el tipo de cambio:**
    - **Limpieza / refactorización (sin cambio de conducta):** Se verifica con `python herramientas/equivalencia.py`. Debe arrojar `EQUIVALENCIA: OK` y mantener la invariancia de semillas en `herramientas/invariancia.py`.
    - **Cambio de conducta:** Debe medirse con el criterio de no inferioridad de **D17** ([`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md)): comparación pareada conjunta de 100 000 pasos en semillas 31 y 32 con `herramientas/resumen_evaluacion.py --pareada-conjunta` ($\Delta \text{Score} \ge -0,3$ e IC 95 % $\ge -1,0$), más benchmark pareado ($N = 10$) en `minimo` y `archivos` sin empeoramiento significativo.
@@ -170,7 +170,7 @@ IdA/
 │   │   ├── sentir/                # interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
 │   │   ├── actuar/                # tribunal.py, actuador.py
 │   │   ├── regulacion.py          # Componente de regulación homeostática
-│   │   └── latido.py              # Orquestador del latido vital, marcapasos y Organismo
+│   │   └── latido.py              # Orquestador del latido vital (8 pasos, D1) y Organismo
 │   ├── s1/                        # Tronco encefálico: reflejos, lucha/huida y aversión
 │   │   ├── sentir/                # amenaza.py, saliencia.py
 │   │   ├── interpretar/           # apetencia.py

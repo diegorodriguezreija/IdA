@@ -25,7 +25,7 @@ O abre el repositorio en el [devcontainer](.devcontainer/devcontainer.json). Los
 
 ## Proceso de cambio de diseño
 
-1. **Especificación viva:** La arquitectura de Componentes está definida en [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) y formalizada en [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml). Todo cambio o movimiento de Componentes debe reflejarse en el TOML y regenerar [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md).
+1. **Especificación viva:** La arquitectura de Componentes está definida en [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) y formalizada en [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml). Todo cambio o movimiento de Componentes debe reflejarse en el TOML y regenerar [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md) y [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md) con `python herramientas/mapa_componentes.py --escribir`; ninguno de los dos se edita a mano.
 2. **Pureza y límites biológicos:** Se vigilan con `tests/test_pureza.py` (jerarquía de paquetes acíclica) y `tests/test_criterios.py` (límites AST de preatención y estrategias).
 3. **Limpieza sin cambio de conducta:** Se acepta con `python herramientas/equivalencia.py` en `EQUIVALENCIA: OK` y manteniendo la invariancia en `herramientas/invariancia.py`.
 4. **Cambios de conducta:** Deben medirse uno por uno con el criterio de no inferioridad **D17** (comparación pareada conjunta a 100 000 pasos en Crafter con $\Delta \text{Score} \ge -0,3$ e IC 95 % $\ge -1,0$, más benchmark pareado en mínimo y archivos).
