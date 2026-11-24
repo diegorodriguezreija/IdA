@@ -136,7 +136,20 @@ Un segundo test con AST (`tests/test_licencias.py`) vigila la frontera de licenc
 
 ---
 
-## 4. Estructura de Directorios del Repositorio
+## 4. Cómo añadir o cambiar un Componente o un Mundo
+
+El ciclo de desarrollo de Componentes y mundos está gobernado por especificación y validación empírica:
+
+1. **Especificación en `componentes.toml`:** Todo Componente nuevo, movido o sustituido debe declararse en [`doc-repositorio/componentes.toml`](componentes.toml) con su clase, destino, registro y decisión de respaldo.
+2. **Generación del mapa y comprobación:** Ejecutar `python herramientas/mapa_componentes.py --escribir` para regenerar [`06_MAPA_DE_COMPONENTES.md`](06_MAPA_DE_COMPONENTES.md) y verificar la conformidad con `tests/test_mapa_componentes.py`.
+3. **Criterios de validación según el tipo de cambio:**
+   - **Limpieza / refactorización (sin cambio de conducta):** Se verifica con `python herramientas/equivalencia.py`. Debe arrojar `EQUIVALENCIA: OK` y mantener la invariancia de semillas en `herramientas/invariancia.py`.
+   - **Cambio de conducta:** Debe medirse con el criterio de no inferioridad de **D17** ([`docs/DISENO_COMPONENTES.md`](../docs/DISENO_COMPONENTES.md)): comparación pareada conjunta de 100 000 pasos en semillas 31 y 32 con `herramientas/resumen_evaluacion.py --pareada-conjunta` ($\Delta \text{Score} \ge -0,3$ e IC 95 % $\ge -1,0$), más benchmark pareado ($N = 10$) en `minimo` y `archivos` sin empeoramiento significativo.
+   - **Pureza arquitectónica:** Todo cambio debe superar `tests/test_pureza.py` (reglas de importación acíclicas) y `tests/test_criterios.py` (límites biológicos de D5 y D8).
+
+---
+
+## 5. Estructura de Directorios del Repositorio
 
 ```
 IdA/

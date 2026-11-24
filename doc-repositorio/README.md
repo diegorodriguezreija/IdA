@@ -38,6 +38,7 @@ Esta carpeta `doc-repositorio/` contiene el desglose exhaustivo del proyecto:
 | [**03. Los Mundos de IdA**](03_LOS_MUNDOS.md) | El contrato del Mundo, el Mundo Mínimo, Bosque de Archivos, Snake (Playwright), Crafter 2D y Ajedrez. |
 | [**04. Guía Técnica y Patrones de Diseño**](04_GUIA_TECNICA_Y_PATRONES.md) | Arquitectura Hexagonal, Blackboard, Inversión de Control, Determinismo PRNG, Persistencia WAL y Tests AST de Pureza. |
 | [**05. Métricas e Hitos**](05_METRICAS_E_HITOS.md) | Lo conseguido en cada mundo, con los comandos para repetirlo y sus límites. |
+| [**06. Mapa de Componentes**](06_MAPA_DE_COMPONENTES.md) | Especificación y ubicación de cada Componente del núcleo y de los mundos (generado desde `componentes.toml`). |
 
 ---
 

@@ -135,12 +135,10 @@ Cifras de cada mundo: [`05_METRICAS_E_HITOS.md`](05_METRICAS_E_HITOS.md).
 
 ### Mundo 3: Snake (`ida/mundos/snake.py`)
 * **Propósito:** jugar en la web real [playsnake.org](https://playsnake.org/) controlando Chromium con **Playwright**. Necesita internet.
-* **Tiempo real:** la serpiente avanza aunque IdA no haya decidido; el marcapasos ajusta el latido al periodo declarado, **60 ms** por defecto (`--opcion ritmo=MS`), porque a nivel pitón 100 ms llega tarde.
+* **Tiempo real y no determinismo:** la serpiente avanza en tiempo real en la web externa aunque IdA no haya decidido; el marcapasos ajusta el latido al periodo declarado (**60 ms** por defecto con `--opcion ritmo=MS`). Al depender de red, navegador y tiempo real, **Snake no es determinista**: dos ejecuciones sucesivas de la misma versión no producen la misma trayectoria ni puntuación, por lo que queda excluido de comprobaciones de invariancia latido a latido (ver [`docs/COMPARACION_MUNDOS.md`](../docs/COMPARACION_MUNDOS.md) y [`docs/PENDIENTES.md`](../docs/PENDIENTES.md)).
 * **Sensor de espacio libre:** relleno por inundación acotado desde cada casilla vecina, comparado con la longitud:
 
 $$\text{Peligro} = \max\left(0, \min\left(0{,}9, 1 - \frac{\text{Espacio libre}}{2 \cdot \text{Longitud} + 4}\right)\right)$$
-ight)
-ight)$$
 
 * **Comer en tiempo real:** COMER gira hacia la comida y espera a que la cabeza llegue; si no llega (giro de 180° imposible), es un fallo, no una prueba de que la comida no nutra.
 * **Lugares:** las casillas vecinas libres; pared y cuerpo (peligro 1) solo se ofrecen si no queda ninguna segura.
@@ -148,13 +146,13 @@ ight)$$
 
 ---
 
-### Mundo 4: Crafter (`ida/mundos/crafter.py`)
+### Mundo 4: Crafter (`ida/mundos/crafter/`)
 * **Propósito:** supervivencia en 2D con recursos, criaturas, día y noche y 22 logros ([Crafter](https://github.com/danijar/crafter), Hafner 2021).
-* **Cuerpo:** salud, comida, bebida y energía las marca el juego (`vitales_propios`), y también el sueño (`Observacion.dormido`).
-* **Sensor:** estado simbólico del juego en un radio de 4 casillas (2 de noche). **Aliestesia:** el agua vale según la sed y la vaca según el hambre.
-* **Componente propio:** `PlanTecnologico` (S3) avanza por el árbol tecnológico con las recetas del juego, aprovecha logros baratos (retoño, plantar, minerales) y propone dormir de día sin hostiles a la vista. Es código de este mundo, no del framework.
-* **Repetible:** las criaturas tienen identificadores estables y el adaptador ordena las criaturas de cada zona por orden de llegada (la librería las guarda en conjuntos ordenados por dirección de memoria), así que la misma semilla da la misma vida, también entre procesos.
-* **Diferencia con el benchmark oficial:** no ve píxeles; sus cifras no son comparables con las publicadas.
+* **Estructura y cuerpo:** Crafter es un paquete en `ida/mundos/crafter/` que utiliza el cuerpo desacoplado `Cuadricula` (`ida/cuerpos/cuadricula/`). No contiene estrategias procedimentales propias (`estrategias_propias()` devuelve `{}`): todo el comportamiento proviene del núcleo general.
+* **Cuerpo y vitales:** salud, comida, bebida y energía las marca el juego (`vitales_propios`), y también el sueño (`Observacion.dormido`). El cuerpo `Cuadricula` gestiona la cinemática (`ModeloDirecto`), mapa (`MapaLocal`) y primitivas (`Motor`).
+* **Sensor y preatención:** estado simbólico en un radio de 4 casillas (2 de noche). Crafter registra `ValoracionCrafter` en la preatención (`CORE.Sentir`), que traduce rasgos brutos (`nutritivo`, `peligro`) sin coste atencional.
+* **Repetibilidad:** las criaturas tienen identificadores estables y el adaptador ordena las criaturas de cada zona por orden de llegada (evitando el orden dependiente de memoria de la librería), por lo que la misma semilla da exactamente la misma vida entre ejecuciones y procesos.
+* **Protocolo oficial:** evaluado con el arnés oficial (vista simbólica 9×7, 100 000 pasos; ver [`docs/MEDICION_OFICIAL.md`](../docs/MEDICION_OFICIAL.md) y [`docs/MEDICION_MATERIAL_MAPA.md`](../docs/MEDICION_MATERIAL_MAPA.md)).
 
 ---
 
