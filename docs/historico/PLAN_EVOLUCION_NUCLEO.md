@@ -2,7 +2,7 @@
 
 > **Documento histórico.** Usa los nombres anteriores al rediseño de la base (`Escena`, `Ejecucion`, `ImpulsoS1/S2/S3`, `PredicadoProposicion`, `Soma.presupuesto`…). La referencia actual es [`docs/REDISENO_BASE.md`](REDISENO_BASE.md).
 
-Documento de trabajo para el agente implementador. Se lee junto a [`AGENTS.md`](../AGENTS.md), cuyas reglas siguen vigentes salvo lo que este documento autoriza de forma expresa en la sección 2.
+Documento de trabajo para el agente implementador. Se lee junto a [`AGENTS.md`](../../AGENTS.md), cuyas reglas siguen vigentes salvo lo que este documento autoriza de forma expresa en la sección 2.
 
 Fecha: 2026-11-11. Base: `main` tras el PR #3 (`crafter: mapa cognitivo (hipocampo), defensa armada activa y aliestesia de reparacion`).
 Revisión arquitectónica y ajustes: mantenemos estrictamente el diseño modular por **Componentes (`Sentir / Interpretar / Reaccionar`) y barridos (`reactiva / activa / proactiva`)** sin introducir rupturas arquitectónicas ni acoplamientos ajenos a la dinámica habitual de IdA.

@@ -160,7 +160,7 @@ L1b frente a L1a: −0,25 puntos, con los intervalos solapados. Las muertes por 
 
 ### 3c: `RefugioNocturno` borrado, `proteger` siempre activo
 
-Se borran `RefugioNocturno` y lo que solo usaba él (detalle en [`docs/INVENTARIO_CONOCIMIENTO_CRAFTER.md`](INVENTARIO_CONOCIMIENTO_CRAFTER.md), sección 7), y se quita el interruptor `proteger`.
+Se borran `RefugioNocturno` y lo que solo usaba él (detalle en [`docs/INVENTARIO_CONOCIMIENTO_CRAFTER.md`](../INVENTARIO_CONOCIMIENTO_CRAFTER.md), sección 7), y se quita el interruptor `proteger`.
 
 La invariancia sigue OK en mínimo, archivos y ajedrez, porque esos mundos no dan casillas ni la necesidad `cobijo`. En Crafter, la conducta cambia desde el primer latido.
 

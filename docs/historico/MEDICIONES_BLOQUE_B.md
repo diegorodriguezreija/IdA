@@ -43,7 +43,7 @@ Mediana / percentil 95:
 
 - **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F` y `python herramientas/benchmark.py comparar base.json nueva.json`.
 - **Versiones:** base = `main` (`718f734`, bloque A); nueva = `feature/bloque-b` (`e194e1a`).
-- **Protocolo** (el de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md)): N = 10 linajes (semillas 1 a 10, directorio limpio por semilla); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Grupos: perfiles Equilibrado, Valiente y Reactivo, y control sin experiencia (Equilibrado con `sin_experiencia`). Media por linaje; IC 95 % con t(0,975; 9) = 2,262; diferencia pareada por semilla. Reloj real. 1 320 vidas en total (660 por versión). Fecha: 16/11/2026, Windows 10, Python 3.15.1.
+- **Protocolo** (el de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md)): N = 10 linajes (semillas 1 a 10, directorio limpio por semilla); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Grupos: perfiles Equilibrado, Valiente y Reactivo, y control sin experiencia (Equilibrado con `sin_experiencia`). Media por linaje; IC 95 % con t(0,975; 9) = 2,262; diferencia pareada por semilla. Reloj real. 1 320 vidas en total (660 por versión). Fecha: 16/11/2026, Windows 10, Python 3.15.1.
 
 ### Resultado
 

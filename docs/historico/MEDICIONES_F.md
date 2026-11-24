@@ -4,7 +4,7 @@ Encargo: [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), «Encargo del bloqu
 
 - **Rama:** `feature/bloque-f` desde `feature/bloque-e`. Commits: 5a8eb10 (plan), F0 (inventario), 827a6a5 (F1), 0c9c117 (F2), 1e0e4d2 (activación por defecto).
 - **Fecha:** 16/11/2026, Windows 10, Python 3.15.1. Reloj real; un solo benchmark a la vez.
-- **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F [--grupos ...] [--mecanismos ...]` y `... comparar base.json nueva.json`. Protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Δ = nueva − base, pareado por semilla, IC 95 % (t(0,975; 9) = 2,262). «Significativo» = el IC no incluye el 0.
+- **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F [--grupos ...] [--mecanismos ...]` y `... comparar base.json nueva.json`. Protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Δ = nueva − base, pareado por semilla, IC 95 % (t(0,975; 9) = 2,262). «Significativo» = el IC no incluye el 0.
 - **Por paso:** `pytest -q -x` y `herramientas/invariancia.py` (todos los interruptores de E y F forzados a apagado): OK en los cuatro mundos en todos los pasos. Al final: 153 tests, `ruff` y `mypy` sin avisos.
 
 ## Interruptores

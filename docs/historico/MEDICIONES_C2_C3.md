@@ -4,7 +4,7 @@ Encargo en [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), «C2 y C3, en un 
 
 - **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F` y `... comparar base.json nueva.json`.
 - **Versiones:** base = `main` (`b3a6ed6`, bloques A y B); nueva = `feature/bloque-c` (`5fb4e46`, C1 a C3.5).
-- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10), IC 95 % con t de Student, Δ pareado por semilla; mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Reloj real. 16/11/2026.
+- **Protocolo** de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10), IC 95 % con t de Student, Δ pareado por semilla; mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Reloj real. 16/11/2026.
 
 ## Resultado frente al criterio
 

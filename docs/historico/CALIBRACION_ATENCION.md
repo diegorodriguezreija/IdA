@@ -13,7 +13,7 @@ Antes de la mejora de los mundos ([`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION
 
 ## Barrido del Marcapasos
 
-`python herramientas/benchmark.py ejecutar --raiz . --mundo M --amplitud A --grupos Equilibrado --salida F`, perfil Equilibrado, N = 10 linajes (semillas 1 a 10), protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md), potencia = amplitud. Cada nivel se compara, pareado por semilla, con la amplitud actual. «S3 sin recursos»: latidos despiertos en que S3 se queda sin amplitud o potencia, con peligro (indicador de peligro de `Soma` ≥ 0,3) y en calma.
+`python herramientas/benchmark.py ejecutar --raiz . --mundo M --amplitud A --grupos Equilibrado --salida F`, perfil Equilibrado, N = 10 linajes (semillas 1 a 10), protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md), potencia = amplitud. Cada nivel se compara, pareado por semilla, con la amplitud actual. «S3 sin recursos»: latidos despiertos en que S3 se queda sin amplitud o potencia, con peligro (indicador de peligro de `Soma` ≥ 0,3) y en calma.
 
 | Mundo | Amplitud | Δ (IC 95 %) | S3 sin recursos con peligro / en calma | Muertes (zombi o lobo / hambre o sed) | Cumple |
 |---|---|---|---|---|---|

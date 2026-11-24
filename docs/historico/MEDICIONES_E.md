@@ -4,12 +4,12 @@ Encargo: [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), «Encargo del bloqu
 
 - **Rama:** `feature/bloque-e` desde `base-v2.0`. Un commit por paso (E1 a E7), más el tope de Creencias, la activación por defecto y el ajuste de archivos.
 - **Fecha:** 16/11/2026, Windows 10, Python 3.15.1. Reloj real.
-- **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F [--grupos ...] [--mecanismos ...] [--tasa-herencia T]` y `... comparar base.json nueva.json`. Protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Media por linaje; Δ = nueva − base, pareado por semilla, con IC 95 % (t(0,975; 9) = 2,262).
+- **Comando:** `python herramientas/benchmark.py ejecutar --raiz <código> --mundo M --salida F [--grupos ...] [--mecanismos ...] [--tasa-herencia T]` y `... comparar base.json nueva.json`. Protocolo de [`BENCHMARK_PERFILES_MUNDOS.md`](../BENCHMARK_PERFILES_MUNDOS.md): N = 10 linajes (semillas 1 a 10, directorio limpio); mínimo y archivos, 4 generaciones de 400 latidos; Crafter, 3 de 600. Media por linaje; Δ = nueva − base, pareado por semilla, con IC 95 % (t(0,975; 9) = 2,262).
 - **Por paso:** `pytest -q -x` y `herramientas/invariancia.py` (interruptores forzados a apagado): OK en los cuatro mundos en todos los pasos.
 
 ## Interruptores
 
-Todos en `Perfil.mecanismos` (`MecanismosMemoria`, [`ida/core/mundo.py`](../ida/core/mundo.py)). `Perfil()` los tiene apagados y entonces IdA se comporta como `base-v2.0` (invariancia). `MEMORIA_E` agrupa los seis aceptados.
+Todos en `Perfil.mecanismos` (`MecanismosMemoria`, [`ida/nucleo/mundo.py`](../../ida/nucleo/mundo.py)). `Perfil()` los tiene apagados y entonces IdA se comporta como `base-v2.0` (invariancia). `MEMORIA_E` agrupa los seis aceptados.
 
 | Paso | Interruptor | Mecanismo | Commit |
 |---|---|---|---|

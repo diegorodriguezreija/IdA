@@ -6,11 +6,11 @@ Encargo: [`PLAN_IMPLEMENTACION.md`](PLAN_IMPLEMENTACION.md), «Encargo del bloqu
 
 | Pieza existente | Dónde | Qué hace hoy |
 |---|---|---|
-| Barrido `proactiva` | [`ida/core/arquitectura.py`](../ida/core/arquitectura.py) (`BARRIDOS`, `Componente.proactiva`) | Tercer barrido de cada módulo, tras el reactivo y el activo. Ningún componente de S1, S2 ni S3 lo implementa: está vacío |
-| `Memoria.proyectar` y `Expectativa` | [`ida/core/memoria.py`](../ida/core/memoria.py) | El Core, tras actuar ([`latido.py`](../ida/core/latido.py), paso 6), anota una sola expectativa: el balance medio recordado de (verbo, clase) de la acción ejecutada. No predice MOVER |
+| Barrido `proactiva` | [`ida/nucleo/arquitectura.py`](../../ida/nucleo/arquitectura.py) (`BARRIDOS`, `Componente.proactiva`) | Tercer barrido de cada módulo, tras el reactivo y el activo. Ningún componente de S1, S2 ni S3 lo implementa: está vacío |
+| `Memoria.proyectar` y `Expectativa` | [`ida/nucleo/memoria.py`](../../ida/nucleo/memoria.py) | El Core, tras actuar ([`latido.py`](../../ida/core/latido.py), paso 6), anota una sola expectativa: el balance medio recordado de (verbo, clase) de la acción ejecutada. No predice MOVER |
 | Contraste y error de predicción | `Memoria.aprender` (dimensión proactiva) | Al latido siguiente compara balance esperado y obtenido: `rpe`; si el signo no coincide, sorpresa. Cuenta `aciertos` y `fallos` |
 | Pieza `Sorpresa` | `Organismo._aprender` | El Core la percibe sin peaje (arousal 0,85) cuando hay sorpresa; además `rpe` mueve la dopamina de `Soma`. Abre episodio y rompe la calma |
-| Feedback por error de predicción | `Feedback` de S3 ([`s3.py`](../ida/sistemas/s3.py)) | Δ aciertos − Δ sorpresas: mérito de las estrategias de S3 |
+| Feedback por error de predicción | `Feedback` de S3 ([`ida/s3/`](../../ida/s3/)) | Δ aciertos − Δ sorpresas: mérito de las estrategias de S3 |
 | Feedback de S1 y S2 | `Feedback` de S1 (Δ déficits) y S2 (Δ placer, Δ estrés) | Mejora real entre latidos; no hay término de predicción |
 | Cadenas de pasos | `recordar_comida` (S2) recalcula cada latido el siguiente salto (`memoria.ruta`); `PlanTecnologico` (S3, Crafter) recorre las recetas en orden y lleva su propio control de fallos | No hay tipo Plan: ni cadena explícita, ni progreso como parte completada, ni rehacer ante una expectativa fallida |
 

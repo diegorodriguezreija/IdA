@@ -44,11 +44,11 @@ Diseño original: [`DISENO_FRAMEWORK_BASE.md`](DISENO_FRAMEWORK_BASE.md) (histó
 
 ## Siguiente: mejora de los mundos
 
-La base queda congelada (referencia en [`REFERENCIA_BASE.md`](REFERENCIA_BASE.md)). La fase siguiente mejora solo los componentes de cada mundo (`ida/mundos/`), con las reglas de [`AGENTS.md`](../AGENTS.md). Pendientes anotados: noches de Crafter (refugio y anticipación con la luz), `PlanTecnologico` y sus recetas (dotación innata o aprendizaje), neofobia de archivos que ceda con el hambre, y muertes por «desgaste» en Crafter. Después, el bloque E (memoria).
+La base queda congelada (referencia en [`REFERENCIA_BASE.md`](REFERENCIA_BASE.md)). La fase siguiente mejora solo los componentes de cada mundo (`ida/mundos/`), con las reglas de [`AGENTS.md`](../../AGENTS.md). Pendientes anotados: noches de Crafter (refugio y anticipación con la luz), `PlanTecnologico` y sus recetas (dotación innata o aprendizaje), neofobia de archivos que ceda con el hambre, y muertes por «desgaste» en Crafter. Después, el bloque E (memoria).
 
 ## Pendiente para la fase de ajustes (histórico, tras probar los mundos)
 
-*Estado tras la fase 6; parte quedó resuelta o sustituida por el rediseño. Las cifras, en [`doc-repositorio/05_METRICAS_E_HITOS.md`](../doc-repositorio/05_METRICAS_E_HITOS.md).*
+*Estado tras la fase 6; parte quedó resuelta o sustituida por el rediseño. Las cifras, en [`doc-repositorio/05_METRICAS_E_HITOS.md`](../../doc-repositorio/05_METRICAS_E_HITOS.md).*
 
 - **Snake:** resuelto en buena parte. Con un latido de 60 ms y las casillas mortales ofrecidas solo como último recurso, la media pasa de unos 232 a 916 puntos (máximo 1605) y las causas de muerte se identifican. El afecto sigue pasando mucho tiempo en PANICO/ALERTA cuando el cuerpo es largo.
 - **Mundo mínimo:** el lobo sigue siendo letal. Con `Defensa`, la vida media pasa de 141 a 198 latidos.
