@@ -10,8 +10,8 @@ informe de conocimiento del mundo extendido con `--latidos` y documentación al 
 |---|---|---|---|
 | E1 | Tests de criterios D8 y D5 (`tests/test_criterios.py`) | Hecha | `00f9bd9` |
 | E2 | Constantes y `Perfil.escala` | Hecha | `ee308aa` |
-| E3 | Informe de conocimiento con `--latidos` | Hecha | Ver git log |
-| E4 | Documentación al día y cierre de fase A | Pendiente | |
+| E3 | Informe de conocimiento con `--latidos` | Hecha | `d495207` |
+| E4 | Documentación al día y cierre de fase A | Hecha | Ver git log |
 
 ### Comprobaciones E3 (24/11/2026)
 
@@ -137,3 +137,22 @@ Salida para Crafter con `--latidos 300`:
   - `ida/mundos/crafter/s1/sentir/__init__.py` (3 líneas)
   - `ida/mundos/crafter/s1/sentir/valoracion.py` (106 líneas)
 ```
+
+## E4 · Documentación al día y cierre de fase A
+
+Actualizados los documentos de referencia según el código resultante tras la fase A:
+- `doc-repositorio/02_ARQUITECTURA_Y_MECANISMO_VITAL.md`:
+  - Retirado el aviso «En migración».
+  - Sección 1: describe el latido vital en ocho pasos (D1) y actualiza el diagrama `sequenceDiagram` de Mermaid incorporando la preatención, plasticidad, regulación, motor y mundo.
+  - Sección 2: describe la modularidad de paquetes (`ida/nucleo`, `ida/core`, `ida/s1`-`s3`, `ida/cuerpos`, `ida/mundos`), tabla de etapas con los componentes actuales (`06_MAPA_DE_COMPONENTES.md`) y el desacoplamiento entre intenciones y primitivas del motor (D9).
+  - Secciones 3-6: revisadas y alineadas con la regulación (`Regulacion`, D12) y el estado final.
+  - Sección 7: convertida en un resumen corto de principios de diseño y extensibilidad con enlace a `docs/DISENO_COMPONENTES.md`.
+- `docs/DISENO_COMPONENTES.md`:
+  - Marcados como **Hecho** todos los pasos de la fase A (R0, A1, A3, A5a, A5b, A4, A6, A7, A2, A8) con sus fechas correspondientes.
+  - Añadida en el registro de cambios (sección 7) la fila de cierre de la fase A (paso A8) con referencia a la medición de 100 000 pasos en `reorg/medicion-a7b`.
+- `CHANGELOG.md`:
+  - Añadida la entrada `Reorganización por Componentes (fase A)` bajo `[Unreleased]` resumiendo los hitos arquitectónicos sin cifras nuevas (referenciando la Score idéntica de 15,86 % y 17,34 % en `reorg/medicion-a7b`).
+- `AGENTS.md`:
+  - La sección «Fase actual» pasa a describir la fase B (cambios de conducta uno a uno, medidos con el criterio de no inferioridad de D17).
+  - Se conservan íntegras todas las reglas y los no negociables.
+
