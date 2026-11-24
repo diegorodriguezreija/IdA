@@ -6,6 +6,7 @@
   inventario» de «inventario vacío», como antes con ``Observacion.inventario is None``).
 """
 
+import importlib.util
 from typing import Any, List
 
 import pytest
@@ -26,10 +27,9 @@ def _organismo(mundo: Any) -> Organismo:
 def _mundos() -> List[Any]:
     from ida.mundos.minimo import MundoMinimo
     mundos: List[Any] = [MundoMinimo()]
-    try:
-        from ida.mundos.crafter import MundoCrafter
-    except ImportError:
+    if importlib.util.find_spec("crafter") is None:
         return mundos
+    from ida.mundos.crafter import MundoCrafter
     m = MundoCrafter()
     m.reiniciar(31)
     return mundos + [m]
