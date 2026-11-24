@@ -3,7 +3,7 @@
 from typing import List
 
 from ida.nucleo.arquitectura import Sistema
-from ida.sistemas.s1 import crear_s1
+from ida.s1 import crear_s1
 from ida.sistemas.s2 import crear_s2
 from ida.sistemas.s3 import crear_s3
 

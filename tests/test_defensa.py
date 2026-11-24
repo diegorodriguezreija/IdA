@@ -9,7 +9,7 @@ Nada de eso se le dice a IdA: el daño, el emisor, su alcance y la eficacia del 
 
 from typing import Any, Dict, List, Optional, Tuple, cast
 
-from ida.sistemas import amenaza as pel
+from ida.s1.sentir import amenaza as pel
 from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
 from ida.nucleo.linaje import Arquetipo

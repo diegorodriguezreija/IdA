@@ -25,7 +25,7 @@ from ida.nucleo.azar import Azar
 from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Relacion, Verbo
-from ida.sistemas.s1 import Alimentarse
+from ida.s1.reaccionar.estrategias import Alimentarse
 
 COMESTIBLES = ["Boletus_edulis.brote", "Taraxacum_officinale.brote", "Vaccinium_myrtillus.fruto"]
 TOXICOS = ["Amanita_phalloides.brote", "Atropa_belladonna.brote", "Conium_maculatum.brote"]

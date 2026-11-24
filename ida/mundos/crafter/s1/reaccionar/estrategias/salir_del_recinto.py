@@ -5,7 +5,7 @@ from typing import Optional
 from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.estrategia import ConPropuestas
 from ida.nucleo.pieza import Pieza
-from ida.sistemas.proteger import COBIJO, Proteger, _proponer_abrir, recinto, riesgo_exterior
+from ida.s1.reaccionar.estrategias.proteger import COBIJO, Proteger, _proponer_abrir, recinto, riesgo_exterior
 
 
 class SalirDelRecinto(ConPropuestas):

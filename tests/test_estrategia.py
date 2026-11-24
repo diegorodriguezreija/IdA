@@ -75,7 +75,7 @@ def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final()
     from ida.nucleo.mundo import Efecto
     from ida.core.actuar.actuador import aplicar_efecto
     from ida.core.actuar.tribunal import Tribunal
-    from ida.sistemas.comun import Accion
+    from ida.sistemas_comun import Accion
 
     class _HuirA(est.Definicion):
         nombre = "huir"
@@ -104,7 +104,8 @@ def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final()
 def test_necesidades_declaradas_y_feedback_de_s1():
     from ida.nucleo.mundo import NECESIDADES_BASE, Necesidad
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s1 import Feedback, deficits
+    from ida.s1.reaccionar.feedback import Feedback
+    from ida.s1.comun import deficits
 
     sed = Necesidad("sed", ("agua",), 95.0)
     assert sed.deficit({"agua": 47.5}) == pytest.approx(0.5) and sed.deficit({"agua": 100.0}) == 0.0
@@ -190,7 +191,7 @@ def _def(nombre, prioridad, elegible=lambda n: True, ultimo=False):
 
 
 def test_agotar_seguridad_cambia_de_estrategia_y_al_final_ultimo_recurso():
-    from ida.sistemas.s1 import Estrategia
+    from ida.s1.reaccionar.estrategia import Estrategia
 
     perfil = Perfil(gracia_estrategia=0, enfriamiento_estrategia=1000)
     comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10), _def("b", 5), _def("ultimo", 0, ultimo=True)]), impulso_critico="seguridad"))
@@ -205,7 +206,7 @@ def test_agotar_seguridad_cambia_de_estrategia_y_al_final_ultimo_recurso():
 
 
 def test_sustituir_la_estrategia_activa_exige_un_margen_claro():
-    from ida.sistemas.s1 import Estrategia
+    from ida.s1.reaccionar.estrategia import Estrategia
 
     def secuencia(prioridad_nueva):
         comp = _comp(lambda: Estrategia(est.Catalogo([_def("huir", 10), _def("plantar_cara", prioridad_nueva, elegible=lambda n: n >= 3)])))
@@ -225,7 +226,7 @@ def test_sustituir_la_estrategia_activa_exige_un_margen_claro():
 
 def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s1 import Reflejo
+    from ida.s1.reaccionar.reflejo import Reflejo
 
     def sobresalto(antes, ahora, umbral_miedo=0.6):
         ef_anterior = {"Supervivencia": {"alarma": Pieza("alarma", "Supervivencia", carga={"peligro": antes})}}
@@ -246,7 +247,8 @@ def test_el_reflejo_salta_por_cambio_brusco_no_por_nivel():
 
 def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s1 import Estrategia, SeguirEnMovimiento
+    from ida.s1.reaccionar.estrategia import Estrategia
+    from ida.s1.reaccionar.estrategias import SeguirEnMovimiento
 
     comp = _comp(lambda: Estrategia(est.Catalogo([_def("comer", 10, elegible=lambda n: n >= 3), SeguirEnMovimiento()])))
     activas: dict = {}
@@ -264,7 +266,7 @@ def test_seguir_en_movimiento_es_ultimo_recurso_sin_esperar_y_cede():
 
 def test_alimentarse_elige_el_objeto_por_valor_y_si_se_valora_mal_vuelve_a_buscar():
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     def fase(valencia):
         ef_anterior = {"Valor": {"s1": Pieza("s1", "Valor", carga={"valencia": valencia})}}
@@ -301,7 +303,7 @@ def _latido_con_feedback(n, activas, comp, intensidad, feedback, ejecutada):
 
 
 def test_el_valor_se_aprende_por_feedback_y_al_alcanzar_el_objetivo_queda_completada():
-    from ida.sistemas.s1 import Estrategia
+    from ida.s1.reaccionar.estrategia import Estrategia
 
     comp = _comp(lambda: Estrategia(est.Catalogo([_def("a", 10)])))
     activas: dict = {}
@@ -351,7 +353,7 @@ def test_con_la_seta_rechazada_al_alcance_y_una_baya_a_la_vista_va_hacia_la_baya
     """Caso de la semilla 7 del Valiente en el mínimo: el olor del lugar lleva a la seta (0,7, al lado),
     más que a la baya (0,6, a tres casillas); la estrategia debe ir hacia la baya, no buscar ni volver."""
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     ef_anterior = {"Valor": {"seta": Pieza("seta", "Valor", carga={"valencia": -0.2})}}
     onda = Onda(2, 100, 1e9, ef_anterior=ef_anterior)
@@ -503,7 +505,7 @@ def test_habituacion_y_sensibilizacion_en_supervivencia():
     from ida.nucleo.memoria import Proposicion
     from ida.nucleo.pieza import Pieza
     from ida.nucleo.vocabulario import Relacion
-    from ida.sistemas.s1 import relacion_supervivencia
+    from ida.s1.interpretar.supervivencia import relacion_supervivencia
 
     mem = Memoria()
     ctx = Contexto(Onda(5, 100, 1e9), Soma(), mem, Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})

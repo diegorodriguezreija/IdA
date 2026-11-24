@@ -20,7 +20,7 @@ from ida.nucleo.pieza import Pieza
 from ida.nucleo.soma import Soma
 from ida.nucleo.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
-from ida.sistemas.s1 import Aliestesia
+from ida.s1.interpretar.apetencia import Aliestesia
 
 # --- 0b: aliestesia en la base -------------------------------------------------------------------
 # Mundo de juguete: dos necesidades (hambre y sed) y dos clases (baya y charca) que satisfacen cada una la suya.
@@ -99,7 +99,7 @@ def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, 
 
 def _propuesta(ctx: Contexto, impulso: str):
     from ida.nucleo.estrategia import nueva
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     d = Alimentarse()
     i = float(ctx.onda.ef("Impulso")[impulso].carga["intensidad"])
@@ -110,7 +110,7 @@ def _propuesta(ctx: Contexto, impulso: str):
 
 
 def _apetencia(ctx: Contexto) -> None:
-    from ida.sistemas.s1 import Apetencia
+    from ida.s1.interpretar.apetencia import Apetencia
 
     a = Apetencia()
     a.sistema = "S1"
@@ -284,7 +284,7 @@ def test_lo_que_no_parece_comestible_no_apetece_aunque_su_clase_satisfaga():
 
 
 def test_sin_nada_que_satisfaga_su_necesidad_la_estrategia_no_es_elegible():
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     mem = _memoria()
     mem.aplicar_manual({"hechos": [MANUAL_JUGUETE["hechos"][0],

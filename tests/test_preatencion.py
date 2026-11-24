@@ -13,7 +13,7 @@ from ida.nucleo.onda import PiezaAjena
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.sistemas import crear_sistemas
-from ida.sistemas.saliencia import Saliencia
+from ida.s1.sentir.saliencia import Saliencia
 
 
 def _organismo(mundo: Any = None) -> Organismo:
@@ -231,8 +231,8 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
     import copy
 
     from ida.mundos.crafter import MundoCrafter
-    from ida.sistemas import amenaza as pel
-    from ida.sistemas.amenaza import Amenaza
+    from ida.s1.sentir import amenaza as pel
+    from ida.s1.sentir.amenaza import Amenaza
 
     mundo = MundoCrafter()
     mundo.reiniciar(31)

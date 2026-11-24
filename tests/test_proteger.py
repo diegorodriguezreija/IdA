@@ -450,7 +450,7 @@ def test_sin_necesidad_apurada_no_sale_del_recinto():
 
 
 def test_el_riesgo_de_salir_solo_cuenta_desde_el_umbral_de_miedo():
-    from ida.sistemas.proteger import riesgo_exterior
+    from ida.s1.reaccionar.estrategias.proteger import riesgo_exterior
 
     def ctx(peligro: float) -> Any:
         alarma = SimpleNamespace(carga={"peligro": peligro})
@@ -463,7 +463,7 @@ def test_el_riesgo_de_salir_solo_cuenta_desde_el_umbral_de_miedo():
 
 def test_dentro_de_un_recinto_no_se_huye():
     """Dentro de un recinto, Huir no es elegible aunque el peligro supere el umbral de miedo: el refugio ya protege."""
-    from ida.sistemas.s1 import Huir
+    from ida.s1.reaccionar.estrategias import Huir
     recinto_dentro = SimpleNamespace(carga={"dentro": True})
     onda = SimpleNamespace(ef=lambda canal: {"recinto": recinto_dentro} if canal == "Recinto" else {})
     ctx = SimpleNamespace(onda=onda, arquetipo=SimpleNamespace(umbral_miedo=0.5))

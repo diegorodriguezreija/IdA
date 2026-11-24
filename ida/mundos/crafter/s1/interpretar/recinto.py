@@ -14,7 +14,7 @@ from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula.buscador import mover
 from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
-from ida.sistemas.proteger import TIPO_RECINTO
+from ida.s1.comun import TIPO_RECINTO
 from ida.sistemas.requisito import Requisitos
 from ida.sistemas.s3 import PerseguirMetas
 

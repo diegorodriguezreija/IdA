@@ -8,18 +8,18 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | `570e444` |
-| E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | (este commit) |
-| E3 | `ida/s1` | Pendiente | - |
+| E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | `2bdb9e7` |
+| E3 | `ida/s1` | Hecha | `[este commit]` |
 | E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Pendiente | - |
 | E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Pendiente | - |
 | E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
 
-### Últimas comprobaciones (E2)
+### Últimas comprobaciones (E3)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 71 source files
-pytest -q      522 passed, 1 warning in 63.98s
+mypy ida       Success: no issues found in 95 source files
+pytest -q      555 passed, 1 warning in 57.45s
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -32,6 +32,20 @@ ajedrez: OK
 EQUIVALENCIA: OK
 mapa_componentes.py: Mapa de Componentes válido y al día.
 ```
+
+## E3 · ida/s1
+
+- Trasladado S1 a su estructura de paquetes final `ida/s1/`:
+  - `ida/sistemas_comun.py`: contiene los componentes y utilidades comunes a los sistemas triúnicos (`Accion`, `Anticipacion`, `Estrategia`, `Peticion`, etc.), movido desde `ida/sistemas/comun.py` con `git mv`.
+  - `ida/s1/comun.py`: constantes y funciones auxiliares compartidas en S1 (`SEGURIDAD`, `COBIJO`, `TIPO_RECINTO`, `recinto`, `_salida`, `_amenaza`, `_peligro`, `_yo`, `_objetos_llevados`, `objetos_peligrosos`, `_rechazado`, `_al_alcance`, `_posicion`, `_hacia`, `intensidades`, `deficits`, `alostasis`).
+  - `ida/s1/sentir/`: `imagen.py`, `amenaza.py` (movido con `git mv`), `saliencia.py` (movido con `git mv`).
+  - `ida/s1/interpretar/`: `objeto.py`, `supervivencia.py`, `apetencia.py` (con `Aliestesia`).
+  - `ida/s1/reaccionar/`: `reflejo.py`, `impulso.py`, `feedback.py`, `estrategia.py`, `peticion.py`.
+    - `ida/s1/reaccionar/estrategias/`: `huir.py`, `defenderse.py`, `sobresalto.py`, `quieto_o_huir.py`, `alimentarse.py`, `seguir_en_movimiento.py`, `afrontar.py`, `proteger.py` (movido con `git mv`).
+  - `ida/s1/actuar/`: `accion.py`, `anticipacion.py`.
+  - `ida/s1/__init__.py`: exporta `crear_s1` y `estrategias_s1`.
+- Eliminado `ida/sistemas/s1.py` con `git rm`.
+- Actualizadas importaciones en todo el repositorio y ajustadas las reglas en `tests/test_duenos_memoria.py` para reflejar la nueva ubicación de los dueños (`ida/s1/sentir/amenaza.py` y `ida/s1/interpretar/apetencia.py`).
 
 ## E2 · ida/nucleo e ida/core (sentir, actuar, regulacion)
 

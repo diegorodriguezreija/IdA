@@ -28,7 +28,7 @@ from ida.nucleo.estrategia import Catalogo, ConPropuestas, Definicion, Propuesta
 from ida.nucleo.biblioteca import Consulta, ElementoConsulta, EstadoLectura, RegistroLectura
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import Accion, Estrategia, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
+from ida.sistemas_comun import Accion, Estrategia, al_alcance, alarma, apetito, exterocepcion, lugares, mejor, objetos
 from ida.sistemas.requisito import Requisito, Requisitos, desplazamiento
 
 

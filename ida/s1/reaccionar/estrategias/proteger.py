@@ -13,13 +13,7 @@ from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.sistemas.requisito import Requisitos
 
-COBIJO = "cobijo"
-TIPO_RECINTO = "Recinto"
-
-
-def recinto(ctx: Contexto) -> Optional[Pieza]:
-    """Pieza de afordancia de protección producida por el componente de interpretar del mundo."""
-    return ctx.onda.ef(TIPO_RECINTO).get("recinto")
+from ida.s1.comun import COBIJO, recinto
 
 
 def riesgo_exterior(ctx: Contexto) -> float:

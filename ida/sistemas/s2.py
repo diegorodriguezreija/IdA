@@ -23,7 +23,7 @@ from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Sistema, expec
 from ida.nucleo.estrategia import Catalogo, Definicion, Plan, Propuesta, estado_plan, paso_actual
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Afecto, EstadoSaber, Relacion, Verbo
-from ida.sistemas.comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
+from ida.sistemas_comun import PESO_PREDICCION, Accion, Anticipacion, Estrategia, Peticion, cautela, al_alcance, alarma, apetito, lugares, mejor, objetos
 
 
 EXPLORACION = "exploracion"

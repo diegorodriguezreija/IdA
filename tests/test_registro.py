@@ -12,7 +12,7 @@ from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Alta, Cuerpo, Registro
 from ida.mundos.minimo import MundoMinimo
 from ida.sistemas import crear_sistemas
-from ida.sistemas.s1 import crear_s1
+from ida.s1 import crear_s1
 
 
 def _crear_organismo(mundo: Any) -> Organismo:
