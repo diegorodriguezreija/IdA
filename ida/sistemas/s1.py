@@ -340,7 +340,6 @@ class Afrontar(Definicion):
         res: Optional[Dict[str, Any]] = None
         aqui = _yo(ctx)
         reserva = ctx.perfil.escala.reserva
-        ctx.memoria.peligros.escalar(ctx.perfil.escala)
         if ctx.extra.get("peligro_aprendido") and aqui is not None and Verbo.ATACAR in ctx.verbos:
             salud = float(ctx.soma.vitalidad)
             llevados = _objetos_llevados(ctx)

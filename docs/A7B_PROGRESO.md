@@ -8,20 +8,20 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
-| E1 | Mecanismo de secciones, con tests | Hecha | (ver git log) |
-| E2 | «peligros» a Amenaza, sin `escalar()` | Pendiente | |
+| E1 | Mecanismo de secciones, con tests | Hecha | `519916d` |
+| E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | (ver git log) |
 | E3 | «satisface» a Apetencia | Pendiente | |
 | E4 | «cuadricula» al cuerpo | Pendiente | |
 | E5 | `Requisito` y su sección | Pendiente | |
 | E6 | Escrituras delegadas y test estático | Pendiente | |
 | E7 | Especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E1)
+### Últimas comprobaciones (E2)
 
 ```
 ruff check .   All checks passed!
 mypy ida       Success: no issues found in 61 source files
-pytest -q      368 passed, 1 warning
+pytest -q      384 passed, 1 warning
 equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, ajedrez OK; EQUIVALENCIA: OK
 ```
 
@@ -44,3 +44,18 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
   `Organismo` registra al final del montaje la del cuerpo y después las de los Componentes montados (orden de `montados`).
 - `tests/test_secciones_memoria.py`: nombre repetido, diferido en orden, memoria apagada, legado por secciones,
   autor, independencia entre secciones.
+
+## E2 · «peligros» → Amenaza
+
+- `Peligros` (`ida/sistemas/amenaza.py`) es una `Seccion` (`orden_legado = 3`, la última, como antes). Se construye con
+  `Peligros(escala=perfil.escala)` (`InitVar` y `__post_init__` con la misma lógica de `escalar`). `escalar()` desaparece,
+  y con él las llamadas de cada latido en `Amenaza.reactiva` y `Afrontar.evaluar` (`s1.py`). Sin cambio: `Perfil.escala`
+  es fija y nada lee `Peligros` antes del primer `Amenaza.reactiva` (heredar no usa la escala). La equivalencia lo confirma.
+- `Peligros.legado(ahora)` y `heredar(legado, tasa)` cumplen el protocolo (toman la clave `peligros`); las de antes pasan a
+  `legado_peligros()` y `heredar_peligros(parte)`.
+- `Amenaza.seccion_memoria(perfil)` → `("peligros", Peligros(escala=...))`; escribe con `memoria.seccion_propia("peligros", "Amenaza")`.
+- `Memoria` ya no crea ni importa `Peligros` (sin `ida.sistemas`, ni en diferido ni en `TYPE_CHECKING`); `legado` y
+  `heredar` ya no tratan `peligros`. `Memoria.peligros` queda como propiedad de solo lectura `# A2:` (None sin Amenaza).
+- `tests/test_pureza.py`: `test_importaciones_core`: `ida/core` no importa `ida.sistemas`, `ida.cuerpos` ni `ida.mundos`.
+- `tests/test_defensa.py` (sin tocar aserciones): la experiencia previa se rellena tras montar el Organismo (la sección
+  no existe antes); la escala, con `Peligros(escala=...)`; el legado, con `legado_peligros`/`heredar_peligros`.

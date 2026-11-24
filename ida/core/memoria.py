@@ -10,14 +10,11 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.core.biblioteca import RegistroLectura
 from ida.core.pieza import Episodio, acotar
 from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
-
-if TYPE_CHECKING:
-    from ida.sistemas.amenaza import Peligros
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 
@@ -419,12 +416,6 @@ class Memoria:
         self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
         self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
         self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
-        # Paso 6 (peligro aprendido): daño, alcance, emisores y eficacia de ataque, desde la experiencia. Solo escribe
-        # en ella su dueño, ``Amenaza`` (ida/sistemas/amenaza.py). A7: la sección pasará a su dueño; hasta entonces se
-        # importa aquí, en diferido, porque importar ``ida.sistemas`` al cargar este módulo cerraría un ciclo
-        # (``ida.sistemas`` importa ``ida.core.arquitectura``, que importa este módulo).
-        from ida.sistemas.amenaza import Peligros
-        self.peligros: "Peligros" = Peligros()
         # D7: secciones con dueño. No existen hasta que su dueño se monta (``Organismo``), pero el manual y el legado
         # llegan antes: la Memoria guarda ambos, en orden, y se los entrega a cada sección al registrarse.
         self._secciones: Dict[str, Tuple[str, Seccion]] = {}
@@ -468,6 +459,11 @@ class Memoria:
     def _seccion_o_none(self, nombre: str) -> Optional[Any]:
         d = self._secciones.get(nombre)
         return d[1] if d is not None else None
+
+    # --- A2: lecturas con el nombre de antes (solo lectura), mientras dure la fase A -------------------------------
+    @property
+    def peligros(self) -> Any:   # A2: sección «peligros» (dueño ``Amenaza``); None si no está montada
+        return self._seccion_o_none("peligros")
 
     def _diferir(self, tipo: str, datos: Dict[str, Any], tasa: float = 1.0) -> int:
         """Guarda el manual o el legado para las secciones que aún no se han registrado y lo entrega a las que ya lo
@@ -1405,9 +1401,6 @@ class Memoria:
         if satisface:
             legado["satisface"] = satisface
             legado["linea_base"] = {k: round(v, 4) for k, v in self.linea_base.items()}
-        peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (mundos sin peligro propio)
-        if peligros:
-            legado["peligros"] = peligros
         for _, seccion in sorted(self._secciones.values(), key=lambda d: d[1].orden_legado):   # D7: cada sección, su parte
             legado.update(seccion.legado(ahora))
         return legado
@@ -1471,8 +1464,6 @@ class Memoria:
         for necesidad, base in legado.get("linea_base", {}).items():   # hasta que la vida tenga la suya
             if necesidad not in self.linea_base:
                 self.linea_base[necesidad] = float(base)
-        if legado.get("peligros"):
-            n += self.peligros.heredar(legado["peligros"])
         n += self._diferir("legado", legado, tasa)   # D7: las secciones toman lo suyo al registrarse (o ya, si lo están)
         self.heredados += n
         return n

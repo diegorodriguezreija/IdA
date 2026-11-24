@@ -118,7 +118,7 @@ def test_el_legado_lleva_lo_aprendido_con_dos_observaciones():
     p = pel.Peligros()
     _lanzamientos(p, 6, 5)
     q = pel.Peligros()
-    q.heredar(p.legado())
+    q.heredar_peligros(p.legado_peligros())
     assert q.emitidas("torre") == ["pua"] and q.alcance_emision("torre") == p.alcance_emision("torre")
 
 
@@ -252,22 +252,23 @@ def test_viviendo_se_aprende_el_dano_por_contacto():
 
 
 # --- 6b: luchar o huir por evaluación ---------------------------------------------------------------------
-def _memoria_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int], eventos: int = 4) -> Memoria:
+def _organismo_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int], eventos: int = 4) -> Organismo:
     """Lo que ya se habría aprendido de los erizos: 20 de daño por golpe, 40 por encuentro, ``eventos`` daños en 20 latidos
-    de exposición y los derribos dados (objetos llevados -> golpes)."""
-    mem = Memoria()
-    mem.aplicar_manual(mundo.manual())
-    p = mem.peligros
+    de exposición y los derribos dados (objetos llevados -> golpes). D7: la sección «peligros» existe al montarse
+    ``Amenaza``, así que se rellena tras montar el Organismo y antes de su primer latido."""
+    org = _organismo(mundo)
+    if not org.memoria.tiene_seccion("peligros"):
+        return org          # un mundo que da su peligro no registra Amenaza: no hay sección «peligros» que rellenar
+    p = org.memoria.peligros
     p.dano_golpe["erizo"] = pel.Media(5, 20.0)
     p.dano["erizo"] = pel.Media(5, 40.0)
     p.expuestos["erizo"], p.eventos["erizo"] = 20, eventos
     p.derribos["erizo"] = [(k, g) for k, g in golpes.items() for _ in range(2)]
-    return mem
+    return org
 
 
-def _decisiones(mundo: MundoErizos, mem: Memoria, latidos: int = 5):
+def _decisiones(mundo: MundoErizos, org: Organismo, latidos: int = 5):
     """Las acciones de unos latidos (el primero puede ser el reflejo de sobresalto) y las estrategias activas en cada uno."""
-    org = _organismo(mundo, mem)
     acciones, activas = [], []
     for _ in range(latidos):
         if mundo.terminado():
@@ -282,7 +283,7 @@ def test_afrontar_lucha_con_margen():
     """Un erizo que persigue: tras el sobresalto (3 latidos), con margen no se huye y se lucha hasta derribarlo."""
     mundo = MundoErizos(salud=100.0)
     mundo.erizo = (5, 6)
-    acciones, _ = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}), latidos=14)
+    acciones, _ = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}), latidos=14)
     atacar = [a for a in acciones if a["verbo"] == Verbo.ATACAR]
     assert atacar and all(a["objetivo"] == "erizo_1" and a["motivo"].startswith("afrontar: atacar erizo") for a in atacar)
     assert mundo.n == 2                       # el erizo cayó
@@ -291,7 +292,7 @@ def test_afrontar_lucha_con_margen():
 def test_afrontar_huye_sin_margen():
     mundo = MundoErizos(quieto=True, salud=40.0)
     mundo.erizo = (5, 6)
-    acciones, activas = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}))
+    acciones, activas = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}))
     assert not any(a["verbo"] == Verbo.ATACAR for a in acciones)
     assert any(a["verbo"] == Verbo.MOVER and "huir" in a["motivo"] for a in acciones)
     assert not any("afrontar" in x for x in activas)
@@ -301,10 +302,10 @@ def test_sin_datos_de_eficacia_no_lucha():
     """El previo de golpes es pesimista: con la tasa previa, la lucha no deja margen y se huye."""
     mundo = MundoErizos(quieto=True, salud=100.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {})
-    mem.peligros.expuestos.clear()
-    mem.peligros.eventos.clear()
-    acciones, activas = _decisiones(mundo, mem, latidos=1)
+    org = _organismo_con_experiencia(mundo, {})
+    org.memoria.peligros.expuestos.clear()
+    org.memoria.peligros.eventos.clear()
+    acciones, activas = _decisiones(mundo, org, latidos=1)
     assert not any("afrontar" in x for x in activas)
 
 
@@ -313,7 +314,7 @@ def test_si_el_mundo_da_su_peligro_no_hay_afrontar():
     mundo = MundoErizos(quieto=True, salud=100.0)
     mundo.erizo = (5, 6)
     mundo.da_peligro = True
-    _, activas = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}))
+    _, activas = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}))
     assert not any("afrontar" in x for x in activas)
 
 
@@ -345,8 +346,8 @@ def test_se_pide_el_arma_de_forma_instrumental():
     """Con 70 de salud, sin bastón la lucha no deja margen (5 golpes) y con él sí (2): se pide el bastón y se huye."""
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
-    onda = _organismo(mundo, mem).latir()
+    org = _organismo_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+    onda = org.latir()
     peticion = onda.ef("Peticion").get("peticion:baston")
     assert peticion is not None
     assert peticion.carga["origen"] == "afrontar" and peticion.carga["cantidad"] == 1.0
@@ -356,8 +357,8 @@ def test_se_pide_el_arma_de_forma_instrumental():
 def test_con_el_arma_ya_no_se_pide_y_se_lucha():
     mundo = MundoErizos(baston=True, salud=100.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
-    acciones, _ = _decisiones(mundo, mem, latidos=10)
+    org = _organismo_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+    acciones, _ = _decisiones(mundo, org, latidos=10)
     assert any(a["verbo"] == Verbo.ATACAR and a["motivo"].startswith("afrontar: atacar") for a in acciones)
 
 
@@ -368,16 +369,18 @@ def test_no_se_pide_un_objeto_que_no_se_distingue():
     derribos = {frozenset(): 5, juntos: 2}
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
+    org = _organismo_con_experiencia(mundo, derribos, eventos=9)
+    mem = org.memoria
     assert set(mem.peligros.reductores()) == {"baston", "cuerda"} and mem.peligros.distinguibles() == set()
-    onda = _organismo(mundo, mem).latir()
+    onda = org.latir()
     assert not onda.ef("Peticion")
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
+    org = _organismo_con_experiencia(mundo, derribos, eventos=9)
+    mem = org.memoria
     mem.peligros.derribos["erizo"].append((frozenset({"baston"}), 2))
     assert mem.peligros.distinguibles() == {"baston", "cuerda"}
-    onda = _organismo(mundo, mem).latir()
+    onda = org.latir()
     assert set(onda.ef("Peticion")) == {"peticion:baston"}
 
 
@@ -402,11 +405,12 @@ def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
     for meta in (False, True):
         mundo = MundoErizos(quieto=True, salud=100.0)
         mundo.erizo = (5, 6)
-        mem = _memoria_con_experiencia(mundo, {}, eventos=0)
+        org = _organismo_con_experiencia(mundo, {}, eventos=0)
+        mem = org.memoria
         mem.peligros.expuestos["erizo"] = 1000
         if meta:
             mem.metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
-        _, activas = _decisiones(mundo, mem, latidos=1)
+        _, activas = _decisiones(mundo, org, latidos=1)
         assert any("afrontar" in x for x in activas) == meta
 
 
@@ -436,7 +440,7 @@ def test_la_escala_del_perfil_llega_a_peligros():
 
     p = pel.Peligros()
     assert (p.dano_previo, p.golpes_previo, p.margen_lugar, p.c_escala) == (pel.DANO_PREVIO, pel.GOLPES_PREVIO, pel.MARGEN_LUGAR, pel.ESCALA)
-    p.escalar(Escala(dano_previo=50.0, golpes_previo=4.0, margen_lugar=1))
+    p = pel.Peligros(escala=Escala(dano_previo=50.0, golpes_previo=4.0, margen_lugar=1))   # A7b: la escala, al construirla
     assert p.dano_propio("erizo", True) == 50.0
     assert p.golpes("erizo", frozenset())[0] == 4.0
     assert abs(p.peligro_a([(50.0, 1)], 1, 100.0) - pel.PELIGRO_PREVIO) < 1e-9   # el previo sigue fijando la escala
