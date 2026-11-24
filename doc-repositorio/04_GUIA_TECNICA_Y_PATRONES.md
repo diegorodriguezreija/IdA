@@ -9,7 +9,7 @@ Este documento está dirigido a ingenieros de software, investigadores de IA y a
 Una de las premisas rectoras del framework base de IdA es la **sobriedad arquitectónica**: el núcleo no depende de nada, y todo lo demás (mundos, observabilidad, herramientas) entra como extra opcional de `pyproject.toml`.
 
 * **Python 3.12 o posterior:** `dataclasses`, `typing` y la biblioteca estándar. La integración continua prueba 3.12 y 3.15; se desarrolló con 3.15.1.
-* **Sin dependencias en el Core:** el núcleo (`ida/core/`) y los sistemas (`ida/sistemas/`) solo usan la biblioteca estándar de Python. Las dependencias son de cada mundo, como extras: `[crafter]`, `[snake]` (`playwright`), `[ajedrez]` (`python-chess`). La CI ejecuta los tests también sin ningún extra.
+* **Sin dependencias en la base:** el núcleo (`ida/nucleo/`), el Core (`ida/core/`) y los sistemas (`ida/s1/`, `ida/s2/`, `ida/s3/`, `ida/sistemas_comun.py`) solo usan la biblioteca estándar de Python. Las dependencias son de cada mundo, como extras: `[crafter]`, `[snake]` (`playwright`), `[ajedrez]` (`python-chess`). La CI ejecuta los tests también sin ningún extra.
 * **Calidad:** `ruff` (linter) y `mypy` (tipos) en verde sobre todo `ida/`, 85 tests con `pytest` (en `7e335ae`, 16/11/2026) y un workflow de **GitHub Actions** que los ejecuta en cada push.
 * **Contenedores:** `Dockerfile` multietapa (imagen de IdA y etapa `dev` con las herramientas), **devcontainer** para VS Code y `docker-compose.yml` con la pila de observabilidad.
 * **Observabilidad estándar (opcional):** **OpenTelemetry** (trazas y métricas por OTLP), un **OpenTelemetry Collector**, **Jaeger**, **Prometheus** y **Grafana** con el panel provisionado como código (`infra/`). Ver el patrón 6.
@@ -48,7 +48,7 @@ graph TD
 
 ### Patrón 1: Arquitectura Hexagonal (Puertos y Adaptadores)
 * **El Problema:** si la mente supiera qué es un archivo en disco (`.exe`, `.brote`), IdA no podría jugar al ajedrez ni navegar por la web sin reescribir su cerebro.
-* **La Solución:** `ida/core/mundo.py` actúa como el **Puerto**. El Core solo conoce interfaces abstractas (`Observacion`, `Entidad`, `Efecto`). Los mundos concretos residen en `ida/mundos/` como **Adaptadores** independientes.
+* **La Solución:** `ida/nucleo/mundo.py` actúa como el **Puerto**. El Core solo conoce interfaces abstractas (`Observacion`, `Entidad`, `Efecto`). Los mundos concretos residen en `ida/mundos/` como **Adaptadores** independientes.
 * **Beneficio:** Añadir un nuevo entorno (por ejemplo, robótica simulada o Doom) solo requiere crear un adaptador que implemente el puerto; el Core y los sistemas cognitivos permanecen 100% inalterados.
 
 ---
@@ -85,7 +85,7 @@ graph TD
 
 ### Patrón 5: Determinismo y Reproducibilidad con PRNG Derivado
 * **El Problema:** Si un experimento de aprendizaje muestra un comportamiento emergente fascinante, es imprescindible poder reproducirlo bit a bit para su análisis científico.
-* **La Solución:** La clase `Azar` (`ida/core/azar.py`) envuelve `random.Random` aislado. Nunca se utiliza la aleatoriedad global de Python:
+* **La Solución:** La clase `Azar` (`ida/nucleo/azar.py`) envuelve `random.Random` aislado. Nunca se utiliza la aleatoriedad global de Python:
   * Cada generación deriva una sub-semilla determinista:
     $$\text{semilla}_{g} = \text{azar.derivar}(g + 1)$$
   * Todos los empates del tribunal, mutaciones genéticas del Big Five y decisiones estocásticas son idénticas ante la misma semilla inicial.
@@ -141,29 +141,49 @@ Un segundo test con AST (`tests/test_licencias.py`) vigila la frontera de licenc
 ```
 IdA/
 ├── ida/                           # PAQUETE PRINCIPAL DEL FRAMEWORK
-│   ├── core/                      # El Organismo Puro (Ciego al Dominio)
+│   ├── nucleo/                    # Mecánica y contratos sin cognición
 │   │   ├── arquitectura.py        # Clases base: Componente, Módulo, Contexto
 │   │   ├── azar.py                # Generador pseudoaleatorio determinista y reproducible
-│   │   ├── latido.py              # Orquestador del latido vital, marcapasos y ciclo de vida
+│   │   ├── estrategia.py          # Definición y propuesta de estrategias
 │   │   ├── linaje.py              # Arquetipos Big Five, mutación y transmisión hereditaria
 │   │   ├── memoria.py             # Memoria activa, expectativas, episodios y proposiciones
 │   │   ├── mundo.py               # Contrato formal (Puerto) entre IdA y cualquier entorno
 │   │   ├── onda.py                # La Onda vital en cuatro fases (ei, ev, acc, ef) y Guillotina
 │   │   ├── persistencia.py        # Motor SQLite en modo WAL para consolidación en dos velocidades
 │   │   ├── pieza.py               # Unidad atómica de información cognitiva (Pieza y Episodio)
-│   │   ├── sentidos.py            # Componentes base de Sentir (Interocepción) y Tribunal Motor
 │   │   ├── soma.py                # El chasis somático (Vitalidad, Energía, Hambre, Neuroquímica)
 │   │   └── vocabulario.py         # Verbos comunes, rasgos universales y estados de saber
-│   ├── sistemas/                  # SISTEMAS COGNITIVOS TRIÚNICOS
-│   │   ├── s1.py                  # Tronco encefálico: reflejos, lucha/huida y aversión
-│   │   ├── s2.py                  # Sistema límbico: apego al hogar, curiosidad y afecto
-│   │   ├── s3.py                  # Neocórtex simbólico: generación y validación de hipótesis
-│   │   └── comun.py               # Utilidades comunes (lugares, objetos, apetito, alarma)
+│   ├── core/                      # El Core biológico (latido y Componentes del Core)
+│   │   ├── sentir/                # interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
+│   │   ├── actuar/                # tribunal.py, actuador.py
+│   │   ├── regulacion.py          # Componente de regulación homeostática
+│   │   └── latido.py              # Orquestador del latido vital, marcapasos y Organismo
+│   ├── s1/                        # Tronco encefálico: reflejos, lucha/huida y aversión
+│   │   ├── sentir/                # amenaza.py, saliencia.py
+│   │   ├── interpretar/           # apetencia.py
+│   │   ├── reaccionar/            # impulso.py, feedback.py, estrategia.py, estrategias/
+│   │   ├── actuar/                # accion.py
+│   │   └── comun.py
+│   ├── s2/                        # Sistema límbico: apego al hogar, curiosidad y afecto
+│   │   ├── sentir/                # patron.py, emocion.py, recuerdo.py
+│   │   ├── interpretar/           # sujeto.py, valor.py
+│   │   ├── reaccionar/            # exteriorizacion.py, impulso.py, feedback.py, estrategia.py, peticion.py, estrategias/
+│   │   ├── actuar/                # accion.py, anticipacion.py
+│   │   └── comun.py
+│   ├── s3/                        # Neocórtex simbólico: generación y validación de hipótesis
+│   │   ├── sentir/                # comunicacion.py
+│   │   ├── interpretar/           # agente.py, predicado.py, proposicion.py, sentencia.py, logica.py, creencia.py, requisito.py
+│   │   ├── reaccionar/            # intencion.py, impulso.py, feedback.py, estrategia.py, estrategias/
+│   │   ├── actuar/                # accion.py
+│   │   └── comun.py
+│   ├── sistemas_comun.py          # Utilidades y tipos comunes a S1-S3, crear_sistemas
+│   ├── cuerpos/                   # CAPAS DE CUERPO
+│   │   └── cuadricula/            # Geometría 2D, modelo directo, mapa local y motor
 │   ├── mundos/                    # ADAPTADORES CONECTABLES (Hexagonal)
-│   │   ├── minimo.py              # Mundo sintético para testing ultrarrápido
-│   │   ├── archivos.py            # Bioma clásico de archivos con sensor de bytes
-│   │   ├── snake.py               # Adaptador web para playsnake.org vía Playwright
-│   │   ├── crafter.py             # Supervivencia 2D (estado simbólico) + PlanTecnologico propio
+│   │   ├── minimo/                # Mundo sintético para testing ultrarrápido
+│   │   ├── archivos/              # Bioma clásico de archivos con sensor de bytes
+│   │   ├── snake/                 # Adaptador web para playsnake.org vía Playwright
+│   │   ├── crafter/               # Supervivencia 2D + componentes propios
 │   │   └── ajedrez/               # Ajedrez (GPL-3.0-or-later, aislado)
 │   │       ├── __init__.py        # Jugadas legales como lugares, sensor con una réplica del rival
 │   │       ├── rival.py           # Bot local: negamax con poda alfa-beta

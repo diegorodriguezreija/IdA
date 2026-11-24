@@ -433,7 +433,7 @@ def test_crafter_no_escribe_conducta():
     clases = [c for _, c in inspect.getmembers(adaptador, inspect.isclass) if c.__module__ == adaptador.__name__]
     assert clases     # el adaptador existe
     assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
-    # D16: Crafter solo registra SalirDelRecinto, de ``ida/sistemas/proteger.py`` (pasa a Crafter en A6b)
+    # D16: Crafter solo registra SalirDelRecinto, de ``ida/s1/reaccionar/estrategias/proteger.py`` (pasa a Crafter en A6b)
     estrategias = MundoCrafter().registro().estrategias
     assert list(estrategias) == ["S1"] and not estrategias["S1"].sustituye
     assert [type(d).__name__ for d in estrategias["S1"].añade] == ["SalirDelRecinto"]

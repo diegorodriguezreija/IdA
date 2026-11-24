@@ -11,15 +11,15 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 | E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | `2bdb9e7` |
 | E3 | `ida/s1` | Hecha | `4daa83a` |
 | E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Hecha | `ba8a2f7` |
-| E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Hecha | (este commit) |
-| E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
+| E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Hecha | `99326e4` |
+| E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Hecha | (este commit) |
 
-### Últimas comprobaciones (E5)
+### Últimas comprobaciones (E6)
 
 ```
 ruff check .   All checks passed!
 mypy ida       Success: no issues found in 159 source files
-pytest -q      692 passed, 1 skipped, 1 warning in 67.29s
+pytest -q      870 passed, 1 warning in 62.80s
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -32,6 +32,25 @@ ajedrez: OK
 EQUIVALENCIA: OK
 mapa_componentes.py: Mapa de Componentes válido y al día.
 ```
+
+## E6 · P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado
+
+- **P4: Regla de pureza ajustada y verificada con AST en `tests/test_pureza.py`:**
+  - `ida/nucleo` no importa nada de `ida` salvo `ida/nucleo` (`test_importaciones_nucleo`).
+  - `ida/core` importa únicamente `ida/nucleo` e `ida/core` (`test_importaciones_core`).
+  - `ida/s1`-`ida/s3` y `ida/sistemas_comun.py` no importan `ida/cuerpos` ni `ida/mundos` (`test_importaciones_sistemas`).
+  - `ida/cuerpos` no importa `ida/mundos` (`test_importaciones_cuerpos`).
+  - `ida/mundos` puede importar paquetes generales y capas de cuerpo.
+  - Ningún paquete general importa `ida/cuerpos` ni `ida/mundos`.
+  - La base completa (`nucleo`, `core`, `s1`, `s2`, `s3`, `sistemas_comun`) pasa el linter de pureza de palabras de mundo y dependencias prohibidas.
+- **Rutas actualizadas en documentación y configuración:**
+  - `AGENTS.md`: actualizadas referencias al framework base (`ida/nucleo/`, `ida/core/`, `ida/s1/`-`ida/s3/`, `ida/sistemas_comun.py`).
+  - `doc-repositorio/02_ARQUITECTURA_Y_MECANISMO_VITAL.md`: rutas de tribunal, onda y sistemas actualizadas.
+  - `doc-repositorio/04_GUIA_TECNICA_Y_PATRONES.md`: rutas de puerto (`ida/nucleo/mundo.py`), azar (`ida/nucleo/azar.py`) y árbol completo de directorios actualizado con D2.
+  - `docs/DISENO_COMPONENTES.md`: marcado D2 como estructura implantada en A2, y actualizado el registro del plan y de cambios.
+  - `doc-repositorio/componentes.toml`: actualizadas notas que citaban ficheros antiguos (`saliencia.py`, `amenaza.py`, `requisito.py`, `modelo_directo.py`, `mapa_local.py`).
+  - `doc-repositorio/06_MAPA_DE_COMPONENTES.md`: regenerado con `herramientas/mapa_componentes.py --escribir`.
+  - `tests/test_defensa.py`: actualizado comentario de ruta.
 
 ## E5 · ida/cuerpos/cuadricula y mundos como paquetes
 

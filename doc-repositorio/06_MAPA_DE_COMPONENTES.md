@@ -22,8 +22,8 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Saliencia` | componente | general | ✓ |  | D5 | ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
-| `Amenaza` ✱ | componente | opcional (crafter) | ✓ |  | D5 | ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b) |
+| `Saliencia` | componente | general | ✓ |  | D5 | ida/s1/sentir/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0 |
+| `Amenaza` ✱ | componente | opcional (crafter) | ✓ |  | D5 | ida/s1/sentir/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b) |
 | `ValoracionCrafter` | componente | mundo: crafter | ✓ |  | D4 | ida/mundos/crafter/s1/sentir/valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual |
 
 ## 5 · Regulación de la Onda (Core)
@@ -128,7 +128,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Sentencia` | componente | general | ✓ |  | previo |  |
 | `Logica` | componente | general | ✓ |  | previo |  |
 | `Creencia` | componente | general | ✓ |  | previo |  |
-| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/sistemas/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo |
+| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo |
 
 ## S3 · Reaccionar
 

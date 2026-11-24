@@ -105,7 +105,7 @@ destino = "S1.Sentir"
 hoy = "S1.Sentir"
 decision = "D5"
 preatentivo = true
-nota = "ida/sistemas/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
+nota = "ida/s1/sentir/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
 
 [[componente]]
 nombre = "Amenaza"
@@ -118,7 +118,7 @@ registran = ["crafter"]
 decision = "D5"
 preatentivo = true
 aprende = true
-nota = "ida/sistemas/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b)"
+nota = "ida/s1/sentir/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b)"
 
 [[componente]]
 nombre = "ValoracionCrafter"
@@ -544,7 +544,7 @@ destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "D7"
 aprende = true
-nota = "ida/sistemas/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo"
+nota = "ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo"
 
 [[componente]]
 nombre = "Intencion"
