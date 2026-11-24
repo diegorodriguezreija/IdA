@@ -400,18 +400,6 @@ class Memoria:
         self.fallos_seguidos: Dict[Tuple[Verbo, str], int] = {}
         self._tenidos: Set[str] = set()
         self._tenidos_iniciado = False
-        # Paso 3 (proteger X): mapa local de esta vida (no se hereda). Es la versión
-        # mínima del mapa cognitivo compartido: clase de cada casilla vista, qué clases son transitables, qué hace
-        # cada acción con la casilla sobre la que actúa y cómo se mueve el propio cuerpo.
-        self.casillas: Dict[Pos, str] = {}
-        self.version_mapa = 0                       # sube cada vez que cambia una casilla recordada
-        self.paso_libre: Dict[str, int] = {}        # clase -> veces que una vecina de esa clase era un lugar (transitable)
-        self.paso_bloqueado: Dict[str, int] = {}    # clase -> veces que una vecina vacía de esa clase no lo era
-        self.peligro_sobre: Set[str] = set()        # clases de casilla sobre las que se ha visto un peligro que se mueve
-        self.transformaciones: Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]] = {}   # (verbo, objetivo) -> {(antes, después): n}
-        self.cuerpo: Dict[Tuple[str, bool], List[int]] = {}   # (acción, destino libre) -> [n, avanza, queda mirando hacia allí]
-        self.cierres: Set[Pos] = set()              # casillas cerradas por el propio individuo
-        self.yo_previo: Optional[Tuple[Pos, Optional[Pos]]] = None   # posición y orientación del latido anterior
         # D7: secciones con dueño. No existen hasta que su dueño se monta (``Organismo``), pero el manual y el legado
         # llegan antes: la Memoria guarda ambos, en orden, y se los entrega a cada sección al registrarse.
         self._secciones: Dict[str, Tuple[str, Seccion]] = {}
@@ -475,6 +463,62 @@ class Memoria:
     def n_base(self) -> Dict[str, int]:   # A2: sección «satisface»
         s = self._seccion_o_none("satisface")
         return s.n_base if s is not None else {}
+
+    def _mapa(self, atributo: str, vacio: Any) -> Any:
+        s = self._seccion_o_none("cuadricula")
+        return getattr(s, atributo) if s is not None else vacio
+
+    @property
+    def casillas(self) -> Dict[Pos, str]:   # A2: sección «cuadricula» (dueño: el cuerpo cuadrícula)
+        return cast(Dict[Pos, str], self._mapa("casillas", {}))
+
+    @property
+    def version_mapa(self) -> int:   # A2: sección «cuadricula»
+        return cast(int, self._mapa("version_mapa", 0))
+
+    @property
+    def paso_libre(self) -> Dict[str, int]:   # A2: sección «cuadricula»
+        return cast(Dict[str, int], self._mapa("paso_libre", {}))
+
+    @property
+    def paso_bloqueado(self) -> Dict[str, int]:   # A2: sección «cuadricula»
+        return cast(Dict[str, int], self._mapa("paso_bloqueado", {}))
+
+    @property
+    def peligro_sobre(self) -> Set[str]:   # A2: sección «cuadricula»
+        return cast(Set[str], self._mapa("peligro_sobre", set()))
+
+    @property
+    def transformaciones(self) -> Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]]:   # A2: sección «cuadricula»
+        return cast(Dict[Tuple[Verbo, str], Dict[Tuple[str, str], int]], self._mapa("transformaciones", {}))
+
+    @property
+    def cuerpo(self) -> Dict[Tuple[str, bool], List[int]]:   # A2: sección «cuadricula»
+        return cast(Dict[Tuple[str, bool], List[int]], self._mapa("cuerpo", {}))
+
+    @property
+    def cierres(self) -> Set[Pos]:   # A2: sección «cuadricula»
+        return cast(Set[Pos], self._mapa("cierres", set()))
+
+    @property
+    def yo_previo(self) -> Optional[Tuple[Pos, Optional[Pos]]]:   # A2: sección «cuadricula»
+        return cast(Optional[Tuple[Pos, Optional[Pos]]], self._mapa("yo_previo", None))
+
+    def transitable(self, clase: Optional[str]) -> Optional[bool]:   # A2: sección «cuadricula» (None sin ella)
+        s = self._seccion_o_none("cuadricula")
+        return s.transitable(clase) if s is not None else None
+
+    def transitable_peligro(self, clase: Optional[str]) -> bool:   # A2: sección «cuadricula» (sin ella, abierto)
+        s = self._seccion_o_none("cuadricula")
+        return bool(s.transitable_peligro(clase)) if s is not None else True
+
+    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:   # A2: «cuadricula»
+        s = self._seccion_o_none("cuadricula")
+        return s.resultado(verbo, objetivo, antes) if s is not None else None
+
+    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:   # A2: sección «cuadricula»
+        s = self._seccion_o_none("cuadricula")
+        return s.modelo_cuerpo(accion, libre) if s is not None else None
 
     def satisfaccion(self, clase: str, previos: Optional[Dict[str, float]] = None) -> Optional[Dict[str, float]]:
         """A2: lectura de la sección «satisface»; sin ella (Apetencia no montada), None: no se sabe nada de la clase."""
@@ -1133,67 +1177,6 @@ class Memoria:
         if self.claves_inventario is None:
             return {k: float(v) for k, v in inventario.items()}
         return {k: float(v) for k, v in inventario.items() if k in self.claves_inventario}
-
-    # --- paso 3: mapa local, transitabilidad, transformaciones y modelo del cuerpo -------------
-    def transitable(self, clase: Optional[str]) -> Optional[bool]:
-        """Si se puede pasar por una casilla de ``clase``: sí si alguna vez fue un lugar (casilla a la que ir); no si,
-        vacía, nunca lo fue; None si no hay pruebas."""
-        if not clase:
-            return None
-        if self.paso_libre.get(clase, 0) > 0:
-            return True
-        if self.paso_bloqueado.get(clase, 0) > 0:
-            return False
-        return None
-
-    def transitable_peligro(self, clase: Optional[str]) -> bool:
-        """Si un peligro puede llegar por una casilla de ``clase``. Previo: por donde pasa uno mismo pasa un peligro que se
-        mueve, y lo desconocido se supone abierto; la experiencia añade las clases sobre las que se ha visto uno."""
-        return self.transitable(clase) is not False or clase in self.peligro_sobre
-
-    def ver_casillas(self, aqui: Pos, casillas: Dict[Pos, str], libres: Set[Pos], ocupadas: Set[Pos], peligros: Set[Pos]) -> None:
-        """Actualiza el mapa local con lo visto. ``libres``: casillas que son lugares; ``ocupadas``: con algo encima (no
-        dicen nada de su clase); ``peligros``: casillas con un peligro que se mueve encima."""
-        for p, c in casillas.items():
-            if self.casillas.get(p) != c:
-                self.casillas[p] = c
-                self.version_mapa += 1
-        for dx, dy in DIRECCIONES:
-            v = (aqui[0] + dx, aqui[1] + dy)
-            vecina = casillas.get(v)
-            if vecina is None:
-                continue
-            if v in libres:
-                self.paso_libre[vecina] = self.paso_libre.get(vecina, 0) + 1
-            elif v not in ocupadas:
-                self.paso_bloqueado[vecina] = self.paso_bloqueado.get(vecina, 0) + 1
-        for p in peligros:
-            if p in casillas:
-                self.peligro_sobre.add(casillas[p])
-
-    def aprender_transformacion(self, verbo: Verbo, objetivo: str, antes: str, despues: str) -> None:
-        """La acción cambió la clase de la casilla sobre la que actuó."""
-        t = self.transformaciones.setdefault((verbo, objetivo), {})
-        t[(antes, despues)] = t.get((antes, despues), 0) + 1
-
-    def resultado(self, verbo: Verbo, objetivo: str, antes: Optional[str] = None) -> Optional[str]:
-        """Clase en la que la acción ha convertido más veces la casilla (de clase ``antes``, si se da)."""
-        t = {k: n for k, n in self.transformaciones.get((verbo, objetivo), {}).items() if antes is None or k[0] == antes}
-        return max(t, key=lambda k: (t[k], k))[1] if t else None
-
-    def aprender_cuerpo(self, accion: str, libre: bool, avanza: bool, mira: bool) -> None:
-        """Propiocepción: tras ``accion`` hacia una casilla libre o no, si cambió la posición y si quedó mirando hacia ella."""
-        r = self.cuerpo.setdefault((accion, libre), [0, 0, 0])
-        r[0] += 1
-        r[1] += int(avanza)
-        r[2] += int(mira)
-
-    def modelo_cuerpo(self, accion: str, libre: bool) -> Optional[Tuple[bool, bool]]:
-        """(avanza, queda mirando hacia allí) más frecuentes tras ``accion`` hacia una casilla libre o no; None sin experiencia."""
-        r = self.cuerpo.get((accion, libre))
-        if not r or r[0] == 0:
-            return None
-        return 2 * r[1] > r[0], 2 * r[2] > r[0]
 
     def bloqueada(self, verbo: Verbo, objetivo: str) -> bool:
         """Paso 5 (5.2 b): una acción que nunca ha funcionado y ha fallado ``FALLOS_BLOQUEO`` veces seguidas

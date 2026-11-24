@@ -7,12 +7,15 @@ Contrasta la acción anterior con lo percibido ahora (propiocepción):
 
 No actúa en los barridos: su trabajo va en ``aprender``, que el Core llama en ``Organismo._aprender`` (donde estaba
 ``_aprender_mapa``), antes que el de ``MapaLocal``: lee ``mem.yo_previo`` y ``mem.casillas`` antes de que este los
-actualice. Los datos siguen en ``Memoria.cuerpo`` (las secciones con dueño son A7).
+actualice. Escribe en la sección «cuadricula» de la Memoria (D7), cuyo dueño es el cuerpo.
 """
+
+from typing import cast
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.onda import Onda
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.cuerpos.cuadricula.situacion import accion_previa, situacion, vecina
 
 
@@ -24,7 +27,7 @@ class ModeloDirecto(Componente):
         s = situacion(ctx)
         if s is None:
             return
-        mem = ctx.memoria
+        mem = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
         c = accion_previa(ctx)
         v = vecina(mem, c)
         if c is None or v is None:

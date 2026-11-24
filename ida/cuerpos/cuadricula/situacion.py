@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 from ida.core.arquitectura import Contexto
-from ida.core.memoria import Memoria, Pos, pos_de
+from ida.core.memoria import Pos, pos_de
 from ida.core.vocabulario import Verbo
 
 
@@ -43,7 +43,7 @@ def accion_previa(ctx: Contexto) -> Optional[Dict[str, Any]]:
     return previa.carga if previa is not None else None
 
 
-def vecina(mem: Memoria, c: Optional[Dict[str, Any]]) -> Optional[Tuple[Pos, Pos, Pos]]:
+def vecina(mem: Any, c: Optional[Dict[str, Any]]) -> Optional[Tuple[Pos, Pos, Pos]]:
     """``(posición anterior, casilla destino, dirección)`` si la acción anterior iba sobre una casilla vecina de la posición
     anterior (para USAR, la de delante); si no, None."""
     if c is None or mem.yo_previo is None:

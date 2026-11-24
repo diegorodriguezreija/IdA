@@ -12,6 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import pytest
 
 from ida.core.memoria import Memoria, pos_de
+from ida.core.mundo import Perfil
 from ida.core.onda import Onda
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
@@ -21,8 +22,9 @@ Pos = Tuple[int, int]
 Ent = Tuple[str, str, Dict[str, float], Pos]   # id, clase, rasgos, posición
 
 
-def _referencia(mem: Memoria, obs: Any, exterocepcion: Dict[str, Pieza], c: Optional[Dict[str, Any]]) -> None:
-    """``Organismo._aprender_mapa`` tal como estaba antes de A5a (``self.memoria`` → ``mem``)."""
+def _referencia(mem: Any, obs: Any, exterocepcion: Dict[str, Pieza], c: Optional[Dict[str, Any]]) -> None:
+    """``Organismo._aprender_mapa`` tal como estaba antes de A5a (``self.memoria`` → ``mem``). A7b: ``mem`` es la sección
+    «cuadricula» (D7), que tiene los mismos datos y métodos que tenía la Memoria."""
     if obs is None:
         return
     aqui = pos_de(obs.ubicacion)
@@ -120,13 +122,18 @@ SECUENCIA: List[Tuple[Pos, Pos, Dict[Pos, str], List[Ent], Optional[Dict[str, An
 
 def test_cuerpo_cuadricula_igual_que_aprender_mapa() -> None:
     ref, nuevo = Memoria("completa"), Memoria("completa")
-    for mem in (ref, nuevo):
+    cuerpo = Cuadricula()
+    for mem in (ref, nuevo):   # D7: la sección «cuadricula» es del cuerpo; aquí se registra como al montarlo
+        nombre, seccion = cuerpo.seccion_memoria(Perfil())   # type: ignore[misc]
+        mem.registrar_seccion(nombre, cuerpo.nombre, seccion)
         mem.paso_bloqueado["roca"] = 1   # la roca ya se sabe no transitable: el USAR que la pone cierra
-    componentes = [c for comps in Cuadricula().componentes().values() for c in comps]
+    componentes = [c for comps in cuerpo.componentes().values() for c in comps]
+    for c in componentes:
+        c.de_cuerpo = cuerpo.nombre      # lo pone el Organismo al montarlos
     assert [type(c) for c in componentes] == [ModeloDirecto, MapaLocal]
     for pos, cara, mapa, cosas, accion in SECUENCIA:
         obs, piezas = _percepcion(pos, cara, mapa, cosas)
-        _referencia(ref, obs, piezas["Exterocepcion"], accion)
+        _referencia(ref.seccion("cuadricula"), obs, piezas["Exterocepcion"], accion)
         ei = {"Accion": {"Accion": SimpleNamespace(carga=accion)}} if accion is not None else {}
         onda = SimpleNamespace(ev=lambda canal, p=piezas: p.get(canal, {}), ei=lambda canal, a=ei: a.get(canal, {}))
         ctx = SimpleNamespace(memoria=nuevo, observacion=None, onda=onda)   # sin Observación: solo piezas

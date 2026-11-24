@@ -193,8 +193,8 @@ class Organismo:
         fuentes += [(c.__class__.__name__, c) for c in self.montados() if not c.de_cuerpo]
         for dueño, fuente in fuentes:
             declarada = fuente.seccion_memoria(self.perfil)
-            if declarada is not None:
-                self.memoria.registrar_seccion(declarada[0], dueño, declarada[1])
+            if declarada is not None and self.memoria.dueño(declarada[0]) != dueño:   # una memoria ya montada por el
+                self.memoria.registrar_seccion(declarada[0], dueño, declarada[1])     # mismo dueño conserva su sección
 
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None

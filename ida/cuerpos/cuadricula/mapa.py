@@ -1,10 +1,11 @@
 """Navegación y búsqueda de materiales por el mapa local de cuadrícula (D16)."""
 
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, cast
 
 from ida.core.arquitectura import Contexto
 from ida.core.pieza import Pieza
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.sistemas.comun import lugares
 from ida.sistemas.s3 import Paso
 
@@ -30,7 +31,9 @@ def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: f
     pasos de la ruta hasta quedar al lado. La ruta solo pasa por casillas de clases que se sabe transitables. Destino
     ``<clase>@x_y`` (``excluir`` lo aparca). None sin posiciones, sin mapa, sin ninguna recordada a menos de
     ``MAX_RUTA_MAPA`` pasos, si ya está al lado o si el primer paso no es un lugar percibido sin peligro."""
-    mem = ctx.memoria
+    if not ctx.memoria.tiene_seccion("cuadricula"):
+        return None
+    mem = cast(MapaCuadricula, ctx.memoria.seccion("cuadricula"))
     aqui = _pos_propia(ctx)
     if aqui is None or not ctx.con_experiencia or not mem.casillas:
         return None

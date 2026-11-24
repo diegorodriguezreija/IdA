@@ -12,6 +12,8 @@ from ida.core.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.sistemas.s3 import PerseguirMetas
 
+from _secciones import memoria_con_secciones
+
 # Mundo de juguete: la meta es USAR «hacer_a», que requiere B; B se obtiene cogiendo C.
 MANUAL = {
     "inventario": ["b", "llave"],
@@ -272,7 +274,7 @@ MANUAL_BANCO = {
 def _pasillo(banco_en: int, consumo_aprendido: bool = True) -> Any:
     """Un pasillo de suelo recordado (mapa local) de (0, 0) a (banco_en − 1, 0) y un banco en (banco_en, 0), fuera de la vista.
     Con ``consumo_aprendido``, la experiencia ya sabe que poner un banco gasta una madera."""
-    m = Memoria()
+    m = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     m.aplicar_manual(MANUAL_BANCO)
     m.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
     m.casillas[(banco_en, 0)] = "banco"
@@ -318,7 +320,7 @@ def test_primero_lo_que_se_lleva_despues_el_sitio():
 def test_el_material_se_busca_tambien_en_el_mapa_local():
     """Deuda 11c. La meta pide madera, que da coger un árbol. No se ve ninguno, pero el mapa local recuerda uno a 5 pasos
     por un pasillo: el planificador va hacia él por el mapa. Si el mapa no recuerda ningún árbol, no hay ruta por el mapa."""
-    m = Memoria()
+    m = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     m.aplicar_manual({"inventario": ["madera"], "hechos": [
         {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_b"},
         {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_b", "requiere_inventario": {"madera": None}},

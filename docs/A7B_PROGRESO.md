@@ -10,18 +10,18 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 |---|---|---|---|
 | E1 | Mecanismo de secciones, con tests | Hecha | `519916d` |
 | E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | `a2db6f7` |
-| E3 | «satisface» a Apetencia | Hecha | (ver git log) |
-| E4 | «cuadricula» al cuerpo | Pendiente | |
+| E3 | «satisface» a Apetencia | Hecha | `7079997` |
+| E4 | «cuadricula» al cuerpo | Hecha | (ver git log) |
 | E5 | `Requisito` y su sección | Pendiente | |
 | E6 | Escrituras delegadas y test estático | Pendiente | |
 | E7 | Especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E3)
+### Últimas comprobaciones (E4)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 61 source files
-pytest -q      384 passed, 1 warning
+mypy ida       Success: no issues found in 62 source files
+pytest -q      385 passed, 1 warning
 equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, ajedrez OK; EQUIVALENCIA: OK
 ```
 
@@ -77,3 +77,23 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
   sin Apetencia, igual que una sección vacía).
 - `tests/test_paso0.py` (aserciones intactas): la memoria de las pruebas unitarias registra la sección; las escrituras van
   por la sección.
+
+## E4 · «cuadricula» → cuerpo
+
+- Sección `MapaCuadricula` (fichero nuevo `ida/cuerpos/cuadricula/memoria.py`): `casillas`, `version_mapa`, `paso_libre`,
+  `paso_bloqueado`, `peligro_sobre`, `transformaciones`, `cuerpo`, `cierres`, `yo_previo` y los métodos `transitable`,
+  `transitable_peligro`, `ver_casillas`, `aprender_transformacion`, `resultado`, `aprender_cuerpo`, `modelo_cuerpo`
+  (movidos literalmente de `Memoria`). No da legado (el mapa local no se hereda) ni lee el manual.
+- `Cuadricula.seccion_memoria` → `("cuadricula", MapaCuadricula())`. `ModeloDirecto` y `MapaLocal` escriben con
+  `seccion_propia("cuadricula", self.de_cuerpo)`; `mapa.py` lee la sección (sin ella, None, como con el mapa vacío);
+  `situacion.vecina` recibe la sección.
+- Decisión del arquitecto aplicada: las transformaciones son del cuerpo (geometría), no de `Requisito`.
+- `Organismo`: si la Memoria ya tiene la sección registrada por el mismo dueño (una memoria preparada o reutilizada en
+  otro Organismo del mismo mundo), la conserva; con otro dueño, `registrar_seccion` sigue dando `ValueError`. Así una
+  memoria reutilizada conserva su estado, como antes de las secciones.
+- `Memoria`: propiedades `# A2:` `casillas`, `version_mapa`, `paso_libre`, `paso_bloqueado`, `peligro_sobre`,
+  `transformaciones`, `cuerpo`, `cierres`, `yo_previo`, `transitable`, `transitable_peligro`, `resultado`,
+  `modelo_cuerpo` (vacías, None o «abierto» sin cuerpo, como una sección vacía). Las lee `Recinto` (Crafter).
+- Pruebas (aserciones intactas): `tests/_secciones.py` (`memoria_con_secciones`) da una Memoria con las secciones que
+  registrarían sus dueños; la usan `test_planificador.py` y `test_proteger.py`. `test_cuadricula.py` registra la sección
+  y aplica la referencia sobre ella.

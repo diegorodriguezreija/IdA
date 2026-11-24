@@ -9,16 +9,17 @@ En este orden:
 3. ``mem.yo_previo``: posición y orientación de este latido, para el contraste del siguiente.
 
 No actúa en los barridos: su trabajo va en ``aprender``, que el Core llama en ``Organismo._aprender`` (donde estaba
-``_aprender_mapa``), después del de ``ModeloDirecto``. Los datos siguen en ``Memoria`` (``casillas``, ``cierres``,
-``yo_previo``): las secciones con dueño son A7.
+``_aprender_mapa``), después del de ``ModeloDirecto``. Escribe en la sección «cuadricula» de la Memoria (D7), cuyo dueño es
+el cuerpo; las transformaciones son del cuerpo (geometría: qué hace cada acción con la casilla).
 """
 
-from typing import Set
+from typing import Set, cast
 
 from ida.core.arquitectura import Componente, Contexto
 from ida.core.memoria import Pos
 from ida.core.onda import Onda
 from ida.core.vocabulario import Verbo
+from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.cuerpos.cuadricula.situacion import accion_previa, situacion, vecina
 
 
@@ -30,7 +31,7 @@ class MapaLocal(Componente):
         s = situacion(ctx)
         if s is None:
             return
-        mem = ctx.memoria
+        mem = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
         c = accion_previa(ctx)
         v = vecina(mem, c)
         if c is not None and v is not None:
@@ -41,7 +42,6 @@ class MapaLocal(Componente):
             cambio = antes is not None and despues is not None and antes != despues
             if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and (cambio or bool(c.get("exito"))):
                 objetivo = str(c.get("clase") or c.get("objetivo") or "")
-                # A7: las transformaciones son de Requisito (S3 · Interpretar) según D7; hasta entonces se aprenden aquí.
                 mem.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
                 if cambio and verbo == Verbo.USAR and not mem.transitable_peligro(despues):
                     mem.cierres.add(destino)
