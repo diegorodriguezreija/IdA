@@ -17,11 +17,19 @@ O abre el repositorio en el [devcontainer](.devcontainer/devcontainer.json). Los
 
 ## Qué no se puede relajar
 
-- **La pureza del framework base.** Nada de vocabulario ni imports de un mundo en `ida/core/` ni `ida/sistemas/` (lo vigila `tests/test_pureza.py`). El conocimiento de dominio va en `ida/mundos/<mundo>`: su sensor, su perfil y sus componentes propios.
+- **La pureza del framework base.** Nada de vocabulario ni imports de un mundo en los paquetes base (`ida/nucleo/`, `ida/core/`, `ida/s1/`–`ida/s3/`, `ida/sistemas_comun.py`) (lo vigila `tests/test_pureza.py`). El conocimiento de dominio va en `ida/mundos/<mundo>`: su sensor, su perfil y sus componentes propios.
 - **El mundo percibe; IdA piensa.** Un sensor traduce lo que hay ahora a rasgos; no calcula por el individuo ni delega la decisión en un motor o un modelo externo ([principio 7](docs/historico/DISENO_FRAMEWORK_BASE.md)).
 - **La guillotina.** Lo lento (disco, red, planificación larga) va fuera del latido: al dormir, al morir o después del plazo.
 - **La separación de licencias.** `chess` solo se importa dentro de `ida/mundos/ajedrez/` (`tests/test_licencias.py`, [`NOTICE`](NOTICE)).
 - **Los tests.** No se borran ni se debilitan aserciones para que un cambio pase.
+
+## Proceso de cambio de diseño
+
+1. **Especificación viva:** La arquitectura de Componentes está definida en [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) y formalizada en [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml). Todo cambio o movimiento de Componentes debe reflejarse en el TOML y regenerar [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md).
+2. **Pureza y límites biológicos:** Se vigilan con `tests/test_pureza.py` (jerarquía de paquetes acíclica) y `tests/test_criterios.py` (límites AST de preatención y estrategias).
+3. **Limpieza sin cambio de conducta:** Se acepta con `python herramientas/equivalencia.py` en `EQUIVALENCIA: OK` y manteniendo la invariancia en `herramientas/invariancia.py`.
+4. **Cambios de conducta:** Deben medirse uno por uno con el criterio de no inferioridad **D17** (comparación pareada conjunta a 100 000 pasos en Crafter con $\Delta \text{Score} \ge -0,3$ e IC 95 % $\ge -1,0$, más benchmark pareado en mínimo y archivos).
+5. **Tareas pendientes:** El trabajo en curso y por hacer se recoge en [`docs/PENDIENTES.md`](docs/PENDIENTES.md).
 
 ## Lista de comprobación del pull request
 
