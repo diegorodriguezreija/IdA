@@ -9,16 +9,16 @@ informe de conocimiento del mundo extendido con `--latidos` y documentación al 
 | Etapa | Qué | Estado | Commit |
 |---|---|---|---|
 | E1 | Tests de criterios D8 y D5 (`tests/test_criterios.py`) | Hecha | `00f9bd9` |
-| E2 | Constantes y `Perfil.escala` | Hecha | Ver git log |
-| E3 | Informe de conocimiento con `--latidos` | Pendiente | |
+| E2 | Constantes y `Perfil.escala` | Hecha | `ee308aa` |
+| E3 | Informe de conocimiento con `--latidos` | Hecha | Ver git log |
 | E4 | Documentación al día y cierre de fase A | Pendiente | |
 
-### Comprobaciones E2 (24/11/2026)
+### Comprobaciones E3 (24/11/2026)
 
 ```
-ruff check ida tests   All checks passed!
-mypy ida               Success: no issues found in 159 source files
-pytest -q              938 passed, 1 warning
+ruff check ida tests herramientas   All checks passed!
+mypy ida herramientas/conocimiento_mundo.py   Success: no issues found in 160 source files
+pytest -q                           938 passed, 1 warning
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -94,3 +94,46 @@ Clasificación de las constantes de `ida/s1/comun.py`, `ida/s2/`, `ida/s3/` e `i
 - **De Crafter:** 0 (las propias de Crafter ya se movieron a `ida/mundos/crafter/` o al cuerpo en A6a/A6b).
 - **DUDAS:** 3 (`VENTANA_TENDENCIA`, `SIN_ACERCARSE`, `APARCAR`).
 - **Cambios realizados:** Las 3 constantes de escala pasaron a `Escala` (`ida/nucleo/mundo.py`) con sus valores de base como valor por defecto, fijadas explícitamente en `MundoCrafter.perfil.escala`, y leídas desde `ctx.perfil.escala` en `ida/s3/comun.py` y `PerseguirMetas`.
+
+## E3 · Informe de conocimiento con --latidos (D3)
+
+`herramientas/conocimiento_mundo.py` incorpora la opción `--latidos N` (con `--semilla` fija, por defecto 31, y `--mundo` opcional).
+Sin la opción, la salida estática es idéntica a la anterior.
+Con la opción, simula N latidos y contabiliza las modificaciones realizadas sobre piezas de tipos de la base por cada Componente del mundo o del cuerpo a partir del registro de autoría de la Onda.
+
+Salida para Crafter con `--latidos 300`:
+
+```markdown
+# Conocimiento del mundo por diseño
+
+## Mundo: `crafter`
+
+- **Rasgos declarados:** *(ninguno)*
+- **Cuerpo:** `cuadricula` (ida.cuerpos.cuadricula)
+  - `CORE.Actuar`: [ModeloDirecto]
+  - `S1.Interpretar`: [MapaLocal]
+- **Componentes:**
+  - `S1.Sentir`: añade: [ValoracionCrafter (preatentivo) {NUTRITIVO: agua, planta, vaca; UTIL: arbol, carbon, diamante, hierro, horno, mesa, piedra}]
+  - `S1.Interpretar`: añade: [Recinto]
+- **Modificaciones sobre la base (300 latidos, semilla 31):**
+  - `ModeloDirecto` (cuerpo): 0
+  - `MapaLocal` (cuerpo): 0
+  - `ValoracionCrafter`: 2886
+  - `Recinto`: 0
+- **Estrategias:**
+  - `S1`: añade: [SalirDelRecinto]
+- **Opcionales:** `Apetencia`, `Amenaza`, `Afrontar`, `Proteger`
+- **Líneas no vacías:** **1887** total
+  - `ida/mundos/crafter/__init__.py` (17 líneas)
+  - `ida/mundos/crafter/adaptador.py` (416 líneas)
+  - `ida/mundos/crafter/crafter_manual.json` (653 líneas)
+  - `ida/mundos/crafter/crafter_manual_ampliado.json` (74 líneas)
+  - `ida/mundos/crafter/s1/__init__.py` (1 líneas)
+  - `ida/mundos/crafter/s1/interpretar/__init__.py` (3 líneas)
+  - `ida/mundos/crafter/s1/interpretar/recinto.py` (570 líneas)
+  - `ida/mundos/crafter/s1/reaccionar/__init__.py` (1 líneas)
+  - `ida/mundos/crafter/s1/reaccionar/estrategias/__init__.py` (3 líneas)
+  - `ida/mundos/crafter/s1/reaccionar/estrategias/salir_del_recinto.py` (40 líneas)
+  - `ida/mundos/crafter/s1/sentir/__init__.py` (3 líneas)
+  - `ida/mundos/crafter/s1/sentir/valoracion.py` (106 líneas)
+```
