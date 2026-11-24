@@ -18,12 +18,12 @@ from ida.s1.comun import (
 from ida.s1.reaccionar.estrategias.defenderse import Defenderse
 from ida.s1.reaccionar.estrategias.huir import Huir
 from ida.s1.sentir.amenaza import Peligros
-from ida.sistemas.requisito import Requisitos
+from ida.s3.interpretar.requisito import Requisitos
 
 
 class Afrontar(Definicion):
     """Seguridad (paso 6b): luchar o huir por evaluación, con lo aprendido en 6a
-    (``ida.sistemas.amenaza``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
+    (``ida.s1.sentir.amenaza``). Para cada amenaza percibida (un Objeto con peligro y posición, de una clase cuyo derribo se ha
     observado o que el manual declara meta de ATACAR):
 
     - golpes para derribarla con lo que se lleva (aprendido; previo pesimista sin datos), pasos hasta el contacto

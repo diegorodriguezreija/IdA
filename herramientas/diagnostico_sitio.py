@@ -33,7 +33,7 @@ def main() -> int:
                    help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     args = p.parse_args()
     import evaluar_crafter as ev
-    from ida.sistemas import proteger as P
+    from ida.s1.reaccionar.estrategias import proteger as P
 
     razones: Counter = Counter()
     formas: Counter = Counter()

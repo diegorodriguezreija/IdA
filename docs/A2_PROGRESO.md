@@ -10,16 +10,16 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 | E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | `570e444` |
 | E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | `2bdb9e7` |
 | E3 | `ida/s1` | Hecha | `4daa83a` |
-| E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Pendiente | - |
+| E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Hecha | `[este commit]` |
 | E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Pendiente | - |
 | E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
 
-### Últimas comprobaciones (E3)
+### Últimas comprobaciones (E4)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 95 source files
-pytest -q      555 passed, 1 warning in 57.45s
+mypy ida       Success: no issues found in 138 source files
+pytest -q      629 passed, 1 skipped, 1 warning in 104.10s
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -32,6 +32,28 @@ ajedrez: OK
 EQUIVALENCIA: OK
 mapa_componentes.py: Mapa de Componentes válido y al día.
 ```
+
+## E4 · ida/s2 e ida/s3 (y fuera ida/sistemas)
+
+- Trasladado S2 a `ida/s2/`:
+  - `ida/s2/comun.py`: `EXPLORACION`, `SEGURIDAD`, `CANSANCIO`, `_peligro`, `_recordado`.
+  - `ida/s2/sentir/`: `patron.py`, `emocion.py`, `recuerdo.py`.
+  - `ida/s2/interpretar/`: `sujeto.py`, `valor.py`.
+  - `ida/s2/reaccionar/`: `exteriorizacion.py`, `impulso.py`, `feedback.py`, `estrategia.py`, `peticion.py`.
+    - `ida/s2/reaccionar/estrategias/`: `explorar.py`, `refugiarse.py`, `recordar_comida.py`.
+  - `ida/s2/actuar/`: `accion.py`, `anticipacion.py`.
+  - `ida/s2/__init__.py`: `crear_s2`, `estrategias_s2`.
+- Trasladado S3 a `ida/s3/`:
+  - `ida/s3/comun.py`: `_yo`, `inventario`, `delante`, `_cosas`, `_pos`, `_dist`, `al_alcance_clase`, `desplazamientos_a_clase`, `Paso`, `ir_por_el_mapa`, `acercarse_a_clase`, `_cantidad`, `_conclusion`, `COSTE_RECORDADO`, `COSTE_POR_PROXIMIDAD`, `COSTE_SIN_PRODUCTOR`, `SABER`, `INTENSIDAD_INTENCION_DEL_MUNDO`.
+  - `ida/s3/sentir/`: `comunicacion.py`.
+  - `ida/s3/interpretar/`: `agente.py`, `predicado.py`, `proposicion.py`, `sentencia.py`, `logica.py`, `creencia.py`, `requisito.py` (movido desde `ida/sistemas/requisito.py` con `git mv`).
+  - `ida/s3/reaccionar/`: `intencion.py`, `impulso.py`, `feedback.py`, `estrategia.py`.
+    - `ida/s3/reaccionar/estrategias/`: `evitar_lo_peligroso.py`, `comer_lo_nutritivo.py`, `coger_lo_util.py`, `estudio.py`, `perseguir_metas.py`.
+  - `ida/s3/actuar/`: `accion.py`.
+  - `ida/s3/__init__.py`: `crear_s3`, `estrategias_s3`.
+- `ida/sistemas_comun.py`: añade `crear_sistemas()` que instancia S1, S2 y S3 en su orden.
+- Eliminado completamente `ida/sistemas/` (`s2.py`, `s3.py`, `__init__.py`).
+- Actualizadas importaciones en todo el repositorio y reglas en `tests/test_duenos_memoria.py` (`requisitos`, autores `RecordarComida` y `Estudio`).
 
 ## E3 · ida/s1
 

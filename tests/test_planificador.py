@@ -10,7 +10,7 @@ from ida.nucleo.mundo import Perfil
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
-from ida.sistemas.s3 import PerseguirMetas
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 from _secciones import memoria_con_secciones, requisitos
 
@@ -239,7 +239,7 @@ def _vivir_retono(semilla: int, latidos: int = 150):
     from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
-    from ida.sistemas import crear_sistemas
+    from ida.sistemas_comun import crear_sistemas
 
     mundo = MundoRetono(p=0.1, semilla=semilla)
     memoria = memoria_con_secciones()

@@ -374,7 +374,7 @@ def test_con_la_seta_rechazada_al_alcance_y_una_baya_a_la_vista_va_hacia_la_baya
 
 
 def test_feedback_de_s2_placer_y_estres():
-    from ida.sistemas.s2 import Feedback
+    from ida.s2.reaccionar.feedback import Feedback
 
     onda1 = Onda(1, 100, 1e9)
     ctx1 = Contexto(onda1, Soma(placer=20.0, estres=0.5), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER})
@@ -391,7 +391,7 @@ def test_intencion_saber_y_las_del_mundo():
     from ida.nucleo.memoria import Proposicion
     from ida.nucleo.pieza import Pieza
     from ida.nucleo.vocabulario import Relacion
-    from ida.sistemas.s3 import Intencion
+    from ida.s3.reaccionar.intencion import Intencion
 
     mem = Memoria()
     mem.saber[("x", Relacion.NUTRITIVO)] = Proposicion("x", Relacion.NUTRITIVO, confianza=0.3)
@@ -407,7 +407,7 @@ def test_intencion_saber_y_las_del_mundo():
 
 def test_estrategias_de_conocimiento_de_s3_actuan_sobre_la_conclusion_de_logica():
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s3 import ComerLoNutritivo
+    from ida.s3.reaccionar.estrategias import ComerLoNutritivo
 
     onda = Onda(1, 100, 1e9)
     ctx = Contexto(onda, Soma(), Memoria(), Arquetipo(), Azar(1), Perfil(), {Verbo.MOVER, Verbo.COMER})
@@ -447,8 +447,8 @@ def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
     from ida.nucleo.pieza import Pieza
     from ida.core.actuar.tribunal import Tribunal
     from ida.nucleo.vocabulario import Relacion
-    from ida.sistemas.s3 import Creencia
-    from ida.sistemas.s3 import Impulso as ImpulsoS3
+    from ida.s3.interpretar.creencia import Creencia
+    from ida.s3.reaccionar.impulso import Impulso as ImpulsoS3
 
     mem = Memoria()
     p = Proposicion("lobo", Relacion.PELIGROSO, confianza=0.9)
@@ -475,7 +475,7 @@ def test_s3_controla_los_impulsos_segun_la_certeza_y_el_tribunal_lo_suma():
 
 
 def test_feedback_de_s3_error_de_prediccion():
-    from ida.sistemas.s3 import Feedback
+    from ida.s3.reaccionar.feedback import Feedback
 
     mem = Memoria()
     onda1 = Onda(1, 100, 1e9)
@@ -489,7 +489,7 @@ def test_feedback_de_s3_error_de_prediccion():
 
 
 def test_valencia_explicita_en_soma_y_emocion():
-    from ida.sistemas.s2 import Emocion
+    from ida.s2.sentir.emocion import Emocion
 
     assert Soma(placer=60.0, estres=0.2).valencia == pytest.approx(0.4)
     assert Soma(placer=0.0, estres=0.9).valencia == pytest.approx(-0.9)
@@ -521,7 +521,7 @@ def test_habituacion_y_sensibilizacion_en_supervivencia():
 
 def test_valor_con_cuatro_dimensiones_y_valencia_combinada():
     from ida.nucleo.pieza import Pieza
-    from ida.sistemas.s2 import Valor
+    from ida.s2.interpretar.valor import Valor
 
     onda = Onda(1, 100, 1e9)
     ctx = Contexto(onda, Soma(alimentacion=10.0), Memoria(), Arquetipo(neuroticismo=0.5), Azar(1), Perfil(), {Verbo.MOVER})
@@ -537,7 +537,7 @@ def test_creencia_con_trust_y_fuentes_incluida_la_afectiva():
     from ida.nucleo.memoria import Proposicion
     from ida.nucleo.pieza import Pieza
     from ida.nucleo.vocabulario import Relacion
-    from ida.sistemas.s3 import Creencia
+    from ida.s3.interpretar.creencia import Creencia
 
     mem = Memoria()
     mem.saber[("x", Relacion.PELIGROSO)] = Proposicion("x", Relacion.PELIGROSO, confianza=0.5, heredada=True)

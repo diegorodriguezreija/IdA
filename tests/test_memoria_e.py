@@ -72,7 +72,7 @@ def test_recuperacion_evocada_trae_y_reconsolida():
     from ida.nucleo.pieza import Pieza
     from ida.nucleo.soma import Soma
     from ida.nucleo.vocabulario import Relacion, Verbo
-    from ida.sistemas.s2 import Recuerdo
+    from ida.s2.sentir.recuerdo import Recuerdo
 
     mem = Memoria()
     p = Proposicion("baya", Relacion.NUTRITIVO, confianza=0.8, actualizada=1)
@@ -104,7 +104,7 @@ def test_repaso_en_calma_refuerza_lo_reciente():
     from ida.nucleo.onda import Onda
     from ida.nucleo.soma import Soma
     from ida.nucleo.vocabulario import Afecto, Relacion, Verbo
-    from ida.sistemas.s2 import Recuerdo
+    from ida.s2.sentir.recuerdo import Recuerdo
 
     mem = Memoria()
     mem.grafo = {"Objeto:seta": {"fuerza": 1.0, "ultimo": 90, "clase": "seta"}}
@@ -143,7 +143,7 @@ def test_emision_de_creencias_acotada():
     from ida.nucleo.onda import Onda
     from ida.nucleo.soma import Soma
     from ida.nucleo.vocabulario import Relacion, Verbo
-    from ida.sistemas.s3 import Creencia
+    from ida.s3.interpretar.creencia import Creencia
 
     mem = Memoria()
     for i in range(200):
@@ -201,7 +201,7 @@ def test_expectativas_en_una_vida_con_el_interruptor():
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
-    from ida.sistemas import crear_sistemas
+    from ida.sistemas_comun import crear_sistemas
 
     mundo = MundoMinimo()
     mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True))
@@ -271,7 +271,7 @@ def test_planes_en_una_vida_con_el_interruptor():
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
-    from ida.sistemas import crear_sistemas
+    from ida.sistemas_comun import crear_sistemas
 
     mundo = MundoMinimo()
     mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True, plan=True))

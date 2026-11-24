@@ -11,7 +11,7 @@ from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.estrategia import ConPropuestas
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas.requisito import Requisitos
+from ida.s3.interpretar.requisito import Requisitos
 
 from ida.s1.comun import COBIJO, recinto
 

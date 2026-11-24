@@ -41,7 +41,7 @@ def main() -> int:
     from ida.nucleo.mundo import Registro
     from ida.ejecutor import ejecutar
     from ida.mundos import cargar
-    from ida.sistemas.s3 import PerseguirMetas
+    from ida.s3.reaccionar.estrategias import PerseguirMetas
 
     if args.sin_estrategias_propias:
         original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)

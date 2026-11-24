@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Optional
 from ida.nucleo.mundo import Perfil
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas.s3 import PerseguirMetas
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 from _secciones import memoria_con_secciones
 

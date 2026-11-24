@@ -21,7 +21,7 @@ from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacio
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 from ida.cuerpos.cuadricula.buscador import buscar_postura
 from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto
 from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto

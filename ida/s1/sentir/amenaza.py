@@ -55,7 +55,7 @@ from ida.nucleo.memoria import Seccion, pos_de
 from ida.nucleo.mundo import Escala, Perfil
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas.requisito import Requisitos
+from ida.s3.interpretar.requisito import Requisitos
 
 
 Pos = Tuple[int, int]

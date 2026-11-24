@@ -32,7 +32,7 @@ SECCIONES: Dict[str, Tuple[FrozenSet[str], FrozenSet[str], FrozenSet[str]]] = {
     "cuadricula": (CUERPO, frozenset({"ver_casillas", "aprender_transformacion", "aprender_cuerpo"}),
                    frozenset({"casillas", "version_mapa", "paso_libre", "paso_bloqueado", "peligro_sobre",
                               "transformaciones", "cuerpo", "cierres", "yo_previo"})),
-    "requisitos": (frozenset({"ida/sistemas/requisito.py"}), frozenset({"aprender_requisito", "registrar_meta"}),
+    "requisitos": (frozenset({"ida/s3/interpretar/requisito.py"}), frozenset({"aprender_requisito", "registrar_meta"}),
                    frozenset({"requisitos", "intentos", "claves_inventario", "metas", "fallos_seguidos"})),
 }
 
@@ -41,8 +41,8 @@ DELEGADAS: Dict[str, FrozenSet[str]] = {
     "ver_clase": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py"}),                 # Core (plasticidad)
     "recordar_lugar": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py",
                                  "ida/mundos/crafter/s1/interpretar/recinto.py"}),          # Core, autor Recinto
-    "olvidar_donde": frozenset({"ida/nucleo/memoria.py", "ida/sistemas/s2.py"}),             # Core, autor RecordarComida
-    "fijar_lectura": frozenset({"ida/nucleo/memoria.py", "ida/sistemas/s3.py"}),             # autor Estudio
+    "olvidar_donde": frozenset({"ida/nucleo/memoria.py", "ida/s2/reaccionar/estrategias/recordar_comida.py"}),             # Core, autor RecordarComida
+    "fijar_lectura": frozenset({"ida/nucleo/memoria.py", "ida/s3/reaccionar/estrategias/estudio.py"}),             # autor Estudio
 }
 
 MUTADORES = {"add", "discard", "update", "clear", "pop", "popitem", "setdefault", "append", "extend", "remove", "insert"}

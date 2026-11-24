@@ -15,8 +15,8 @@ from ida.cuerpos.cuadricula.buscador import mover
 from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.s1.comun import TIPO_RECINTO
-from ida.sistemas.requisito import Requisitos
-from ida.sistemas.s3 import PerseguirMetas
+from ida.s3.interpretar.requisito import Requisitos
+from ida.s3.reaccionar.estrategias import PerseguirMetas
 
 MAX_INTERIOR = 3          # un recinto tiene 1-3 casillas (encargo, sección 2)
 ALCANCE_SITIO = 15        # pasos máximos hasta un sitio candidato (3.3)

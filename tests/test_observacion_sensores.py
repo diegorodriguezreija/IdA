@@ -15,7 +15,7 @@ from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
 from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 
 def _organismo(mundo: Any) -> Organismo:

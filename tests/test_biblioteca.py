@@ -23,7 +23,7 @@ from ida.nucleo.persistencia import Persistencia
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.soma import Soma
 from ida.nucleo.vocabulario import Relacion, Verbo
-from ida.sistemas.s3 import Estudio
+from ida.s3.reaccionar.estrategias import Estudio
 
 
 def test_biblioteca_nula_siempre_no_sabe():

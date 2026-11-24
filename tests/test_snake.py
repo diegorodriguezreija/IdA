@@ -8,7 +8,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.vocabulario import Relacion
 from ida.mundos.snake import ALTO, MundoSnake, espacio_libre
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 
 def test_espacio_libre():

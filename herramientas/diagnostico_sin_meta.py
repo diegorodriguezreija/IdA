@@ -36,7 +36,7 @@ VENTANA = 50
 def ejecutar(args: argparse.Namespace) -> int:
     import evaluar_crafter as ev
     from ida.core import latido
-    from ida.sistemas.s3 import PerseguirMetas
+    from ida.s3.reaccionar.estrategias import PerseguirMetas
 
     estado: Dict[str, Any] = {}
     filas: List[Dict[str, Any]] = []

@@ -6,7 +6,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 
 def _vida(semilla=3, latidos=200, con_experiencia=True, frecuencia=None):

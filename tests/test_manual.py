@@ -4,7 +4,7 @@ import pytest
 
 from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
-from ida.sistemas.requisito import RequisitoAccion as Requisito
+from ida.s3.interpretar.requisito import RequisitoAccion as Requisito
 
 from _secciones import memoria_con_secciones, requisitos
 

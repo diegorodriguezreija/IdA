@@ -6,7 +6,7 @@ manual y el legado aplicados antes o después llegan igual a las secciones (dife
 from ida.nucleo.memoria import Memoria
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.nucleo.mundo import Perfil
-from ida.sistemas.requisito import Requisitos
+from ida.s3.interpretar.requisito import Requisitos
 
 
 def memoria_con_secciones(perfil_memoria: str = "completa", cuerpo: bool = True) -> Memoria:

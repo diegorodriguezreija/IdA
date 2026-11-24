@@ -13,7 +13,7 @@ from ida.nucleo.memoria import Memoria
 from ida.nucleo.persistencia import Persistencia
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS = os.path.join(RAIZ, "datos")

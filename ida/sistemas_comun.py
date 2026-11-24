@@ -2,7 +2,7 @@
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from ida.nucleo.arquitectura import SIN_EXPECTATIVA, Componente, Contexto, variables_proactivas
+from ida.nucleo.arquitectura import SIN_EXPECTATIVA, Componente, Contexto, Sistema, variables_proactivas
 from ida.nucleo import estrategia as est
 from ida.nucleo.estrategia import Catalogo, Definicion
 from ida.nucleo.pieza import Pieza, acotar
@@ -302,3 +302,12 @@ class Estrategia(Componente):
             merito = max(-1.0, min(1.0, float(c.get("merito", 0.0)) / tramo))
             self.valor[clave] = v + self.TASA * float(c["valor_inicial"]) * (merito - v)
         ctx.onda.cerrar(p, estado, self)
+
+
+def crear_sistemas() -> List[Sistema]:
+    """S1, S2 y S3 en su orden fijo: S1 siempre primero; S2 y S3 con lo que sobra."""
+    from ida.s1 import crear_s1
+    from ida.s2 import crear_s2
+    from ida.s3 import crear_s3
+    return [crear_s1(), crear_s2(), crear_s3()]
+
