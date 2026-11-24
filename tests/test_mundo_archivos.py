@@ -6,7 +6,7 @@ import urllib.request
 
 import pytest
 
-from ida.core.vocabulario import Verbo
+from ida.nucleo.vocabulario import Verbo
 from ida.ejecutor import ejecutar
 from ida.mundos.archivos import MundoArchivos, clase_de, tensor_bytes
 

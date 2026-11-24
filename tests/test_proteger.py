@@ -13,14 +13,20 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 
 import pytest
 
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
-from ida.core.vocabulario import Verbo
-from ida.sistemas import crear_sistemas
-from ida.sistemas.proteger import Modelo, buscar_postura
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
+from ida.cuerpos.cuadricula import Cuadricula
+from ida.sistemas_comun import crear_sistemas
+from ida.cuerpos.cuadricula.buscador import buscar_postura
+from ida.mundos.crafter.s1.interpretar.recinto import Modelo, Recinto
+from ida.mundos.crafter.s1.reaccionar.estrategias.salir_del_recinto import SalirDelRecinto
+
+from _secciones import memoria_con_secciones
 
 Pos = Tuple[int, int]
 DIRS = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -43,6 +49,11 @@ class MundoCueva(Mundo):
 
     def reiniciar(self, semilla: Optional[int]) -> None:
         pass
+
+    def registro(self) -> Registro:
+        """Cuadrícula con orientación, como Crafter (D10), y lo de protegerse que registra Crafter (D3, D16)."""
+        return Registro(cuerpo=Cuadricula(), componentes={"S1.Interpretar": Alta(añade=[Recinto()])},
+                        estrategias={"S1": Alta(añade=[SalirDelRecinto()])}, opcionales=["Amenaza", "Afrontar", "Proteger"])
 
     def libre(self, p: Pos) -> bool:
         return self.mapa.get(p) in LIBRES
@@ -134,15 +145,15 @@ def _campo(ancho: int = 14, alto: int = 11, roca: Optional[Set[Pos]] = None) -> 
 
 
 def _memoria(mundo: MundoCueva, aprendida: bool) -> Memoria:
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     mem.aplicar_manual(mundo.manual())
     if aprendida:      # lo que se aprende en los primeros latidos de una vida, dado para aislar la elección del sitio
-        mem.paso_libre.update({"suelo": 1, "hueco": 1})
-        mem.paso_bloqueado["roca"] = 1
-        mem.aprender_cuerpo("mover", True, True, True)
-        mem.aprender_cuerpo("mover", False, False, True)
-        mem.aprender_cuerpo("interactuar", True, False, True)
-        mem.aprender_transformacion(Verbo.COGER, "roca", "roca", "hueco")
+        _mapa(mem).paso_libre.update({"suelo": 1, "hueco": 1})
+        _mapa(mem).paso_bloqueado["roca"] = 1
+        _mapa(mem).aprender_cuerpo("mover", True, True, True)
+        _mapa(mem).aprender_cuerpo("mover", False, False, True)
+        _mapa(mem).aprender_cuerpo("interactuar", True, False, True)
+        _mapa(mem).aprender_transformacion(Verbo.COGER, "roca", "roca", "hueco")
     return mem
 
 
@@ -158,12 +169,34 @@ def _obs(pos: Pos, cara: Pos, mapa: Dict[Pos, str]) -> Observacion:
     return m.observar()
 
 
+def _aprender_mapa(mem: Memoria, obs: Observacion, accion: Optional[Dict[str, Any]]) -> None:
+    """Lo que hacía ``Organismo._aprender_mapa`` (hasta A5a): el ``aprender`` del cuerpo cuadrícula (``ModeloDirecto`` y
+    después ``MapaLocal``), con un contexto mínimo: la memoria, la Observación, las piezas que emitirían los sensores con
+    ella (``Propiocepcion`` «yo» y ``Exterocepcion``) y la acción anterior en ``ei["Accion"]``."""
+    exterocepcion = {e.id: Pieza(id=e.id, tipo="Exterocepcion", carga={"clase": e.clase, "rasgos": dict(e.rasgos), "datos": dict(e.datos)})
+                     for e in obs.entidades}
+    yo = Pieza(id="yo", tipo="Propiocepcion", carga={"ubicacion": obs.ubicacion, "inventario": dict(obs.inventario or {}),
+                                                    "cuerpo": dict(obs.cuerpo or {})})
+    ev = {"Exterocepcion": exterocepcion, "Propiocepcion": {"yo": yo}}
+    ei = {"Accion": {"Accion": SimpleNamespace(carga=accion)}} if accion is not None else {}
+    onda = SimpleNamespace(ev=lambda canal: ev.get(canal, {}), ei=lambda canal: ei.get(canal, {}))
+    ctx = SimpleNamespace(memoria=mem, observacion=obs, onda=onda)
+    for comp in Cuadricula().componentes().values():
+        for c in comp:
+            c.de_cuerpo = "cuadricula"   # lo pone el Organismo al montarlos
+            c.aprender(ctx)   # type: ignore[arg-type]
+
+
+def _mapa(mem: Memoria) -> Any:
+    """D7: la sección «cuadricula» (del cuerpo), para escribir en ella lo ya aprendido."""
+    return mem.seccion_propia("cuadricula", "cuadricula")
+
+
 def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
     """Tras MOVER hacia una casilla libre, la posición cambia y queda mirando hacia allí; hacia una bloqueada, solo gira.
-    La memoria lo aprende de lo percibido antes y después (``Organismo._aprender_mapa``), sin que nadie se lo diga."""
+    La memoria lo aprende de lo percibido antes y después (``ModeloDirecto`` del cuerpo cuadrícula), sin que nadie se lo diga."""
     mapa = {(x, 0): "suelo" for x in range(4)} | {(4, 0): "roca"} | {(x, y): "roca" for x in range(5) for y in (-1, 1)}
-    mem = Memoria("completa")
-    yo = SimpleNamespace(memoria=mem)
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     secuencia = [  # (posición, orientación) percibidas y la acción del latido anterior
         ((1, 0), (0, 1), None),
         ((2, 0), (1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
@@ -172,10 +205,11 @@ def test_el_modelo_del_cuerpo_se_aprende_por_propiocepcion():
         ((2, 0), (-1, 0), {"verbo": Verbo.MOVER, "objetivo": "celda_2_0"}),
     ]
     for pos, cara, accion in secuencia:
-        Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs(pos, cara, mapa)), accion)   # type: ignore[arg-type]
-    assert mem.transitable("suelo") is True and mem.transitable("roca") is False
-    assert mem.modelo_cuerpo("mover", True) == (True, True)
-    assert mem.modelo_cuerpo("mover", False) == (False, True)
+        _aprender_mapa(mem, _obs(pos, cara, mapa), accion)
+    sec = mem.seccion("cuadricula")
+    assert sec.transitable("suelo") is True and sec.transitable("roca") is False
+    assert sec.modelo_cuerpo("mover", True) == (True, True)
+    assert sec.modelo_cuerpo("mover", False) == (False, True)
 
 
 def test_el_modelo_del_cuerpo_se_aprende_viviendo():
@@ -183,14 +217,15 @@ def test_el_modelo_del_cuerpo_se_aprende_viviendo():
     mundo = MundoCueva(_campo(), (5, 5), luz=90.0)
     mem = _memoria(mundo, aprendida=False)
     _vivir(mundo, mem, 40)
-    assert mem.transitable("suelo") is True
-    assert mem.modelo_cuerpo("mover", True) == (True, True)
+    sec = mem.seccion("cuadricula")
+    assert sec.transitable("suelo") is True
+    assert sec.modelo_cuerpo("mover", True) == (True, True)
 
 
 # --- 2. el buscador ---------------------------------------------------------------------------------
 def _modelo(mapa: Dict[Pos, str]) -> Modelo:
     mem = _memoria(MundoCueva(mapa, (0, 0)), aprendida=True)
-    mem.casillas.update(mapa)
+    _mapa(mem).casillas.update(mapa)
     return Modelo(mem, {}, set())
 
 
@@ -240,11 +275,11 @@ def test_sin_material_lo_consigue_con_el_planificador_y_cierra():
     mapa[(12, 6)] = "cantera"
     mundo = MundoCueva(mapa, (8, 6), cara=(1, 0), luz=10.0)
     mem = _memoria(mundo, aprendida=False)
-    mem.paso_libre.update({"suelo": 1})
-    mem.paso_bloqueado.update({"roca": 1, "cantera": 1})
-    mem.aprender_cuerpo("mover", True, True, True)
-    mem.aprender_cuerpo("mover", False, False, True)
-    mem.aprender_cuerpo("interactuar", True, False, True)
+    _mapa(mem).paso_libre.update({"suelo": 1})
+    _mapa(mem).paso_bloqueado.update({"roca": 1, "cantera": 1})
+    _mapa(mem).aprender_cuerpo("mover", True, True, True)
+    _mapa(mem).aprender_cuerpo("mover", False, False, True)
+    _mapa(mem).aprender_cuerpo("interactuar", True, False, True)
     motivos: List[str] = []
 
     def al_latir(o, onda):
@@ -271,13 +306,13 @@ def test_sin_la_necesidad_de_cobijo_no_hay_proteger():
         motivos.append(str(ej.carga.get("motivo", "")) if ej is not None else "")
 
     _vivir(mundo, mem, 20, al_latir)
-    assert mem.casillas
+    assert mem.seccion("cuadricula").casillas
     assert not any(m.startswith("proteger") for m in motivos)
 
 
 # --- 4. la alostasis adelanta la intensidad ---------------------------------------------------------
 def _intensidades(mundo: MundoCueva, mem: Memoria, latidos: int) -> List[Dict[str, Dict]]:
-    mem.casillas.update(mundo.mapa)      # el campo ya se conoce (mapa recordado): el sitio está lejos pero se sabe dónde
+    _mapa(mem).casillas.update(mundo.mapa)      # el campo ya se conoce (mapa recordado): el sitio está lejos pero se sabe dónde
     registro: List[Dict[str, Dict]] = []
     _vivir(mundo, mem, latidos, lambda o, onda: registro.append({n: dict(p.carga) for n, p in onda.reactiva.ef.get("Impulso", {}).items()}))
     return registro
@@ -310,21 +345,23 @@ def test_crafter_no_tiene_refugio_propio():
     from ida.mundos import crafter
     from ida.mundos.crafter import MundoCrafter
 
-    assert MundoCrafter().estrategias_propias() == {}
+    # D16: la única estrategia que registra Crafter es SalirDelRecinto (su fichero pasa a Crafter en A6b)
+    assert [type(d).__name__ for d in MundoCrafter().registro().estrategias["S1"].añade] == ["SalirDelRecinto"]
+    assert not MundoCrafter().registro().estrategias["S1"].sustituye
     assert not hasattr(crafter, "RefugioNocturno")
 
 
 # --- inducción entre clases: menos confianza que lo observado y se corrige con el primer intento -------------
 def _memoria_induccion() -> Memoria:
     """Coger «tronco» lo dejó transitable (observado). «Bloque» es no transitable y recogible (su COGER da algo), sin observar."""
-    mem = Memoria("completa")
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     mem.aplicar_manual({"inventario": ["tronco", "bloque"], "hechos": [
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "tronco", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"tronco": 1}},
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "bloque", "requiere_inventario": {}, "requiere_cerca": [], "efecto": {"bloque": 1}},
     ]})
-    mem.paso_libre.update({"suelo": 1})
-    mem.paso_bloqueado.update({"tronco": 1, "bloque": 1})
-    mem.aprender_transformacion(Verbo.COGER, "tronco", "tronco", "suelo")
+    _mapa(mem).paso_libre.update({"suelo": 1})
+    _mapa(mem).paso_bloqueado.update({"tronco": 1, "bloque": 1})
+    _mapa(mem).aprender_transformacion(Verbo.COGER, "tronco", "tronco", "suelo")
     return mem
 
 
@@ -339,12 +376,12 @@ def test_lo_inferido_se_corrige_con_el_primer_intento_real():
     """Si coger «bloque» sale pero la casilla no cambia, ya no se cree que abra espacio; si la deja transitable, pasa a ser
     observado y pesa como lo observado."""
     mem = _memoria_induccion()
-    mem.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "bloque")     # intento real: no cambia
+    _mapa(mem).aprender_transformacion(Verbo.COGER, "bloque", "bloque", "bloque")     # intento real: no cambia
     m = Modelo(mem, {}, set())
     assert m.abre("bloque") is False
     assert m.falta_para_cavar("bloque") is None
     mem2 = _memoria_induccion()
-    mem2.aprender_transformacion(Verbo.COGER, "bloque", "bloque", "suelo")     # intento real: abre
+    _mapa(mem2).aprender_transformacion(Verbo.COGER, "bloque", "bloque", "suelo")     # intento real: abre
     m2 = Modelo(mem2, {}, set())
     assert m2.abre("bloque") is True and not m2.inferida("bloque")
     assert m2.confianza_cavar("bloque") == m2.confianza_cavar("tronco")
@@ -352,25 +389,24 @@ def test_lo_inferido_se_corrige_con_el_primer_intento_real():
 
 def test_el_latido_registra_que_una_accion_con_exito_no_cambio_la_casilla():
     mapa = {(0, 0): "suelo", (1, 0): "bloque"} | {(x, y): "bloque" for x in range(-1, 2) for y in (-1, 1)} | {(-1, 0): "bloque"}
-    mem = Memoria("completa")
-    yo = SimpleNamespace(memoria=mem)
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), None)   # type: ignore[arg-type]
+    mem = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), None)
     accion = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "bloque", "exito": True}
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), accion)   # type: ignore[arg-type]
-    assert mem.resultado(Verbo.COGER, "bloque", "bloque") == "bloque"
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), accion)
+    assert mem.seccion("cuadricula").resultado(Verbo.COGER, "bloque", "bloque") == "bloque"
     fallida = {"verbo": Verbo.COGER, "objetivo": "bloque_1_0", "clase": "otra", "exito": False}
-    Organismo._aprender_mapa(yo, SimpleNamespace(observacion=_obs((0, 0), (1, 0), mapa)), fallida)   # type: ignore[arg-type]
-    assert (Verbo.COGER, "otra") not in mem.transformaciones           # sin éxito y sin cambio no dice nada
+    _aprender_mapa(mem, _obs((0, 0), (1, 0), mapa), fallida)
+    assert (Verbo.COGER, "otra") not in mem.seccion("cuadricula").transformaciones           # sin éxito y sin cambio no dice nada
 
 
 def test_para_abrir_solo_coge_una_pared_vecina():
     """Recinto de 2 casillas (1,0)+(2,0); la única pared cavable, (0,0), es vecina de (1,0). Desde (2,0) no se coge a dos
     casillas: primero se va a (1,0)."""
-    from ida.sistemas.proteger import _abrir
+    from ida.mundos.crafter.s1.interpretar.recinto import _abrir
     mapa = {(1, 0): "suelo", (2, 0): "suelo", (0, 0): "roca"} | {(x, y): "muro" for x in range(-1, 4) for y in (-1, 1)} | {(3, 0): "muro"}
     mem = _memoria(MundoCueva(mapa, (2, 0)), aprendida=True)
-    mem.paso_bloqueado["muro"] = 1
-    mem.casillas.update(mapa)
+    _mapa(mem).paso_bloqueado["muro"] = 1
+    _mapa(mem).casillas.update(mapa)
     m = Modelo(mem, {}, set())
     assert _abrir(m, ((1, 0), (2, 0)), (2, 0)) == [{"verbo": Verbo.MOVER, "objetivo": "celda_1_0", "clase": "suelo"}]
     assert _abrir(m, ((1, 0), (2, 0)), (1, 0))[0]["objetivo"] == "roca_0_0"
@@ -382,7 +418,7 @@ def _encerrado_de_dia(comida: float) -> Tuple[MundoCueva, Memoria]:
     roca = {(x, y) for x in range(1, 13) for y in range(1, 10)} - {(6, 5), (6, 6)}
     mundo = MundoCueva(_campo(roca=roca), (6, 5), luz=100.0, comida=comida)
     mem = _memoria(mundo, aprendida=True)
-    mem.casillas.update(mundo.mapa)
+    _mapa(mem).casillas.update(mundo.mapa)
     return mundo, mem
 
 
@@ -414,7 +450,7 @@ def test_sin_necesidad_apurada_no_sale_del_recinto():
 
 
 def test_el_riesgo_de_salir_solo_cuenta_desde_el_umbral_de_miedo():
-    from ida.sistemas.proteger import riesgo_exterior
+    from ida.s1.reaccionar.estrategias.proteger import riesgo_exterior
 
     def ctx(peligro: float) -> Any:
         alarma = SimpleNamespace(carga={"peligro": peligro})
@@ -427,7 +463,7 @@ def test_el_riesgo_de_salir_solo_cuenta_desde_el_umbral_de_miedo():
 
 def test_dentro_de_un_recinto_no_se_huye():
     """Dentro de un recinto, Huir no es elegible aunque el peligro supere el umbral de miedo: el refugio ya protege."""
-    from ida.sistemas.s1 import Huir
+    from ida.s1.reaccionar.estrategias import Huir
     recinto_dentro = SimpleNamespace(carga={"dentro": True})
     onda = SimpleNamespace(ef=lambda canal: {"recinto": recinto_dentro} if canal == "Recinto" else {})
     ctx = SimpleNamespace(onda=onda, arquetipo=SimpleNamespace(umbral_miedo=0.5))

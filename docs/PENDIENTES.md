@@ -1,0 +1,65 @@
+# Pendientes tras la reorganización por Componentes
+
+**Fecha:** 24/11/2026. **Estado:** la fase A está cerrada (`reorg-a8`) y da la misma conducta que `crafter-general-v4` en Crafter, mínimo, archivos y ajedrez ([`COMPARACION_MUNDOS.md`](COMPARACION_MUNDOS.md)).
+**Fuentes:** la revisión del arquitecto y una segunda evaluación independiente, hechas el 24/11/2026.
+
+Este documento es la lista viva de lo que queda. Cuando un punto se resuelva, se tacha aquí con su commit y se apunta en el registro de cambios de [`DISENO_COMPONENTES.md`](DISENO_COMPONENTES.md) si toca el diseño.
+
+**Tres tipos de trabajo, con reglas distintas:**
+- **C · Limpieza (no cambia la conducta):** se acepta con `herramientas/equivalencia.py` en «EQUIVALENCIA: OK», como en la fase A. Va antes de la fase B.
+- **B · Cambios de conducta:** uno por paso, medidos con el criterio de no inferioridad de D17 frente a `crafter-general-v5`.
+- **V/M · Validación y mejoras:** los de la sección 6 de [`PLAN_COMPONENTES_Y_HOJA_DE_RUTA.md`](PLAN_COMPONENTES_Y_HOJA_DE_RUTA.md), revisados abajo.
+
+---
+
+## C · Limpieza sin cambio de conducta
+
+| Paso | Qué | Por qué |
+|---|---|---|
+| C1 | **Geometría de cuadrícula fuera de lo general.** `ida/nucleo/memoria.py` define `pos_de` (la convención `<nombre>_x_y`), los cuatro vecinos, `Desplazamiento`, `cerca_basta` y `requiere_delante` (en el tipo `Requisito`). `Amenaza`, que es general, usa `manhattan` y `casillas`. Lo general debe pedir la distancia y la vecindad al cuerpo (`ctx.cuerpo`), como ya hace `PerseguirMetas` | D10: el cuerpo dice cómo es el espacio. `test_pureza` no lo detecta porque vigila importaciones, no conceptos |
+| C1b | **Test de conceptos:** que ningún fichero de `ida/nucleo`, `ida/core` ni `ida/s1`–`s3` use vocabulario de un cuerpo concreto (casilla, vecinos, orientación, delante, cavar) fuera de comentarios, salvo una lista de excepciones justificadas | Que la deriva de la fase de generalización no vuelva |
+| C2 | **Rendimiento.** La reorganización es más lenta: en Crafter, de 12,6 ms por paso (`mapa_31/32.json`) a 14,3 ms en la primera medición de la reorganización (`reorg_*.json`) y 15,2–16,7 ms en la final (`v5_*.json`, +21–33 %; parte puede ser carga de la máquina, hay que medirlo en reposo); en el benchmark de mínimo, hasta +60–70 % por latido en algunos grupos, con un plazo agotado (`COMPARACION_MUNDOS.md`). Perfilar el latido y recuperarlo sin cambiar la conducta | Con la guillotina lógica no influye, pero en mundos de tiempo real (Snake) ir más lento es pensar menos |
+| C3 | **Montaje fuera del latido.** `ida/core/latido.py` tiene 609 líneas porque incluye el montaje del registro y del cuerpo; puede ir a `ida/nucleo/arquitectura.py` si no crea un ciclo (el montaje no instancia Componentes del Core). `ida/nucleo/memoria.py` tiene 1142 líneas: separar lo propio del Core en módulos | Legibilidad |
+| C4 | **Deuda pequeña de la fase A:** `ida/sistemas_comun.py` suelto en la raíz; los tipos `Requisito`, `Meta` y `Satisface` en el núcleo; el parámetro `intencion` de `ejecutar_primitivas`, sin uso; `Perfil.escala` como cajón de parámetros; los ganchos especiales `aprende_con_efecto` y `antes_de_actuar`, que se pueden unificar con el gancho general de plasticidad si la equivalencia lo permite | Coherencia con D2, D6 y D7 |
+| C5 | **Invariancia dependiente de la plataforma.** La referencia guardada de archivos falla en Linux también con `main` (segunda evaluación, 24/11/2026). Anotarlo en `herramientas/invariancia.py` y, si se puede, hacerla independiente de la plataforma (orden de ficheros, redondeos) | Que la comprobación valga en cualquier máquina y en la CI |
+
+## B · Cambios de conducta (fase B, criterio D17)
+
+| Paso | Qué |
+|---|---|
+| B1 | Una primitiva por latido (`max_sinergia = 1`) |
+| B2 | Regulación con lo sentido en el propio latido |
+| B3 | Poda por arousal mínimo en `ev` |
+| B4 | Episodios formados desde la memoria a corto plazo |
+| B5 | Quitar el corte de 14 entidades de `observar` en Crafter (hoy prioriza «primero los peligrosos»): elegir a qué atender es del organismo. Desaparece `obs.cuerpo["vista"]` |
+| B6 | **Nuevo.** `Alimentarse` deja de preguntar `ctx.registrado("Apetencia")` (una activación condicional camuflada, D15) y reacciona solo a las piezas que emite `Apetencia` |
+| B7 | **Nuevo.** El adaptador de Crafter atribuye la causa del daño (`_contacto`) usando lo que el manual declara peligroso: es interpretación. Pasa al organismo (`Amenaza`, que ya aprende quién daña), y el adaptador da solo el daño en bruto |
+| B8 | Los demás mundos (mínimo, archivos, snake y ajedrez) siguen entregando rasgos valorados (`Perfil.rasgos_declarados`). Pasarlos al organismo, mundo a mundo, con su benchmark pareado (era M3) |
+
+## Mediciones y validación
+
+| Qué | Detalle |
+|---|---|
+| **Snake** | Juega en la web real `playsnake.org`, en tiempo real: no es repetible ni entre dos ejecuciones de `main`, así que la comparación latido a latido no dice nada (`COMPARACION_MUNDOS.md`, sección 1). Si se quiere compararlo, debe ser estadístico: N partidas de cada versión, con `main` frente a `main` como control del ruido |
+| V1 | Semillas nuevas (41 y 42) para descartar el sobreajuste a 31 y 32 |
+| V2 | Batería de perturbaciones (receta cambiada, día más corto o más largo, mapas de 48 y 96, agua escasa, vista de radio 3) |
+| V3 | Un segundo mundo de cuadrícula (por ejemplo, MiniGrid) con cero cambios en lo general: la prueba de que la separación es real |
+| M1 | Reformulado (D14): la eficiencia de S1 con amenaza (23 piezas en lugar de 12), no una reserva de amplitud |
+| M2, M4–M7 | Como en el plan: cuándo merece la pena luchar, tener el refugio antes de la noche, el huerto, metas sin lista de logros y la evaluación final |
+
+## De la deuda técnica de Crafter
+
+Puntos abiertos de [`docs/historico/DEUDA_TECNICA_CRAFTER.md`](historico/DEUDA_TECNICA_CRAFTER.md) trasladados tras la fase A (los puntos 1, 2, 5, 10 y 13 están resueltos; 3, 4, 6, 7 y 8 están obsoletos):
+
+- **9. Aliestesia (paso 0b) sin condición.** La aliestesia solo actúa cuando dos o más necesidades comparten rasgo (`Perfil.aliestesia`, en `ida/core/mundo.py`). Sin esa condición cambiaba decisiones en mínimo y en archivos. Para quitar la condición se requiere un benchmark pareado (N = 10) de mínimo y archivos sin diferencia significativa en contra en latidos ni en fitness, sin más muertes por hambre en archivos, y con incremento de tiempo ≤ 10 %.
+- **11. Cuándo perseguir un sitio para protegerse (y después, el filtro de orientación).** El punto 11c (material del mapa en lote) se consolidó y queda activo; 11a y 11b se cerraron con resultado negativo. Queda pendiente: 1) decidir cuándo perseguir un sitio comparando su coste completo con el tiempo hasta la oscuridad (enlaza con M2); 2) reintroducir el filtro de orientación con presupuesto de planes por latido y medirlo con el diagnóstico completo.
+- **12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada).** `Afrontar` es más prudente que `DefensaArmada` (requiere margen > 3/9 y usa previo pesimista). Pendiente diagnosticar encuentros donde `Afrontar` huye y la lucha habría salido bien (reserva, previo de golpes, tasa de daño por latido) y corregirlo en la base sin umbrales de mundo (enlaza con M2).
+- **14. Cadena de herramientas (cumplida en parte).** El planificador reúne material en lote (14.2, activo). Queda abierta la brecha frente a la línea procedimental: pico de madera 64–72 % y espada 43–47 % frente a 92–96 %.
+
+## Orden propuesto
+
+1. Fusionar en `main` como `crafter-general-v5`.
+2. C2 (rendimiento) y C1/C1b (geometría fuera de lo general): son los que más afectan a la fase B.
+3. Fase B: primero B1 y B5, que son los que más pueden mover la Score; los demás, uno a uno.
+4. C3–C5 cuando convenga, entre pasos de la fase B.
+5. V1–V3 y M.

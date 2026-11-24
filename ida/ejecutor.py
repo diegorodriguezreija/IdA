@@ -6,14 +6,14 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from ida.consola import linea, resumen_latido
-from ida.core.azar import Azar
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo, Linaje
-from ida.core.memoria import Memoria
-from ida.core.persistencia import Persistencia
+from ida.nucleo.linaje import Arquetipo, Linaje
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.persistencia import Persistencia
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
-from ida.sistemas import crear_sistemas
+from ida.sistemas_comun import crear_sistemas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATOS = os.path.join(RAIZ, "datos")
@@ -103,6 +103,7 @@ def ejecutar(
             elif biblioteca is not None:
                 org_biblioteca = biblioteca
             org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia, biblioteca=org_biblioteca)
+            heredados = memoria.heredados   # D7: con lo que tomaron las secciones al montarse sus dueños
             persistencia.nueva_vida()
             org.al_dormir = lambda o: persistencia.volcar(o.memoria, o.arquetipo.id, o.ciclo)
             if consola:

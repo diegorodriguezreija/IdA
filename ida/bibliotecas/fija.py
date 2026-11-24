@@ -3,7 +3,7 @@
 import json
 from typing import Dict, Optional, Tuple, Union
 
-from ida.core.biblioteca import (
+from ida.nucleo.biblioteca import (
     Biblioteca,
     Consulta,
     ElementoRespuesta,

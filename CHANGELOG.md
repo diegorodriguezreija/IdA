@@ -4,6 +4,18 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### crafter-general-v5 (24/11/2026)
+- **Reorganización modular por Componentes** ([`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md), decisiones D1 a D17) sin alteración de conducta (`EQUIVALENCIA: OK`).
+- **Estructura de paquetes limpia:** `ida/nucleo/` (mecánica y tipos base), `ida/core/` (sentidos en bruto, regulación, actuador y tribunal), `ida/s1/`, `ida/s2/`, `ida/s3/` (módulos cognitivos organizados en sentir, interpretar, reaccionar y actuar), `ida/cuerpos/` (familias de cuerpos e interfaces motoras) e `ida/mundos/` (mundos como paquetes autosuficientes con adaptadores, perfiles y componentes propios).
+- **Latido vital en ocho pasos (D1):** onda y memoria a corto plazo, sentir en bruto, preatención (S1 · Sentir: `Saliencia`, `Amenaza`, `ValoracionCrafter`), plasticidad de componentes, regulación de recursos (`Regulacion`), ejecución S1 → S2 → S3 con guillotina cooperativa, actuar (`Tribunal`, `Actuador` y `Motor`) y cierre.
+- **Capa motora y sinergias (D9, D10):** desacoplamiento de intenciones y primitivas. El `Motor` de `cuerpos/cuadricula` traduce intenciones a primitivas del mundo con sinergias (`max_sinergia = 2` en fase A) y cuenta primitivas ejecutadas.
+- **Memoria modular por secciones con dueño (D7):** un único almacén `Memoria` estructurado en secciones con dueño declarado (`peligros`, `satisface`, `requisitos`, `cuadricula`), con serialización y legado diferidos.
+- **La Observación solo la leen los sensores del Core (D4):** los rasgos valorados de Crafter pasaron a `ValoracionCrafter` en la preatención.
+- **Constantes de escala a `Perfil.escala` (D15):** desacopladas de componentes generales.
+- **Tests de criterios D8 y D5:** verificación estática mediante AST de que ninguna estrategia ni componente fuera de sentir lee la observación, el mundo ni su reloj; validación estática de componentes preatentivos.
+- **Verificación empírica:** conducta idéntica a `crafter-general-v4`. En Crafter, la misma Score a 100 000 pasos en el commit final (15,86 % y 17,34 %, `datos/evaluacion/v5_31.json` y `v5_32.json`, idénticos a `mapa_31/32.json` salvo metadatos y tiempos); en mínimo, archivos y ajedrez, invariancia latido a latido ([`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md)). Snake no es determinista y queda fuera de la comparación.
+- **Documentación:** diagramas del latido por mundo generados desde la especificación ([`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md)), test de enlaces rotos, documentos de fases anteriores en [`docs/historico/`](docs/historico/README.md) y lista viva de pendientes en [`docs/PENDIENTES.md`](docs/PENDIENTES.md).
+
 ### Material desde el mapa local (11c, sobre 14.2)
 - **`PerseguirMetas` (S3) busca el material también en el mapa local:** para un COGER o un COMER compara ir a lo visible o a lo que recuerda la memoria topológica con ir a la casilla recordada de esa clase (`ir_por_el_mapa`, con caché por latido), y se queda con la más barata. Siempre activo. Es el 11c de la deuda 11, medido ahora solo, sin 11a ni 11b.
 - **Cifras** (100 000 pasos, semillas 31 y 32, frente a la versión anterior): Score 15,86 % y 17,34 % (antes, 14,83 % y 15,98 %). Comparación pareada conjunta, fijada antes de medir: Score +1,08 [0,17; 2,10]; `wake_up` +1,63 [−1,90; 5,56]. Por semilla: +0,97 y +1,28, sin que ningún IC excluya el 0.

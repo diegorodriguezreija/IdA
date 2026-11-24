@@ -25,7 +25,7 @@ sys.path.insert(0, RAIZ)
 
 from invariancia import _congelar_reloj  # noqa: E402
 
-from ida.core.arquitectura import Sistema  # noqa: E402
+from ida.nucleo.arquitectura import Sistema  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
 
 SEMILLAS = (1, 2, 3)

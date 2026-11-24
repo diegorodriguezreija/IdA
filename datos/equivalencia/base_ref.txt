@@ -1,0 +1,3 @@
+eaeadaa307714c02d036e12fdbbc9c8f0dabd4aa
+python.exe herramientas/equivalencia.py --base
+Referencia del legado (legado_herencia_31.json) tomada en el commit b3b657062393ec68cee6c2571696123f0cca9c07, cuya conducta es idéntica a eaeadaa según la equivalencia, porque eaeadaa no guarda el legado.

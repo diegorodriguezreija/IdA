@@ -155,6 +155,8 @@ class Observabilidad:
 def _tiempos_de(tiempos_ms: Dict[str, float], fase: str) -> List[Tuple[str, float]]:
     """Tiempos de los componentes que corren en una fase (``S1.Reflejo`` va en la fase ``S1``)."""
     def es_de(clave: str) -> bool:
+        if clave.startswith("preatencion:"):
+            return fase == "preatencion"
         sistema, _, nombre = clave.partition(".")
         if fase == "actuar":
             return sistema == "CORE" and (nombre == "Tribunal" or nombre.startswith("Actuador"))

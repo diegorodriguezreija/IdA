@@ -7,16 +7,16 @@ Mundos de juguete en cuadrícula, sin nada de Crafter:
 Nada de eso se le dice a IdA: el daño, el emisor, su alcance y la eficacia del bastón los aprende de lo que percibe.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
-from ida.core import peligro as pel
-from ida.core.azar import Azar
+from ida.s1.sentir import amenaza as pel
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil
-from ida.core.vocabulario import Relacion, Verbo
-from ida.sistemas import crear_sistemas
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.vocabulario import Relacion, Verbo
+from ida.sistemas_comun import crear_sistemas
 
 Pos = Tuple[int, int]
 NADA = frozenset()
@@ -118,7 +118,7 @@ def test_el_legado_lleva_lo_aprendido_con_dos_observaciones():
     p = pel.Peligros()
     _lanzamientos(p, 6, 5)
     q = pel.Peligros()
-    q.heredar(p.legado())
+    q.heredar_peligros(p.legado_peligros())
     assert q.emitidas("torre") == ["pua"] and q.alcance_emision("torre") == p.alcance_emision("torre")
 
 
@@ -202,6 +202,10 @@ class MundoErizos(Mundo):
     def manual(self) -> Dict[str, Any]:
         return {"hechos": [{"tipo": "proposicion", "sujeto": "erizo", "relacion": "PELIGROSO"}], "inventario": ["baston", "palo"]}
 
+    def registro(self) -> Registro:
+        """Como Crafter (D3, D15): el peligro aprendido y la lucha por evaluación, solo si el mundo no da su ``peligro``."""
+        return Registro(opcionales=[] if self.da_peligro else ["Amenaza", "Afrontar"])
+
 
 def _organismo(mundo: MundoErizos, mem: Optional[Memoria] = None) -> Organismo:
     if mem is None:
@@ -242,28 +246,30 @@ def test_viviendo_se_aprende_el_dano_por_contacto():
             break
         org.latir()
     mem = org.memoria
-    assert mem.peligros.dano_golpe["erizo"].n >= 1
-    assert abs(mem.peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
+    peligros = mem.seccion("peligros")
+    assert peligros.dano_golpe["erizo"].n >= 1
+    assert abs(peligros.dano_golpe["erizo"].media - 20.0) < 1e-9
     assert mem.proposicion("erizo", Relacion.PELIGROSO) is not None
 
 
 # --- 6b: luchar o huir por evaluación ---------------------------------------------------------------------
-def _memoria_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int], eventos: int = 4) -> Memoria:
+def _organismo_con_experiencia(mundo: MundoErizos, golpes: Dict[frozenset, int], eventos: int = 4) -> Organismo:
     """Lo que ya se habría aprendido de los erizos: 20 de daño por golpe, 40 por encuentro, ``eventos`` daños en 20 latidos
-    de exposición y los derribos dados (objetos llevados -> golpes)."""
-    mem = Memoria()
-    mem.aplicar_manual(mundo.manual())
-    p = mem.peligros
+    de exposición y los derribos dados (objetos llevados -> golpes). D7: la sección «peligros» existe al montarse
+    ``Amenaza``, así que se rellena tras montar el Organismo y antes de su primer latido."""
+    org = _organismo(mundo)
+    if not org.memoria.tiene_seccion("peligros"):
+        return org          # un mundo que da su peligro no registra Amenaza: no hay sección «peligros» que rellenar
+    p = org.memoria.seccion("peligros")
     p.dano_golpe["erizo"] = pel.Media(5, 20.0)
     p.dano["erizo"] = pel.Media(5, 40.0)
     p.expuestos["erizo"], p.eventos["erizo"] = 20, eventos
     p.derribos["erizo"] = [(k, g) for k, g in golpes.items() for _ in range(2)]
-    return mem
+    return org
 
 
-def _decisiones(mundo: MundoErizos, mem: Memoria, latidos: int = 5):
+def _decisiones(mundo: MundoErizos, org: Organismo, latidos: int = 5):
     """Las acciones de unos latidos (el primero puede ser el reflejo de sobresalto) y las estrategias activas en cada uno."""
-    org = _organismo(mundo, mem)
     acciones, activas = [], []
     for _ in range(latidos):
         if mundo.terminado():
@@ -278,7 +284,7 @@ def test_afrontar_lucha_con_margen():
     """Un erizo que persigue: tras el sobresalto (3 latidos), con margen no se huye y se lucha hasta derribarlo."""
     mundo = MundoErizos(salud=100.0)
     mundo.erizo = (5, 6)
-    acciones, _ = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}), latidos=14)
+    acciones, _ = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}), latidos=14)
     atacar = [a for a in acciones if a["verbo"] == Verbo.ATACAR]
     assert atacar and all(a["objetivo"] == "erizo_1" and a["motivo"].startswith("afrontar: atacar erizo") for a in atacar)
     assert mundo.n == 2                       # el erizo cayó
@@ -287,7 +293,7 @@ def test_afrontar_lucha_con_margen():
 def test_afrontar_huye_sin_margen():
     mundo = MundoErizos(quieto=True, salud=40.0)
     mundo.erizo = (5, 6)
-    acciones, activas = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}))
+    acciones, activas = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}))
     assert not any(a["verbo"] == Verbo.ATACAR for a in acciones)
     assert any(a["verbo"] == Verbo.MOVER and "huir" in a["motivo"] for a in acciones)
     assert not any("afrontar" in x for x in activas)
@@ -297,10 +303,11 @@ def test_sin_datos_de_eficacia_no_lucha():
     """El previo de golpes es pesimista: con la tasa previa, la lucha no deja margen y se huye."""
     mundo = MundoErizos(quieto=True, salud=100.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {})
-    mem.peligros.expuestos.clear()
-    mem.peligros.eventos.clear()
-    acciones, activas = _decisiones(mundo, mem, latidos=1)
+    org = _organismo_con_experiencia(mundo, {})
+    p = org.memoria.seccion("peligros")
+    p.expuestos.clear()
+    p.eventos.clear()
+    acciones, activas = _decisiones(mundo, org, latidos=1)
     assert not any("afrontar" in x for x in activas)
 
 
@@ -309,7 +316,7 @@ def test_si_el_mundo_da_su_peligro_no_hay_afrontar():
     mundo = MundoErizos(quieto=True, salud=100.0)
     mundo.erizo = (5, 6)
     mundo.da_peligro = True
-    _, activas = _decisiones(mundo, _memoria_con_experiencia(mundo, {NADA: 3}))
+    _, activas = _decisiones(mundo, _organismo_con_experiencia(mundo, {NADA: 3}))
     assert not any("afrontar" in x for x in activas)
 
 
@@ -341,8 +348,8 @@ def test_se_pide_el_arma_de_forma_instrumental():
     """Con 70 de salud, sin bastón la lucha no deja margen (5 golpes) y con él sí (2): se pide el bastón y se huye."""
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
-    onda = _organismo(mundo, mem).latir()
+    org = _organismo_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+    onda = org.latir()
     peticion = onda.ef("Peticion").get("peticion:baston")
     assert peticion is not None
     assert peticion.carga["origen"] == "afrontar" and peticion.carga["cantidad"] == 1.0
@@ -352,8 +359,8 @@ def test_se_pide_el_arma_de_forma_instrumental():
 def test_con_el_arma_ya_no_se_pide_y_se_lucha():
     mundo = MundoErizos(baston=True, salud=100.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
-    acciones, _ = _decisiones(mundo, mem, latidos=10)
+    org = _organismo_con_experiencia(mundo, {frozenset({"palo"}): 5, frozenset({"baston", "palo"}): 2}, eventos=9)
+    acciones, _ = _decisiones(mundo, org, latidos=10)
     assert any(a["verbo"] == Verbo.ATACAR and a["motivo"].startswith("afrontar: atacar") for a in acciones)
 
 
@@ -364,16 +371,20 @@ def test_no_se_pide_un_objeto_que_no_se_distingue():
     derribos = {frozenset(): 5, juntos: 2}
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
-    assert set(mem.peligros.reductores()) == {"baston", "cuerda"} and mem.peligros.distinguibles() == set()
-    onda = _organismo(mundo, mem).latir()
+    org = _organismo_con_experiencia(mundo, derribos, eventos=9)
+    mem = org.memoria
+    p = mem.seccion("peligros")
+    assert set(p.reductores()) == {"baston", "cuerda"} and p.distinguibles() == set()
+    onda = org.latir()
     assert not onda.ef("Peticion")
     mundo = MundoErizos(quieto=True, salud=70.0)
     mundo.erizo = (5, 6)
-    mem = _memoria_con_experiencia(mundo, derribos, eventos=9)
-    mem.peligros.derribos["erizo"].append((frozenset({"baston"}), 2))
-    assert mem.peligros.distinguibles() == {"baston", "cuerda"}
-    onda = _organismo(mundo, mem).latir()
+    org = _organismo_con_experiencia(mundo, derribos, eventos=9)
+    mem = org.memoria
+    p = mem.seccion("peligros")
+    p.derribos["erizo"].append((frozenset({"baston"}), 2))
+    assert p.distinguibles() == {"baston", "cuerda"}
+    onda = org.latir()
     assert set(onda.ef("Peticion")) == {"peticion:baston"}
 
 
@@ -394,30 +405,48 @@ def test_el_emisor_pide_tres_veces_junto_y_contingencia():
 def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
     """Con una tasa de daño muy baja la lucha saldría favorable incluso con el previo de golpes; aun así, sin derribos de la
     clase ni meta del manual, Afrontar no la considera. Con la meta, sí."""
-    from ida.core.memoria import Meta
+    from ida.nucleo.memoria import Meta
+    from ida.s3.interpretar.requisito import Requisitos
     for meta in (False, True):
         mundo = MundoErizos(quieto=True, salud=100.0)
         mundo.erizo = (5, 6)
-        mem = _memoria_con_experiencia(mundo, {}, eventos=0)
-        mem.peligros.expuestos["erizo"] = 1000
+        org = _organismo_con_experiencia(mundo, {}, eventos=0)
+        mem = org.memoria
+        mem.seccion("peligros").expuestos["erizo"] = 1000
         if meta:
-            mem.metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
-        _, activas = _decisiones(mundo, mem, latidos=1)
+            cast(Requisitos, mem.seccion("requisitos")).metas[(Verbo.ATACAR, "erizo")] = Meta(Verbo.ATACAR, "erizo")
+        _, activas = _decisiones(mundo, org, latidos=1)
         assert any("afrontar" in x for x in activas) == meta
 
 
-# --- 6d: frontera de Crafter ------------------------------------------------------------------------------
-def test_crafter_no_escribe_conducta():
-    """Paso 6d: ninguna clase de ``ida/mundos/crafter.py`` es una estrategia y Crafter no declara estrategias propias."""
-    import inspect
+# --- 6d: frontera de Crafter (sustituido por tests/test_criterios.py, paso A8) -------------------------
 
+
+def test_la_escala_del_perfil_llega_a_peligros():
+    """D15: las constantes de escala de Amenaza son parámetros del mundo (``Perfil.escala``)."""
+    from ida.nucleo.mundo import Escala
+
+    p = pel.Peligros()
+    assert (p.dano_previo, p.golpes_previo, p.margen_lugar, p.c_escala) == (pel.DANO_PREVIO, pel.GOLPES_PREVIO, pel.MARGEN_LUGAR, pel.ESCALA)
+    p = pel.Peligros(escala=Escala(dano_previo=50.0, golpes_previo=4.0, margen_lugar=1))   # A7b: la escala, al construirla
+    assert p.dano_propio("erizo", True) == 50.0
+    assert p.golpes("erizo", frozenset())[0] == 4.0
+    assert abs(p.peligro_a([(50.0, 1)], 1, 100.0) - pel.PELIGRO_PREVIO) < 1e-9   # el previo sigue fijando la escala
+    assert p.peligro_lugar([(50.0, 1)], 2, 100.0) == 0.0                          # se anula a alcance + 1
+
+
+def test_crafter_fija_la_escala_de_antes():
+    """A6a no cambia la conducta: Crafter declara en su Perfil los valores que tenían las constantes."""
     import pytest
 
     pytest.importorskip("crafter")
-    from ida.core.estrategia import ConPropuestas, Definicion, Plan
-    from ida.mundos import crafter
+    from ida.nucleo.mundo import Escala
+    from ida.mundos.crafter import MundoCrafter
 
-    clases = [c for _, c in inspect.getmembers(crafter, inspect.isclass) if c.__module__ == crafter.__name__]
-    assert clases     # el adaptador existe
-    assert not [c.__name__ for c in clases if issubclass(c, (Definicion, Plan, ConPropuestas))]
-    assert crafter.MundoCrafter().estrategias_propias() == {}
+    assert MundoCrafter.perfil.escala == Escala()
+    assert MundoCrafter.perfil.escala.dano_previo == 100.0 * 2.0 / 9.0
+    assert MundoCrafter.perfil.escala.reserva == 100.0 * 3.0 / 9.0
+    assert MundoCrafter.perfil.escala.coste_sin_sitio == 45.0
+    assert MundoCrafter.perfil.escala.coste_recordado == 15.0
+    assert MundoCrafter.perfil.escala.coste_por_proximidad == 10.0
+    assert MundoCrafter.perfil.escala.coste_sin_productor == 30.0

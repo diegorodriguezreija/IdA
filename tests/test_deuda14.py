@@ -7,11 +7,12 @@ Dos metas, «hacer_a» y «hacer_b», piden una unidad de «m» cada una y estar
 from types import SimpleNamespace
 from typing import Any, Dict, List, Optional
 
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
-from ida.sistemas.s3 import PerseguirMetas
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
+from ida.s3.reaccionar.estrategias import PerseguirMetas
+
+from _secciones import memoria_con_secciones
 
 MANUAL = {
     "inventario": ["m"],
@@ -42,7 +43,7 @@ def _entidad(id_: str, clase: str, proximidad: float, pos: tuple, lugar: float =
 
 
 def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1, manual: Optional[Dict[str, Any]] = None) -> Any:
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(manual or MANUAL)
     entidades: List[Pieza] = [
         _entidad("c_1", "c", 1.0, (0, -1)),
@@ -53,7 +54,7 @@ def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1,
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=m, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion="aqui_0_0"), verbos=set(Verbo), perfil=Perfil())
+                           ubicacion=lambda: "aqui_0_0", verbos=set(Verbo), perfil=Perfil(), cuerpo=None)
 
 
 def _propuesta(ctx: Any) -> Optional[Any]:

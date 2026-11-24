@@ -10,7 +10,35 @@ This is a short English summary. The full documentation, and the code itself, ar
 
 IdA is a **framework**: a generic core, inspired by how living beings solve the problem of staying alive, to which worlds plug in as adapters. It is made to **run and watch** its individuals live; that is its main purpose, not chasing high scores. But comparing also matters: when a world has a public evaluation protocol, IdA measures itself against it and publishes the result, so its figures can be placed alongside those of other agents. The underlying question, whether the organic design **outperforms** a traditional design and under what conditions, is studied separately, in the [IdA Laboratory](#ida-laboratory).
 
-Every IdA individual has a **body** that wears out (vital constants, stress, pleasure and valence) and a **heartbeat**. On each beat the core senses the world (interoception, proprioception, **exteroception** and ambient conditions) and creates a **Wave** (*Onda*) with a frequency (the deadline; past it, a guillotine cuts thinking), an amplitude (how many pieces fit in attention) and a power (how much arousal can be granted or changed), set by a pacemaker. Three systems work on it in order: S1 (survival), S2 (value) and S3 (truth). Each one interprets (image and **objects**; the value of each subject; propositions, logic and **beliefs**), feels its **impulses** (bodily needs and safety, exploration, intentions such as knowing), chooses **strategies** with phases, progress and exhaustion, and turns them into **actions**. A **Tribunal** picks one according to the state of the body, with a small bonus for continuing the current strategy. Each component only produces and changes pieces of its own type. What the individual lives through is remembered, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
+Every IdA individual has a **body** that wears out (vital constants, stress, pleasure and valence) and a **heartbeat**. On each beat the core senses the world (interoception, proprioception, **exteroception** and ambient conditions) and creates a **Wave** (*Onda*) with a frequency (the deadline; past it, a guillotine cuts thinking), an amplitude (how many pieces fit in attention) and a power (how much arousal can be granted or changed), set by the Core's Regulation from the state of the body. Each system (Core, S1, S2, S3) is organized into Components by stages (Sentir, Interpretar, Reaccionar, Actuar), declared in [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) and displayed in [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md), and the world only provides its body and its own Components. Three systems work on the Wave in order: S1 (survival), S2 (value) and S3 (truth). Each one interprets (image and **objects**; the value of each subject; propositions, logic and **beliefs**), feels its **impulses** (bodily needs and safety, exploration, intentions such as knowing), chooses **strategies** with phases, progress and exhaustion, and turns them into **actions**. A **Tribunal** picks one according to the state of the body, with a small bonus for continuing the current strategy. Each component only produces and changes pieces of its own type. What the individual lives through is remembered, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
+
+### A heartbeat
+
+Each heartbeat is a **Wave** (*Onda*) that always follows the same path. The Core senses and regulates without paying attention, even while asleep. The three systems think in turns on the same Wave, each in four modules. The Core acts at the end.
+
+```mermaid
+flowchart TB
+  subgraph PRE["Before thinking: without paying attention, even while asleep"]
+    direction LR
+    O["1 · Wave<br/>copy of previous"] --> CS["2 · Sense<br/>raw input"] --> PA["3 · Preattention<br/>salience & appraisal"] --> PL["4 · Plasticity<br/>learns from effect"] --> RG["5 · Regulation<br/>frequency · amplitude · power"]
+  end
+  subgraph COG["6 · Cognition: pays attention; guillotine cuts if deadline expires"]
+    direction LR
+    S1["S1 · survival"] --> S2["S2 · value"] --> S3["S3 · truth"]
+  end
+  subgraph POS["Core"]
+    direction LR
+    CA["7 · Act<br/>Tribunal and primitive"] --> CI["8 · Close<br/>what to retain"]
+  end
+  PRE -->|"the Wave"| COG
+  COG -->|"Proposals"| POS
+  classDef core fill:#ede9fe,stroke:#7c3aed,color:#0f172a
+  classDef sis fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  class O,CS,PA,PL,RG,CA,CI core
+  class S1,S2,S3 sis
+```
+
+Each system goes through **Sense → Interpret → React → Act** (*Sentir → Interpretar → Reaccionar → Actuar*). Strategies live in React, each with its Action proposal (*Actuación*). A world does not change this flow: it only registers its body and its own Components. The complete diagram, with every Component of the core and each world, is in [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md).
 
 The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
 
@@ -36,14 +64,14 @@ Or, with nothing installed: `docker compose up --build`.
 
 > **Note on Snake.** This world plays on [playsnake.org](https://playsnake.org/), a third-party site not affiliated with this project, by driving a browser with Playwright. It is a demonstration world: it plays one game at a time and uses no credentials and collects no data from the site. If you use it, respect the site's terms of use. If the site changes or goes away, this world will stop working; the other worlds do not need the internet.
 
-Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([method](docs/MEDICION_OFICIAL.md), [results](docs/MEDICION_PASO6.md)).
+Crafter evaluation with the official protocol: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([method](docs/MEDICION_OFICIAL.md), [results](docs/MEDICION_MATERIAL_MAPA.md); the reorganization by Components of v5 preserves the exact same behavior and Score: [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md)).
 
 ## What's inside
 
 - **The wave (Onda).** Each heartbeat travels in a wave with four channels: `ei` (how the previous beat ended, read-only), `ev` (what it perceives), `acc` (competing proposals) and `ef` (the full record, which becomes the next `ei`). Every component runs a reactive, an active and a proactive pass.
 - **The guillotine.** Cooperative and synchronous: every emission checks the clock and the attention budget. If either runs out, the remaining components are skipped and the Tribunal still acts on what is already proposed.
 - **Memory.** Expectations, episodes and propositions with a status (hypothesis, proven, refuted). Taste aversion and mortal trauma are learned fast; proven knowledge is inherited as a hypothesis the descendant must confirm.
-- **A core blind to the world.** Worlds plug in through one port (`ida/core/mundo.py`). An AST test forbids world vocabulary and imports in the core; another keeps the GPL chess dependency inside its folder.
+- **A core blind to the world.** Worlds plug in through one port (`ida/nucleo/mundo.py`). An AST test forbids world vocabulary and imports in the core; another keeps the GPL chess dependency inside its folder.
 
 ## Observabilidad
 
@@ -60,7 +88,7 @@ Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** 
   - a general defense that learns how much damage each thing deals, from where, and where projectiles come from (discovering on its own that arrows come from skeletons), and decides whether to fight or flee based on its health.
 
   Measured with the official protocol (episodes of up to 10,000 steps, 9×7 local view, geometric mean of success rates across the 22 achievements), with two base seeds: 15.86% (95% CI: 14.6–17.1) and 17.34% (95% CI: 16.1–18.5), with 377 and 360 episodes, each episode in a new world and with a newborn individual. For reference, in the original Crafter paper, DreamerV2 achieves 10.0% and PPO 4.6% after training on 1M steps; random play scores 1.6%. Every decision can be inspected: which system proposed it, why ("afrontar: acercarse a esqueleto (alcance 8…)") and why it won in the Tribunal.
-- **How it was achieved, measured step by step.** The core without Crafter behavior started at 1.45%, at the level of random play. The manual and planner brought it to 8.8%; learning what satisfies each need, to 11.3%; the general shelter, to 12.8–13.6%; general defense, to 14.0–15.5%; gathering at once the material for each workstation, to 14.8–16.0%; also looking for material in what it remembers of the map, to 15.9–17.3%. Two mechanisms that did not help were removed and remain documented. Details in [`docs/FASE_GENERALIZACION_CRAFTER.md`](docs/FASE_GENERALIZACION_CRAFTER.md).
+- **How it was achieved, measured step by step.** The core without Crafter behavior started at 1.45%, at the level of random play. The manual and planner brought it to 8.8%; learning what satisfies each need, to 11.3%; the general shelter, to 12.8–13.6%; general defense, to 14.0–15.5%; gathering at once the material for each workstation, to 14.8–16.0%; also looking for material in what it remembers of the map, to 15.9–17.3%. Two mechanisms that did not help were removed and remain documented. Details in [`docs/historico/FASE_GENERALIZACION_CRAFTER.md`](docs/historico/FASE_GENERALIZACION_CRAFTER.md).
 - **The previous version, with behavior written for Crafter, remains as a reference.** With world-specific strategies (night shelter, defense, and technological plan), IdA achieved 19.2% (95% CI: 17.7–20.5). It is preserved in the `crafter-procedimental-v1` tag and is reproducible from it. The difference between the two lines (19.2% vs. 15.9–17.3%) is what hand-written knowledge still contributes over what the core learns on its own. Neither is presented as a like-for-like comparison with agents that learn from pixels: IdA receives the scene symbolically. Both remain below SPRING (27.3%, GPT-4 reading the Crafter paper) and current top agents.
 - **The same core runs in five very different worlds**, and an AST test ensures it learns vocabulary from none of them.
 - **Improving only each world's own code:**
@@ -84,6 +112,21 @@ Python 3.12+, standard library only in the core; worlds and observability are op
 ## IdA Laboratory
 
 This repository is the framework: it is for running IdA and watching its individuals live. Whether IdA's organic design **beats a traditional design** in each world, in which situations and by how much, is studied in a separate repository, the [**IdA Laboratory**](https://github.com/diegorodriguezreija/laboratorio-ida) (in Spanish). It tests modified variants of IdA against traditional baselines for each world, with questions fixed in advance, the same seeds and negative results published. The laboratory's variants do not have to match this framework's version.
+
+## Documentation
+
+| | |
+|---|---|
+| [`MANIFIESTO.md`](MANIFIESTO.md) | Why IdA exists, in the author's voice (Spanish) |
+| [`doc-repositorio/`](doc-repositorio/README.md) | Complete documentation: philosophy, architecture, worlds, technical guide, metrics and milestones (Spanish) |
+| [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) | Living Component-based design specification (decisions D1–D17 and change process) |
+| [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md) | Complete Component map of the core and each world generated from the specification |
+| [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md) | Heartbeat diagrams with core and world Components (generated from `componentes.toml`) |
+| [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Living backlog of pending tasks: cleanup, behavior changes and validation |
+| [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md) | Systematic benchmark demonstrating that v5 preserves identical behavior against v4 |
+| [`docs/METODO_MEDICION.md`](docs/METODO_MEDICION.md) | Methodological protocol: logical deadline and reproducible paired comparisons |
+| [`docs/historico/README.md`](docs/historico/README.md) | Index of historical documentation from previous design phases |
+| [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) · [`AGENTS.md`](AGENTS.md) | Changelog, contributing guidelines, security and rules for AI agents |
 
 ## Honesty
 

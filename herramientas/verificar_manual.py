@@ -23,8 +23,8 @@ import unicodedata
 from typing import Any, Dict, List
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ESTRICTO = os.path.join(RAIZ, "ida", "mundos", "crafter_manual.json")
-AMPLIADO = os.path.join(RAIZ, "ida", "mundos", "crafter_manual_ampliado.json")
+ESTRICTO = os.path.join(RAIZ, "ida", "mundos", "crafter", "crafter_manual.json")
+AMPLIADO = os.path.join(RAIZ, "ida", "mundos", "crafter", "crafter_manual_ampliado.json")
 
 
 def normalizar(texto: str) -> str:

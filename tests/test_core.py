@@ -2,17 +2,17 @@
 
 import pytest
 
-from ida.core.arquitectura import Componente, Contexto, Modulo
-from ida.core.azar import Azar
-from ida.core.linaje import Arquetipo
-from ida.core.marcapasos import Marcapasos
-from ida.core.memoria import Memoria, Proposicion
-from ida.core.mundo import Entidad, Perfil
-from ida.core.onda import LatidoAgotado, Onda
-from ida.core.pieza import Episodio, Pieza
-from ida.core.sentidos import Tribunal
-from ida.core.soma import Soma
-from ida.core.vocabulario import EstadoSaber, Relacion, Verbo
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo
+from ida.nucleo.azar import Azar
+from ida.nucleo.linaje import Arquetipo
+from ida.core.regulacion import Regulacion
+from ida.nucleo.memoria import Memoria, Proposicion
+from ida.nucleo.mundo import Entidad, Perfil
+from ida.nucleo.onda import LatidoAgotado, Onda
+from ida.nucleo.pieza import Episodio, Pieza
+from ida.core.actuar.tribunal import Tribunal
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 
 
 class RelojFalso:
@@ -336,15 +336,15 @@ def test_arquetipo_deferencia():
 
 
 # --- Soma, linaje y contrato -------------------------------------------------
-def test_marcapasos_varia_con_el_estado():
-    m = Marcapasos()
+def test_regulacion_varia_con_el_estado():
+    m = Regulacion()
     s = Soma(energia=100.0)
     f1, a1, p1 = m.ritmo(s, 100.0, 100)
     s.energia = 20.0
     s.indicadores["peligro"] = 1.0
     f2, a2, p2 = m.ritmo(s, 100.0, 100)
     assert a2 < a1 and f2 < f1 and p2 < p1
-    assert p1 == pytest.approx(a1 * Marcapasos.FUERZA_POR_PIEZA)
+    assert p1 == pytest.approx(a1 * Regulacion.FUERZA_POR_PIEZA)
     s.dormido = True
     assert m.ritmo(s, 100.0, 100)[1] == 20
 

@@ -21,8 +21,8 @@ from typing import Any, Dict, List, Optional, Set
 import chess
 import chess.engine
 
-from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
-from ida.core.vocabulario import Verbo
+from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+from ida.nucleo.vocabulario import Verbo
 from ida.mundos.ajedrez.rival import VALOR, RivalLocal
 
 NOMBRE = {chess.PAWN: "peon", chess.KNIGHT: "caballo", chess.BISHOP: "alfil", chess.ROOK: "torre", chess.QUEEN: "dama", chess.KING: "rey"}
@@ -64,8 +64,16 @@ def perdida_inmediata(tablero: chess.Board) -> float:
 
 class MundoAjedrez(Mundo):
     nombre = "ajedrez"
-    perfil = Perfil(frecuencia_ms=100.0, amplitud=120, memoria="ligera", duerme=False, hogar=False, peso_experiencia=0.15,
-                    vitales_propios=True)
+    perfil = Perfil(
+        frecuencia_ms=100.0,
+        amplitud=120,
+        memoria="ligera",
+        duerme=False,
+        hogar=False,
+        peso_experiencia=0.15,
+        vitales_propios=True,
+        rasgos_declarados=("peligro", "nutritivo"),
+    )
     MATERIAL_INICIAL = 39.0
 
     def __init__(self, dificultad: Any = 2, color: str = "blancas", stockfish: str = "", elo: Any = 1350, semilla: Optional[int] = None, **_):

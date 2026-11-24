@@ -5,11 +5,14 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from ida.core.memoria import Memoria
-from ida.core.mundo import Perfil
-from ida.core.pieza import Pieza
-from ida.core.vocabulario import Verbo
-from ida.sistemas.s3 import PerseguirMetas
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Perfil
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.vocabulario import Verbo
+from ida.cuerpos.cuadricula import Cuadricula
+from ida.s3.reaccionar.estrategias import PerseguirMetas
+
+from _secciones import memoria_con_secciones, requisitos
 
 # Mundo de juguete: la meta es USAR «hacer_a», que requiere B; B se obtiene cogiendo C.
 MANUAL = {
@@ -39,15 +42,15 @@ def _entidad(id_: str, clase: str, proximidad: float, lugar: float = 0.0, pos: O
 
 
 def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float], delante: Optional[Dict[str, str]] = None,
-         latido: int = 1, ubicacion: str = "aqui", perfil: Optional[Perfil] = None) -> Any:
+         latido: int = 1, ubicacion: str = "aqui", perfil: Optional[Perfil] = None, cuerpo: Optional[Any] = None) -> Any:
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           observacion=SimpleNamespace(ubicacion=ubicacion), verbos=set(Verbo), perfil=perfil or Perfil())
+                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil(), cuerpo=cuerpo)
 
 
 def test_planificador_encadena_hacia_atras():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
     ctx = _ctx(m, [_entidad("c_1", "c", 1.0)], {})
     plan = PerseguirMetas()
@@ -61,87 +64,87 @@ def test_planificador_encadena_hacia_atras():
 
 
 def test_con_manual_vacio_no_es_elegible():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual({})
     assert not PerseguirMetas().elegible(_ctx(m, [], {}), "progresar", 0.5)
 
 
 def test_meta_conseguida_por_inventario_o_por_vital():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_a"},
                                  {"tipo": "meta", "verbo": "COMER", "objetivo": "agua"}]})
-    assert not m.registrar_meta(Verbo.USAR, "hacer_a", True, {"b": 1.0}, {"b": 1.0}, {})       # éxito sin efecto
-    assert m.registrar_meta(Verbo.USAR, "hacer_a", True, {"b": 1.0}, {"b": 0.0}, {})
-    assert not m.registrar_meta(Verbo.COMER, "agua", False, None, None, {"alimentacion": 11.0})
-    assert m.registrar_meta(Verbo.COMER, "agua", True, None, None, {"alimentacion": 11.0})     # cambia una vital
-    assert all(meta.conseguida for meta in m.metas.values())
+    assert not requisitos(m).registrar_meta(Verbo.USAR, "hacer_a", True, {"b": 1.0}, {"b": 1.0}, {})       # éxito sin efecto
+    assert requisitos(m).registrar_meta(Verbo.USAR, "hacer_a", True, {"b": 1.0}, {"b": 0.0}, {})
+    assert not requisitos(m).registrar_meta(Verbo.COMER, "agua", False, None, None, {"alimentacion": 11.0})
+    assert requisitos(m).registrar_meta(Verbo.COMER, "agua", True, None, None, {"alimentacion": 11.0})     # cambia una vital
+    assert all(meta.conseguida for meta in requisitos(m).metas.values())
 
 
 def test_induccion_por_diferencia():
-    m = Memoria()
-    m.aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)                     # falla sin llave
-    m.aprender_requisito(Verbo.COGER, "c", {"llave": 1.0}, {"llave": 1.0, "b": 1.0}, set(), True)
-    r = m.requisitos[(Verbo.COGER, "c")]
+    m = memoria_con_secciones()
+    requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)                     # falla sin llave
+    requisitos(m).aprender_requisito(Verbo.COGER, "c", {"llave": 1.0}, {"llave": 1.0, "b": 1.0}, set(), True)
+    r = requisitos(m).requisitos[(Verbo.COGER, "c")]
     assert r.fuente == "experiencia" and r.requiere_inventario == {"llave": 1} and r.efecto == {"b": 1}
 
 
 def test_reintento_tras_novedad():
-    m = Memoria()
+    m = memoria_con_secciones()
     for _ in range(3):
-        m.aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)
-    assert m.bloqueada(Verbo.COGER, "c")
-    m.aprender_requisito(Verbo.COGER, "otra", {}, {"llave": 1.0}, set(), True)      # gana un objeto nuevo
-    assert not m.bloqueada(Verbo.COGER, "c")
+        requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {}, set(), True)
+    assert requisitos(m).bloqueada(Verbo.COGER, "c")
+    requisitos(m).aprender_requisito(Verbo.COGER, "otra", {}, {"llave": 1.0}, set(), True)      # gana un objeto nuevo
+    assert not requisitos(m).bloqueada(Verbo.COGER, "c")
 
 
 def test_efecto_probabilistico_no_se_bloquea():
-    m = Memoria()
-    m.aprender_requisito(Verbo.COGER, "c", {}, {"b": 1.0}, set(), True)
+    m = memoria_con_secciones()
+    requisitos(m).aprender_requisito(Verbo.COGER, "c", {}, {"b": 1.0}, set(), True)
     for _ in range(5):
-        m.aprender_requisito(Verbo.COGER, "c", {"b": 1.0}, {"b": 1.0}, set(), True)
-    assert not m.bloqueada(Verbo.COGER, "c")
+        requisitos(m).aprender_requisito(Verbo.COGER, "c", {"b": 1.0}, {"b": 1.0}, set(), True)
+    assert not requisitos(m).bloqueada(Verbo.COGER, "c")
 
 
 def test_meta_del_manual_no_se_bloquea():
     """Una acción que el manual declara (meta o requisito) puede salir aunque falle seguido: no se bloquea, y su
     tasa estimada cuenta la declaración como un éxito. Una que nadie declara y nunca ha funcionado, sí se bloquea."""
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "hierba"}]})
     for _ in range(3):
-        m.aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
-        m.aprender_requisito(Verbo.COGER, "piedra", {}, {}, set(), False)
-    assert m.puede_salir(Verbo.COGER, "hierba") and not m.bloqueada(Verbo.COGER, "hierba")
-    assert m.tasa_estimada(Verbo.COGER, "hierba") == 1.0 / 4.0          # (0 + 1) / (0 + 3 + 1)
-    assert not m.puede_salir(Verbo.COGER, "piedra") and m.bloqueada(Verbo.COGER, "piedra")
-    assert m.tasa_estimada(Verbo.COGER, "piedra") == 0.0
+        requisitos(m).aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
+        requisitos(m).aprender_requisito(Verbo.COGER, "piedra", {}, {}, set(), False)
+    assert requisitos(m).puede_salir(Verbo.COGER, "hierba") and not requisitos(m).bloqueada(Verbo.COGER, "hierba")
+    assert requisitos(m).tasa_estimada(Verbo.COGER, "hierba") == 1.0 / 4.0          # (0 + 1) / (0 + 3 + 1)
+    assert not requisitos(m).puede_salir(Verbo.COGER, "piedra") and requisitos(m).bloqueada(Verbo.COGER, "piedra")
+    assert requisitos(m).tasa_estimada(Verbo.COGER, "piedra") == 0.0
 
 
 def test_el_coste_del_paso_es_uno_entre_la_tasa():
     """El planificador cuenta los fallos esperados antes del éxito: 1 / tasa − 1. Con 3 fallos y la declaración
     del manual (tasa 1/4), 3; sin intentos, 0, como una acción que siempre funciona."""
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual({"inventario": [], "hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "hierba"}]})
     plan = PerseguirMetas()
     ctx = _ctx(m, [_entidad("hierba_1", "hierba", 1.0)], {})
     assert plan._resolver(ctx, (Verbo.COGER, "hierba"), {}, frozenset(), 0).coste == 0.0
     for _ in range(3):
-        m.aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
+        requisitos(m).aprender_requisito(Verbo.COGER, "hierba", {}, {}, set(), False)
     paso = plan._resolver(ctx, (Verbo.COGER, "hierba"), {}, frozenset(), 0)
     assert (paso.verbo, paso.objetivo) == (Verbo.COGER, "hierba_1")
     assert paso.coste == pytest.approx(3.0)
 
 
 def test_donde_se_puede_colocar_y_lo_que_aparece():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)
-    m.aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 1.0}, set(), True, delante="agua")
-    m.aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 0.0}, set(), True, cerca_despues={"a"}, delante="suelo")
-    r = m.requisitos[(Verbo.USAR, "hacer_a")]
+    requisitos(m).aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 1.0}, set(), True, delante="agua")
+    requisitos(m).aprender_requisito(Verbo.USAR, "hacer_a", {"b": 1.0}, {"b": 0.0}, set(), True, cerca_despues={"a"}, delante="suelo")
+    r = requisitos(m).requisitos[(Verbo.USAR, "hacer_a")]
     assert r.requiere_delante == {"suelo"} and r.delante_fallido == {"agua"} and r.aparece == {"a"}
 
 
 def test_exploracion_de_efectos_prueba_lo_de_delante():
-    m = Memoria()
+    m = memoria_con_secciones()
     # Sin plan: la meta requiere una llave que ninguna acción conocida da. (Antes se forzaba con la meta bloqueada
     # por fallos seguidos; una meta del manual ya no se bloquea: ver test_meta_del_manual_no_se_bloquea.)
     m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "imposible"},
@@ -157,23 +160,23 @@ MANUAL_CERCA = {"hechos": [{"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_
 
 
 def test_prueba_antes_de_caminar_y_aprende_el_radio():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual(MANUAL_CERCA)
     vista = [_entidad("taller_2_0", "taller", 0.78, pos=(2, 0)), _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
     ctx = _ctx(m, vista, {}, ubicacion="celda_0_0")
     plan = PerseguirMetas()
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.USAR, "hacer_x")]   # a 2: se prueba
-    m.aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": (0, 2)})   # falla desde (0, 2)
+    requisitos(m).aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": (0, 2)})   # falla desde (0, 2)
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]  # ahora camina
 
-    m2 = Memoria()
+    m2 = memoria_con_secciones()
     m2.aplicar_manual(MANUAL_CERCA)
-    m2.aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)})   # funciona
-    assert m2.requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
+    requisitos(m2).aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)})   # funciona
+    assert requisitos(m2).requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
 
 
 def test_antibloqueo_aparca_un_destino_que_no_se_acerca():
-    m = Memoria()
+    m = memoria_con_secciones()
     m.aplicar_manual({"hechos": [{"tipo": "meta", "verbo": "COGER", "objetivo": "c"}]})
     vista = [_entidad("c_3_0", "c", 0.6, pos=(3, 0)), _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
     plan = PerseguirMetas()
@@ -192,7 +195,7 @@ class MundoRetono:
     no es éxito. El manual solo declara la meta (coger hierba con efecto), no la probabilidad."""
 
     def __new__(cls, *a, **k):
-        from ida.core.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
+        from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 
         class _Mundo(Mundo):
             nombre = "retono"
@@ -233,17 +236,17 @@ class MundoRetono:
 
 
 def _vivir_retono(semilla: int, latidos: int = 150):
-    from ida.core.azar import Azar
+    from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
-    from ida.core.linaje import Arquetipo
-    from ida.sistemas import crear_sistemas
+    from ida.nucleo.linaje import Arquetipo
+    from ida.sistemas_comun import crear_sistemas
 
     mundo = MundoRetono(p=0.1, semilla=semilla)
-    memoria = Memoria()
+    memoria = memoria_con_secciones()
     memoria.aplicar_manual(mundo.manual())
     org = Organismo(mundo, crear_sistemas(), Arquetipo(), memoria, Azar(semilla), con_experiencia=True)
     bloqueos = []
-    org.vivir(latidos, al_latir=lambda o, _onda: bloqueos.append(o.memoria.bloqueada(Verbo.COGER, "hierba")))
+    org.vivir(latidos, al_latir=lambda o, _onda: bloqueos.append(requisitos(o.memoria).bloqueada(Verbo.COGER, "hierba")))
     return mundo, org.memoria, bloqueos
 
 
@@ -253,7 +256,7 @@ def test_efecto_con_probabilidad_0_1_no_se_bloquea_y_acaba_saliendo(semilla):
     dice que puede salir: no se bloquea nunca y se sigue intentando hasta conseguirlo."""
     mundo, memoria, bloqueos = _vivir_retono(semilla)
     assert not any(bloqueos)
-    assert memoria.metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1
+    assert requisitos(memoria).metas[(Verbo.COGER, "hierba")].conseguida and mundo.inv["reton"] >= 1
 
 
 # --- reutilizar lo construido: ir a la X recordada frente a producir otra -----------------------------------------
@@ -271,16 +274,17 @@ MANUAL_BANCO = {
 def _pasillo(banco_en: int, consumo_aprendido: bool = True) -> Any:
     """Un pasillo de suelo recordado (mapa local) de (0, 0) a (banco_en − 1, 0) y un banco en (banco_en, 0), fuera de la vista.
     Con ``consumo_aprendido``, la experiencia ya sabe que poner un banco gasta una madera."""
-    m = Memoria()
+    m = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     m.aplicar_manual(MANUAL_BANCO)
-    m.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
-    m.casillas[(banco_en, 0)] = "banco"
-    m.paso_libre["suelo"] = 1
-    m.paso_bloqueado["banco"] = 1
+    mapa = m.seccion("cuadricula")
+    mapa.casillas.update({(x, 0): "suelo" for x in range(banco_en)})
+    mapa.casillas[(banco_en, 0)] = "banco"
+    mapa.paso_libre["suelo"] = 1
+    mapa.paso_bloqueado["banco"] = 1
     if consumo_aprendido:
-        m.aprender_requisito(Verbo.USAR, "poner_banco", {"madera": 2.0}, {"madera": 1.0}, set(), True, cerca_despues={"banco"})
+        requisitos(m).aprender_requisito(Verbo.USAR, "poner_banco", {"madera": 2.0}, {"madera": 1.0}, set(), True, cerca_despues={"banco"})
     lugar = _entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))
-    return _ctx(m, [lugar], {"madera": 2.0}, ubicacion="celda_0_0")
+    return _ctx(m, [lugar], {"madera": 2.0}, ubicacion="celda_0_0", cuerpo=Cuadricula())
 
 
 def test_va_al_banco_recordado_si_cuesta_menos_que_poner_otro():
@@ -317,20 +321,21 @@ def test_primero_lo_que_se_lleva_despues_el_sitio():
 def test_el_material_se_busca_tambien_en_el_mapa_local():
     """Deuda 11c. La meta pide madera, que da coger un árbol. No se ve ninguno, pero el mapa local recuerda uno a 5 pasos
     por un pasillo: el planificador va hacia él por el mapa. Si el mapa no recuerda ningún árbol, no hay ruta por el mapa."""
-    m = Memoria()
+    m = memoria_con_secciones()   # D7: el mapa local es la sección del cuerpo
     m.aplicar_manual({"inventario": ["madera"], "hechos": [
         {"tipo": "meta", "verbo": "USAR", "objetivo": "hacer_b"},
         {"tipo": "requisito", "verbo": "USAR", "objetivo": "hacer_b", "requiere_inventario": {"madera": None}},
         {"tipo": "requisito", "verbo": "COGER", "objetivo": "arbol", "requiere_inventario": {}, "efecto": {"madera": 1}},
     ]})
-    m.casillas.update({(x, 0): "suelo" for x in range(6)})
-    m.casillas[(6, 0)] = "arbol"
-    m.paso_libre["suelo"] = 1
-    m.paso_bloqueado["arbol"] = 1
+    mapa = m.seccion("cuadricula")
+    mapa.casillas.update({(x, 0): "suelo" for x in range(6)})
+    mapa.casillas[(6, 0)] = "arbol"
+    mapa.paso_libre["suelo"] = 1
+    mapa.paso_bloqueado["arbol"] = 1
     entidades = [_entidad("celda_1_0", "suelo", 1.0, lugar=1.0, pos=(1, 0))]
-    propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0"), None)
+    propuestas = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", cuerpo=Cuadricula()), None)
     assert [(p.verbo, p.objetivo) for p in propuestas] == [(Verbo.MOVER, "celda_1_0")]
     assert "volver a arbol (mapa, 5 pasos)" in propuestas[0].motivo
-    m.casillas[(6, 0)] = "suelo"          # el mapa ya no recuerda ningún árbol
-    sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", latido=2), None)
+    mapa.casillas[(6, 0)] = "suelo"          # el mapa ya no recuerda ningún árbol
+    sin_mapa = PerseguirMetas().actuar(_ctx(m, entidades, {}, ubicacion="celda_0_0", latido=2, cuerpo=Cuadricula()), None)
     assert not any("(mapa," in p.motivo for p in sin_mapa), [p.motivo for p in sin_mapa]

@@ -36,7 +36,7 @@ VENTANA = 50
 def ejecutar(args: argparse.Namespace) -> int:
     import evaluar_crafter as ev
     from ida.core import latido
-    from ida.sistemas.s3 import PerseguirMetas
+    from ida.s3.reaccionar.estrategias import PerseguirMetas
 
     estado: Dict[str, Any] = {}
     filas: List[Dict[str, Any]] = []
@@ -48,11 +48,14 @@ def ejecutar(args: argparse.Namespace) -> int:
         estado["explora"] = False
         res = actuar_original(self, ctx, estrategia)
         estado["propuestas"] = [(p.verbo.value, p.objetivo, p.motivo) for p in res]
-        pendientes = sorted(m.objetivo for m in ctx.memoria.metas.values() if not m.conseguida and m.verbo in self.VERBOS_PLAN)
+        req = ctx.memoria.seccion("requisitos") if ctx.memoria.tiene_seccion("requisitos") else None
+        metas = req.metas if req is not None else {}
+        pendientes = sorted(m.objetivo for m in metas.values() if not m.conseguida and m.verbo in self.VERBOS_PLAN)
         estado["pendientes"] = len(pendientes)
         estado["metas_pendientes"] = pendientes
         estado["visibles"] = sorted({str(p.carga.get("clase", "")) for p in ctx.onda.ev("Exterocepcion").values()})
-        estado["mapa"] = sorted(set(ctx.memoria.casillas.values()))
+        mapa = ctx.memoria.seccion("cuadricula") if ctx.memoria.tiene_seccion("cuadricula") else None
+        estado["mapa"] = sorted(set(mapa.casillas.values())) if mapa is not None else []
         return res
 
     def explorar(self: Any, ctx: Any) -> None:

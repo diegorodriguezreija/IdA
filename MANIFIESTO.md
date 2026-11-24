@@ -40,4 +40,4 @@ IdA es un banco de pruebas personal para aprender ingeniería de software con al
 - **Los nombres biológicos son inspiración, no equivalencia.** Ni el sistema triuno, ni la «dopamina», ni el «sueño», ni el «trauma» afirman que IdA tenga mente, creencias o experiencia más allá de lo funcional. Son umbrales, contadores y pequeñas fórmulas.
 - **La diversidad de arquetipos no ha demostrado rendir más.** Cada individuo tiene su carácter y algunos rasgos entran en las decisiones, pero su efecto no se ha medido.
 - **Que la experiencia ayude solo está indicado.** En el mundo mínimo, con una semilla y 4 vidas por grupo, los individuos con experiencia viven más y comen menos setas tóxicas que sin ella. No es una demostración.
-- **Sobre cifras y afirmaciones técnicas mandan [`docs/RESULTADOS.md`](docs/RESULTADOS.md) y [`doc-repositorio/`](doc-repositorio/README.md).**
+- **Sobre cifras y afirmaciones técnicas mandan [`docs/historico/RESULTADOS.md`](docs/historico/RESULTADOS.md) y [`doc-repositorio/`](doc-repositorio/README.md).**

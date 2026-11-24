@@ -10,7 +10,35 @@ English summary: [README.en.md](README.en.md).
 
 IdA es un **framework**: un núcleo genérico, inspirado en cómo resuelven los seres vivos el problema de seguir vivos, al que se conectan mundos como adaptadores. Está hecho para **ejecutarlo y ver vivir** a sus individuos; ese es su objetivo principal, no batir marcas. Pero compararse también importa: cuando un mundo tiene un protocolo público de evaluación, IdA se mide con él y publica el resultado, para que sus cifras se puedan situar junto a las de otros agentes. La pregunta de fondo, si el diseño orgánico **supera** a un diseño tradicional y en qué condiciones, se investiga aparte, en el [Laboratorio IdA](#laboratorio-ida).
 
-Cada individuo de IdA tiene un **cuerpo** que se gasta (constantes vitales, estrés, placer y valencia) y un **latido**. En cada latido, el núcleo siente el mundo (interocepción, propiocepción, **exterocepción** y ambiente) y crea una **Onda** con frecuencia (el plazo; si se pasa, una guillotina corta), amplitud (cuántas piezas caben en la atención) y potencia (cuánto arousal se puede dar o cambiar), que fija un marcapasos. Tres sistemas trabajan sobre ella en orden: S1 (supervivencia), S2 (valor) y S3 (verdad). Cada uno interpreta (imagen y **objetos**; valor de cada sujeto; proposiciones, lógica y **creencias**), siente sus **impulsos** (las necesidades del cuerpo y la seguridad, la exploración, intenciones como saber), elige **estrategias** con fases, progreso y agotamiento, y las traduce en **acciones**. Un **Tribunal** elige una según cómo esté el cuerpo, con un pequeño plus por seguir la estrategia en curso. Cada componente solo produce y cambia piezas de su tipo. Lo vivido se recuerda, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
+Cada individuo de IdA tiene un **cuerpo** que se gasta (constantes vitales, estrés, placer y valencia) y un **latido**. En cada latido, el núcleo siente el mundo (interocepción, propiocepción, **exterocepción** y ambiente) y crea una **Onda** con frecuencia (el plazo; si se pasa, una guillotina corta), amplitud (cuántas piezas caben en la atención) y potencia (cuánto arousal se puede dar o cambiar), que fija la Regulación del Core a partir del estado del cuerpo. Cada sistema (Core, S1, S2, S3) se organiza en Componentes por etapas (Sentir, Interpretar, Reaccionar, Actuar), declarados en [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) y mostrados en [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md), y el mundo solo aporta su cuerpo y sus Componentes propios. Tres sistemas trabajan sobre la Onda en orden: S1 (supervivencia), S2 (valor) y S3 (verdad). Cada uno interpreta (imagen y **objetos**; valor de cada sujeto; proposiciones, lógica y **creencias**), siente sus **impulsos** (las necesidades del cuerpo y la seguridad, la exploración, intenciones como saber), elige **estrategias** con fases, progreso y agotamiento, y las traduce en **acciones**. Un **Tribunal** elige una según cómo esté el cuerpo, con un pequeño plus por seguir la estrategia en curso. Cada componente solo produce y cambia piezas de su tipo. Lo vivido se recuerda, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
+
+### Un latido
+
+Cada latido es una **Onda** que recorre siempre el mismo camino. El Core siente y regula sin pagar atención, también dormido. Los tres sistemas piensan por turnos sobre la misma Onda, cada uno en cuatro módulos. El Core actúa al final.
+
+```mermaid
+flowchart TB
+  subgraph PRE["Antes de pensar: sin pagar atención, también dormido"]
+    direction LR
+    O["1 · Onda<br/>copia de la anterior"] --> CS["2 · Sentir<br/>en bruto"] --> PA["3 · Preatención<br/>saliencia y valoración"] --> PL["4 · Plasticidad<br/>aprende del efecto"] --> RG["5 · Regulación<br/>frecuencia · amplitud · potencia"]
+  end
+  subgraph COG["6 · Cognición: paga atención; la guillotina corta si se agota el plazo"]
+    direction LR
+    S1["S1 · supervivencia"] --> S2["S2 · valor"] --> S3["S3 · verdad"]
+  end
+  subgraph POS["Core"]
+    direction LR
+    CA["7 · Actuar<br/>Tribunal y primitiva"] --> CI["8 · Cierre<br/>qué guardar"]
+  end
+  PRE -->|"la Onda"| COG
+  COG -->|"Actuaciones"| POS
+  classDef core fill:#ede9fe,stroke:#7c3aed,color:#0f172a
+  classDef sis fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  class O,CS,PA,PL,RG,CA,CI core
+  class S1,S2,S3 sis
+```
+
+Cada sistema pasa por **Sentir → Interpretar → Reaccionar → Actuar**. Las estrategias viven en Reaccionar, cada una con su Actuación. Un mundo no cambia este flujo: solo registra su cuerpo y sus Componentes propios. El diagrama completo, con cada Componente del núcleo y de cada mundo, está en [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md).
 
 La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabulario común de rasgos (`nutritivo`, `peligro`, `lugar`…) y verbos (`MOVER`, `COMER`…), y el mismo núcleo, sin cambios, vive en cinco: uno mínimo para tests, un **mundo de archivos** en disco, **Snake** en una web real, **Crafter** y **Ajedrez**. El mundo percibe; IdA piensa: ningún sensor calcula por el individuo.
 
@@ -46,7 +74,7 @@ Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA 
 
 Opciones comunes: `--latidos`, `--semilla`, `--generaciones`, `--ver` (panel), `--otel` (OpenTelemetry), `--sin-experiencia` (apaga las dimensiones activa y proactiva para comparar), `--tabula-rasa` (borra el linaje), `--cada N` y `--opcion clave=valor`. Los datos se guardan en `datos/<mundo>/`.
 
-Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([método](docs/MEDICION_OFICIAL.md), [resultados](docs/MEDICION_PASO6.md)).
+Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial --sin-herencia --manual estricto --plazo-logico 40` ([método](docs/MEDICION_OFICIAL.md), [resultados](docs/MEDICION_MATERIAL_MAPA.md); la reorganización por Componentes de v5 mantiene exactamente la misma conducta y la misma Score: [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md)).
 
 > **Nota sobre Snake.** Este mundo juega en [playsnake.org](https://playsnake.org/), un sitio de terceros sin relación con este proyecto, controlando un navegador con Playwright. Es un mundo de demostración: juega una partida cada vez, no usa credenciales ni recoge datos del sitio. Si lo usas, respeta sus condiciones de uso. Si el sitio cambia o deja de estar disponible, este mundo dejará de funcionar; los demás no dependen de internet.
 
@@ -59,7 +87,7 @@ Evaluación de Crafter con el protocolo oficial: `python herramientas/evaluar_cr
   - una defensa general que aprende cuánto daña cada cosa, desde dónde y de dónde salen los proyectiles (descubre sola que las flechas vienen de los esqueletos), y decide si luchar o huir según su salud.
 
   Medido con el protocolo oficial (episodios de hasta 10 000 pasos, vista local de 9×7, media geométrica de las tasas de éxito de los 22 logros), con dos semillas base: 15,86 % (IC 95 %: 14,6–17,1) y 17,34 % (IC 95 %: 16,1–18,5), con 377 y 360 episodios, cada episodio en un mundo nuevo y con un individuo recién nacido. Como referencia, en el artículo original de Crafter, DreamerV2 obtiene 10,0 % y PPO 4,6 % tras entrenar con 1M de pasos; el azar saca 1,6 %. Cada decisión se puede leer: qué sistema la propuso, con qué motivo («afrontar: acercarse a esqueleto (alcance 8…)») y por qué ganó en el Tribunal.
-- **Cómo se llegó, medido paso a paso.** El núcleo sin conducta de Crafter partía del 1,45 %, al nivel del azar. El manual y el planificador lo llevaron al 8,8 %; aprender qué satisface cada necesidad, al 11,3 %; el refugio general, al 12,8–13,6 %; la defensa general, al 14,0–15,5 %; reunir de una vez el material de cada estación de trabajo, al 14,8–16,0 %; buscar el material también en lo que recuerda del mapa, al 15,9–17,3 %. Dos mecanismos que no aportaron se retiraron y quedan documentados. Detalle en [`docs/FASE_GENERALIZACION_CRAFTER.md`](docs/FASE_GENERALIZACION_CRAFTER.md).
+- **Cómo se llegó, medido paso a paso.** El núcleo sin conducta de Crafter partía del 1,45 %, al nivel del azar. El manual y el planificador lo llevaron al 8,8 %; aprender qué satisface cada necesidad, al 11,3 %; el refugio general, al 12,8–13,6 %; la defensa general, al 14,0–15,5 %; reunir de una vez el material de cada estación de trabajo, al 14,8–16,0 %; buscar el material también en lo que recuerda del mapa, al 15,9–17,3 %. Dos mecanismos que no aportaron se retiraron y quedan documentados. Detalle en [`docs/historico/FASE_GENERALIZACION_CRAFTER.md`](docs/historico/FASE_GENERALIZACION_CRAFTER.md).
 - **La versión anterior, con conducta escrita para Crafter, queda como referencia.** Con estrategias propias del mundo (refugio nocturno, defensa y plan tecnológico), IdA obtenía 19,2 % (IC 95 %: 17,7–20,5). Se conserva en la etiqueta `crafter-procedimental-v1` y se reproduce desde ella. La diferencia entre las dos líneas (19,2 % frente a 15,9–17,3 %) es lo que el conocimiento escrito a mano aún aporta sobre lo que el núcleo aprende por sí solo. Ninguna de las dos se presenta como comparación de igual a igual con agentes que aprenden desde píxeles: IdA recibe la escena en forma simbólica. Las dos quedan por debajo de SPRING (27,3 %, GPT-4 leyendo el artículo de Crafter) y de los mejores agentes actuales.
 - **El mismo núcleo vive en cinco mundos** muy distintos, y un test con AST vigila que no aprenda palabras de ninguno.
 - **Optimizando solo el código de cada mundo:**
@@ -101,9 +129,13 @@ Este repositorio es el framework: sirve para ejecutar y ver vivir a los individu
 |---|---|
 | [`MANIFIESTO.md`](MANIFIESTO.md) | Por qué existe IdA, en la voz del autor |
 | [`doc-repositorio/`](doc-repositorio/README.md) | Documentación completa: filosofía, arquitectura, mundos, guía técnica, métricas e hitos |
-| [`docs/DISENO_FRAMEWORK_BASE.md`](docs/DISENO_FRAMEWORK_BASE.md) | Diseño del framework base y sus principios |
-| [`docs/ESTADO_IMPLEMENTACION.md`](docs/ESTADO_IMPLEMENTACION.md) | Fases, decisiones y pendientes |
-| [`docs/RESULTADOS.md`](docs/RESULTADOS.md) | Primeras ejecuciones de verificación de cada mundo y sus límites |
+| [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) | Especificación viva del diseño por Componentes (decisiones D1–D17 y proceso de cambio) |
+| [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md) | Mapa completo de Componentes del núcleo y de cada mundo generado desde la especificación |
+| [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md) | Diagramas del latido con los Componentes del núcleo y de cada mundo (generado desde `componentes.toml`) |
+| [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Lista viva de trabajo pendiente: limpieza, cambios de conducta y validación |
+| [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md) | Comparativa sistemática que demuestra que v5 mantiene idéntica conducta frente a v4 |
+| [`docs/METODO_MEDICION.md`](docs/METODO_MEDICION.md) | Protocolo metodológico: guillotina lógica y comparación pareada reproducible |
+| [`docs/historico/README.md`](docs/historico/README.md) | Índice de documentos históricos de fases de diseño anteriores |
 | [`CHANGELOG.md`](CHANGELOG.md) · [`CONTRIBUTING.md`](CONTRIBUTING.md) · [`SECURITY.md`](SECURITY.md) · [`AGENTS.md`](AGENTS.md) | Cambios, cómo contribuir, seguridad y reglas para agentes de IA |
 
 ## Honestidad

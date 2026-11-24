@@ -38,12 +38,14 @@ def main() -> int:
     p.add_argument("--raiz", default=RAIZ, help="raíz del repositorio que se ejecuta (p. ej. un worktree de otro commit)")
     args = p.parse_args()
     sys.path.insert(0, args.raiz)
+    from ida.nucleo.mundo import Registro
     from ida.ejecutor import ejecutar
     from ida.mundos import cargar
-    from ida.sistemas.s3 import PerseguirMetas
+    from ida.s3.reaccionar.estrategias import PerseguirMetas
 
     if args.sin_estrategias_propias:
-        cargar("crafter").estrategias_propias = lambda self: {}
+        original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)
+        cargar("crafter").registro = lambda self: Registro(cuerpo=original(self).cuerpo)
     propuestos: List[int] = []
     original = PerseguirMetas.proponer
 

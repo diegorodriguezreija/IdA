@@ -1,25 +1,26 @@
 """Paso 0 de la fase de generalización (docs/PROPUESTA_PASO0.md): la intensidad del impulso llega al Tribunal.
 
 - 0a (urgencia local en ``Tribunal.reactiva``) se retiró: resultado negativo (``docs/PROPUESTA_PASO0.md``, «Resultado»).
-- 0b: aliestesia en la base, siempre activa donde dos o más necesidades comparten rasgo (``Perfil.aliestesia``):
+- 0b: aliestesia en la base, activa donde el mundo registra ``Apetencia`` (D3, D15; antes ``Perfil.aliestesia``):
   ``Memoria.satisface``, componente ``Apetencia`` de S1 y ``Alimentarse`` por necesidad.
 """
 
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, cast
 
 import pytest
 
-from ida.core.arquitectura import Contexto
-from ida.core.azar import Azar
+from ida.nucleo.arquitectura import Contexto
+from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
-from ida.core.linaje import Arquetipo
-from ida.core.memoria import Memoria
-from ida.core.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil
-from ida.core.onda import Onda
-from ida.core.pieza import Pieza
-from ida.core.soma import Soma
-from ida.core.vocabulario import Verbo
-from ida.sistemas import crear_sistemas
+from ida.nucleo.linaje import Arquetipo
+from ida.nucleo.memoria import Memoria
+from ida.nucleo.mundo import Efecto, Entidad, MecanismosMemoria, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.nucleo.onda import Onda
+from ida.nucleo.pieza import Pieza
+from ida.nucleo.soma import Soma
+from ida.nucleo.vocabulario import Verbo
+from ida.sistemas_comun import crear_sistemas
+from ida.s1.interpretar.apetencia import Aliestesia
 
 # --- 0b: aliestesia en la base -------------------------------------------------------------------
 # Mundo de juguete: dos necesidades (hambre y sed) y dos clases (baya y charca) que satisfacen cada una la suya.
@@ -73,6 +74,9 @@ class MundoDosNecesidades(Mundo):
     def manual(self):
         return MANUAL_JUGUETE if self.con_manual else {}
 
+    def registro(self) -> Registro:
+        return Registro(opcionales=["Apetencia"])   # dos necesidades con el mismo rasgo: aliestesia (D3, D15)
+
 
 def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, necesidades: Tuple[Necesidad, ...] = NECESIDADES_JUGUETE):
     """Contexto de S1 con la interocepción, los dos objetos al alcance y los impulsos de hambre y sed."""
@@ -87,12 +91,15 @@ def _ctx_juguete(comida: float, agua: float, memoria: Optional[Memoria] = None, 
     for n in NECESIDADES_JUGUETE:
         i = n.deficit({"comida": comida, "agua": agua}) or 0.0
         onda.registrar("Impulso", Pieza(n.nombre, "Impulso", i, carga={"intensidad": i, "objetivo": 0.0, "rasgo": n.rasgo}, sistema="S1"))
-    return Contexto(onda, Soma(), memoria or Memoria(), Arquetipo(), Azar(1), perfil, {Verbo.COMER, Verbo.MOVER, Verbo.ESPERAR}, None, True)
+    # Un mundo cuyas necesidades comparten rasgo registra Apetencia (D15); con una necesidad por rasgo, no.
+    registrados = {"Apetencia"} if necesidades == NECESIDADES_JUGUETE else set()
+    return Contexto(onda, Soma(), memoria or Memoria(), Arquetipo(), Azar(1), perfil, {Verbo.COMER, Verbo.MOVER, Verbo.ESPERAR}, None, True,
+                    registrados=registrados)
 
 
 def _propuesta(ctx: Contexto, impulso: str):
-    from ida.core.estrategia import nueva
-    from ida.sistemas.s1 import Alimentarse
+    from ida.nucleo.estrategia import nueva
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
     d = Alimentarse()
     i = float(ctx.onda.ef("Impulso")[impulso].carga["intensidad"])
@@ -103,125 +110,144 @@ def _propuesta(ctx: Contexto, impulso: str):
 
 
 def _apetencia(ctx: Contexto) -> None:
-    from ida.sistemas.s1 import Apetencia
+    from ida.s1.interpretar.apetencia import Apetencia
 
     a = Apetencia()
     a.sistema = "S1"
     a.reactiva(ctx)
 
 
-def test_aliestesia_solo_con_un_rasgo_compartido_por_varias_necesidades():
-    """Sin interruptor: actúa cuando el rasgo no dice a qué necesidad sirve un objeto. Con las necesidades de la
-    base (una sola con rasgo) no produce nada, y mínimo, archivos y ajedrez se comportan como antes."""
-    assert Perfil().aliestesia is False
-    assert Perfil(necesidades=NECESIDADES_JUGUETE).aliestesia is True
-    assert Perfil(necesidades=UNA_POR_RASGO).aliestesia is False
+def _memoria() -> Memoria:
+    """D7: la sección «satisface» es de ``Apetencia``; sin Organismo, la prueba la registra como lo haría al montarla."""
+    mem = Memoria()
+    mem.registrar_seccion("satisface", "Apetencia", Aliestesia())
+    return mem
+
+
+def _aliestesia(mem: Memoria) -> Aliestesia:
+    return cast(Aliestesia, mem.seccion_propia("satisface", "Apetencia"))
+
+
+def test_aliestesia_solo_donde_se_registra_apetencia():
+    """Sin perilla (D15): la aliestesia existe donde el mundo registra ``Apetencia``. El mínimo y archivos (una sola
+    necesidad con rasgo) no la registran (``test_mapa_componentes``) y no la montan; el mundo de dos necesidades con el mismo rasgo, sí."""
+    from ida.mundos.minimo import MundoMinimo
+
+    assert not hasattr(Perfil(), "aliestesia")
     assert not hasattr(MecanismosMemoria(), "aliestesia")
-    ctx = _ctx_juguete(20.0, 90.0, necesidades=UNA_POR_RASGO)
-    _apetencia(ctx)
-    assert ctx.onda.ev("Apetencia") == {}
+    for mundo, monta in ((MundoMinimo(), False), (MundoDosNecesidades(), True)):
+        org = Organismo(mundo, crear_sistemas(), Arquetipo(), Memoria("completa"), Azar(1), True)
+        assert ("Apetencia" in org.registrados) is monta
+        assert any(type(c).__name__ == "Apetencia" for s in org.sistemas for c in s.componentes()) is monta
 
 
 def test_satisface_del_manual():
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
-    assert mem.satisfaccion("baya") == {"hambre": pytest.approx(Memoria.CONFIANZA_MANUAL)}
-    assert mem.satisfaccion("charca") == {"sed": pytest.approx(Memoria.CONFIANZA_MANUAL)}
-    assert mem.satisfaccion("piedra") is None
-    assert mem.satisface[("baya", "hambre")].fuente == "manual"
+    al = _aliestesia(mem)
+    assert al.satisfaccion("baya") == {"hambre": pytest.approx(Memoria.CONFIANZA_MANUAL)}
+    assert al.satisfaccion("charca") == {"sed": pytest.approx(Memoria.CONFIANZA_MANUAL)}
+    assert al.satisfaccion("piedra") is None
+    assert al.satisface[("baya", "hambre")].fuente == "manual"
 
 
 def test_satisface_de_la_experiencia_corrige_al_manual():
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
     for _ in range(4):
-        mem.aprender_satisface("charca", {"hambre": False, "sed": True})
-    s = mem.satisfaccion("charca")
+        _aliestesia(mem).aprender_satisface("charca", {"hambre": False, "sed": True})
+    al = _aliestesia(mem)
+    s = al.satisfaccion("charca")
     assert s is not None
     # Línea base 0 (nada sube sin comer): ΔP = 1, combinado con el manual (peso 1), como antes.
     assert s["sed"] == pytest.approx((4 * 1.0 + Memoria.CONFIANZA_MANUAL) / 5)
     assert s["hambre"] == 0.0                                   # el manual no la declara y nunca subió
-    assert mem.satisface[("charca", "sed")].fuente == "manual+experiencia"
+    assert al.satisface[("charca", "sed")].fuente == "manual+experiencia"
 
 
 def _vivir_contingencia(latidos: int = 600) -> Memoria:
     """Secuencia sintética de una vida: se come baya cada 7 latidos; la «luz» sube sola 10 latidos de cada 40
     (como el amanecer), coma o no; la «comida» solo sube al comer baya."""
-    mem = Memoria()
+    mem = _memoria()
     for t in range(latidos):
         luz_sube = (t % 40) < 10
         if t % 7 == 0:
-            mem.aprender_satisface("baya", {"comida": True, "luz": luz_sube})
+            _aliestesia(mem).aprender_satisface("baya", {"comida": True, "luz": luz_sube})
         else:
-            mem.actualizar_linea_base({"comida": False, "luz": luz_sube})
+            _aliestesia(mem).actualizar_linea_base({"comida": False, "luz": luz_sube})
     return mem
 
 
 def test_contingencia_una_necesidad_que_sube_sola_no_se_atribuye_a_la_clase():
     mem = _vivir_contingencia()
-    s = mem.satisface[("baya", "luz")]
+    al = _aliestesia(mem)
+    s = al.satisface[("baya", "luz")]
     assert s.sube / s.n > 0.15                                   # coincidencia: muchas comidas caen al «amanecer»
-    assert mem.estimacion_satisface("baya", "luz") <= 0.1       # contingencia: ΔP ≈ 0
+    assert al.estimacion_satisface("baya", "luz") <= 0.1       # contingencia: ΔP ≈ 0
 
 
 def test_contingencia_una_necesidad_que_solo_sube_al_comer_si_se_atribuye():
     mem = _vivir_contingencia()
-    assert mem.linea_base["comida"] == 0.0
-    assert mem.estimacion_satisface("baya", "comida") >= 0.9
+    al = _aliestesia(mem)
+    assert al.linea_base["comida"] == 0.0
+    assert al.estimacion_satisface("baya", "comida") >= 0.9
 
 
 def test_una_coincidencia_aislada_no_basta_en_una_clase_del_manual():
     """Comer vaca una vez al amanecer (la luz sube sola): sin previo, ΔP = 1 − línea base. El manual declara la
     vaca para el hambre, no para la luz: la luz parte de 0 con peso ``PREVIO`` y una coincidencia no la lleva lejos."""
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual({"hechos": [{"tipo": "proposicion", "sujeto": "vaca", "relacion": "NUTRITIVO", "necesidad": "comida"}]})
     for t in range(80):
-        mem.actualizar_linea_base({"comida": False, "luz": (t % 40) < 10})
-    mem.aprender_satisface("vaca", {"comida": True, "luz": True})
-    assert mem.estimacion_satisface("vaca", "luz") <= 0.25
-    assert mem.estimacion_satisface("vaca", "comida") >= 0.8
+        _aliestesia(mem).actualizar_linea_base({"comida": False, "luz": (t % 40) < 10})
+    _aliestesia(mem).aprender_satisface("vaca", {"comida": True, "luz": True})
+    al = _aliestesia(mem)
+    assert al.estimacion_satisface("vaca", "luz") <= 0.25
+    assert al.estimacion_satisface("vaca", "comida") >= 0.8
 
 
 def test_sin_manual_el_previo_es_la_percepcion():
     """Una clase de la que el manual no habla: el rasgo perceptivo es el previo y la experiencia lo corrige."""
-    mem = Memoria()
+    mem = _memoria()
     previos = {"comida": 0.6, "agua": 0.6}
-    assert mem.satisfaccion("baya", previos) is None
-    mem.aprender_satisface("baya", {"comida": True, "agua": False})
-    s = mem.satisfaccion("baya", previos)
+    al = _aliestesia(mem)
+    assert al.satisfaccion("baya", previos) is None
+    _aliestesia(mem).aprender_satisface("baya", {"comida": True, "agua": False})
+    s = al.satisfaccion("baya", previos)
     assert s == {"comida": pytest.approx((1.0 + 3 * 0.6) / 4), "agua": pytest.approx(3 * 0.6 / 4)}
     for _ in range(40):
-        mem.aprender_satisface("baya", {"comida": True, "agua": False})
-    assert mem.estimacion_satisface("baya", "agua", previos) < 0.1
+        _aliestesia(mem).aprender_satisface("baya", {"comida": True, "agua": False})
+    assert al.estimacion_satisface("baya", "agua", previos) < 0.1
 
 
 def test_la_contingencia_compara_con_la_linea_base_del_mismo_momento():
     """Si casi siempre se come en la fase en que la luz sube sola, P(sube | comer) es alta; pero la línea base de
     ese momento también. Comparada con la línea base al final (otra fase), parecería contingente; no lo es."""
-    mem = Memoria()
+    mem = _memoria()
     for t in range(600):
         fase_sube = (t % 150) < 75                    # sube sola media «jornada», baja la otra media
         if fase_sube and t % 5 == 0:                   # se come solo en la fase de subida
-            mem.aprender_satisface("baya", {"luz": True})
+            _aliestesia(mem).aprender_satisface("baya", {"luz": True})
         else:
-            mem.actualizar_linea_base({"luz": fase_sube})
-    assert mem.satisface[("baya", "luz")].sube / mem.satisface[("baya", "luz")].n == 1.0
-    assert mem.linea_base["luz"] < 0.5                 # al final, en la fase de bajada
-    assert mem.estimacion_satisface("baya", "luz") <= 0.2      # residuo: la línea base tarda unos latidos en seguir la fase
+            _aliestesia(mem).actualizar_linea_base({"luz": fase_sube})
+    al = _aliestesia(mem)
+    assert al.satisface[("baya", "luz")].sube / al.satisface[("baya", "luz")].n == 1.0
+    assert al.linea_base["luz"] < 0.5                 # al final, en la fase de bajada
+    assert al.estimacion_satisface("baya", "luz") <= 0.2      # residuo: la línea base tarda unos latidos en seguir la fase
 
 
 def test_la_linea_base_es_una_media_movil():
-    mem = Memoria()
+    mem = _memoria()
     for _ in range(200):
-        mem.actualizar_linea_base({"luz": True})
-    for _ in range(Memoria.VENTANA_BASE * 3):
-        mem.actualizar_linea_base({"luz": False})
-    assert mem.linea_base["luz"] < 0.1                          # olvida lo antiguo: no es la media de toda la vida
+        _aliestesia(mem).actualizar_linea_base({"luz": True})
+    for _ in range(Aliestesia.VENTANA_BASE * 3):
+        _aliestesia(mem).actualizar_linea_base({"luz": False})
+    assert _aliestesia(mem).linea_base["luz"] < 0.1                          # olvida lo antiguo: no es la media de toda la vida
 
 
 def test_apetencia_depende_del_estado_interno():
     """El deseo de cada objeto es Σ intensidad · satisface: con sed, la charca; con hambre, la baya."""
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
     for comida, agua, mas_deseado in ((90.0, 20.0, "charca_1"), (20.0, 90.0, "baya_1")):
         ctx = _ctx_juguete(comida, agua, mem)
@@ -233,7 +259,7 @@ def test_apetencia_depende_del_estado_interno():
 
 def test_cada_impulso_come_lo_que_satisface_su_necesidad():
     """Sin aliestesia (una necesidad por rasgo), hambre y sed eligen el mismo objeto (por nutritivo); con ella, cada una el suyo."""
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
     sin = _ctx_juguete(30.0, 40.0, mem, necesidades=UNA_POR_RASGO)
     assert _propuesta(sin, "hambre").objetivo == _propuesta(sin, "sed").objetivo
@@ -249,7 +275,7 @@ def test_cada_impulso_come_lo_que_satisface_su_necesidad():
 def test_lo_que_no_parece_comestible_no_apetece_aunque_su_clase_satisfaga():
     """La memoria dice a qué necesidad sirve una clase, no si este objeto es comestible ahora (p. ej. una planta
     que aún no está madura): sin el rasgo perceptivo, no hay apetencia."""
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual(MANUAL_JUGUETE)
     ctx = _ctx_juguete(20.0, 20.0, mem)
     ctx.onda.ev("Objeto")["baya_1"].carga["rasgos"]["nutritivo"] = 0.0
@@ -258,9 +284,9 @@ def test_lo_que_no_parece_comestible_no_apetece_aunque_su_clase_satisfaga():
 
 
 def test_sin_nada_que_satisfaga_su_necesidad_la_estrategia_no_es_elegible():
-    from ida.sistemas.s1 import Alimentarse
+    from ida.s1.reaccionar.estrategias import Alimentarse
 
-    mem = Memoria()
+    mem = _memoria()
     mem.aplicar_manual({"hechos": [MANUAL_JUGUETE["hechos"][0],
                                    {"tipo": "proposicion", "sujeto": "charca", "relacion": "NUTRITIVO", "veredicto": "afirma", "necesidad": "hambre"}]})
     ctx = _ctx_juguete(30.0, 30.0, mem)
@@ -284,7 +310,7 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
             comidas.append((o.ciclo, ej.carga["clase"], inten.get("hambre", 0.0), inten.get("sed", 0.0)))
 
     org.vivir(300, al_latir=anotar)
-    e = org.memoria.estimacion_satisface
+    e = cast(Aliestesia, org.memoria.seccion("satisface")).estimacion_satisface
     assert e("baya", "hambre") >= 0.9 and e("charca", "sed") >= 0.9
     assert e("baya", "sed") <= 0.1 and e("charca", "hambre") <= 0.1
     tarde = [c for c in comidas if c[0] > 150]
@@ -295,24 +321,33 @@ def test_en_una_vida_aprende_que_satisface_cada_clase_y_bebe_con_sed():
 
 
 def test_crafter_el_nutritivo_es_perceptivo_y_constante():
-    """El adaptador de Crafter no decide qué apetece (``_deseo`` ya no existe): ``nutritivo`` vale 0,6 en lo que el
-    manual declara NUTRITIVO (la planta, solo madura) y 0 en lo demás, sea cual sea la sed o el hambre."""
+    """Nadie en Crafter decide qué apetece en la percepción (``_deseo`` ya no existe): ``ValoracionCrafter`` (A4) pone
+    ``nutritivo`` 0,6 en lo que el manual declara NUTRITIVO (la planta, solo madura) y 0 en lo demás, sea cual sea la
+    sed o el hambre."""
     pytest.importorskip("crafter")
     from ida.mundos.crafter import NUTRITIVO_MANUAL, MundoCrafter
+    from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
 
-    assert MundoCrafter.perfil.aliestesia is True           # hambre y sed comparten «nutritivo»
     assert not hasattr(MundoCrafter, "_deseo")
     m = MundoCrafter(vista="oficial")
     m.reiniciar(1)
+    assert "Apetencia" in m.registro().opcionales           # hambre y sed comparten «nutritivo»: aliestesia (D15)
     assert m.nutritivos == {"agua", "vaca", "planta"}
+    azar = Azar(1)
+    org = Organismo(m, crear_sistemas(), Arquetipo.nuevo(azar), Memoria(m.perfil.memoria), azar)
+    assert any(isinstance(c, ValoracionCrafter) for c in org.preatencion.componentes)
     valores = set()
+    vistas = 0
     for _ in range(60):
         m.jugador.inventory["drink"] = 2                     # sed apurada: el agua no vale más por ello
-        obs = m.observar()
-        valores |= {e.rasgos.get("nutritivo", 0.0) for e in obs.entidades if e.rasgos.get("lugar", 0.0) < 0.5}
-        for e in obs.entidades:
-            if e.clase in ("agua", "vaca"):
-                assert e.rasgos["nutritivo"] == NUTRITIVO_MANUAL
-        m.ejecutar(Verbo.MOVER, f"celda_{m.jugador.pos[0] + 1}_{m.jugador.pos[1]}", {})
-    assert valores <= {0.0, NUTRITIVO_MANUAL}
+        onda = org.latir()
+        piezas = list(onda.ev("Exterocepcion").values())
+        valores |= {p.rasgo("nutritivo") for p in piezas if p.rasgo("lugar") < 0.5}
+        for p in piezas:
+            if p.clase in ("agua", "vaca"):
+                assert p.rasgo("nutritivo") == NUTRITIVO_MANUAL
+                vistas += 1
+        if not org.soma.esta_vivo:
+            break
+    assert valores <= {0.0, NUTRITIVO_MANUAL} and vistas
 

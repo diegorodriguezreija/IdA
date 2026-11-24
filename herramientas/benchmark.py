@@ -76,10 +76,10 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
     from ida.mundos import cargar
 
     clase_mundo = cargar(mundo)
-    if amplitud is not None:      # barrido del Marcapasos: amplitud base del perfil del mundo (potencia = amplitud)
+    if amplitud is not None:      # barrido de la Regulación: amplitud base del perfil del mundo (potencia = amplitud)
         clase_mundo.perfil = replace(clase_mundo.perfil, amplitud=amplitud)
     if mecanismos is not None or tasa_herencia is not None:   # bloque E: interruptores de memoria
-        from ida.core.mundo import MecanismosMemoria
+        from ida.nucleo.mundo import MecanismosMemoria
         activos: Dict[str, Any] = {m: True for m in (mecanismos or []) if m != "ninguno"}
         if tasa_herencia is not None:
             activos["tasa_herencia"] = tasa_herencia
@@ -268,7 +268,7 @@ def main() -> int:
     e.add_argument("--raiz", required=True)
     e.add_argument("--mundo", required=True, choices=sorted(PROTOCOLO))
     e.add_argument("--salida", required=True)
-    e.add_argument("--amplitud", type=int, default=None, help="amplitud base del perfil del mundo (barrido del Marcapasos)")
+    e.add_argument("--amplitud", type=int, default=None, help="amplitud base del perfil del mundo (barrido de la Regulación)")
     e.add_argument("--grupos", nargs="*", default=None, help="solo estos grupos (p. ej. Equilibrado)")
     e.add_argument("--mecanismos", nargs="*", default=None, help="mecanismos de memoria activados (bloque E)")
     e.add_argument("--tasa-herencia", type=float, default=None, help="tasa de herencia (bloque E, E7)")
