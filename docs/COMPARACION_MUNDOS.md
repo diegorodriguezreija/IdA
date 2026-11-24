@@ -6,53 +6,19 @@ Entorno: `.venv\Scripts\python.exe` en Windows.
 
 ---
 
-## 1. Snake: conducta latido a latido
+## 1. Snake: entorno no determinista (no comparable latido a latido)
 
-### Comandos ejecutados
+Snake juega en la web real `playsnake.org` a través del navegador en tiempo real, por lo que **no es determinista**: dos ejecuciones sucesivas sobre la misma versión (`main` frente a `main`) tampoco producen el mismo resultado, y el propio [`BENCHMARK_PERFILES_MUNDOS.md`](BENCHMARK_PERFILES_MUNDOS.md) ya lo excluye por esta razón.
 
-En cada copia de trabajo (`$env:TEMP\ida_main` y `$env:TEMP\ida_reorg`):
+Por tanto, las diferencias de puntuación observadas (por ejemplo, 435 frente a 45 puntos en la semilla 1) no comparan versiones ni reflejan cambios de conducta debidos a la reorganización, sino la variabilidad inherente al entorno de red y navegador en tiempo real. La tabla latido a latido queda descartada como **no comparable**.
 
-```powershell
-& F:\code\IdA\.venv\Scripts\python.exe $env:TEMP\ida_main\herramientas\invariancia.py --referencia --mundos snake
-& F:\code\IdA\.venv\Scripts\python.exe $env:TEMP\ida_reorg\herramientas\invariancia.py --referencia --mundos snake
-```
-
-Comparación con `primera_diferencia`:
-
-```python
-import sys, os, json
-sys.path.insert(0, os.path.join(os.environ['TEMP'], 'ida_reorg'))
-from herramientas.invariancia import primera_diferencia
-
-with open(os.path.join(os.environ['TEMP'], 'ida_main', 'datos', 'invariancia', 'referencia.json'), encoding='utf-8') as f:
-    ref = json.load(f)
-with open(os.path.join(os.environ['TEMP'], 'ida_reorg', 'datos', 'invariancia', 'referencia.json'), encoding='utf-8') as f:
-    act = json.load(f)
-
-for s in (1, 2, 3):
-    clave = f'snake:{s}'
-    d = primera_diferencia(ref[clave], act[clave])
-    print(f'Semilla {s}:', 'IDÉNTICO' if not d else d)
-```
-
-### Resultados
-
-- **Semilla 1:**
-  - Diferencia: `latido 4: decisión 'ESPERAR' -> 'MOVER'`
-  - Puntuación `main`: `{'puntos': 435, 'longitud': 11, 'causa_muerte': 'desconocida'}` (260 latidos)
-  - Puntuación `reorg`: `{'puntos': 45, 'longitud': 4, 'causa_muerte': 'pared'}` (50 latidos)
-- **Semilla 2:**
-  - Diferencia: `latido 15: vitales {'alimentacion': 72.5, 'descanso': 85.5, 'dopamina': 35.0, 'energia': 94.5, 'estres': 0.068, 'placer': 5.0, 'vitalidad': 100.0} -> {'alimentacion': 72.5, 'descanso': 85.5, 'dopamina': 35.0, 'energia': 94.5, 'estres': 0.063, 'placer': 5.0, 'vitalidad': 100.0}`
-  - Puntuación `main`: `{'puntos': 100, 'longitud': 4, 'causa_muerte': 'pared'}` (62 latidos)
-  - Puntuación `reorg`: `{'puntos': 180, 'longitud': 9, 'causa_muerte': 'pared'}` (252 latidos)
-- **Semilla 3:**
-  - Diferencia: `latido 15: vitales {'alimentacion': 72.5, 'descanso': 85.5, 'dopamina': 35.0, 'energia': 94.5, 'estres': 0.055, 'placer': 5.0, 'vitalidad': 100.0} -> {'alimentacion': 72.5, 'descanso': 85.5, 'dopamina': 35.0, 'energia': 94.5, 'estres': 0.07, 'placer': 5.0, 'vitalidad': 100.0}`
-  - Puntuación `main`: `{'puntos': 290, 'longitud': 11, 'causa_muerte': 'pared'}` (342 latidos)
-  - Puntuación `reorg`: `{'puntos': 185, 'longitud': 6, 'causa_muerte': 'pared'}` (80 latidos)
+Para comparar Snake se requiere una metodología estadística agregada (N partidas de cada versión con `main` frente a `main` como control de ruido); remitimos a [`PENDIENTES.md`](PENDIENTES.md) («Snake»). No se debe ejecutar Snake para pruebas de invariancia determinista.
 
 ---
 
 ## 2. Mínimo, archivos y ajedrez: conducta latido a latido
+
+> **Nota sobre la invariancia de archivos:** la referencia guardada de invariancia de archivos depende de la plataforma y falla en Linux también con `main` (ver [`PENDIENTES.md`](PENDIENTES.md), punto C5). En el entorno Windows de referencia pasa de forma idéntica.
 
 ### Comandos ejecutados
 
