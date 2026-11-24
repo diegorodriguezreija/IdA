@@ -157,7 +157,8 @@ Excepción de orden: `Amenaza` aprende (daño, emisores, eficacia) en su propio 
 | Proposiciones, registros (verbo × clase), expectativas | Core (aprende del efecto, paso 4) | `Memoria.saber`, `registros`, `proyectar` |
 | Qué necesidad satisface cada clase (aliestesia) | `Apetencia` (S1 · Interpretar, general) | `Memoria.satisface` |
 | Peligro: daño, alcance, emisores, eficacia | `Amenaza` (S1 · Interpretar, general) | `ida/core/peligro.py` |
-| Requisitos, transformaciones | `Requisito` (S3 · Interpretar, general; «delante» y «cerca» los da el cuerpo) | `Memoria.aprender_requisito`, `aprender_transformacion` |
+| Requisitos, intentos y metas | `Requisito` (S3 · Interpretar, general; «delante» y «cerca» los da el cuerpo) | `Memoria.aprender_requisito`, `registrar_meta` |
+| Transformaciones de casillas (qué hace cada acción con la casilla) | Cuerpo cuadrícula (`MapaLocal`): es geometría del cuerpo | `Memoria.aprender_transformacion` |
 | Metas (qué verbo sobre qué objetivo cumplió un logro) | `Requisito` (S3 · Interpretar): una estrategia no tiene plasticidad (D6), así que las metas las aprende el Componente de medios y fines | `Memoria.registrar_meta` |
 | Lugares, hogar y mapa topológico (lugares y rutas) | Core (como hoy) | `Memoria.lugares`, `mapa` |
 | Mapa local métrico (casillas) | `MapaLocal` (cuerpo cuadrícula) | `Memoria.ver_casillas` |
@@ -360,3 +361,4 @@ Mover piezas hacia su destino (actualizar `hoy`) no es un cambio de diseño: va 
 | 23/11/2026 | D9 | Primitivas al ejecutar; el éxito lo juzga el cuerpo | A5b |
 | 23/11/2026 | D5 | `Saliencia` corre siempre la última de la preatención | A4 (`docs/A4_PROGRESO.md`): `ValoracionCrafter` se registra después de ella |
 | 23/11/2026 | D15, sección 5 | Dos constantes, de diseño; `Peligros.escalar()` se resuelve en A7 | Resultado de A6a (`docs/A6A_PROGRESO.md`) |
+| 24/11/2026 | D7 | Transformaciones al cuerpo; secciones con dueño y manual y legado diferidos | A7b |

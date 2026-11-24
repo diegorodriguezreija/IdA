@@ -13,10 +13,10 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 | E3 | «satisface» a Apetencia | Hecha | `7079997` |
 | E4 | «cuadricula» al cuerpo | Hecha | `9f2afa6` |
 | E5 | `Requisito` y su sección | Hecha | `a21e9ef` |
-| E6 | Escrituras delegadas y test estático | Hecha | (ver git log) |
-| E7 | Especificación y documentos | Pendiente | |
+| E6 | Escrituras delegadas y test estático | Hecha | `b76a9c1` |
+| E7 | Especificación y documentos | Hecha | (ver git log) |
 
-### Últimas comprobaciones (E6)
+### Últimas comprobaciones (E7)
 
 ```
 ruff check .   All checks passed!
@@ -137,3 +137,30 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
   ficheros de su dueño; ninguna escritura en datos de sección a través de la Memoria (propiedades A2); escrituras
   delegadas solo en ficheros del dueño o de autores admitidos; los dueños rechazan autores no admitidos; la tabla cubre
   todas las propiedades A2. En `MapaLocal` y `ModeloDirecto` la variable de la sección pasa de `mem` a `mapa`.
+
+## E7 · Especificación y documentos
+
+- `doc-repositorio/componentes.toml`: notas de `Amenaza`, `Apetencia`, `MapaLocal`, `ModeloDirecto` y `Requisito` con su
+  sección (el `hoy` de `Requisito` cambió en E5). Sin cambios en `destino`, `clase`, `registran` ni `decision`. Mapa
+  regenerado.
+- `docs/DISENO_COMPONENTES.md`, D7: la fila «Requisitos, transformaciones» se sustituye por las dos filas literales del
+  encargo; registro de cambios: «24/11/2026 | D7 | Transformaciones al cuerpo; secciones con dueño y manual y legado
+  diferidos | A7b».
+
+## Propiedades de solo lectura que quedan para A2 (`# A2:` en `ida/core/memoria.py`)
+
+- «peligros»: `peligros`.
+- «satisface»: `satisface`, `linea_base`, `n_base`, `satisfaccion()`, `estimacion_satisface()`.
+- «cuadricula»: `casillas`, `version_mapa`, `paso_libre`, `paso_bloqueado`, `peligro_sobre`, `transformaciones`, `cuerpo`,
+  `cierres`, `yo_previo`, `transitable()`, `transitable_peligro()`, `resultado()`, `modelo_cuerpo()`.
+- «requisitos»: `requisitos`, `intentos`, `claves_inventario`, `metas`, `fallos_seguidos`, `_objetos()`, `bloqueada()`,
+  `declarada()`, `puede_salir()`, `tasa_estimada()`.
+
+Las leen `Recinto` (Crafter), `Afrontar` y `objetos_peligrosos` (`s1.py`), `Amenaza` (`_objetos`), `Proteger`, S3
+(`PerseguirMetas` y otras) y herramientas de diagnóstico. Sin la sección dan lo mismo que una sección vacía.
+
+## Pendientes
+
+- A2: sustituir las lecturas por `memoria.seccion(nombre)` y retirar las propiedades `# A2:`.
+- Los datos `Requisito`, `Meta` y `Satisface` siguen definidos en `ida/core/memoria.py` (solo tipos; las secciones los
+  importan). Moverlos con sus dueños queda para A2 si el autor lo quiere.
