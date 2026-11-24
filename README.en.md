@@ -12,6 +12,34 @@ IdA is a **framework**: a generic core, inspired by how living beings solve the 
 
 Every IdA individual has a **body** that wears out (vital constants, stress, pleasure and valence) and a **heartbeat**. On each beat the core senses the world (interoception, proprioception, **exteroception** and ambient conditions) and creates a **Wave** (*Onda*) with a frequency (the deadline; past it, a guillotine cuts thinking), an amplitude (how many pieces fit in attention) and a power (how much arousal can be granted or changed), set by a pacemaker. Each system (Core, S1, S2, S3) is organized into Components by stages (Sentir, Interpretar, Reaccionar, Actuar), declared in [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) and displayed in [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md), and the world only provides its body and its own Components. Three systems work on the Wave in order: S1 (survival), S2 (value) and S3 (truth). Each one interprets (image and **objects**; the value of each subject; propositions, logic and **beliefs**), feels its **impulses** (bodily needs and safety, exploration, intentions such as knowing), chooses **strategies** with phases, progress and exhaustion, and turns them into **actions**. A **Tribunal** picks one according to the state of the body, with a small bonus for continuing the current strategy. Each component only produces and changes pieces of its own type. What the individual lives through is remembered, turned into readable knowledge ("the mushroom hurts") and, at death, passed on to its **lineage**.
 
+### A heartbeat
+
+Each heartbeat is a **Wave** (*Onda*) that always follows the same path. The Core senses and regulates without paying attention, even while asleep. The three systems think in turns on the same Wave, each in four modules. The Core acts at the end.
+
+```mermaid
+flowchart TB
+  subgraph PRE["Before thinking: without paying attention, even while asleep"]
+    direction LR
+    O["1 · Wave<br/>copy of previous"] --> CS["2 · Sense<br/>raw input"] --> PA["3 · Preattention<br/>salience & appraisal"] --> PL["4 · Plasticity<br/>learns from effect"] --> RG["5 · Regulation<br/>frequency · amplitude · power"]
+  end
+  subgraph COG["6 · Cognition: pays attention; guillotine cuts if deadline expires"]
+    direction LR
+    S1["S1 · survival"] --> S2["S2 · value"] --> S3["S3 · truth"]
+  end
+  subgraph POS["Core"]
+    direction LR
+    CA["7 · Act<br/>Tribunal and primitive"] --> CI["8 · Close<br/>what to retain"]
+  end
+  PRE -->|"the Wave"| COG
+  COG -->|"Proposals"| POS
+  classDef core fill:#ede9fe,stroke:#7c3aed,color:#0f172a
+  classDef sis fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  class O,CS,PA,PL,RG,CA,CI core
+  class S1,S2,S3 sis
+```
+
+Each system goes through **Sense → Interpret → React → Act** (*Sentir → Interpretar → Reaccionar → Actuar*). Strategies live in React, each with its Action proposal (*Actuación*). A world does not change this flow: it only registers its body and its own Components. The complete diagram, with every Component of the core and each world, is in [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md).
+
 The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
 
 <p align="center">
@@ -93,6 +121,7 @@ This repository is the framework: it is for running IdA and watching its individ
 | [`doc-repositorio/`](doc-repositorio/README.md) | Complete documentation: philosophy, architecture, worlds, technical guide, metrics and milestones (Spanish) |
 | [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) | Living Component-based design specification (decisions D1–D17 and change process) |
 | [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md) | Complete Component map of the core and each world generated from the specification |
+| [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md) | Heartbeat diagrams with core and world Components (generated from `componentes.toml`) |
 | [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Living backlog of pending tasks: cleanup, behavior changes and validation |
 | [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md) | Systematic benchmark demonstrating that v5 preserves identical behavior against v4 |
 | [`docs/METODO_MEDICION.md`](docs/METODO_MEDICION.md) | Methodological protocol: logical deadline and reproducible paired comparisons |

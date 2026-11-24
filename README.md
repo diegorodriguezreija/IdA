@@ -12,6 +12,34 @@ IdA es un **framework**: un núcleo genérico, inspirado en cómo resuelven los 
 
 Cada individuo de IdA tiene un **cuerpo** que se gasta (constantes vitales, estrés, placer y valencia) y un **latido**. En cada latido, el núcleo siente el mundo (interocepción, propiocepción, **exterocepción** y ambiente) y crea una **Onda** con frecuencia (el plazo; si se pasa, una guillotina corta), amplitud (cuántas piezas caben en la atención) y potencia (cuánto arousal se puede dar o cambiar), que fija un marcapasos. Cada sistema (Core, S1, S2, S3) se organiza en Componentes por etapas (Sentir, Interpretar, Reaccionar, Actuar), declarados en [`doc-repositorio/componentes.toml`](doc-repositorio/componentes.toml) y mostrados en [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md), y el mundo solo aporta su cuerpo y sus Componentes propios. Tres sistemas trabajan sobre la Onda en orden: S1 (supervivencia), S2 (valor) y S3 (verdad). Cada uno interpreta (imagen y **objetos**; valor de cada sujeto; proposiciones, lógica y **creencias**), siente sus **impulsos** (las necesidades del cuerpo y la seguridad, la exploración, intenciones como saber), elige **estrategias** con fases, progreso y agotamiento, y las traduce en **acciones**. Un **Tribunal** elige una según cómo esté el cuerpo, con un pequeño plus por seguir la estrategia en curso. Cada componente solo produce y cambia piezas de su tipo. Lo vivido se recuerda, se convierte en conocimiento legible («la seta hace daño») y, al morir, pasa al **linaje**.
 
+### Un latido
+
+Cada latido es una **Onda** que recorre siempre el mismo camino. El Core siente y regula sin pagar atención, también dormido. Los tres sistemas piensan por turnos sobre la misma Onda, cada uno en cuatro módulos. El Core actúa al final.
+
+```mermaid
+flowchart TB
+  subgraph PRE["Antes de pensar: sin pagar atención, también dormido"]
+    direction LR
+    O["1 · Onda<br/>copia de la anterior"] --> CS["2 · Sentir<br/>en bruto"] --> PA["3 · Preatención<br/>saliencia y valoración"] --> PL["4 · Plasticidad<br/>aprende del efecto"] --> RG["5 · Regulación<br/>frecuencia · amplitud · potencia"]
+  end
+  subgraph COG["6 · Cognición: paga atención; la guillotina corta si se agota el plazo"]
+    direction LR
+    S1["S1 · supervivencia"] --> S2["S2 · valor"] --> S3["S3 · verdad"]
+  end
+  subgraph POS["Core"]
+    direction LR
+    CA["7 · Actuar<br/>Tribunal y primitiva"] --> CI["8 · Cierre<br/>qué guardar"]
+  end
+  PRE -->|"la Onda"| COG
+  COG -->|"Actuaciones"| POS
+  classDef core fill:#ede9fe,stroke:#7c3aed,color:#0f172a
+  classDef sis fill:#dbeafe,stroke:#2563eb,color:#0f172a
+  class O,CS,PA,PL,RG,CA,CI core
+  class S1,S2,S3 sis
+```
+
+Cada sistema pasa por **Sentir → Interpretar → Reaccionar → Actuar**. Las estrategias viven en Reaccionar, cada una con su Actuación. Un mundo no cambia este flujo: solo registra su cuerpo y sus Componentes propios. El diagrama completo, con cada Componente del núcleo y de cada mundo, está en [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md).
+
 La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabulario común de rasgos (`nutritivo`, `peligro`, `lugar`…) y verbos (`MOVER`, `COMER`…), y el mismo núcleo, sin cambios, vive en cinco: uno mínimo para tests, un **mundo de archivos** en disco, **Snake** en una web real, **Crafter** y **Ajedrez**. El mundo percibe; IdA piensa: ningún sensor calcula por el individuo.
 
 <p align="center">
@@ -103,6 +131,7 @@ Este repositorio es el framework: sirve para ejecutar y ver vivir a los individu
 | [`doc-repositorio/`](doc-repositorio/README.md) | Documentación completa: filosofía, arquitectura, mundos, guía técnica, métricas e hitos |
 | [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md) | Especificación viva del diseño por Componentes (decisiones D1–D17 y proceso de cambio) |
 | [`doc-repositorio/06_MAPA_DE_COMPONENTES.md`](doc-repositorio/06_MAPA_DE_COMPONENTES.md) | Mapa completo de Componentes del núcleo y de cada mundo generado desde la especificación |
+| [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md) | Diagramas del latido con los Componentes del núcleo y de cada mundo (generado desde `componentes.toml`) |
 | [`docs/PENDIENTES.md`](docs/PENDIENTES.md) | Lista viva de trabajo pendiente: limpieza, cambios de conducta y validación |
 | [`docs/COMPARACION_MUNDOS.md`](docs/COMPARACION_MUNDOS.md) | Comparativa sistemática que demuestra que v5 mantiene idéntica conducta frente a v4 |
 | [`docs/METODO_MEDICION.md`](docs/METODO_MEDICION.md) | Protocolo metodológico: guillotina lógica y comparación pareada reproducible |

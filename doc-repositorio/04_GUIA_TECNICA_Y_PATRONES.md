@@ -236,5 +236,7 @@ IdA/
     ├── 02_ARQUITECTURA_Y_MECANISMO_VITAL.md # El latido, la onda, guillotina y tribunal
     ├── 03_LOS_MUNDOS.md           # Contratos, rasgos universales y catálogo de mundos
     ├── 04_GUIA_TECNICA_Y_PATRONES.md # Arquitectura de software, patrones y tecnologías
-    └── 05_METRICAS_E_HITOS.md     # Métricas e hitos conseguidos en cada mundo
+    ├── 05_METRICAS_E_HITOS.md     # Métricas e hitos conseguidos en cada mundo
+    ├── 06_MAPA_DE_COMPONENTES.md  # Especificación viva generada desde componentes.toml
+    └── 07_DISENO_VISUAL.md        # Diagramas visuales generados desde componentes.toml
 ```
