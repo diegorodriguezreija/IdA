@@ -184,6 +184,15 @@ class Organismo:
             for d in c.catalogo.todas()
         }
 
+        # Memoria (D7): las secciones de sus dueños (el cuerpo y después los Componentes montados, en orden), que reciben
+        # al registrarse el manual y el legado que la Memoria guardó para ellas
+        fuentes: List[Tuple[str, Any]] = [(reg.cuerpo.nombre, reg.cuerpo)] if reg.cuerpo is not None else []
+        fuentes += [(c.__class__.__name__, c) for c in self.montados() if not c.de_cuerpo]
+        for dueño, fuente in fuentes:
+            declarada = fuente.seccion_memoria(self.perfil)
+            if declarada is not None:
+                self.memoria.registrar_seccion(declarada[0], dueño, declarada[1])
+
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
         self.estrategias: Dict[str, Pieza] = {}   # estrategias activas de S1, S2 y S3, conservadas entre latidos

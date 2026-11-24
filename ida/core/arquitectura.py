@@ -129,6 +129,10 @@ class Componente:
     def aprender(self, ctx: Contexto) -> None:
         pass
 
+    # Memoria (D7): la sección de la que es dueño, como (nombre, sección), o None. El Organismo la registra al montarlo.
+    def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
+        return None
+
     # --- utilidades para producir piezas -------------------------------------
     def pieza(self, ctx: Contexto, id: str, arousal: float, confianza: float = 1.0, carga=None, entradas=None, tipo=None,
               decay: float = 0.0, fitness: Optional[float] = None, cost: Optional[float] = None) -> Pieza:

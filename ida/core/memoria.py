@@ -329,6 +329,30 @@ def _signo(x: float, margen: float = 0.25) -> int:
     return 0 if abs(x) < margen else (1 if x > 0 else -1)
 
 
+class Seccion:
+    """Protocolo de una sección de la Memoria con dueño (D7): lo que la sección sabe hacer con la memoria común. Todo es
+    opcional: por defecto no da legado, no hereda y no lee el manual.
+
+    - ``legado(ahora)``: su parte del legado (claves propias), que ``Memoria.legado`` junta con lo del Core;
+    - ``heredar(legado, tasa)``: toma del legado entero lo suyo y devuelve cuántos hechos cargó;
+    - ``aplicar_manual(manual)``: toma del manual entero lo suyo (la dotación innata).
+
+    La Memoria fija ``activa`` al registrarla (una memoria apagada no aprende ni hereda). ``orden_legado`` da la
+    posición de su parte en ``Memoria.legado`` (la forma del legado no cambia con las secciones)."""
+
+    activa: bool = True
+    orden_legado: int = 0
+
+    def legado(self, ahora: int) -> Dict[str, Any]:
+        return {}
+
+    def heredar(self, legado: Dict[str, Any], tasa: float = 1.0) -> int:
+        return 0
+
+    def aplicar_manual(self, manual: Dict[str, Any]) -> None:
+        return None
+
+
 class Memoria:
     MAX_NODOS_MAPA = 200
     EDAD_OLVIDO_MAPA = 300
@@ -401,6 +425,61 @@ class Memoria:
         # (``ida.sistemas`` importa ``ida.core.arquitectura``, que importa este módulo).
         from ida.sistemas.amenaza import Peligros
         self.peligros: "Peligros" = Peligros()
+        # D7: secciones con dueño. No existen hasta que su dueño se monta (``Organismo``), pero el manual y el legado
+        # llegan antes: la Memoria guarda ambos, en orden, y se los entrega a cada sección al registrarse.
+        self._secciones: Dict[str, Tuple[str, Seccion]] = {}
+        self._diferido: List[Tuple[str, Dict[str, Any], float]] = []   # ("manual" | "legado", datos, tasa)
+        self.heredados = 0                                             # hechos heredados, con los de las secciones
+
+    # --- secciones con dueño (D7) ------------------------------------------------
+    def registrar_seccion(self, nombre: str, dueño: str, seccion: Seccion) -> None:
+        """Registra la sección ``nombre`` de ``dueño`` y le entrega lo diferido: el manual y el legado recibidos antes,
+        en el orden en que llegaron. Un nombre repetido es un error."""
+        if nombre in self._secciones:
+            raise ValueError(f"La sección de memoria '{nombre}' ya está registrada (dueño: {self._secciones[nombre][0]})")
+        seccion.activa = self.activa
+        self._secciones[nombre] = (dueño, seccion)
+        for tipo, datos, tasa in self._diferido:
+            if tipo == "manual":
+                seccion.aplicar_manual(datos)
+            else:
+                self.heredados += seccion.heredar(datos, tasa)
+
+    def seccion(self, nombre: str) -> Seccion:
+        """Lectura libre de una sección registrada (``KeyError`` si su dueño no está montado)."""
+        if nombre not in self._secciones:
+            raise KeyError(f"No hay sección de memoria '{nombre}': su dueño no está montado")
+        return self._secciones[nombre][1]
+
+    def tiene_seccion(self, nombre: str) -> bool:
+        return nombre in self._secciones
+
+    def dueño(self, nombre: str) -> Optional[str]:
+        d = self._secciones.get(nombre)
+        return d[0] if d is not None else None
+
+    def seccion_propia(self, nombre: str, autor: str) -> Seccion:
+        """La sección ``nombre`` para escribir en ella: solo su dueño (``autor``), como en la Onda."""
+        dueño, seccion = self._secciones[nombre]
+        if autor != dueño:
+            raise PermissionError(f"'{autor}' no puede escribir en la sección de memoria '{nombre}' (dueño: {dueño})")
+        return seccion
+
+    def _seccion_o_none(self, nombre: str) -> Optional[Any]:
+        d = self._secciones.get(nombre)
+        return d[1] if d is not None else None
+
+    def _diferir(self, tipo: str, datos: Dict[str, Any], tasa: float = 1.0) -> int:
+        """Guarda el manual o el legado para las secciones que aún no se han registrado y lo entrega a las que ya lo
+        están. Devuelve los hechos que cargaron las secciones registradas."""
+        self._diferido.append((tipo, datos, tasa))
+        n = 0
+        for _, seccion in self._secciones.values():
+            if tipo == "manual":
+                seccion.aplicar_manual(datos)
+            else:
+                n += seccion.heredar(datos, tasa)
+        return n
 
     @property
     def activa(self) -> bool:
@@ -1035,6 +1114,7 @@ class Memoria:
                     r.efecto.update(efecto)
                     r.aparece |= aparece
                 n += 1
+        self._diferir("manual", manual)   # D7: lo de las secciones, al registrarse cada una (o ya, si lo está)
         return n
 
     # --- aliestesia: qué necesidad satisface cada clase (paso 0b) ---------------
@@ -1328,6 +1408,8 @@ class Memoria:
         peligros = self.peligros.legado()      # paso 6: solo si hay algo aprendido (mundos sin peligro propio)
         if peligros:
             legado["peligros"] = peligros
+        for _, seccion in sorted(self._secciones.values(), key=lambda d: d[1].orden_legado):   # D7: cada sección, su parte
+            legado.update(seccion.legado(ahora))
         return legado
 
     def peligrosa(self, clase: str) -> bool:
@@ -1391,4 +1473,6 @@ class Memoria:
                 self.linea_base[necesidad] = float(base)
         if legado.get("peligros"):
             n += self.peligros.heredar(legado["peligros"])
+        n += self._diferir("legado", legado, tasa)   # D7: las secciones toman lo suyo al registrarse (o ya, si lo están)
+        self.heredados += n
         return n
