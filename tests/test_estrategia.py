@@ -423,7 +423,7 @@ def test_alimentarse_con_prudencia_rechaza_indicios_de_dano_y_lo_desconocido():
     from ida.nucleo.memoria import Proposicion
     from ida.nucleo.pieza import Pieza
     from ida.nucleo.vocabulario import Relacion
-    from ida.mundos.archivos import AlimentarseConPrudencia
+    from ida.mundos.archivos.s1.reaccionar.estrategias.alimentarse_con_prudencia import AlimentarseConPrudencia
 
     mem = Memoria()
     mem.saber[("mala", Relacion.PELIGROSO)] = Proposicion("mala", Relacion.PELIGROSO, confianza=0.4)

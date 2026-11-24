@@ -18,9 +18,9 @@ from ida.nucleo.mundo import Cuerpo, Motor, Perfil
 from ida.cuerpos.cuadricula.buscador import buscar_postura, mover
 from ida.cuerpos.cuadricula.geometria import _bfs, _manhattan, _suma, _vecinas, entorno
 from ida.cuerpos.cuadricula.mapa import ir_por_el_mapa
-from ida.cuerpos.cuadricula.mapa_local import MapaLocal
+from ida.cuerpos.cuadricula.core.actuar.modelo_directo import ModeloDirecto
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
-from ida.cuerpos.cuadricula.modelo_directo import ModeloDirecto
+from ida.cuerpos.cuadricula.s1.interpretar.mapa_local import MapaLocal
 from ida.cuerpos.cuadricula.motor import MotorCuadricula
 
 __all__ = [

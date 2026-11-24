@@ -10,16 +10,16 @@ Encargo: llevar el código a su estructura de paquetes final según D2, más cua
 | E1 | Arreglos P1 (mapa y S3), P2 (sección directa) y P3 (tipos) | Hecha | `570e444` |
 | E2 | `ida/nucleo` e `ida/core` (sentir, actuar, regulacion) | Hecha | `2bdb9e7` |
 | E3 | `ida/s1` | Hecha | `4daa83a` |
-| E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Hecha | `[este commit]` |
-| E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Pendiente | - |
+| E4 | `ida/s2` e `ida/s3` (y eliminar `ida/sistemas`) | Hecha | `ba8a2f7` |
+| E5 | `ida/cuerpos/cuadricula` y los mundos como paquetes | Hecha | (este commit) |
 | E6 | P4 (pureza completa), rutas en documentos y herramientas, mapa regenerado | Pendiente | - |
 
-### Últimas comprobaciones (E4)
+### Últimas comprobaciones (E5)
 
 ```
 ruff check .   All checks passed!
-mypy ida       Success: no issues found in 138 source files
-pytest -q      629 passed, 1 skipped, 1 warning in 104.10s
+mypy ida       Success: no issues found in 159 source files
+pytest -q      692 passed, 1 skipped, 1 warning in 67.29s
 equivalencia.py:
 31: IDÉNTICO
 32: IDÉNTICO
@@ -32,6 +32,33 @@ ajedrez: OK
 EQUIVALENCIA: OK
 mapa_componentes.py: Mapa de Componentes válido y al día.
 ```
+
+## E5 · ida/cuerpos/cuadricula y mundos como paquetes
+
+- `ida/cuerpos/cuadricula/`:
+  - Componentes trasladados con `git mv`:
+    - `ModeloDirecto` a `ida/cuerpos/cuadricula/core/actuar/modelo_directo.py`
+    - `MapaLocal` a `ida/cuerpos/cuadricula/s1/interpretar/mapa_local.py`
+  - Bibliotecas en la raíz: `buscador.py`, `geometria.py`, `mapa.py`, `memoria.py`, `motor.py`, `situacion.py`, `__init__.py`.
+  - `ida/cuerpos/cuadricula/__init__.py` importa `ModeloDirecto` y `MapaLocal` de sus nuevas rutas.
+  - `tests/test_duenos_memoria.py`: adaptado `CUERPO` para usar `rglob("*.py")`.
+- `ida/mundos/minimo/`:
+  - `ida/mundos/minimo.py` movido con `git mv` a `ida/mundos/minimo/adaptador.py` (contiene `MundoMinimo`).
+  - Extraído `Defensa` a `ida/mundos/minimo/s1/reaccionar/estrategias/defensa.py`.
+  - `ida/mundos/minimo/__init__.py` exporta `MundoMinimo`.
+- `ida/mundos/snake/`:
+  - `ida/mundos/snake.py` movido con `git mv` a `ida/mundos/snake/adaptador.py` (contiene `MundoSnake`).
+  - `ida/mundos/snake/__init__.py` exporta `MundoSnake`, `ALTO`, `ANCHO`, `espacio_libre`.
+- `ida/mundos/archivos/`:
+  - `ida/mundos/archivos.py` movido con `git mv` a `ida/mundos/archivos/adaptador.py` (contiene `MundoArchivos`).
+  - Extraídos componentes y estrategias:
+    - `ida/mundos/archivos/s1/reaccionar/estrategias/defensa.py`: `Defensa`
+    - `ida/mundos/archivos/s1/reaccionar/estrategias/alimentarse_con_prudencia.py`: `AlimentarseConPrudencia`
+    - `ida/mundos/archivos/s3/reaccionar/prudencia.py`: `Prudencia`, `_indicios_de_dano`
+    - `ida/mundos/archivos/s3/reaccionar/estrategias/buscar_en_otra_carpeta.py`: `BuscarEnOtraCarpeta`
+  - `ida/mundos/archivos/__init__.py` exporta `MundoArchivos`, `clase_de`, `tensor_bytes`.
+- `doc-repositorio/componentes.toml`: actualizadas las notas de `ModeloDirecto` y `MapaLocal`.
+- `doc-repositorio/06_MAPA_DE_COMPONENTES.md`: regenerado con `herramientas/mapa_componentes.py --escribir`.
 
 ## E4 · ida/s2 e ida/s3 (y fuera ida/sistemas)
 

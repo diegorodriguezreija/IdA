@@ -95,7 +95,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 aprende = true
-nota = "ida/cuerpos/cuadricula/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b)"
+nota = "ida/cuerpos/cuadricula/core/actuar/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b)"
 
 [[componente]]
 nombre = "Saliencia"
@@ -190,7 +190,7 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 aprende = true
-nota = "ida/cuerpos/cuadricula/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter"
+nota = "ida/cuerpos/cuadricula/s1/interpretar/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter"
 
 [[componente]]
 nombre = "Reflejo"

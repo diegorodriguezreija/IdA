@@ -22,7 +22,7 @@ RAIZ = pathlib.Path(__file__).resolve().parent.parent
 IDA = RAIZ / "ida"
 FICHEROS = sorted(IDA.rglob("*.py"))
 
-CUERPO = frozenset(str(p.relative_to(RAIZ).as_posix()) for p in (IDA / "cuerpos" / "cuadricula").glob("*.py"))
+CUERPO = frozenset(str(p.relative_to(RAIZ).as_posix()) for p in (IDA / "cuerpos" / "cuadricula").rglob("*.py"))
 
 # Sección -> (ficheros del dueño, métodos que escriben en ella, datos de la sección)
 SECCIONES: Dict[str, Tuple[FrozenSet[str], FrozenSet[str], FrozenSet[str]]] = {
