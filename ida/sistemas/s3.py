@@ -314,8 +314,7 @@ class Estudio(ConPropuestas):
         if ctx.soma.dormido:
             if mem.lectura_activa is not None:
                 mem.lectura_activa.estado = EstadoLectura.INTERRUMPIDO
-                mem.lectura_activa = None
-                mem.ultimo_fin_lectura = ctx.latido
+                mem.fijar_lectura(None, type(self).__name__, fin=ctx.latido)
                 ctx.onda.notas["aprendizaje"] = "«deja la lectura: sueño»"
             return
 
@@ -328,8 +327,7 @@ class Estudio(ConPropuestas):
                 ej_ant = ctx.onda.ei("Accion").get("Accion")
                 if ej_ant is None or ej_ant.carga.get("verbo") != Verbo.LEER:
                     reg.estado = EstadoLectura.INTERRUMPIDO
-                    mem.lectura_activa = None
-                    mem.ultimo_fin_lectura = ctx.latido
+                    mem.fijar_lectura(None, type(self).__name__, fin=ctx.latido)
                     ctx.onda.notas["aprendizaje"] = "«deja la lectura: interrumpida»"
                     return
 
@@ -337,8 +335,7 @@ class Estudio(ConPropuestas):
             al = alarma(ctx)
             if al is not None and al.carga.get("peligro", 0.0) >= 0.3:
                 reg.estado = EstadoLectura.INTERRUMPIDO
-                mem.lectura_activa = None
-                mem.ultimo_fin_lectura = ctx.latido
+                mem.fijar_lectura(None, type(self).__name__, fin=ctx.latido)
                 ctx.onda.notas["aprendizaje"] = "«deja la lectura: alarma»"
                 return
 
@@ -373,14 +370,12 @@ class Estudio(ConPropuestas):
                         reg.estado = EstadoLectura.LEIDO
                     else:
                         reg.estado = EstadoLectura.INVALIDO
-                    mem.lectura_activa = None
-                    mem.ultimo_fin_lectura = ctx.latido
+                    mem.fijar_lectura(None, type(self).__name__, fin=ctx.latido)
                     return
                 elif ctx.perfil.tiempo_real:
                     if reg.latidos_dedicados >= reg.duracion_requerida + self.MAX_LATIDOS_ESPERA_TR:
                         reg.estado = EstadoLectura.SIN_RESPUESTA
-                        mem.lectura_activa = None
-                        mem.ultimo_fin_lectura = ctx.latido
+                        mem.fijar_lectura(None, type(self).__name__, fin=ctx.latido)
                         return
 
             # Inercia atencional: mientras sostiene la lectura, gana arousal y confianza
@@ -414,7 +409,7 @@ class Estudio(ConPropuestas):
             if reg_prev.estado == EstadoLectura.INTERRUMPIDO and reg_prev.ticket and reg_prev.ticket.lista():
                 reg_prev.estado = EstadoLectura.PENDIENTE
                 reg_prev.latidos_dedicados = 0
-                mem.lectura_activa = reg_prev
+                mem.fijar_lectura(reg_prev, type(self).__name__)
                 ctx.onda.notas["aprendizaje"] = f"«relee registro sobre {len(reg_prev.elementos)} hipótesis»"
                 self.proponer(
                     ctx,
@@ -457,7 +452,7 @@ class Estudio(ConPropuestas):
             estado=EstadoLectura.PENDIENTE,
         )
         mem.lecturas.append(reg_nuevo)
-        mem.lectura_activa = reg_nuevo
+        mem.fijar_lectura(reg_nuevo, type(self).__name__)
         ctx.onda.notas["aprendizaje"] = f"«empieza a leer sobre {len(elementos_cons)} hipótesis»"
         self.proponer(
             ctx,

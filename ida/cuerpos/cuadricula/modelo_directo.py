@@ -6,7 +6,7 @@ Contrasta la acción anterior con lo percibido ahora (propiocepción):
 - COGER, COMER o ATACAR sobre una vecina: si quedó mirando hacia ella.
 
 No actúa en los barridos: su trabajo va en ``aprender``, que el Core llama en ``Organismo._aprender`` (donde estaba
-``_aprender_mapa``), antes que el de ``MapaLocal``: lee ``mem.yo_previo`` y ``mem.casillas`` antes de que este los
+``_aprender_mapa``), antes que el de ``MapaLocal``: lee ``mapa.yo_previo`` y ``mapa.casillas`` antes de que este los
 actualice. Escribe en la sección «cuadricula» de la Memoria (D7), cuyo dueño es el cuerpo.
 """
 
@@ -27,16 +27,16 @@ class ModeloDirecto(Componente):
         s = situacion(ctx)
         if s is None:
             return
-        mem = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
+        mapa = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
         c = accion_previa(ctx)
-        v = vecina(mem, c)
+        v = vecina(mapa, c)
         if c is None or v is None:
             return
         p0, destino, direccion = v
         verbo = c["verbo"]
         if verbo == Verbo.MOVER:
-            libre = mem.transitable(mem.casillas.get(destino))
+            libre = mapa.transitable(mapa.casillas.get(destino))
             if libre is not None:
-                mem.aprender_cuerpo("mover", libre, s.aqui == destino, s.cara == direccion)
+                mapa.aprender_cuerpo("mover", libre, s.aqui == destino, s.cara == direccion)
         elif verbo in (Verbo.COGER, Verbo.COMER, Verbo.ATACAR):
-            mem.aprender_cuerpo("interactuar", True, s.aqui != p0, s.cara == direccion)
+            mapa.aprender_cuerpo("interactuar", True, s.aqui != p0, s.cara == direccion)

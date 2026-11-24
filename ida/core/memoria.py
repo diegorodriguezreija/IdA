@@ -376,8 +376,8 @@ class Memoria:
         self.episodios: List[Episodio] = []
         self._ultimo_consolidar_ep: int = 0
         self.lecturas: List[RegistroLectura] = []
-        self.lectura_activa: Optional[RegistroLectura] = None
-        self.ultimo_fin_lectura: int = -100
+        self._lectura_activa: Optional[RegistroLectura] = None
+        self._ultimo_fin_lectura: int = -100
         self.aciertos = 0
         self.fallos = 0
         # Bloque E (decisión 19): búfer diurno de tamaño fijo y episodio del día (secuencia de ondas).
@@ -909,11 +909,37 @@ class Memoria:
             elif arousal > self.diurno[0][0]:
                 heapq.heapreplace(self.diurno, (arousal, self._orden_diurno, pieza))
 
+    # --- escrituras delegadas (D7): el autor de cada una debe estar entre los que admite su dueño -----------------
+    AUTORES_LUGARES = frozenset({"CORE", "Recinto"})         # hogar: el Core (episodios) y Recinto (dentro del recinto)
+    AUTORES_DONDE = frozenset({"RecordarComida"})            # olvidar dónde estaba una clase
+    AUTORES_LECTURA = frozenset({"Estudio"})                 # lectura activa y fin de la última (S3)
+
+    @staticmethod
+    def _admitir(autor: str, admitidos: frozenset, que: str) -> None:
+        if autor not in admitidos:
+            raise PermissionError(f"'{autor}' no puede escribir {que} en la memoria (admitidos: {sorted(admitidos)})")
+
+    @property
+    def lectura_activa(self) -> Optional[RegistroLectura]:
+        return self._lectura_activa
+
+    @property
+    def ultimo_fin_lectura(self) -> int:
+        return self._ultimo_fin_lectura
+
+    def fijar_lectura(self, registro: Optional[RegistroLectura], autor: str, fin: Optional[int] = None) -> None:
+        """La lectura activa (None: ninguna) y, con ``fin``, el latido en que terminó la última. Autor: ``Estudio``."""
+        self._admitir(autor, self.AUTORES_LECTURA, "la lectura activa")
+        self._lectura_activa = registro
+        if fin is not None:
+            self._ultimo_fin_lectura = fin
+
     def ver_clase(self, clase: str) -> int:
         self.clases_vistas[clase] = self.clases_vistas.get(clase, 0) + 1
         return self.clases_vistas[clase]
 
-    def recordar_lugar(self, lugar: str, bienestar: float) -> None:
+    def recordar_lugar(self, lugar: str, bienestar: float, autor: str = "CORE") -> None:
+        self._admitir(autor, self.AUTORES_LUGARES, "lugares")
         previo = self.lugares.get(lugar, 0.0)
         self.lugares[lugar] = 0.7 * previo + 0.3 * bienestar
 
@@ -965,7 +991,8 @@ class Memoria:
         rec = self.donde.get(clase)
         return rec.ubicacion if rec is not None else None
 
-    def olvidar_donde(self, clase: str) -> None:
+    def olvidar_donde(self, clase: str, autor: str) -> None:
+        self._admitir(autor, self.AUTORES_DONDE, "dónde está una clase")
         self.donde.pop(clase, None)
 
     def valor_lugar(self, lugar: str) -> float:

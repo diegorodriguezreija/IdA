@@ -5,8 +5,8 @@ En este orden:
    acción salió y la casilla no cambió, también («no la cambia»): así un primer intento real corrige lo inferido. Y
    los cierres: una casilla que el propio individuo cambió con USAR a algo por donde no pasa un peligro.
 2. Libres (lugares), ocupadas (algo encima de la casilla) y peligros (un agente peligroso encima), de las piezas
-   ``Exterocepcion``; ``mem.ver_casillas``.
-3. ``mem.yo_previo``: posición y orientación de este latido, para el contraste del siguiente.
+   ``Exterocepcion``; ``mapa.ver_casillas``.
+3. ``mapa.yo_previo``: posición y orientación de este latido, para el contraste del siguiente.
 
 No actúa en los barridos: su trabajo va en ``aprender``, que el Core llama en ``Organismo._aprender`` (donde estaba
 ``_aprender_mapa``), después del de ``ModeloDirecto``. Escribe en la sección «cuadricula» de la Memoria (D7), cuyo dueño es
@@ -31,22 +31,22 @@ class MapaLocal(Componente):
         s = situacion(ctx)
         if s is None:
             return
-        mem = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
+        mapa = cast(MapaCuadricula, ctx.memoria.seccion_propia("cuadricula", self.de_cuerpo))
         c = accion_previa(ctx)
-        v = vecina(mem, c)
+        v = vecina(mapa, c)
         if c is not None and v is not None:
             _, destino, _ = v
             verbo = c["verbo"]
-            antes = mem.casillas.get(destino)
+            antes = mapa.casillas.get(destino)
             despues = s.casillas.get(destino)
             cambio = antes is not None and despues is not None and antes != despues
             if verbo in (Verbo.COGER, Verbo.USAR) and antes is not None and despues is not None and (cambio or bool(c.get("exito"))):
                 objetivo = str(c.get("clase") or c.get("objetivo") or "")
-                mem.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
-                if cambio and verbo == Verbo.USAR and not mem.transitable_peligro(despues):
-                    mem.cierres.add(destino)
+                mapa.aprender_transformacion(verbo, objetivo, antes, despues)   # también «no cambió», si la acción salió
+                if cambio and verbo == Verbo.USAR and not mapa.transitable_peligro(despues):
+                    mapa.cierres.add(destino)
                 elif cambio:
-                    mem.cierres.discard(destino)
+                    mapa.cierres.discard(destino)
         libres: Set[Pos] = set()
         ocupadas: Set[Pos] = set()
         peligros: Set[Pos] = set()
@@ -61,5 +61,5 @@ class MapaLocal(Componente):
                 ocupadas.add(p)          # algo encima de la casilla (no es la propia casilla)
                 if e.rasgo("peligro") >= 0.5 and e.rasgo("agente") >= 0.5:
                     peligros.add(p)
-        mem.ver_casillas(s.aqui, s.casillas, libres, ocupadas, peligros)
-        mem.yo_previo = (s.aqui, s.cara)
+        mapa.ver_casillas(s.aqui, s.casillas, libres, ocupadas, peligros)
+        mapa.yo_previo = (s.aqui, s.cara)

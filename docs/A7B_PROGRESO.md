@@ -12,16 +12,16 @@ requisitos → `Requisito`), manual y legado diferidos, escrituras delegadas con
 | E2 | «peligros» a Amenaza, sin `escalar()` | Hecha | `a2db6f7` |
 | E3 | «satisface» a Apetencia | Hecha | `7079997` |
 | E4 | «cuadricula» al cuerpo | Hecha | `9f2afa6` |
-| E5 | `Requisito` y su sección | Hecha | (ver git log) |
-| E6 | Escrituras delegadas y test estático | Pendiente | |
+| E5 | `Requisito` y su sección | Hecha | `a21e9ef` |
+| E6 | Escrituras delegadas y test estático | Hecha | (ver git log) |
 | E7 | Especificación y documentos | Pendiente | |
 
-### Últimas comprobaciones (E5)
+### Últimas comprobaciones (E6)
 
 ```
 ruff check .   All checks passed!
 mypy ida       Success: no issues found in 63 source files
-pytest -q      388 passed, 1 warning
+pytest -q      516 passed, 1 warning
 equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, ajedrez OK; EQUIVALENCIA: OK
 ```
 
@@ -120,3 +120,20 @@ equivalencia.py: 31, 32, 31h y 31h legado IDÉNTICO; minimo, archivos, crafter, 
   `test_mapa_componentes` desde esta etapa; las notas van en E7).
 - Pruebas (aserciones intactas): `test_manual`, `test_planificador`, `test_deuda14` y `test_crafter_manual` usan
   `memoria_con_secciones()` y escriben por `requisitos(mem)` (`tests/_secciones.py`).
+
+## E6 · Escrituras delegadas y vigilancia
+
+- `ver_clase`: el sensor `Exterocepcion` (`ida/core/sentidos.py`) deja de escribir. La cuenta la hace la plasticidad
+  del Core (`Organismo._ver_clases`) al empezar la fase «aprender», con una pieza `Exterocepcion` por entidad (solo
+  el sensor del Core crea piezas de ese tipo; los demás son preatentivos). Nadie lee `clases_vistas` entre el Sentir y
+  ese punto (lo leen `Supervivencia` y `Patron`, en la cognición). Moverla no cambió nada: equivalencia OK.
+- `Memoria.recordar_lugar(lugar, bienestar, autor="CORE")`: admite `CORE` y `Recinto` (el que lo hace hoy en Crafter;
+  la tabla de D7 decía `Proteger`, que A6 movió a `Recinto`).
+- `Memoria.olvidar_donde(clase, autor)`: admite `RecordarComida`.
+- `Memoria.fijar_lectura(registro, autor, fin=None)`: admite `Estudio`; `lectura_activa` y `ultimo_fin_lectura`
+  pasan a propiedades de solo lectura sobre `_lectura_activa` y `_ultimo_fin_lectura`.
+- Un autor no admitido da `PermissionError`.
+- `tests/test_duenos_memoria.py` (ast sobre `ida/`): métodos de escritura y `seccion_propia` de cada sección solo en los
+  ficheros de su dueño; ninguna escritura en datos de sección a través de la Memoria (propiedades A2); escrituras
+  delegadas solo en ficheros del dueño o de autores admitidos; los dueños rechazan autores no admitidos; la tabla cubre
+  todas las propiedades A2. En `MapaLocal` y `ModeloDirecto` la variable de la sección pasa de `mem` a `mapa`.

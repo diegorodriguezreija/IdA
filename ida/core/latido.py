@@ -307,6 +307,7 @@ class Organismo:
             self.preatencion.ejecutar(ctx)
         # 4. Aprender del efecto de la acción anterior (el cuarteto)
         with onda.fase("aprender"):
+            self._ver_clases(ctx)
             self._aprender(ctx)
             if self.con_experiencia and self.perfil.mecanismos.expectativa:
                 self._contrastar(ctx)
@@ -389,6 +390,13 @@ class Organismo:
         for c in self.montados():
             if not c.de_cuerpo and not c.aprende_con_efecto:
                 c.aprender(ctx)
+
+    def _ver_clases(self, ctx: Contexto) -> None:
+        """Plasticidad del Core (D7): familiaridad por clase de cada entidad percibida (una pieza ``Exterocepcion`` por
+        entidad, del sensor del Core). Antes la escribía el propio sensor; nadie la lee entre el Sentir y este punto."""
+        if self.memoria.activa:
+            for e in ctx.onda.ev("Exterocepcion").values():
+                self.memoria.ver_clase(e.clase)
 
     def _aprender(self, ctx: Contexto) -> None:
         ubicacion = ctx.ubicacion()
