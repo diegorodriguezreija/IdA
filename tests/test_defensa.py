@@ -407,7 +407,7 @@ def test_el_emisor_pide_tres_veces_junto_y_contingencia():
 def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
     """Con una tasa de daño muy baja la lucha saldría favorable incluso con el previo de golpes; aun así, sin derribos de la
     clase ni meta del manual, Afrontar no la considera. Con la meta, sí."""
-    from ida.nucleo.memoria import Meta
+    from ida.s3.interpretar.requisito import Meta
     from ida.s3.interpretar.requisito import Requisitos
     for meta in (False, True):
         mundo = MundoErizos(quieto=True, salud=100.0)

@@ -1,15 +1,59 @@
 """Apetencia: aliestesia (Cabanac, 1971; paso 0b). Dueño de la sección «satisface» de la Memoria."""
 
+from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple, cast
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.nucleo.memoria import Memoria, Satisface, Seccion
+from ida.nucleo.memoria import Memoria, Seccion
 from ida.nucleo.mundo import Perfil
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.sistemas.piezas import objetos
 
 SATISFACE_MIN = 0.3   # paso 0b: a partir de aquí algo satisface una necesidad (como ``nutritivo`` ≥ 0,3 hoy)
+
+
+# D7: el tipo de la sección «satisface», de su dueño (antes en ``ida/nucleo/memoria.py``)
+@dataclass
+class Satisface:
+    """Paso 0b (aliestesia): cuánto satisface comer algo de ``clase`` la ``necesidad``, en [0, 1].
+
+    Dos fuentes, combinadas como las de ``Proposicion``: lo que declara el manual (``c_aut`` con peso
+    ``w_aut``) y la experiencia. La experiencia es **contingencia** (Rescorla, 1968), no coincidencia:
+    ``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las cuales subió alguna constante
+    vital de la necesidad en el latido siguiente; ΔP = P(sube | comer la clase) − P(sube | sin comer),
+    acotada a [0, 1]. La línea base P(sube | sin comer) es de la necesidad, no de la clase
+    (``Memoria.linea_base``, media móvil). Las dos probabilidades se comparan en el mismo momento: en cada
+    comida se acumula en ``esperado`` la línea base vigente, y ΔP = (sube − esperado) / n. Así una
+    necesidad que sube sola por fases (la luz al amanecer) no se atribuye a lo que se come en esa fase.
+    La estimación combina ΔP (peso ``n``) con un previo (``Memoria.satisfaccion``): lo que declara el
+    manual (``c_aut``, peso ``w_aut``); 0 con peso ``PREVIO`` para una necesidad que el manual no declara
+    en una clase suya; o lo que sugiere la percepción (el rasgo de la necesidad) con peso ``PREVIO`` si el
+    manual no habla de la clase. Una coincidencia aislada no basta para atribuir."""
+
+    clase: str
+    necesidad: str
+    n: int = 0
+    sube: int = 0
+    c_aut: Optional[float] = None
+    w_aut: float = 0.0
+    esperado: float = 0.0   # suma de la línea base vigente en cada comida (subidas esperadas sin comer)
+
+    PREVIO = 3.0   # peso (en comidas) del previo que no viene del manual
+
+    def contingencia(self) -> float:
+        """ΔP de la experiencia, en [0, 1] (0 sin comidas)."""
+        return max(0.0, min(1.0, (self.sube - self.esperado) / self.n)) if self.n else 0.0
+
+    def estimacion(self, previo: float, peso: float) -> float:
+        """(n · ΔP + peso · previo) / (n + peso)."""
+        total = self.n + peso
+        return (self.n * self.contingencia() + peso * previo) / total if total > 0 else 0.0
+
+    @property
+    def fuente(self) -> str:
+        partes = (["manual"] if self.c_aut is not None and self.w_aut > 0.0 else []) + (["experiencia"] if self.n else [])
+        return "+".join(partes) or "ninguna"
 
 
 def intensidades(ctx: Contexto) -> Dict[str, float]:

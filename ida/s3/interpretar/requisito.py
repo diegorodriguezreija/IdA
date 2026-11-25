@@ -9,15 +9,88 @@ con lo que había justo antes de actuar (``marcar_elegibilidad``, la traza de el
 """
 
 import math
+from dataclasses import dataclass, field
 from typing import Any, Dict, Hashable, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.nucleo.memoria import Memoria, Meta, Seccion
-from ida.nucleo.memoria import Requisito as RequisitoAccion
+from ida.nucleo.memoria import Memoria, Seccion
 from ida.nucleo.mundo import SIN_ESPACIO, Cuerpo, Perfil
 from ida.nucleo.onda import Onda
-from ida.nucleo.pieza import Pieza
+from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
+
+# D7: los tipos de la sección «requisitos», de su dueño (antes en ``ida/nucleo/memoria.py``)
+@dataclass
+class RequisitoAccion:
+    """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
+
+    «Para que ``verbo`` sobre ``objetivo`` tenga efecto hace falta llevar ``requiere_inventario`` y tener
+    cerca ``requiere_cerca``; su efecto en el inventario es ``efecto``». En ``requiere_inventario``,
+    ``None`` es «al menos uno, cantidad desconocida». Las claves de inventario son las que percibe el
+    individuo. Entra del manual del mundo (``fuente`` = «manual», con confianza de autoridad) o se
+    descubre con la experiencia (``fuente`` = «experiencia»); la experiencia mueve cantidades y confianza.
+    """
+
+    verbo: Verbo
+    objetivo: str
+    requiere_inventario: Dict[str, Optional[int]] = field(default_factory=dict)
+    requiere_cerca: Set[str] = field(default_factory=set)
+    efecto: Dict[str, int] = field(default_factory=dict)
+    fuente: str = "manual"
+    confianza: float = 0.8
+    exitos: int = 0
+    fallos: int = 0
+    heredado: bool = False
+    aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
+    requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
+    delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
+    cerca_ok: Dict[str, Set[Hashable]] = field(default_factory=dict)       # relaciones (del cuerpo) desde las que ha funcionado
+    cerca_fallida: Dict[str, Set[Hashable]] = field(default_factory=dict)  # desde las que ha fallado (lo demás, presente)
+
+    def cerca_basta(self, clase: str, rel: Hashable, espacio: "Cuerpo") -> bool:
+        """Si ``clase`` en esa posición relativa (``rel``, la da el cuerpo) cuenta como cerca: si ya ha funcionado desde
+        ahí, sí; si ha fallado, no; y hasta ``espacio.radio_prueba`` (por la magnitud de ``rel``) se prueba antes de
+        acercarse. Cada posición relativa se aprende por separado."""
+        if rel in self.cerca_ok.get(clase, set()):
+            return True
+        if rel in self.cerca_fallida.get(clase, set()):
+            return False
+        return espacio.magnitud(rel) <= espacio.radio_prueba
+
+    def ajustar_confianza(self, paso: float) -> None:
+        """Sube (``paso`` > 0) o baja la confianza en el requisito, acotada a [0, 1]."""
+        self.confianza = acotar(self.confianza + paso)
+
+    @property
+    def tasa(self) -> float:
+        """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
+        total = self.exitos + self.fallos
+        return self.exitos / total if total else 1.0
+
+    def cumple_inventario(self, inventario: Dict[str, float]) -> bool:
+        return all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
+
+    def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
+        """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
+        return (all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
+                and self.requiere_cerca <= cerca)
+
+    def a_dict(self) -> Dict[str, Any]:
+        return {"verbo": self.verbo.name, "objetivo": self.objetivo, "requiere_inventario": dict(self.requiere_inventario),
+                "requiere_cerca": sorted(self.requiere_cerca), "efecto": dict(self.efecto), "fuente": self.fuente,
+                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos,
+                "aparece": sorted(self.aparece), "requiere_delante": sorted(self.requiere_delante)}
+
+
+@dataclass
+class Meta:
+    """Paso 5 (5.0): una meta declarada por el manual del mundo: hacer ``verbo`` sobre ``objetivo`` con efecto."""
+
+    verbo: Verbo
+    objetivo: str
+    id: str = ""
+    conseguida: bool = False
+
 
 Situacion = Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Hashable]]
 

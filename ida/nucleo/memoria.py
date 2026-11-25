@@ -10,14 +10,11 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, Hashable, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.biblioteca import RegistroLectura
 from ida.nucleo.pieza import Episodio, acotar
 from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
-
-if TYPE_CHECKING:
-    from ida.nucleo.mundo import Cuerpo
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 
@@ -192,120 +189,6 @@ class RecuerdoLugar:
     ubicacion: str
     ultimo_latido: int = 0
     confianza: float = 1.0
-
-
-@dataclass
-class Requisito:
-    """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
-
-    «Para que ``verbo`` sobre ``objetivo`` tenga efecto hace falta llevar ``requiere_inventario`` y tener
-    cerca ``requiere_cerca``; su efecto en el inventario es ``efecto``». En ``requiere_inventario``,
-    ``None`` es «al menos uno, cantidad desconocida». Las claves de inventario son las que percibe el
-    individuo. Entra del manual del mundo (``fuente`` = «manual», con confianza de autoridad) o se
-    descubre con la experiencia (``fuente`` = «experiencia»); la experiencia mueve cantidades y confianza.
-    """
-
-    verbo: Verbo
-    objetivo: str
-    requiere_inventario: Dict[str, Optional[int]] = field(default_factory=dict)
-    requiere_cerca: Set[str] = field(default_factory=set)
-    efecto: Dict[str, int] = field(default_factory=dict)
-    fuente: str = "manual"
-    confianza: float = 0.8
-    exitos: int = 0
-    fallos: int = 0
-    heredado: bool = False
-    aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
-    requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
-    delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
-    cerca_ok: Dict[str, Set[Hashable]] = field(default_factory=dict)       # relaciones (del cuerpo) desde las que ha funcionado
-    cerca_fallida: Dict[str, Set[Hashable]] = field(default_factory=dict)  # desde las que ha fallado (lo demás, presente)
-
-    def cerca_basta(self, clase: str, rel: Hashable, espacio: "Cuerpo") -> bool:
-        """Si ``clase`` en esa posición relativa (``rel``, la da el cuerpo) cuenta como cerca: si ya ha funcionado desde
-        ahí, sí; si ha fallado, no; y hasta ``espacio.radio_prueba`` (por la magnitud de ``rel``) se prueba antes de
-        acercarse. Cada posición relativa se aprende por separado."""
-        if rel in self.cerca_ok.get(clase, set()):
-            return True
-        if rel in self.cerca_fallida.get(clase, set()):
-            return False
-        return espacio.magnitud(rel) <= espacio.radio_prueba
-
-    def ajustar_confianza(self, paso: float) -> None:
-        """Sube (``paso`` > 0) o baja la confianza en el requisito, acotada a [0, 1]."""
-        self.confianza = acotar(self.confianza + paso)
-
-    @property
-    def tasa(self) -> float:
-        """Fracción de éxitos entre los intentos que cumplían lo creído (1 sin intentos)."""
-        total = self.exitos + self.fallos
-        return self.exitos / total if total else 1.0
-
-    def cumple_inventario(self, inventario: Dict[str, float]) -> bool:
-        return all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
-
-    def cumple(self, inventario: Dict[str, float], cerca: Set[str]) -> bool:
-        """Lo que se cree necesario está presente (con ``None``, al menos uno)."""
-        return (all(inventario.get(k, 0.0) >= (n if n is not None else 1) for k, n in self.requiere_inventario.items())
-                and self.requiere_cerca <= cerca)
-
-    def a_dict(self) -> Dict[str, Any]:
-        return {"verbo": self.verbo.name, "objetivo": self.objetivo, "requiere_inventario": dict(self.requiere_inventario),
-                "requiere_cerca": sorted(self.requiere_cerca), "efecto": dict(self.efecto), "fuente": self.fuente,
-                "confianza": round(self.confianza, 3), "exitos": self.exitos, "fallos": self.fallos,
-                "aparece": sorted(self.aparece), "requiere_delante": sorted(self.requiere_delante)}
-
-
-@dataclass
-class Meta:
-    """Paso 5 (5.0): una meta declarada por el manual del mundo: hacer ``verbo`` sobre ``objetivo`` con efecto."""
-
-    verbo: Verbo
-    objetivo: str
-    id: str = ""
-    conseguida: bool = False
-
-
-@dataclass
-class Satisface:
-    """Paso 0b (aliestesia): cuánto satisface comer algo de ``clase`` la ``necesidad``, en [0, 1].
-
-    Dos fuentes, combinadas como las de ``Proposicion``: lo que declara el manual (``c_aut`` con peso
-    ``w_aut``) y la experiencia. La experiencia es **contingencia** (Rescorla, 1968), no coincidencia:
-    ``n`` veces que se comió algo de la clase con éxito, en ``sube`` de las cuales subió alguna constante
-    vital de la necesidad en el latido siguiente; ΔP = P(sube | comer la clase) − P(sube | sin comer),
-    acotada a [0, 1]. La línea base P(sube | sin comer) es de la necesidad, no de la clase
-    (``Memoria.linea_base``, media móvil). Las dos probabilidades se comparan en el mismo momento: en cada
-    comida se acumula en ``esperado`` la línea base vigente, y ΔP = (sube − esperado) / n. Así una
-    necesidad que sube sola por fases (la luz al amanecer) no se atribuye a lo que se come en esa fase.
-    La estimación combina ΔP (peso ``n``) con un previo (``Memoria.satisfaccion``): lo que declara el
-    manual (``c_aut``, peso ``w_aut``); 0 con peso ``PREVIO`` para una necesidad que el manual no declara
-    en una clase suya; o lo que sugiere la percepción (el rasgo de la necesidad) con peso ``PREVIO`` si el
-    manual no habla de la clase. Una coincidencia aislada no basta para atribuir."""
-
-    clase: str
-    necesidad: str
-    n: int = 0
-    sube: int = 0
-    c_aut: Optional[float] = None
-    w_aut: float = 0.0
-    esperado: float = 0.0   # suma de la línea base vigente en cada comida (subidas esperadas sin comer)
-
-    PREVIO = 3.0   # peso (en comidas) del previo que no viene del manual
-
-    def contingencia(self) -> float:
-        """ΔP de la experiencia, en [0, 1] (0 sin comidas)."""
-        return max(0.0, min(1.0, (self.sube - self.esperado) / self.n)) if self.n else 0.0
-
-    def estimacion(self, previo: float, peso: float) -> float:
-        """(n · ΔP + peso · previo) / (n + peso)."""
-        total = self.n + peso
-        return (self.n * self.contingencia() + peso * previo) / total if total > 0 else 0.0
-
-    @property
-    def fuente(self) -> str:
-        partes = (["manual"] if self.c_aut is not None and self.w_aut > 0.0 else []) + (["experiencia"] if self.n else [])
-        return "+".join(partes) or "ninguna"
 
 
 def _signo(x: float, margen: float = 0.25) -> int:
