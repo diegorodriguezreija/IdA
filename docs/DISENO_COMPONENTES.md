@@ -65,9 +65,11 @@ La estructura del código es el diagrama de la arquitectura. Un Componente por f
 ```text
 ida/
   nucleo/            mecánica sin cognición: onda, pieza, arquitectura (Componente, Módulo, Sistema),
-                     memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia, azar, estrategia...
+                     memoria/ (almacen, proposiciones, lugares, secciones, mecanismos), soma, linaje,
+                     vocabulario, contrato del mundo, persistencia, azar, estrategia...
   core/
     latido.py        el latido: crea la Onda, siente, regula, lanza la Onda a los sistemas y actúa (Organismo)
+    montaje.py       lo que ocurre al nacer: montaje del registro, del cuerpo y de las secciones de memoria
     sentir/          interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
     actuar/          tribunal.py, actuador.py
     regulacion.py    reglas de la Onda (hoy Marcapasos)
