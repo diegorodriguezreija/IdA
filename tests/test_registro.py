@@ -457,3 +457,32 @@ def test_opcional_desconocido_lanza_value_error():
         _organismo_con_opcionales(["NoExiste"])
     with pytest.raises(ValueError, match="Opcionales desconocidos"):
         _organismo_con_opcionales(["Objeto"])     # existe, pero no es opcional
+
+
+# --- C7a: lo que necesita espacio exige un cuerpo con espacio ------------------
+
+
+def test_requiere_espacio_sin_cuerpo_lanza_value_error():
+    class MundoSinEspacio(MundoMinimo):
+        def registro(self) -> Registro:
+            reg = super().registro()
+            reg.opcionales = ["Amenaza", "Afrontar"]
+            return reg
+
+    with pytest.raises(ValueError, match=r"necesitan un cuerpo con espacio.*cuerpo: ninguno"):
+        _crear_organismo(MundoSinEspacio())
+
+
+def test_requiere_espacio_con_cuadricula_se_monta():
+    from ida.cuerpos.cuadricula import Cuadricula
+
+    class MundoConEspacio(MundoMinimo):
+        def registro(self) -> Registro:
+            reg = super().registro()
+            reg.opcionales = ["Amenaza", "Afrontar"]
+            reg.cuerpo = Cuadricula()
+            return reg
+
+    org = _crear_organismo(MundoConEspacio())
+    assert {"Amenaza", "Afrontar"} <= org.registrados
+    assert Cuerpo().con_espacio is False and Cuadricula().con_espacio is True

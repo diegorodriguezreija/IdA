@@ -502,6 +502,7 @@ class Amenaza(Componente):
     tipo = "Exterocepcion"
     preatentivo = True
     opcional = True     # D3, D15: solo la monta el mundo que la registra
+    requiere_espacio = True   # C7a: estima por distancias del cuerpo
 
     def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
         """D7: es el dueño de la sección «peligros», que se construye con la escala del mundo."""

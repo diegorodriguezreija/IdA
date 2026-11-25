@@ -189,6 +189,8 @@ class Organismo:
             for d in c.catalogo.todas()
         }
 
+        self._comprobar_espacio()
+
         # Plasticidad con el efecto (D6, D7): los que aprenden en ``_aprender``, en el orden de ``montados``
         self.componentes_efecto: List[Componente] = [c for c in self.montados() if c.aprende_con_efecto and not c.de_cuerpo]
 
@@ -240,6 +242,18 @@ class Organismo:
         if desconocidos:
             raise ValueError(f"Opcionales desconocidos en el registro de {self.mundo.nombre}: {desconocidos}. "
                              f"Opcionales del montaje general: {sorted(vistos)}")
+
+    def _comprobar_espacio(self) -> None:
+        """C7a: lo montado que necesita espacio (``requiere_espacio``) exige un cuerpo que lo dé (``Cuerpo.con_espacio``).
+        Sin él no fallaría: no haría nada, en silencio. Es un error de montaje y se dice al nacer."""
+        if self.cuerpo is not None and self.cuerpo.con_espacio:
+            return
+        definiciones = [d for s in self.sistemas for c in s.componentes() if c.tipo == "Estrategia" and hasattr(c, "catalogo")
+                        for d in c.catalogo.todas()]
+        faltan = sorted({x.__class__.__name__ for x in [*self.montados(), *definiciones] if getattr(x, "requiere_espacio", False)})
+        if faltan:
+            cuerpo = self.cuerpo.nombre if self.cuerpo is not None else "ninguno"
+            raise ValueError(f"{self.mundo.nombre} monta {faltan}, que necesitan un cuerpo con espacio (cuerpo: {cuerpo})")
 
     def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
         """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""

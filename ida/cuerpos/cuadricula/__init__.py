@@ -58,6 +58,7 @@ __all__ = [
 class Cuadricula(Cuerpo):
     nombre = "cuadricula"
     junto: Hashable = (0, 1)
+    con_espacio = True
 
     def __init__(self, max_sinergia: int = 2, radio_prueba: int = RADIO_PRUEBA) -> None:
         self._motor = MotorCuadricula(max_sinergia)

@@ -49,6 +49,7 @@ class Afrontar(Definicion):
     impulsos = (SEGURIDAD,)
     prioridad = 50
     opcional = True     # D3, D15: solo la monta el mundo que la registra
+    requiere_espacio = True   # C7a: valora por distancias del cuerpo
     LUCHAR, ARMARSE = "luchar", "armarse"
 
     @staticmethod
