@@ -59,10 +59,11 @@ Puntos abiertos de [`docs/historico/DEUDA_TECNICA_CRAFTER.md`](historico/DEUDA_T
 - **12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada).** `Afrontar` es más prudente que `DefensaArmada` (requiere margen > 3/9 y usa previo pesimista). Pendiente diagnosticar encuentros donde `Afrontar` huye y la lucha habría salido bien (reserva, previo de golpes, tasa de daño por latido) y corregirlo en la base sin umbrales de mundo (enlaza con M2).
 - **14. Cadena de herramientas (cumplida en parte).** El planificador reúne material en lote (14.2, activo). Queda abierta la brecha frente a la línea procedimental: pico de madera 64–72 % y espada 43–47 % frente a 92–96 %.
 
-## Orden propuesto
+## Orden propuesto (25/11/2026)
 
-1. Fusionar en `main` como `crafter-general-v5`.
-2. C6 (benchmark con plazo lógico) y C7a, antes de la fase B. C1, C1b y C2 están cerrados.
-3. Fase B: primero B1 y B5, que son los que más pueden mover la Score; los demás, uno a uno.
-4. C3–C5 cuando convenga, entre pasos de la fase B.
-5. V1–V3 y M.
+Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
+
+1. Limpieza que queda, con equivalencia: C4 (deuda pequeña de la fase A, incluida la unificación de los ganchos de plasticidad) y C3 (partir `latido.py` y `memoria.py`). C1, C1b, C2, C5, C6 y C7a están cerrados.
+2. Fase B, primero la deuda de diseño (donde el mundo aún piensa por el organismo): B6, B7, B5 y B8 con C7b. Cada uno con D17.
+3. Fase B, fidelidad del latido: B1, B2, B3 y B4.
+4. Prueba de limpieza: V3 (un segundo mundo de cuadrícula sin tocar lo general) y V1 (semillas 41 y 42). Después V2 y M.
