@@ -17,7 +17,7 @@ from ida.s3.comun import (
     ir_por_el_mapa,
 )
 from ida.s3.interpretar.requisito import Requisitos
-from ida.sistemas_comun import al_alcance, lugares, mejor
+from ida.sistemas.piezas import al_alcance, lugares, mejor
 
 
 class PerseguirMetas(ConPropuestas):

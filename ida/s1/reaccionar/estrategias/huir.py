@@ -8,7 +8,7 @@ from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.s1.comun import SEGURIDAD, _peligro, _salida
 from ida.s1.reaccionar.estrategias.proteger import recinto
-from ida.sistemas_comun import alarma
+from ida.sistemas.piezas import alarma
 
 
 class Huir(Definicion):

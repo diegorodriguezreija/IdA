@@ -5,7 +5,7 @@ from typing import Optional
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.pieza import acotar
 from ida.nucleo.vocabulario import Afecto, EstadoSaber, Relacion
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Recuerdo(Componente):

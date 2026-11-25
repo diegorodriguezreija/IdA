@@ -2,7 +2,7 @@
 
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Patron(Componente):

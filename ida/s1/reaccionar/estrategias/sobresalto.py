@@ -7,7 +7,7 @@ from ida.nucleo.estrategia import Definicion, Propuesta
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.s1.comun import SEGURIDAD, _amenaza, _peligro, _salida
-from ida.sistemas_comun import al_alcance
+from ida.sistemas.piezas import al_alcance
 
 
 class Sobresalto(Definicion):

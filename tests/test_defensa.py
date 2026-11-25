@@ -16,7 +16,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.nucleo.vocabulario import Relacion, Verbo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 from ida.cuerpos.cuadricula import Cuadricula
 
 Pos = Tuple[int, int]

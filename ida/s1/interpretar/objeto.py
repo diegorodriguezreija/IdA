@@ -2,7 +2,7 @@
 
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.s1.sentir.imagen import _cosas
-from ida.sistemas_comun import MAX_OBJETOS
+from ida.sistemas.piezas import MAX_OBJETOS
 
 
 class Objeto(Componente):

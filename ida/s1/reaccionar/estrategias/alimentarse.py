@@ -16,7 +16,8 @@ from ida.s1.comun import (
     _lugares_permitidos,
     _rechazado,
 )
-from ida.sistemas_comun import apetito, mejor
+from ida.sistemas.motivacion import apetito
+from ida.sistemas.piezas import mejor
 
 BUSCAR, ACERCARSE, COMER = "buscar", "acercarse", "comer"
 

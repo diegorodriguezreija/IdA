@@ -7,7 +7,7 @@ from ida.nucleo.estrategia import Plan, Propuesta, estado_plan, paso_actual
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.s2.comun import _peligro
-from ida.sistemas_comun import lugares, objetos
+from ida.sistemas.piezas import lugares, objetos
 
 
 class RecordarComida(Plan):

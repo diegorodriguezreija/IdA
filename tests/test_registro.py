@@ -11,7 +11,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Alta, Cuerpo, Registro
 from ida.mundos.minimo import MundoMinimo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 from ida.s1 import crear_s1
 
 

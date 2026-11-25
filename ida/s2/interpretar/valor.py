@@ -6,7 +6,8 @@ from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.pieza import acotar
 from ida.nucleo.vocabulario import Relacion
 from ida.s2.comun import _recordado
-from ida.sistemas_comun import apetito, objetos
+from ida.sistemas.motivacion import apetito
+from ida.sistemas.piezas import objetos
 
 
 class Valor(Componente):

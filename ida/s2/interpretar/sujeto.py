@@ -1,7 +1,7 @@
 """Componente Sujeto para S2."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Sujeto(Componente):

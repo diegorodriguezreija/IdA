@@ -201,7 +201,7 @@ def test_expectativas_en_una_vida_con_el_interruptor():
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
-    from ida.sistemas_comun import crear_sistemas
+    from ida.sistemas import crear_sistemas
 
     mundo = MundoMinimo()
     mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True))
@@ -271,7 +271,7 @@ def test_planes_en_una_vida_con_el_interruptor():
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
     from ida.mundos.minimo import MundoMinimo
-    from ida.sistemas_comun import crear_sistemas
+    from ida.sistemas import crear_sistemas
 
     mundo = MundoMinimo()
     mundo.perfil = replace(mundo.perfil, mecanismos=replace(mundo.perfil.mecanismos, expectativa=True, plan=True))

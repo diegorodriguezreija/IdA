@@ -17,7 +17,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Observacion
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 
 ORDEN_COSA = ["proximidad", "nutritivo", "recurso", "agente"]
 ORDEN_LUGAR = ["lugar", "proximidad", "nutritivo", "novedad"]

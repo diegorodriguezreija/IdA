@@ -7,7 +7,7 @@ from ida.nucleo.estrategia import Definicion, Propuesta
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.s2.comun import CANSANCIO, SEGURIDAD, _peligro
-from ida.sistemas_comun import lugares
+from ida.sistemas.piezas import lugares
 
 
 class Refugiarse(Definicion):

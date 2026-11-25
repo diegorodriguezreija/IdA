@@ -5,7 +5,8 @@ from typing import Dict, Tuple
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import EstadoSaber, Relacion
-from ida.sistemas_comun import apetito, objetos
+from ida.sistemas.motivacion import apetito
+from ida.sistemas.piezas import objetos
 
 RECURSO, PELIGRO, NEUTRO = "recurso", "peligro", "neutro"
 ENCUENTROS_HABITUACION = 20      # avistamientos sin daño para la familiaridad completa (como en Patron)

@@ -7,7 +7,7 @@ from ida.nucleo.memoria import Memoria, Satisface, Seccion
 from ida.nucleo.mundo import Perfil
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Relacion, Verbo
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 SATISFACE_MIN = 0.3   # paso 0b: a partir de aquí algo satisface una necesidad (como ``nutritivo`` ≥ 0,3 hoy)
 
