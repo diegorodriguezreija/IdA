@@ -1,13 +1,12 @@
 """Constantes, estructuras de datos y funciones compartidas en S3."""
 
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, Hashable, List, Optional, Tuple, cast
 
 from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.mundo import Escala
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
-from ida.s3.interpretar.requisito import desplazamiento
 from ida.sistemas_comun import al_alcance, exterocepcion, lugares
 
 SABER = "saber"
@@ -44,35 +43,25 @@ def _pos(p: Pieza) -> Optional[Tuple[int, int]]:
     return (int(pos[0]), int(pos[1])) if isinstance(pos, (list, tuple)) and len(pos) == 2 else None
 
 
-def _dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
-
 def al_alcance_clase(ctx: Contexto, clase: str) -> bool:
     return any(p.clase == clase and al_alcance(p) for p in _cosas(ctx))
 
 
-def _pos_propia(ctx: Contexto) -> Optional[Tuple[int, int]]:
-    """Posición propia si la ubicación lleva coordenadas al final (``<nombre>_x_y``); si no, None."""
-    partes = ctx.ubicacion().rsplit("_", 2)
-    if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
-        return int(partes[1]), int(partes[2])
-    return None
-
-
-def desplazamientos_a_clase(ctx: Contexto, clase: str) -> List[Tuple[int, int]]:
-    """Desplazamientos ``(|dx|, |dy|)`` ordenados a cada instancia visible de ``clase``. Con posiciones se
-    calculan; sin ellas, lo que está al alcance cuenta como (0, 1) y lo demás no se sabe (se omite)."""
-    aqui = _pos_propia(ctx)
-    salida: List[Tuple[int, int]] = []
+def desplazamientos_a_clase(ctx: Contexto, clase: str) -> List[Hashable]:
+    """Posiciones relativas (``Contexto.espacio.relacion``) a cada instancia visible de ``clase``. Con posiciones las da
+    el cuerpo; sin ellas, lo que está al alcance cuenta como ``espacio.junto`` y lo demás no se sabe (se omite)."""
+    espacio = ctx.espacio
+    aqui = espacio.posicion(ctx.ubicacion())
+    salida: List[Hashable] = []
     for p in _cosas(ctx):
         if p.clase != clase:
             continue
         pos = _pos(p)
-        if aqui is not None and pos is not None:
-            salida.append(desplazamiento(pos[0] - aqui[0], pos[1] - aqui[1]))
+        rel = espacio.relacion(aqui, pos) if aqui is not None and pos is not None else None
+        if rel is not None:
+            salida.append(rel)
         elif al_alcance(p):
-            salida.append((0, 1))
+            salida.append(espacio.junto)
     return salida
 
 
@@ -92,42 +81,45 @@ class Paso:
 
 
 def ir_por_el_mapa(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
-    """Un paso hacia la casilla recordada de ``clase`` más cercana por el mapa de casillas, a través del cuerpo
-    registrado (D16). None sin cuerpo o si este no ofrece búsqueda en mapa."""
+    """Un paso hacia el sitio recordado de ``clase`` más cercano por el mapa del cuerpo registrado (D16). None sin
+    cuerpo o si este no ofrece búsqueda en mapa."""
     cuerpo = getattr(ctx, "cuerpo", None)
     if cuerpo is None:
         return None
     ruta = cuerpo.ir_por_el_mapa(ctx, clase, confianza, excluir)
     if ruta is None:
         return None
-    primero, d, (x, y) = ruta
+    primero, d, destino = ruta
     puerta = next((lugar for lugar in lugares(ctx) if _pos(lugar) == primero and lugar.rasgo("peligro") < 0.5), None)
     if puerta is None:
         return None
     return Paso(Verbo.MOVER, puerta.id, puerta.clase, float(d), confianza, [f"volver a {clase} (mapa, {d} pasos)"],
-                destino=f"{clase}@{x}_{y}", distancia=d)
+                destino=destino, distancia=d)
 
 
 def acercarse_a_clase(ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()) -> Optional[Paso]:
     """Un paso hacia la instancia visible más cercana de ``clase`` o, si no se ve, hacia donde se recuerda
-    (``memoria.donde_esta`` y ``memoria.ruta``). General: con posiciones (``datos["pos"]``) elige el lugar
-    vecino que más acorta la distancia; sin ellas, solo la ruta topológica de la memoria. ``excluir``: destinos
+    (``memoria.donde_esta`` y ``memoria.ruta``). General: con posiciones (``datos["pos"]`` y las distancias del
+    cuerpo, ``Contexto.espacio``) elige el lugar vecino que más acorta la distancia; sin ellas, solo la ruta
+    topológica de la memoria. ``excluir``: destinos
     aparcados (instancias o lugares) que no se eligen."""
     visibles = [p for p in _cosas(ctx) if p.clase == clase and p.id not in excluir]
     sitios = [lugar for lugar in lugares(ctx) if lugar.rasgo("peligro") < 0.5]
     if visibles:
         objetivo = max(visibles, key=lambda p: p.rasgo("proximidad"))
         destino = _pos(objetivo)
-        aqui = _pos_propia(ctx)
+        espacio = ctx.espacio
+        aqui = espacio.posicion(ctx.ubicacion())
         if destino is not None and aqui is not None:
+            dist = cast(Callable[[Any, Any], int], espacio.distancia)
             con_pos = [(lugar, _pos(lugar)) for lugar in sitios]
             candidatos = [(lp, lugar) for lugar, lp in con_pos if lp is not None]
             if candidatos:
-                lp, lugar = min(candidatos, key=lambda c: _dist(c[0], destino))
-                if _dist(lp, destino) < _dist(aqui, destino):
+                lp, lugar = min(candidatos, key=lambda c: dist(c[0], destino))
+                if dist(lp, destino) < dist(aqui, destino):
                     coste = ctx.perfil.escala.coste_por_proximidad * (1.0 - objetivo.rasgo("proximidad"))
                     return Paso(Verbo.MOVER, lugar.id, lugar.clase, coste, confianza, [f"ir a {clase}"],
-                                destino=objetivo.id, distancia=_dist(aqui, destino))
+                                destino=objetivo.id, distancia=dist(aqui, destino))
     ubicacion = ctx.ubicacion()
     destino_nodo = ctx.memoria.donde_esta(clase) if ctx.con_experiencia else None
     if ubicacion and destino_nodo and destino_nodo != ubicacion and destino_nodo not in excluir:

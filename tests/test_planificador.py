@@ -46,7 +46,8 @@ def _ctx(memoria: Memoria, entidades: List[Pieza], inventario: Dict[str, float],
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {"delante": delante} if delante else {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=memoria, onda=onda, con_experiencia=True, latido=latido,
-                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil(), cuerpo=cuerpo)
+                           ubicacion=lambda: ubicacion, verbos=set(Verbo), perfil=perfil or Perfil(), cuerpo=cuerpo,
+                           espacio=cuerpo or Cuadricula())   # C1: las posiciones (de cuadrícula) las da el cuerpo
 
 
 def test_planificador_encadena_hacia_atras():
@@ -166,12 +167,12 @@ def test_prueba_antes_de_caminar_y_aprende_el_radio():
     ctx = _ctx(m, vista, {}, ubicacion="celda_0_0")
     plan = PerseguirMetas()
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.USAR, "hacer_x")]   # a 2: se prueba
-    requisitos(m).aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": (0, 2)})   # falla desde (0, 2)
+    requisitos(m).aprender_requisito(Verbo.USAR, "hacer_x", {}, {}, set(), True, distancias={"taller": (0, 2)}, espacio=Cuadricula())   # falla desde (0, 2)
     assert [(p.verbo, p.objetivo) for p in plan.actuar(ctx, None)] == [(Verbo.MOVER, "celda_1_0")]  # ahora camina
 
     m2 = memoria_con_secciones()
     m2.aplicar_manual(MANUAL_CERCA)
-    requisitos(m2).aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)})   # funciona
+    requisitos(m2).aprender_requisito(Verbo.USAR, "hacer_x", {}, {"cosa": 1.0}, set(), True, distancias={"taller": (0, 2)}, espacio=Cuadricula())   # funciona
     assert requisitos(m2).requisitos[(Verbo.USAR, "hacer_x")].cerca_ok == {"taller": {(0, 2)}}
 
 

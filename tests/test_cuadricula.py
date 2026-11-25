@@ -11,12 +11,12 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
 
-from ida.nucleo.memoria import Memoria, pos_de
+from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Perfil
 from ida.nucleo.onda import Onda
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
-from ida.cuerpos.cuadricula import Cuadricula, MapaLocal, ModeloDirecto
+from ida.cuerpos.cuadricula import Cuadricula, MapaLocal, ModeloDirecto, pos_de
 
 Pos = Tuple[int, int]
 Ent = Tuple[str, str, Dict[str, float], Pos]   # id, clase, rasgos, posición

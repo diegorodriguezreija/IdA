@@ -1,6 +1,6 @@
 """Elementos comunes y funciones auxiliares para los componentes y estrategias de S1."""
 
-from typing import Callable, Dict, FrozenSet, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, cast
 
 from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.pieza import Pieza, acotar
@@ -44,13 +44,10 @@ def _peligro(ctx: Contexto) -> float:
     return float(a.carga["peligro"]) if a is not None else 0.0
 
 
-def _yo(ctx: Contexto) -> Optional[Tuple[int, int]]:
-    """Posición propia percibida (ubicación ``<nombre>_x_y``), o None."""
+def _yo(ctx: Contexto) -> Optional[Any]:
+    """Posición propia, que el cuerpo da de la ubicación (``Contexto.espacio``, D10), o None."""
     yo = ctx.onda.ev("Propiocepcion").get("yo")
-    partes = str(yo.carga.get("ubicacion", "")).rsplit("_", 2) if yo is not None else []
-    if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]):
-        return int(partes[1]), int(partes[2])
-    return None
+    return ctx.espacio.posicion(yo.carga.get("ubicacion", "")) if yo is not None else None
 
 
 def _objetos_llevados(ctx: Contexto) -> FrozenSet[str]:

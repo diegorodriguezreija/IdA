@@ -168,7 +168,7 @@ class PerseguirMetas(ConPropuestas):
                       if inv.get(k, 0.0) < (n or 1)}
         faltan_cerca = []
         for c in sorted(r.requiere_cerca if r else ()):
-            if r is None or not any(r.cerca_basta(c, d) for d in desplazamientos_a_clase(ctx, c)):
+            if r is None or not any(r.cerca_basta(c, d, ctx.espacio) for d in desplazamientos_a_clase(ctx, c)):
                 faltan_cerca.append(c)
         if not faltan_inv and not faltan_cerca:
             return self._ejecutar(ctx, accion, r)
@@ -264,7 +264,7 @@ class PerseguirMetas(ConPropuestas):
                 for i in r.requiere_inventario:
                     material[i] = material.get(i, 0.0) + _cantidad(r, i)
             r0 = reqs[lote[0]]
-            cerca_ya = any(r0.cerca_basta(x, d) for d in desplazamientos_a_clase(ctx, x))
+            cerca_ya = any(r0.cerca_basta(x, d, ctx.espacio) for d in desplazamientos_a_clase(ctx, x))
             # Opciones para la estación: (paso si ya se tiene el material, coste, material propio).
             opciones: List[Tuple[Optional[Paso], float, Dict[str, float]]] = []
             if cerca_ya:
@@ -373,7 +373,7 @@ class PerseguirMetas(ConPropuestas):
         if cerca:
             p = max(cerca, key=lambda q: q.rasgo("proximidad"))
             return Paso(verbo, p.id, objetivo, penal, confianza, [texto])
-        # Deuda 11c: ir a por ello a lo visible, a lo que recuerda la memoria topológica o a una casilla recordada del mapa
+        # Deuda 11c: ir a por ello a lo visible, a lo que recuerda la memoria topológica o a un sitio recordado del mapa del cuerpo
         # local de la que sale (p. ej. el material de un cierre o de un lote), la de menor coste.
         opciones = [q for q in (acercarse_a_clase(ctx, objetivo, confianza, self._excluir(ctx)),
                                 self._por_el_mapa(ctx, objetivo, confianza)) if q is not None]

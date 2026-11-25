@@ -17,8 +17,10 @@ from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.nucleo.vocabulario import Relacion, Verbo
 from ida.sistemas_comun import crear_sistemas
+from ida.cuerpos.cuadricula import Cuadricula
 
 Pos = Tuple[int, int]
+ESPACIO = {"distancia": Cuadricula.distancia, "contiguos": Cuadricula.contiguos}   # C1: la geometría la da el cuerpo
 NADA = frozenset()
 
 
@@ -32,10 +34,10 @@ def test_se_aprende_el_dano_por_contacto():
     aqui = (5, 5)
     assert p.dano_propio("erizo", True) == pel.DANO_PREVIO          # sin experiencia, el previo declarado
     for _ in range(6):     # seis encuentros: un erizo llega, daña 30 dos veces y se va
-        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa)
-        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa)
-        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa)
-        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa, **ESPACIO)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa, **ESPACIO)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 30.0, _peligrosa, **ESPACIO)
+        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa, **ESPACIO)
     assert p.dano["erizo"].n == 6 and abs(p.dano["erizo"].media - 60.0) < 1e-9
     assert abs(p.dano_por_golpe("erizo", _peligrosa) - (2 * pel.DANO_PREVIO + 12 * 30.0) / 14) < 1e-9
     assert p.dano_propio("erizo", True) > 50.0                         # la experiencia corrige el previo
@@ -64,9 +66,9 @@ def test_la_vulnerabilidad_dormido_se_aprende_aparte():
     p = pel.Peligros()
     aqui = (5, 5)
     for _ in range(3):     # dormido: un erizo llega y daña 70
-        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True)
-        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 70.0, _peligrosa, dormido=True)
-        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True, **ESPACIO)
+        p.aprender(aqui, {"e": ("erizo", (5, 6))}, set(), NADA, None, "", "erizo", 70.0, _peligrosa, dormido=True, **ESPACIO)
+        p.aprender(aqui, {}, set(), NADA, None, "", None, 0.0, _peligrosa, dormido=True, **ESPACIO)
     assert "erizo" not in p.dano_golpe and p.dano_dormido["erizo"].n == 3
     assert p.golpe("erizo", True, dormido=False) == pel.DANO_PREVIO
     assert p.golpe("erizo", True, dormido=True) > 50.0
@@ -80,10 +82,10 @@ def _lanzamientos(p: pel.Peligros, n: int, recorrido: int, aqui: Pos = (0, 0)) -
     k = 0
     for _ in range(n):
         k += 1
-        p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
+        p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa, **ESPACIO)
         for paso in range(recorrido):
-            p.aprender(aqui, {"t": ("torre", (10, 0)), f"p{k}": ("pua", (9 - paso, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
-    p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa)
+            p.aprender(aqui, {"t": ("torre", (10, 0)), f"p{k}": ("pua", (9 - paso, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa, **ESPACIO)
+    p.aprender(aqui, {"t": ("torre", (10, 0))}, visibles, NADA, None, "", None, 0.0, _peligrosa, **ESPACIO)
 
 
 def test_se_aprende_un_emisor_y_su_alcance():
@@ -108,7 +110,7 @@ def test_un_lugar_dentro_del_alcance_de_un_emisor_es_peligroso():
     cerca = Entidad("celda_6_0", "suelo", {"lugar": 1.0}, {"pos": (6, 0)})
     lejos = Entidad("celda_0_0", "suelo", {"lugar": 1.0}, {"pos": (0, 0)})
     torre = Entidad("t", "torre", {"agente": 1.0}, {"pos": (10, 0)})
-    pel.estimar([cerca, lejos, torre], (1, 0), p, 100.0, _peligrosa)
+    pel.estimar([cerca, lejos, torre], (1, 0), p, 100.0, _peligrosa, distancia=Cuadricula.distancia)
     assert cerca.rasgos["peligro"] > lejos.rasgos["peligro"] == 0.0
     assert torre.rasgos["peligro"] > 0.0
 
@@ -204,7 +206,7 @@ class MundoErizos(Mundo):
 
     def registro(self) -> Registro:
         """Como Crafter (D3, D15): el peligro aprendido y la lucha por evaluación, solo si el mundo no da su ``peligro``."""
-        return Registro(opcionales=[] if self.da_peligro else ["Amenaza", "Afrontar"])
+        return Registro(opcionales=[] if self.da_peligro else ["Amenaza", "Afrontar"], cuerpo=Cuadricula())   # C1: un mundo de cuadrícula
 
 
 def _organismo(mundo: MundoErizos, mem: Optional[Memoria] = None) -> Organismo:
@@ -323,10 +325,10 @@ def test_si_el_mundo_da_su_peligro_no_hay_afrontar():
 # --- 6c: el arma como meta instrumental --------------------------------------------------------------------
 def _derribar(p: pel.Peligros, ident: str, golpes: int, objetos: frozenset) -> None:
     aqui, junto = (5, 5), (5, 6)
-    p.aprender(aqui, {ident: ("erizo", junto)}, set(), objetos, None, "", None, 0.0, _peligrosa)
+    p.aprender(aqui, {ident: ("erizo", junto)}, set(), objetos, None, "", None, 0.0, _peligrosa, **ESPACIO)
     for k in range(golpes):
         vivo = {ident: ("erizo", junto)} if k < golpes - 1 else {}
-        p.aprender(aqui, vivo, set(), objetos, "ATACAR", ident, None, 0.0, _peligrosa)
+        p.aprender(aqui, vivo, set(), objetos, "ATACAR", ident, None, 0.0, _peligrosa, **ESPACIO)
 
 
 def test_la_eficacia_depende_del_objeto_llevado():

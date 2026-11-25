@@ -11,6 +11,7 @@ from ida.nucleo.mundo import Perfil
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.s3.reaccionar.estrategias import PerseguirMetas
+from ida.cuerpos.cuadricula import Cuadricula
 
 from _secciones import memoria_con_secciones
 
@@ -54,7 +55,8 @@ def _ctx(inventario: Dict[str, float], taller: tuple = (10, 0), latido: int = 1,
     yo = Pieza(id="yo", tipo="Propiocepcion", carga={"inventario": inventario, "cuerpo": {}})
     onda = _Onda({"Exterocepcion": {e.id: e for e in entidades}, "Propiocepcion": {"yo": yo}})
     return SimpleNamespace(memoria=m, onda=onda, con_experiencia=True, latido=latido,
-                           ubicacion=lambda: "aqui_0_0", verbos=set(Verbo), perfil=Perfil(), cuerpo=None)
+                           ubicacion=lambda: "aqui_0_0", verbos=set(Verbo), perfil=Perfil(), cuerpo=None,
+                           espacio=Cuadricula())   # C1: las posiciones (de cuadrícula) las da el cuerpo
 
 
 def _propuesta(ctx: Any) -> Optional[Any]:

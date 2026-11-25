@@ -1,6 +1,6 @@
 """Estrategia Afrontar."""
 
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple, cast
+from typing import Any, Callable, Dict, FrozenSet, List, Optional, Tuple, cast
 
 from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.estrategia import Definicion, Propuesta
@@ -52,7 +52,7 @@ class Afrontar(Definicion):
     LUCHAR, ARMARSE = "luchar", "armarse"
 
     @staticmethod
-    def _valorar(ctx: Contexto, o: Pieza, aqui: Tuple[int, int], salud: float, llevados: FrozenSet[str],
+    def _valorar(ctx: Contexto, o: Pieza, aqui: Any, salud: float, llevados: FrozenSet[str],
                  reductores: Dict[str, float]) -> Optional[Dict[str, Any]]:
         pos = _posicion(ctx, o.id)
         if pos is None or len(pos) != 2:
@@ -62,7 +62,7 @@ class Afrontar(Definicion):
             return None
         pel = cast(Peligros, mem.seccion("peligros"))
         req = cast(Requisitos, mem.seccion("requisitos")) if mem.tiene_seccion("requisitos") else None
-        d = int(abs(pos[0] - aqui[0]) + abs(pos[1] - aqui[1]))
+        d = int(cast(Callable[[Any, Any], float], ctx.espacio.distancia)(pos, aqui))
         golpes, n_golpes = pel.golpes(o.clase, llevados, reductores)
         tasa, n_tasa = pel.tasa(o.clase)
         exposicion = golpes + max(0, d - 1)
@@ -140,8 +140,9 @@ class Afrontar(Definicion):
         aqui = _yo(ctx)
         if meta is None or aqui is None:
             return None
-        ahora = abs(meta[0] - aqui[0]) + abs(meta[1] - aqui[1])
-        pasos = [(abs(meta[0] - pos[0]) + abs(meta[1] - pos[1]), lugar.rasgo("peligro"), lugar.id, lugar)
+        distancia = cast(Callable[[Any, Any], float], ctx.espacio.distancia)
+        ahora = distancia(meta, aqui)
+        pasos = [(distancia(meta, pos), lugar.rasgo("peligro"), lugar.id, lugar)
                  for lugar in _lugares_permitidos(ctx) if (pos := _posicion(ctx, lugar.id)) is not None and len(pos) == 2]
         cerca = [x for x in pasos if x[0] < ahora]
         if not cerca:

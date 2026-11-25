@@ -102,5 +102,10 @@ class Cuadricula(Cuerpo):
 
     def ir_por_el_mapa(
         self, ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
-    ) -> Optional[Tuple[Tuple[int, int], int, Tuple[int, int]]]:
-        return ir_por_el_mapa(ctx, clase, confianza, excluir)
+    ) -> Optional[Tuple[Tuple[int, int], int, str]]:
+        """(casilla siguiente, pasos, destino ``<clase>@x_y``) hacia la casilla recordada de ``clase``, o None."""
+        ruta = ir_por_el_mapa(ctx, clase, confianza, excluir)
+        if ruta is None:
+            return None
+        primero, d, (x, y) = ruta
+        return primero, d, f"{clase}@{x}_{y}"

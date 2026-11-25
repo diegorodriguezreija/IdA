@@ -10,11 +10,14 @@ import heapq
 import math
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, Hashable, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.biblioteca import RegistroLectura
 from ida.nucleo.pieza import Episodio, acotar
 from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
+
+if TYPE_CHECKING:
+    from ida.nucleo.mundo import Cuerpo
 
 PERFILES_MEMORIA = {"apagada": 0, "ligera": 2, "completa": 5}   # K piezas guardadas por latido
 
@@ -191,27 +194,6 @@ class RecuerdoLugar:
     confianza: float = 1.0
 
 
-Pos = Tuple[int, int]
-DIRECCIONES: Tuple[Pos, ...] = ((1, 0), (-1, 0), (0, 1), (0, -1))
-
-
-def pos_de(texto: Any) -> Optional[Pos]:
-    """Posición al final de un identificador ``<nombre>_x_y`` (convención de los mundos con rejilla), o None."""
-    partes = str(texto or "").rsplit("_", 2)
-    if len(partes) == 3 and partes[1].lstrip("-").isdigit() and partes[2].lstrip("-").isdigit():
-        return int(partes[1]), int(partes[2])
-    return None
-
-
-RADIO_PRUEBA = 2   # paso 5: hasta esta distancia se prueba una acción con requisito de cercanía antes de caminar
-Desplazamiento = Tuple[int, int]   # (|dx|, |dy|) ordenados de menor a mayor: (0, 1) al lado, (1, 1) diagonal, (0, 2) a dos en línea
-
-
-def desplazamiento(dx: int, dy: int) -> Desplazamiento:
-    a, b = sorted((abs(int(dx)), abs(int(dy))))
-    return (a, b)
-
-
 @dataclass
 class Requisito:
     """Precondiciones y efecto de una acción sobre un objetivo (paso 2 de la fase de generalización).
@@ -236,18 +218,18 @@ class Requisito:
     aparece: Set[str] = field(default_factory=set)          # clases que la acción deja cerca (colocar)
     requiere_delante: Set[str] = field(default_factory=set)  # clases de delante con las que ha funcionado
     delante_fallido: Set[str] = field(default_factory=set)   # clases de delante con las que solo ha fallado
-    cerca_ok: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)       # desplazamientos desde los que ha funcionado
-    cerca_fallida: Dict[str, Set[Desplazamiento]] = field(default_factory=dict)  # desde los que ha fallado (lo demás, presente)
+    cerca_ok: Dict[str, Set[Hashable]] = field(default_factory=dict)       # relaciones (del cuerpo) desde las que ha funcionado
+    cerca_fallida: Dict[str, Set[Hashable]] = field(default_factory=dict)  # desde las que ha fallado (lo demás, presente)
 
-    def cerca_basta(self, clase: str, desp: Desplazamiento) -> bool:
-        """Si ``clase`` a ese desplazamiento cuenta como cerca: si ya ha funcionado desde ahí, sí; si ha fallado, no;
-        al lado (0, 1), sí; y hasta ``RADIO_PRUEBA`` casillas se prueba antes de caminar. La diagonal (1, 1) y dos
-        casillas en línea (0, 2) se aprenden por separado."""
-        if desp in self.cerca_ok.get(clase, set()):
+    def cerca_basta(self, clase: str, rel: Hashable, espacio: "Cuerpo") -> bool:
+        """Si ``clase`` en esa posición relativa (``rel``, la da el cuerpo) cuenta como cerca: si ya ha funcionado desde
+        ahí, sí; si ha fallado, no; y hasta ``espacio.radio_prueba`` (por la magnitud de ``rel``) se prueba antes de
+        acercarse. Cada posición relativa se aprende por separado."""
+        if rel in self.cerca_ok.get(clase, set()):
             return True
-        if desp in self.cerca_fallida.get(clase, set()):
+        if rel in self.cerca_fallida.get(clase, set()):
             return False
-        return sum(desp) <= RADIO_PRUEBA
+        return espacio.magnitud(rel) <= espacio.radio_prueba
 
     def ajustar_confianza(self, paso: float) -> None:
         """Sube (``paso`` > 0) o baja la confianza en el requisito, acotada a [0, 1]."""
