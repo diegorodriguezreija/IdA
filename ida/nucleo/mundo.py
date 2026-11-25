@@ -292,9 +292,9 @@ class Mundo(ABC):
         traduce cada intención y el Core llama a ``ejecutar_primitivas``."""
         return None
 
-    def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
+    def ejecutar_primitivas(self, primitivas: List[str]) -> Efecto:
         """Ejecuta la secuencia y devuelve el efecto en bruto (``exito`` True: el éxito lo juzga el Motor del cuerpo, con
-        ``Efecto.medidas``). ``intencion`` no cambia lo que se ejecuta."""
+        ``Efecto.medidas``). El mundo solo recibe primitivas: la intención es del organismo."""
         raise NotImplementedError(f"El mundo {self.nombre!r} no ejecuta primitivas")
 
     @abstractmethod

@@ -84,6 +84,7 @@ def _motor(org: Organismo) -> Any:
 def test_misma_valoracion_que_el_adaptador(semilla: int) -> None:
     vistas: List[Tuple[Observacion, Dict[str, Dict[str, float]]]] = []
     visitas: Dict[Tuple[int, int], int] = {}
+    ultimo: Dict[str, Any] = {}   # verbo de la intención que el Actuador acaba de pasar al Motor
 
     def espiar(mundo: Any) -> None:
         observar, ejecutar = mundo.observar, mundo.ejecutar_primitivas
@@ -93,9 +94,9 @@ def test_misma_valoracion_que_el_adaptador(semilla: int) -> None:
             vistas.append((obs, _valoracion_antigua(mundo, visitas)))
             return obs
 
-        def ejecutar_y_visitar(primitivas: List[str], intencion: Any = None) -> Any:
-            ef = ejecutar(primitivas, intencion)
-            if intencion == Verbo.MOVER and primitivas:      # las visitas del adaptador antes de A4
+        def ejecutar_y_visitar(primitivas: List[str]) -> Any:
+            ef = ejecutar(primitivas)
+            if ultimo.get("verbo") == Verbo.MOVER and primitivas:      # las visitas del adaptador antes de A4
                 visitas[tuple(mundo.jugador.pos)] = mundo.t
             return ef
         mundo.observar = observar_y_valorar
@@ -103,6 +104,12 @@ def test_misma_valoracion_que_el_adaptador(semilla: int) -> None:
     org = _organismo(semilla, espiar)
     mundo = org.mundo
     motor = _motor(org)
+    primitivas_motor = motor.primitivas
+
+    def primitivas_y_verbo(intencion: Any, ctx: Any, disponibles: List[str]) -> List[str]:
+        ultimo["verbo"] = intencion.carga["verbo"]   # el Actuador llama al Motor justo antes de ``ejecutar_primitivas``
+        return primitivas_motor(intencion, ctx, disponibles)
+    motor.primitivas = primitivas_y_verbo
     comparadas = {"cosa": 0, "lugar": 0, "novedad<1": 0, "gradiente>0": 0, "nutritiva": 0, "recurso": 0}
     for _ in range(500):
         onda = org.latir()

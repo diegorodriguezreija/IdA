@@ -192,7 +192,7 @@ def _ejecutar_ahora(m: Any, motor: MotorCuadricula, verbo: Verbo, objetivo: str,
     obs = m.observar()
     intencion = _intencion(verbo, objetivo, datos)
     prims = motor.primitivas(intencion, _ctx_de(obs), m.primitivas())
-    ef = m.ejecutar_primitivas(prims, verbo) if prims else Efecto(exito=False)
+    ef = m.ejecutar_primitivas(prims) if prims else Efecto(exito=False)
     ef.exito = motor.juzgar(intencion, prims, ef)
     return ef, prims
 
