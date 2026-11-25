@@ -27,6 +27,7 @@ from ida.nucleo.vocabulario import Verbo
 
 ETAPAS = ("Sentir", "Interpretar", "Reaccionar", "Actuar")
 BARRIDOS = ("reactiva", "activa", "proactiva")
+FASES_PLASTICIDAD = ("cuerpo", "efecto", "general")   # D6: en qué punto del paso «aprender» aprende cada Componente
 
 
 SIN_EXPECTATIVA = (Verbo.ACECHAR, Verbo.ESPERAR, Verbo.LEER)   # acciones sin efecto propio que predecir
@@ -104,8 +105,8 @@ class Componente:
     preatentivo: bool = False
     # Preatentivo integrador (D5): corre el último de la preatención, tras los que ponen rasgos (``Saliencia``).
     integrador: bool = False
-    # Componente de un cuerpo (D10): el nombre de su familia. El Core llama a su ``aprender`` en el punto del latido que
-    # le corresponde (``Organismo._aprender``), no en el gancho general de plasticidad.
+    # Componente de un cuerpo (D10): el nombre de su familia. Lo pone el montaje, que le da también la fase de
+    # plasticidad «cuerpo» (``fase_plasticidad``).
     de_cuerpo: str = ""
     # Opcional (D3, D15): general, pero solo se monta si el mundo lo nombra en ``Registro.opcionales``; si no, se quita al
     # montar y lo demás conserva su orden. Sustituye a las activaciones condicionales.
@@ -130,17 +131,23 @@ class Componente:
     def proactiva(self, ctx: Contexto) -> None:
         pass
 
-    # Plasticidad (D6): el Core lo llama en la fase «aprender» de cada latido (también dormido), después de
-    # ``Organismo._aprender`` y ``_contrastar``. Por defecto no aprende nada.
+    # Plasticidad (D6): un único gancho, ``aprender``, que el Core llama en el paso «aprender» de cada latido según la fase
+    # que declara el Componente (``FASES_PLASTICIDAD``), en el orden de ``Organismo.montados``:
+    # - «cuerpo»: lo de un cuerpo (D10; el montaje se la pone a todo lo que aporta el cuerpo). Dentro de
+    #   ``Organismo._aprender``, con experiencia y memoria activa, antes de aprender del efecto.
+    # - «efecto»: el dueño de lo que se aprende del efecto de la acción anterior (D7). Dentro de ``Organismo._aprender``,
+    #   solo si hubo acción y con experiencia, antes de que el Core aprenda sus proposiciones.
+    # - «general»: después de ``Organismo._aprender`` y ``_contrastar``, en cada latido (también dormido).
+    # Por defecto no aprende nada.
+    fase_plasticidad: str = "general"
+
     def aprender(self, ctx: Contexto) -> None:
         pass
 
-    # Plasticidad con el efecto (D6, D7): un Componente con ``aprende_con_efecto`` no aprende en el gancho general sino en
-    # ``Organismo._aprender``, tras una acción y con experiencia, en el punto donde el Core aprendía lo que ahora es
-    # suyo; ``antes_de_actuar`` lo llama el Core justo antes de actuar (lo que había antes de la acción).
-    aprende_con_efecto: bool = False
-
-    def antes_de_actuar(self, ctx: Contexto) -> None:
+    # Traza de elegibilidad (D6): el Core lo llama para todo lo montado justo antes de actuar, también dormido. Lo que
+    # estaba presente al actuar queda marcado para que el efecto lo refuerce en el latido siguiente (``aprender``). Por
+    # defecto no marca nada.
+    def marcar_elegibilidad(self, ctx: Contexto) -> None:
         pass
 
     # Memoria (D7): la sección de la que es dueño, como (nombre, sección), o None. El Organismo la registra al montarlo.

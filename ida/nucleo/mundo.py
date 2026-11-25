@@ -32,7 +32,8 @@ class Cuerpo:
     el objeto y nunca importa ``ida/cuerpos`` (D2).
 
     ``componentes()``: destino -> Componentes, en orden. Destinos válidos: los del registro y ``CORE.Actuar``. El Core
-    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre``.
+    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre`` y la fase de
+    plasticidad «cuerpo» (D6).
 
     **Espacio (D10, C1).** El cuerpo dice cómo es el espacio; el código general se lo pregunta (``Contexto.espacio``)
     y nunca interpreta identificadores ni calcula distancias por su cuenta:

@@ -1,11 +1,11 @@
 """Requisito (D7, S3 · Interpretar, general): requisitos de las acciones, intentos fallidos y metas del manual.
 
 Es el dueño de la sección «requisitos» de la Memoria: lo único que escribe en ella. Aprende del efecto de la acción
-anterior (``aprender``) en el mismo punto del latido en que antes lo hacía ``Organismo._aprender``, con lo que había
-justo antes de actuar (``antes_de_actuar``, donde estaba ``Organismo._antes_accion``). No tiene barridos (``activo`` es
-False): no cobra ni cuenta operaciones en el latido. «Delante» y «cerca» los da el cuerpo en la pieza ``Propiocepcion``
-«yo» (``cuerpo["delante"]``) y las ``Exterocepcion``; la posición relativa de lo cercano, el espacio del cuerpo
-(``Contexto.espacio``, D10).
+anterior (``aprender``, fase «efecto» de D6) en el mismo punto del latido en que antes lo hacía ``Organismo._aprender``,
+con lo que había justo antes de actuar (``marcar_elegibilidad``, la traza de elegibilidad de D6, donde estaba
+``Organismo._antes_accion``). No tiene barridos (``activo`` es False): no cobra ni cuenta operaciones en el latido.
+«Delante» y «cerca» los da el cuerpo en la pieza ``Propiocepcion`` «yo» (``cuerpo["delante"]``) y las
+``Exterocepcion``; la posición relativa de lo cercano, el espacio del cuerpo (``Contexto.espacio``, D10).
 """
 
 import math
@@ -297,7 +297,7 @@ class Requisito(Componente):
     """Componente general de S3 · Interpretar (D7): aprende requisitos, intentos y metas del efecto de cada acción."""
 
     tipo = "Requisito"
-    aprende_con_efecto = True   # D6: aprende en ``Organismo._aprender``, donde se aprendían los requisitos y las metas
+    fase_plasticidad = "efecto"   # D6: aprende del efecto, en ``Organismo._aprender``, donde se aprendían requisitos y metas
 
     def __init__(self, nombre: Optional[str] = None) -> None:
         super().__init__(nombre)
@@ -310,8 +310,8 @@ class Requisito(Componente):
         """D7: es el dueño de la sección «requisitos»."""
         return "requisitos", Requisitos()
 
-    def antes_de_actuar(self, ctx: Contexto) -> None:
-        self._antes = situacion_inventario(ctx)   # paso 2: lo que había antes de actuar (requisitos)
+    def marcar_elegibilidad(self, ctx: Contexto) -> None:
+        self._antes = situacion_inventario(ctx)   # D6, traza de elegibilidad: lo que había antes de actuar (requisitos)
 
     def aprender(self, ctx: Contexto) -> None:
         """Tras una acción, con experiencia (lo llama el Core): contrasta el inventario de antes y de después para sus

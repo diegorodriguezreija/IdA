@@ -141,7 +141,7 @@ class Apetencia(Componente):
     tipo = "Apetencia"
     entradas = ("Objeto", "Interocepcion")
     opcional = True     # D3, D15: solo la monta el mundo que la registra
-    aprende_con_efecto = True   # D6: aprende en ``Organismo._aprender``, donde se aprendía la aliestesia
+    fase_plasticidad = "efecto"   # D6: aprende del efecto, en ``Organismo._aprender``, donde se aprendía la aliestesia
 
     def seccion_memoria(self, perfil: Perfil) -> Optional[Tuple[str, Any]]:
         """D7: es el dueño de la sección «satisface»."""
