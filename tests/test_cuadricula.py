@@ -156,3 +156,21 @@ def test_sin_situacion_no_hacen_nada_y_no_tienen_barridos(comp: Any) -> None:
     comp.aprender(ctx)
     assert _estado(mem) == antes
     assert comp.activo(Onda(1, 10, 100.0)) is False
+
+
+def test_espacio_del_cuerpo():
+    """C1 (D10): el cuerpo dice cómo es el espacio. Sin cuerpo, sin espacio métrico; la cuadrícula, con su geometría."""
+    from ida.nucleo.mundo import SIN_ESPACIO
+
+    assert SIN_ESPACIO.posicion("celda_3_4") is None and SIN_ESPACIO.distancia((0, 0), (1, 1)) is None
+    assert SIN_ESPACIO.relacion((0, 0), (1, 1)) is None and SIN_ESPACIO.contiguos((0, 0)) == []
+    assert SIN_ESPACIO.percibidas({"casillas": {(0, 0): "x"}}) is None
+    assert SIN_ESPACIO.magnitud(SIN_ESPACIO.junto) <= SIN_ESPACIO.radio_prueba
+    c = Cuadricula()
+    assert c.posicion("celda_3_-4") == (3, -4) and c.posicion("fin") is None and c.posicion("3_4") is None
+    assert c.distancia((0, 0), (2, -3)) == 5
+    assert c.relacion((5, 5), (4, 7)) == (1, 2) and c.relacion((0, 0), (0, -1)) == c.junto == (0, 1)
+    assert c.magnitud((1, 2)) == 3 and c.radio_prueba == 2
+    assert c.orden((1, 1)) < c.orden((0, 2))            # a igual distancia, la diagonal
+    assert sorted(c.contiguos((0, 0))) == [(-1, 0), (0, -1), (0, 1), (1, 0)]
+    assert c.percibidas({"casillas": {(1, 2): "hierba"}}) == {(1, 2)} and c.percibidas({}) is None

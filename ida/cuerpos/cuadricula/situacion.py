@@ -10,8 +10,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
 from ida.nucleo.arquitectura import Contexto
-from ida.nucleo.memoria import Pos, pos_de
 from ida.nucleo.vocabulario import Verbo
+from ida.cuerpos.cuadricula.geometria import Pos, pos_de
 
 
 @dataclass

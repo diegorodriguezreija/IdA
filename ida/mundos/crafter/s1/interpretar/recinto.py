@@ -8,11 +8,11 @@ from dataclasses import dataclass
 from typing import Any, Deque, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.nucleo.memoria import DIRECCIONES, Memoria, Pos, pos_de
+from ida.nucleo.memoria import Memoria
 from ida.nucleo.pieza import acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula.buscador import mover
-from ida.cuerpos.cuadricula.geometria import Accion, _bfs, _manhattan, _suma, _vecinas, entorno
+from ida.cuerpos.cuadricula.geometria import DIRECCIONES, Accion, Pos, _bfs, _manhattan, _suma, _vecinas, entorno, pos_de
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
 from ida.s1.comun import TIPO_RECINTO
 from ida.s3.interpretar.requisito import Requisitos
