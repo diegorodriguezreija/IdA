@@ -227,13 +227,14 @@ MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, 
 
 @dataclass(frozen=True)
 class Escala:
-    """Constantes de escala del mundo que usan los Componentes y estrategias generales (D15). Por defecto, los valores
-    de antes de A6a; el mundo que los usa los fija en su ``Perfil``. Lo que no depende de la escala (proporciones
-    internas, pesos de previos, ventanas) se queda en su Componente."""
+    """La escala declarada del mundo (D15): las constantes de escala que usan los Componentes y estrategias generales,
+    en las unidades del mundo y de su cuerpo. Por defecto, los valores de antes de A6a; el mundo que los usa los fija en
+    su ``Perfil``. Lo que no depende de la escala (proporciones internas, pesos de previos, ventanas) se queda en su
+    Componente."""
 
     dano_previo: float = 100.0 * 2.0 / 9.0   # Amenaza: daño de un golpe de lo peligroso sin datos, en vitalidad (0-100)
     golpes_previo: float = 10.0              # Amenaza: golpes para derribar algo sin datos (pesimista)
-    margen_lugar: int = 3                    # Amenaza: casillas más allá del alcance a las que se anula el peligro de un lugar
+    margen_lugar: int = 3                    # Amenaza: margen, en distancia del cuerpo, más allá del alcance a la que se anula el peligro de un lugar
     reserva: float = 100.0 * 3.0 / 9.0       # Afrontar: vitalidad que una lucha debe dejar intacta
     coste_sin_sitio: float = 45.0            # Impulso (alostasis): horizonte del cobijo sin ningún sitio, en pasos
     coste_recordado: float = 15.0            # S3: coste estimado de ir a una casilla recordada (en pasos)
@@ -267,7 +268,7 @@ class Perfil:
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
     # Rasgos valorados ("peligro", "nutritivo", "recurso", "novedad") entregados hechos por el mundo (D4)
     rasgos_declarados: Tuple[str, ...] = ()
-    escala: Escala = Escala()   # constantes de escala de los generales (D15)
+    escala: Escala = Escala()   # la escala declarada del mundo (D15)
     # La aliestesia (paso 0b) ya no es una perilla: la tiene el mundo que registra ``Apetencia`` (D3, D15).
 
 
