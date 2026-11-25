@@ -21,34 +21,33 @@ from collections import deque
 from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
-from ida.nucleo.arquitectura import (FASES_PLASTICIDAD, Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada,
-                                     variables_proactivas)
+from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
 from ida.nucleo.azar import Azar
 from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Cuerpo, Efecto, Mundo
 from ida.nucleo.onda import CANALES_SENSORES, AutorCore, Canales, LatidoAgotado, Onda
 from ida.nucleo.pieza import Episodio, Pieza
-from ida.core.actuar.actuador import Actuador, aplicar_efecto
+from ida.core.actuar.actuador import aplicar_efecto
 from ida.core.actuar.tribunal import Tribunal
+from ida.core.montaje import montar, sistema_por_nombre
 from ida.core.regulacion import Regulacion
-from ida.core.sentir.ambiente import Ambiente
-from ida.core.sentir.exterocepcion import Exterocepcion
-from ida.core.sentir.interocepcion import Interocepcion
-from ida.core.sentir.propiocepcion import Propiocepcion
 from ida.nucleo.soma import Soma, VITALES
 from ida.nucleo.vocabulario import Afecto, Verbo
 
-DESTINOS_VALIDOS_COMPONENTES = {"CORE.Sentir"} | {
-    f"{sis}.{etapa}"
-    for sis in ("S1", "S2", "S3")
-    for etapa in ("Sentir", "Interpretar", "Reaccionar", "Actuar")
-}
-DESTINOS_VALIDOS_CUERPO = DESTINOS_VALIDOS_COMPONENTES | {"CORE.Actuar"}
-SISTEMAS_VALIDOS_ESTRATEGIAS = {"S1", "S2", "S3"}
-
 
 class Organismo:
+    # Lo que deja el montaje al nacer (``ida/core/montaje.py``, C3)
+    verbos: Set[Verbo]
+    regulacion: Regulacion          # CORE.Regulacion (D12): fija frecuencia, amplitud y potencia de cada latido
+    tribunal: Tribunal
+    sentir: Modulo
+    actuar: Modulo
+    cuerpo: Optional[Cuerpo]
+    componentes_cuerpo: List[Componente]   # en orden de montaje; aprenden en la fase «cuerpo» (D6)
+    preatencion: Preatencion
+    registrados: Set[str]           # nombres de clase de todo lo montado (Componentes y definiciones de los catálogos)
+
     def __init__(
         self,
         mundo: Mundo,
@@ -68,142 +67,9 @@ class Organismo:
         self.con_experiencia = con_experiencia
         self.biblioteca = biblioteca
         self.soma = Soma(vitales_propios=tuple(VITALES) if self.perfil.vitales_propios else ())
-        verbos_mundo = sorted(set(mundo.verbos()), key=lambda v: v.value)
-        self.verbos = set(verbos_mundo)
-        if Verbo.ESPERAR in self.verbos:
-            self.verbos.add(Verbo.LEER)
-
-        self.regulacion = Regulacion()       # CORE.Regulacion (D12): fija frecuencia, amplitud y potencia de cada latido
-        self.regulacion.sistema = "CORE"
         self.ops_por_ms: Optional[float] = None   # plazo lógico de la guillotina (``Onda``); None = reloj
-        self.tribunal = Tribunal()
-        self.sentir = Modulo("Sentir", [Interocepcion(), Propiocepcion(), Exterocepcion(), Ambiente()], exento=True)
-        # Montaje declarado por el registro del mundo (D3)
-        reg = mundo.registro()
-        # Capa motora (D9): con primitivas del mundo y Motor del cuerpo, el Actuador ejecuta primitivas
-        motor = reg.cuerpo.motor() if reg.cuerpo is not None else None
-        disponibles = mundo.primitivas() if motor is not None else None
-        if disponibles is None:
-            motor = None
-        actuadores: List[Componente] = [Actuador(v, mundo.ejecutar, motor, mundo.ejecutar_primitivas if motor else None, disponibles)
-                                        for v in verbos_mundo]
-        self.actuar = Modulo("Actuar", [self.tribunal, *actuadores], exento=True)
-        for c in self.sentir.componentes + self.actuar.componentes:
-            c.sistema = "CORE"
 
-        self.cuerpo: Optional[Cuerpo] = reg.cuerpo
-
-        # Opcionales (D3, D15): los generales con ``opcional`` que el mundo no nombra se quitan en su sitio, antes que nada
-        self._montar_opcionales(reg.opcionales)
-
-        # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
-        self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; aprenden en la fase «cuerpo» (D6)
-        if reg.cuerpo is not None:
-            for destino, comps in reg.cuerpo.componentes().items():
-                if destino not in DESTINOS_VALIDOS_CUERPO:
-                    raise ValueError(
-                        f"Destino no válido para un Componente del cuerpo '{reg.cuerpo.nombre}': '{destino}'. "
-                        f"Válidos: {sorted(DESTINOS_VALIDOS_CUERPO)}"
-                    )
-                modulo, preatencion, sistema_asignar = self._destino(destino)
-                for comp in comps:
-                    comp.de_cuerpo = reg.cuerpo.nombre
-                    comp.fase_plasticidad = "cuerpo"   # D6: lo que aporta un cuerpo aprende en la fase del cuerpo
-                    self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
-                    self.componentes_cuerpo.append(comp)
-
-        # Componentes del registro (por destino, en el orden declarado)
-        for destino, alta in reg.componentes.items():
-            if destino not in DESTINOS_VALIDOS_COMPONENTES:
-                raise ValueError(
-                    f"Destino de componente no válido: '{destino}'. Válidos: {sorted(DESTINOS_VALIDOS_COMPONENTES)}"
-                )
-            modulo, preatencion, sistema_asignar = self._destino(destino)
-
-            # sustituye: busca en el módulo de destino (o en su preatención) el Componente general cuya clase se llame como la clave
-            for nombre_clase, sustituto in alta.sustituye.items():
-                lista = modulo.componentes
-                idx = next((i for i, c in enumerate(lista) if c.__class__.__name__ == nombre_clase), None)
-                if idx is None and preatencion is not None:
-                    lista = preatencion
-                    idx = next((i for i, c in enumerate(lista) if c.__class__.__name__ == nombre_clase), None)
-                if idx is None:
-                    raise ValueError(f"No existe componente general '{nombre_clase}' en {destino} para sustituir")
-                original = lista[idx]
-                if sustituto.tipo != original.tipo:
-                    raise ValueError(
-                        f"El sustituto '{sustituto.__class__.__name__}' tiene tipo '{sustituto.tipo}', "
-                        f"pero '{nombre_clase}' tiene tipo '{original.tipo}'"
-                    )
-                if sustituto.preatentivo != original.preatentivo:
-                    raise ValueError(f"El sustituto '{sustituto.__class__.__name__}' debe ser preatentivo como '{nombre_clase}' o no serlo")
-                sustituto.propio_del_mundo = True
-                sustituto.sistema = sistema_asignar
-                lista[idx] = sustituto
-
-            # añade: se añade al final del módulo (los preatentivos, al final de la preatención), en el orden declarado
-            for comp in alta.añade:
-                self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
-
-        # Estrategias del registro (por sistema)
-        for sis, alta in reg.estrategias.items():
-            if sis not in SISTEMAS_VALIDOS_ESTRATEGIAS:
-                raise ValueError(
-                    f"Sistema no válido para estrategias: '{sis}'. Válidos: {sorted(SISTEMAS_VALIDOS_ESTRATEGIAS)}"
-                )
-            elige: Any = next((c for c in self._sistema(sis).componentes() if c.tipo == "Estrategia"), None)
-            if elige is None:
-                raise ValueError(f"{sis} no tiene componente Estrategia para las estrategias de {mundo.nombre}")
-            catalogo = elige.catalogo
-
-            # sustituye: clave es nombre de CLASE de la definición general; mismo atributo nombre; catalogo.añadir
-            for nombre_clase, sustituto in alta.sustituye.items():
-                original_def = next((d for d in catalogo.todas() if d.__class__.__name__ == nombre_clase), None)
-                if original_def is None:
-                    raise ValueError(f"No existe estrategia general de clase '{nombre_clase}' en {sis} para sustituir")
-                if sustituto.nombre != original_def.nombre:
-                    raise ValueError(
-                        f"El sustituto '{sustituto.__class__.__name__}' tiene nombre '{sustituto.nombre}', "
-                        f"pero la original '{nombre_clase}' tiene nombre '{original_def.nombre}'"
-                    )
-                catalogo.añadir(sustituto)
-
-            # añade: nombre o nombre de clase repetido -> ValueError; se añade con catalogo.añadir
-            for d in alta.añade:
-                if catalogo.get(d.nombre) is not None:
-                    raise ValueError(f"Ya existe una estrategia con nombre '{d.nombre}' en el catálogo de {sis}")
-                if any(existente.__class__.__name__ == d.__class__.__name__ for existente in catalogo.todas()):
-                    raise ValueError(f"Ya existe una estrategia de clase '{d.__class__.__name__}' en el catálogo de {sis}")
-                catalogo.añadir(d)
-
-        # Preatención (D5): los preatentivos de S1 · Sentir, en un módulo exento que corre tras Core · Sentir. Los
-        # integradores (``Saliencia``) corren siempre los últimos, sea cual sea el orden de registro (orden estable)
-        self.preatencion = Preatencion(sorted((c for s in self.sistemas for c in s.preatencion), key=lambda c: c.integrador))
-
-        # Conjunto de nombres de clase de todo lo montado (Componentes Core, preatención y S1-S3, y definiciones de catálogos)
-        self.registrados: Set[str] = {
-            c.__class__.__name__ for c in self.sentir.componentes + self.actuar.componentes + self.preatencion.componentes
-        } | {
-            c.__class__.__name__ for s in self.sistemas for m in s.modulos for c in m.componentes
-        } | {
-            d.__class__.__name__
-            for s in self.sistemas
-            for c in s.componentes()
-            if c.tipo == "Estrategia" and hasattr(c, "catalogo")
-            for d in c.catalogo.todas()
-        }
-
-        self._comprobar_espacio()
-        self._comprobar_plasticidad()
-
-        # Memoria (D7): las secciones de sus dueños (el cuerpo y después los Componentes montados, en orden), que reciben
-        # al registrarse el manual y el legado que la Memoria guardó para ellas
-        fuentes: List[Tuple[str, Any]] = [(reg.cuerpo.nombre, reg.cuerpo)] if reg.cuerpo is not None else []
-        fuentes += [(c.__class__.__name__, c) for c in self.montados() if not c.de_cuerpo]
-        for dueño, fuente in fuentes:
-            declarada = fuente.seccion_memoria(self.perfil)
-            if declarada is not None and self.memoria.dueño(declarada[0]) != dueño:   # una memoria ya montada por el
-                self.memoria.registrar_seccion(declarada[0], dueño, declarada[1])     # mismo dueño conserva su sección
+        montar(self)   # al nacer: registro del mundo, opcionales, cuerpo, comprobaciones y secciones de memoria (D3, D7)
 
         self.ciclo = 0
         self.ef_anterior: Optional[Canales] = None
@@ -222,78 +88,8 @@ class Organismo:
     def corto_plazo(self) -> Tuple[Any, ...]:
         return tuple(self._corto_plazo)
 
-    def _montar_opcionales(self, nombres: List[str]) -> None:
-        """Quita los generales opcionales (Componentes de los módulos, preatentivos y definiciones de los catálogos) cuya
-        clase no está en ``nombres``, conservando el orden relativo de lo demás. Un nombre que no corresponde a ningún
-        opcional del montaje general es un error (D3)."""
-        pedidos = set(nombres)
-        vistos: Set[str] = set()
-        for s in self.sistemas:
-            listas = [m.componentes for m in s.modulos] + [s.preatencion]
-            for lista in listas:
-                vistos |= {c.__class__.__name__ for c in lista if c.opcional}
-                lista[:] = [c for c in lista if not c.opcional or c.__class__.__name__ in pedidos]
-            catalogos = {id(c.catalogo): c.catalogo for c in s.componentes() if c.tipo == "Estrategia" and hasattr(c, "catalogo")}
-            for catalogo in catalogos.values():
-                for d in catalogo.todas():
-                    if d.opcional:
-                        vistos.add(d.__class__.__name__)
-                        if d.__class__.__name__ not in pedidos:
-                            catalogo.quitar(d.nombre)
-        desconocidos = sorted(pedidos - vistos)
-        if desconocidos:
-            raise ValueError(f"Opcionales desconocidos en el registro de {self.mundo.nombre}: {desconocidos}. "
-                             f"Opcionales del montaje general: {sorted(vistos)}")
-
-    def _comprobar_espacio(self) -> None:
-        """C7a: lo montado que necesita espacio (``requiere_espacio``) exige un cuerpo que lo dé (``Cuerpo.con_espacio``).
-        Sin él no fallaría: no haría nada, en silencio. Es un error de montaje y se dice al nacer."""
-        if self.cuerpo is not None and self.cuerpo.con_espacio:
-            return
-        definiciones = [d for s in self.sistemas for c in s.componentes() if c.tipo == "Estrategia" and hasattr(c, "catalogo")
-                        for d in c.catalogo.todas()]
-        faltan = sorted({x.__class__.__name__ for x in [*self.montados(), *definiciones] if getattr(x, "requiere_espacio", False)})
-        if faltan:
-            cuerpo = self.cuerpo.nombre if self.cuerpo is not None else "ninguno"
-            raise ValueError(f"{self.mundo.nombre} monta {faltan}, que necesitan un cuerpo con espacio (cuerpo: {cuerpo})")
-
-    def _comprobar_plasticidad(self) -> None:
-        """D6: cada Componente montado declara una fase de plasticidad conocida, y la fase «cuerpo» es solo de lo que aporta
-        un cuerpo."""
-        for c in self.montados():
-            if c.fase_plasticidad not in FASES_PLASTICIDAD:
-                raise ValueError(f"'{c.__class__.__name__}' declara la fase de plasticidad '{c.fase_plasticidad}'. "
-                                 f"Válidas: {list(FASES_PLASTICIDAD)}")
-            if c.fase_plasticidad == "cuerpo" and not c.de_cuerpo:
-                raise ValueError(f"'{c.__class__.__name__}' declara la fase de plasticidad 'cuerpo' y no es de un cuerpo")
-
-    def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
-        """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""
-        if destino == "CORE.Sentir":
-            return self.sentir, None, "MUNDO"
-        if destino == "CORE.Actuar":
-            return self.actuar, None, "CORE"
-        sis, etapa = destino.split(".")
-        preatencion = self._sistema("S1").preatencion if destino == "S1.Sentir" else None
-        return self._sistema(sis).modulo(etapa), preatencion, sis
-
-    @staticmethod
-    def _añadir(modulo: Modulo, preatencion: Optional[List[Componente]], destino: str, comp: Componente, sistema: str) -> None:
-        """``añade`` (D3): al final del módulo (un preatentivo, al final de la preatención), con nombre de clase único."""
-        if comp.preatentivo and preatencion is None:
-            raise ValueError(f"'{comp.__class__.__name__}' es preatentivo: solo puede registrarse en S1.Sentir (D5)")
-        lista = preatencion if comp.preatentivo and preatencion is not None else modulo.componentes
-        if any(c.__class__.__name__ == comp.__class__.__name__ for c in modulo.componentes + (preatencion or [])):
-            raise ValueError(f"Ya existe un componente '{comp.__class__.__name__}' en {destino}; declara sustituye")
-        comp.propio_del_mundo = True
-        comp.sistema = sistema
-        lista.append(comp)
-
     def _sistema(self, nombre: str) -> Sistema:
-        for s in self.sistemas:
-            if s.nombre == nombre:
-                return s
-        raise KeyError(f"Sistema desconocido: {nombre}")
+        return sistema_por_nombre(self.sistemas, nombre)
 
     # -----------------------------------------------------------------------
     def latir(self) -> Onda:
