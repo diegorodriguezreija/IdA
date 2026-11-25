@@ -38,7 +38,7 @@ La reorganización por Componentes (fase A) está en `main` con la etiqueta `cra
 - **Estrategias:** se activan por piezas de la Onda (nunca por el paso, el reloj ni el estado interno del mundo), pueden omitirse, compiten en el Tribunal y sus umbrales son parámetros o se aprenden. Pueden tener fases con esas condiciones.
 - **Las constantes de escala** van en el `Perfil` del mundo o en los parámetros de su cuerpo, no en los Componentes generales.
 - **Lo aprendido es de cada mundo:** no pasa de un mundo a otro.
-- **Mecanismos de memoria (bloques E y F):** siguen apagados por defecto; un mundo los activa en su `Perfil` si un benchmark pareado demuestra su valor ([`docs/historico/VEREDICTO_E_F.md`](docs/historico/VEREDICTO_E_F.md)).
+- **Mecanismos de memoria (bloques E y F, `ida/nucleo/memoria/mecanismos.py`):** siguen apagados por defecto; un mundo los activa en su `Perfil` si un benchmark pareado demuestra su valor ([`docs/historico/VEREDICTO_E_F.md`](docs/historico/VEREDICTO_E_F.md)).
 - Mientras se mide, en la máquina no corre ningún otro proceso de IdA (ni tests ni pruebas rápidas). Cada medición registra sus latidos cortados.
 - Los agentes no instalan paquetes sin permiso del autor.
 
