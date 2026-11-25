@@ -265,6 +265,15 @@ class MundoArchivos(Mundo):
             return Efecto(True, {"alimentacion": 8.0}, obtenido=clase)
         return Efecto(True, obtenido=clase, mensaje="no alimenta")
 
+    def _carpetas(self) -> List[str]:
+        """Las carpetas del bioma en orden fijo (preorden, hermanas por nombre): ``os.walk`` da el orden del sistema de
+        ficheros, que cambia entre plataformas (NTFS ordena por nombre; ext4, no), y la dinámica elige al azar entre ellas."""
+        carpetas = []
+        for carpeta, subdirs, _ in os.walk(self.raiz):
+            subdirs.sort()
+            carpetas.append(carpeta)
+        return carpetas
+
     def _dinamica(self, ef: Efecto) -> None:
         """El mundo sigue: los depredadores muerden y se mueven, y la biomasa rebrota."""
         for nombre in self._archivos(self.actual):
@@ -272,14 +281,14 @@ class MundoArchivos(Mundo):
                 ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 6.0
                 ef.causa = clase_de(nombre)
         if self.azar.probabilidad(0.08):
-            carpetas = [d for d, _, _ in os.walk(self.raiz)]
+            carpetas = self._carpetas()
             origen = self.azar.eleccion(carpetas)
             presas = [n for n in self._archivos(origen) if n.endswith(".exe")]
             if presas:
                 n = self.azar.eleccion(presas)
                 shutil.move(self._seguro(os.path.join(origen, n)), self._seguro(os.path.join(self.azar.eleccion(carpetas), n)))
         if self.t % 25 == 0:
-            carpeta = self.azar.eleccion([d for d, _, _ in os.walk(self.raiz)])
+            carpeta = self.azar.eleccion(self._carpetas())
             self._escribir(carpeta, f"brote_{self.t}.txt", "0101" * 64)
 
     def registro(self) -> Registro:

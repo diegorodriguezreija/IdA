@@ -18,7 +18,7 @@ Para comparar Snake se requiere una metodología estadística agregada (N partid
 
 ## 2. Mínimo, archivos y ajedrez: conducta latido a latido
 
-> **Nota sobre la invariancia de archivos:** la referencia guardada de invariancia de archivos depende de la plataforma y falla en Linux también con `main` (ver [`PENDIENTES.md`](PENDIENTES.md), punto C5). En el entorno Windows de referencia pasa de forma idéntica.
+> **Nota sobre la invariancia de archivos:** la referencia guardada de invariancia de archivos depende de la plataforma y falla en Linux también con `main` (ver [`PENDIENTES.md`](PENDIENTES.md), punto C5). En el entorno Windows de referencia pasa de forma idéntica. Resuelto en C5 (25/11/2026).
 
 ### Comandos ejecutados
 
