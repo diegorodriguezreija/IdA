@@ -17,7 +17,7 @@ Solo en un mundo que da posiciones (ubicación ``<nombre>_x_y`` y
   una instancia a su alcance). Son los que usa la valoración de una lucha (``Afrontar``);
 - **emisor**, por contingencia (como la de ``Satisface``): la clase X emite la clase Y si las Y que aparecen (un id
   nuevo) lo hacen junto a una X más de lo que tocaría por azar. ΔP = (junto − esperado) / n, con ``esperado`` la suma,
-  en cada aparición, de la fracción de casillas a la vista que están junto a alguna X. Hace falta ΔP ≥ ``EMISION_MINIMA``
+  en cada aparición, de la fracción de posiciones a la vista que están junto a alguna X. Hace falta ΔP ≥ ``EMISION_MINIMA``
   y al menos ``JUNTO_MINIMO`` apariciones junto a una X. Un emisor hereda el daño de lo que emite;
 - **alcance**: 1 (contacto) para el daño propio; para un emisor, la mediana de la distancia recorrida desde él por lo que
   emite (más el contacto), de las últimas ``MAX_RECORRIDOS`` (el máximo lo marca lo que sale de la vista);
@@ -48,10 +48,10 @@ Ninguna cifra es de un mundo: los previos están declarados aquí y valen para c
 """
 
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
+from typing import Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.nucleo.memoria import Seccion, pos_de
+from ida.nucleo.memoria import Seccion
 from ida.nucleo.mundo import Escala, Perfil
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
@@ -59,6 +59,8 @@ from ida.s3.interpretar.requisito import Requisitos
 
 
 Pos = Tuple[int, int]
+Distancia = Callable[[Any, Any], int]     # la del cuerpo (``Cuerpo.distancia``)
+Contiguos = Callable[[Any], List[Any]]   # la del cuerpo (``Cuerpo.contiguos``)
 
 VITALIDAD_MAXIMA = 100.0
 # De escala (D15): valen los de ``Perfil.escala``, con la que se construye ``Peligros``; estos son los valores por defecto.
@@ -75,7 +77,7 @@ MAX_DERRIBOS = 30
 MARGEN_REDUCTOR = 0.15                       # razón de golpes con / sin el objeto por debajo de 1 − margen: reduce
 MINIMO_LEGADO = 2                            # observaciones mínimas para pasar al legado
 PELIGRO_PREVIO = 0.8                         # peligro del previo del manual a salud completa (fija la escala)
-MARGEN_LUGAR = Escala().margen_lugar         # el peligro de un lugar se anula a alcance + margen casillas
+MARGEN_LUGAR = Escala().margen_lugar         # el peligro de un lugar se anula a alcance + margen (en distancia del cuerpo)
 
 
 def constante_escala(dano_previo: float) -> float:
@@ -89,10 +91,6 @@ ESCALA = constante_escala(DANO_PREVIO)       # C por defecto
 def escala(x: float, c: float = ESCALA) -> float:
     """g(x) = x / (x + C): de la pérdida relativa a la salud a un peligro en [0, 1)."""
     return x / (x + c) if x > 0.0 else 0.0
-
-
-def manhattan(a: Pos, b: Pos) -> int:
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 
 def f_alcance(d: int, alcance: int) -> float:
@@ -280,26 +278,27 @@ class Peligros(Seccion):
 
     # --- aprendizaje (cada latido, desde lo percibido) ----------------------------
     def aprender(self, aqui: Pos, agentes: Dict[str, Tuple[str, Pos]], visibles: Set[Pos], objetos: FrozenSet[str],
-                 verbo: Optional[str], objetivo: str, causa: Optional[str], perdida: float, peligrosa, dormido: bool = False) -> None:
+                 verbo: Optional[str], objetivo: str, causa: Optional[str], perdida: float, peligrosa, dormido: bool = False,
+                 *, distancia: Distancia, contiguos: Contiguos) -> None:
         """Un latido. ``agentes``: id -> (clase, posición) de lo que se mueve a la vista (no lugares); ``visibles``: las
-        casillas a la vista; ``objetos``: lo que se lleva ahora; ``verbo`` y ``objetivo``: la acción anterior; ``causa`` y
+        posiciones a la vista; ``objetos``: lo que se lleva ahora; ``verbo`` y ``objetivo``: la acción anterior; ``causa`` y
         ``perdida``: el daño que dejó (clase y vitalidad perdida); ``dormido``: si se duerme ahora (el daño de la acción
-        anterior se recibió en la condición del latido anterior)."""
+        anterior se recibió en la condición del latido anterior). ``distancia`` y ``contiguos``: el espacio del cuerpo."""
         previos = self.vistos
         por_clase: Dict[str, int] = {}     # distancia mínima a cada clase en el latido anterior (cuando se actuó)
         if self.aqui_previo is not None:
             for _, (c, p) in previos.items():
-                d = manhattan(self.aqui_previo, p)
+                d = distancia(self.aqui_previo, p)
                 por_clase[c] = min(d, por_clase.get(c, d))
         # Encuentros (contacto con una instancia) y daño atribuido por el mundo
         if self.aqui_previo is not None:
             for i, (c, p) in previos.items():
-                if i not in self.encuentros and manhattan(self.aqui_previo, p) <= 1 and (peligrosa(c) or c in self.dano or c in self.dano_golpe):
+                if i not in self.encuentros and distancia(self.aqui_previo, p) <= 1 and (peligrosa(c) or c in self.dano or c in self.dano_golpe):
                     self.encuentros[i] = (c, 0.0)
         if causa and perdida > 0.0:
             (self.dano_dormido if self.dormido_previo else self.dano_golpe).setdefault(str(causa), Media()).anotar(perdida)
             ref = self.aqui_previo or aqui
-            candidatas = sorted((manhattan(ref, p), i) for i, (c, p) in previos.items() if c == causa)
+            candidatas = sorted((distancia(ref, p), i) for i, (c, p) in previos.items() if c == causa)
             i = candidatas[0][1] if candidatas else f"?{causa}"
             self.encuentros[i] = (str(causa), self.encuentros.get(i, (str(causa), 0.0))[1] + perdida)
         for i in [i for i in self.encuentros if i not in agentes]:
@@ -313,14 +312,14 @@ class Peligros(Seccion):
                     if causa and (causa == c or causa in self.emitidas(c)):
                         self.eventos[c] = self.eventos.get(c, 0) + 1
         # Golpes dados a una instancia adyacente
-        if verbo is not None and objetivo in previos and self.aqui_previo is not None and manhattan(self.aqui_previo, previos[objetivo][1]) <= 1:
+        if verbo is not None and objetivo in previos and self.aqui_previo is not None and distancia(self.aqui_previo, previos[objetivo][1]) <= 1:
             clase, n, _ = self.golpeando.get(objetivo, (previos[objetivo][0], 0, frozenset()))
             self.golpeando[objetivo] = (clase, n + 1, self.objetos_previos)
         # Lo que desaparece: derribos y recorridos de lo emitido
         for i, (_c, p) in previos.items():
             if i in agentes:
                 continue
-            junto = manhattan(p, aqui) <= 1 or (self.aqui_previo is not None and manhattan(p, self.aqui_previo) <= 1)
+            junto = distancia(p, aqui) <= 1 or (self.aqui_previo is not None and distancia(p, self.aqui_previo) <= 1)
             if i in self.golpeando:
                 clase, n, kit = self.golpeando.pop(i)
                 if junto:
@@ -330,7 +329,7 @@ class Peligros(Seccion):
             if i in self.emitidos:
                 x, origen = self.emitidos.pop(i)
                 r = self.recorridos.setdefault(x, [])
-                r.append(manhattan(origen, p) + 1)
+                r.append(distancia(origen, p) + 1)
                 del r[:-MAX_RECORRIDOS]
         for i in [i for i in self.golpeando if i not in agentes]:
             del self.golpeando[i]
@@ -348,9 +347,9 @@ class Peligros(Seccion):
                         continue
                     e = self.emision.setdefault((x, y), Emision())
                     e.n += 1
-                    vecinas = {(q[0] + dx, q[1] + dy) for q in posiciones for dx, dy in ((0, 0), (1, 0), (-1, 0), (0, 1), (0, -1))}
+                    vecinas = {v for q in posiciones for v in (q, *contiguos(q))}
                     e.esperado += len(vecinas & visibles) / total
-                    cerca = [q for q in posiciones if manhattan(p, q) <= 1]
+                    cerca = [q for q in posiciones if distancia(p, q) <= 1]
                     if cerca:
                         e.junto += 1
                         if i not in self.emitidos:
@@ -448,10 +447,10 @@ class Peligros(Seccion):
 
 
 def estimaciones(entidades: List[Tuple[str, Dict[str, Any], Dict[str, Any]]], aqui: Pos, peligros: Peligros, salud: float,
-                 peligrosa, dormido: bool = False) -> List[Tuple[int, float]]:
+                 peligrosa, dormido: bool = False, *, distancia: Distancia) -> List[Tuple[int, float]]:
     """El ``peligro`` de cada entidad ``(clase, rasgos, datos)`` con posición (paso 6a), como ``(índice, valor)``: las
     cosas, por su daño y alcance aprendidos a su distancia; los lugares, por lo peligroso percibido a la distancia de cada
-    lugar. No escribe nada."""
+    lugar. ``distancia``: la del cuerpo. No escribe nada."""
     fuentes: List[Tuple[Pos, List[Tuple[float, int]]]] = []
     lugares = []
     salida: List[Tuple[int, float]] = []
@@ -467,17 +466,19 @@ def estimaciones(entidades: List[Tuple[str, Dict[str, Any], Dict[str, Any]]], aq
         comps = cache.get(clase)
         if comps is None:
             comps = cache[clase] = peligros.componentes(clase, peligrosa, dormido)
-        salida.append((i, peligros.peligro_a(comps, manhattan(aqui, p), salud)))
+        salida.append((i, peligros.peligro_a(comps, distancia(aqui, p), salud)))
         if comps:
             fuentes.append((p, comps))
     for i, p in lugares:
-        salida.append((i, max((peligros.peligro_lugar(comps, manhattan(p, q), salud) for q, comps in fuentes), default=0.0)))
+        salida.append((i, max((peligros.peligro_lugar(comps, distancia(p, q), salud) for q, comps in fuentes), default=0.0)))
     return salida
 
 
-def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa, dormido: bool = False) -> None:
+def estimar(entidades: List[Any], aqui: Pos, peligros: Peligros, salud: float, peligrosa, dormido: bool = False, *,
+            distancia: Distancia) -> None:
     """Escribe el rasgo ``peligro`` de cada entidad con posición (``clase``, ``rasgos``, ``datos``) con ``estimaciones``."""
-    for i, v in estimaciones([(e.clase, e.rasgos, e.datos) for e in entidades], aqui, peligros, salud, peligrosa, dormido):
+    for i, v in estimaciones([(e.clase, e.rasgos, e.datos) for e in entidades], aqui, peligros, salud, peligrosa, dormido,
+                             distancia=distancia):
         entidades[i].rasgos["peligro"] = v
 
 
@@ -491,10 +492,11 @@ class Amenaza(Componente):
     ``peligro`` de cada entidad, que escribe al final de los rasgos de su pieza ``Exterocepcion``.
 
     Opcional (D3, D15): solo la monta el mundo que la registra (un mundo que da su propio ``peligro`` no la registra).
-    Actúa si el mundo da posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``) y deja
-    ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``). Lee de las piezas: la ubicación,
-    el cuerpo (``casillas``) y el inventario, de la ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su
-    ``Exterocepcion``. Es el dueño de la sección «peligros» de la Memoria (D7): el único que escribe en ella. Coste lineal en lo percibido (más lo que cueste
+    Actúa si hay posiciones (la propia, que el cuerpo da de la ubicación, ``Contexto.espacio``, y ``datos["pos"]``) y deja
+    ``ctx.extra["peligro_aprendido"]`` para las estrategias que usan lo aprendido (``Afrontar``). Distancias, contigüidad y
+    posiciones a la vista, del espacio del cuerpo. Lee de las piezas: la ubicación, el cuerpo y el inventario, de la
+    ``Propiocepcion``; clase, rasgos y posición de cada entidad, de su ``Exterocepcion``. Es el dueño de la sección
+    «peligros» de la Memoria (D7): el único que escribe en ella. Coste lineal en lo percibido (más lo que cueste
     ``Peligros.aprender``, igual que antes)."""
 
     tipo = "Exterocepcion"
@@ -507,7 +509,8 @@ class Amenaza(Componente):
 
     def reactiva(self, ctx: Contexto) -> None:
         yo = ctx.onda.ev("Propiocepcion").get("yo")
-        aqui = pos_de(yo.carga.get("ubicacion")) if yo is not None else None
+        espacio = ctx.espacio
+        aqui = cast(Optional[Pos], espacio.posicion(yo.carga.get("ubicacion"))) if yo is not None else None
         piezas = list(ctx.onda.ev("Exterocepcion").values())
         if yo is None or aqui is None:
             return
@@ -517,14 +520,12 @@ class Amenaza(Componente):
         mem = ctx.memoria
         peligros = cast(Peligros, mem.seccion_propia("peligros", type(self).__name__))
         dormido = bool(ctx.soma.dormido)
+        distancia = cast(Distancia, espacio.distancia)
         if ctx.con_experiencia and mem.activa:
             agentes = {p.id: (str(p.carga.get("clase", "")), q) for p, q in con_pos
                        if p.rasgo("lugar") < 0.5 and p.rasgo("agente") >= 0.5}
-            crudas = (yo.carga.get("cuerpo") or {}).get("casillas")
-            if isinstance(crudas, dict) and crudas:
-                visibles = {(int(k[0]), int(k[1])) for k in crudas}
-            else:
-                visibles = {q for _, q in con_pos}
+            percibidas = espacio.percibidas(yo.carga.get("cuerpo"))
+            visibles = percibidas if percibidas else {q for _, q in con_pos}
             inv = dict(yo.carga.get("inventario") or {})
             req = cast(Requisitos, mem.seccion("requisitos")) if mem.tiene_seccion("requisitos") else None
             objetos = frozenset(k for k, v in (req.objetos(inv) if req else inv).items() if v >= 1.0)
@@ -534,9 +535,9 @@ class Amenaza(Componente):
             golpe = verbo.value if verbo in (Verbo.ATACAR, Verbo.COMER) and verbo is not None else None
             peligros.aprender(aqui, agentes, visibles, objetos, golpe, str(c.get("objetivo", "")),
                                   c.get("causa"), max(0.0, -float(c.get("delta", {}).get("vitalidad", 0.0))), mem.peligrosa,
-                                  dormido=dormido)
+                                  dormido=dormido, distancia=distancia, contiguos=espacio.contiguos)
         entidades = [(str(p.carga.get("clase", "")), p.carga.get("rasgos", {}), p.carga.get("datos", {})) for p in piezas]
-        for i, v in estimaciones(entidades, aqui, peligros, ctx.soma.vitalidad, mem.peligrosa, dormido=dormido):
+        for i, v in estimaciones(entidades, aqui, peligros, ctx.soma.vitalidad, mem.peligrosa, dormido=dormido, distancia=distancia):
             p = piezas[i]
             self.modificar(ctx, p, carga={"rasgos": {**p.carga["rasgos"], "peligro": v}})
         ctx.extra["peligro_aprendido"] = True

@@ -8,15 +8,27 @@ Componentes, en orden de montaje (y de ``aprender``):
 Y su capa motora (D9), ``MotorCuadricula`` (una biblioteca, no un Componente): traduce la intención a primitivas del
 mundo, con como mucho ``max_sinergia`` primitivas por Actuación, y juzga su éxito.
 
-La geometría y el buscador de posturas se mueven en A6, con ``Recinto``.
+El espacio (D10, C1): ``Cuadricula`` implementa la interfaz espacial de ``Cuerpo`` con la geometría de ``geometria.py``
+(posición ``<nombre>_x_y``, distancia Manhattan, desplazamiento ``(|dx|, |dy|)`` ordenado, cuatro vecinos y casillas a la
+vista). ``radio_prueba``: hasta qué desplazamiento se prueba una acción con requisito de cercanía antes de caminar.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Hashable, List, Optional, Set, Tuple
 
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.mundo import Cuerpo, Motor, Perfil
 from ida.cuerpos.cuadricula.buscador import buscar_postura, mover
-from ida.cuerpos.cuadricula.geometria import _bfs, _manhattan, _suma, _vecinas, entorno
+from ida.cuerpos.cuadricula.geometria import (
+    RADIO_PRUEBA,
+    Desplazamiento,
+    _bfs,
+    _manhattan,
+    _suma,
+    _vecinas,
+    desplazamiento,
+    entorno,
+    pos_de,
+)
 from ida.cuerpos.cuadricula.mapa import ir_por_el_mapa
 from ida.cuerpos.cuadricula.core.actuar.modelo_directo import ModeloDirecto
 from ida.cuerpos.cuadricula.memoria import MapaCuadricula
@@ -29,22 +41,54 @@ __all__ = [
     "MapaLocal",
     "ModeloDirecto",
     "MotorCuadricula",
+    "RADIO_PRUEBA",
     "_bfs",
     "_manhattan",
     "_suma",
     "_vecinas",
     "buscar_postura",
+    "desplazamiento",
     "entorno",
     "ir_por_el_mapa",
     "mover",
+    "pos_de",
 ]
 
 
 class Cuadricula(Cuerpo):
     nombre = "cuadricula"
+    junto: Hashable = (0, 1)
 
-    def __init__(self, max_sinergia: int = 2) -> None:
+    def __init__(self, max_sinergia: int = 2, radio_prueba: int = RADIO_PRUEBA) -> None:
         self._motor = MotorCuadricula(max_sinergia)
+        self.radio_prueba = int(radio_prueba)
+
+    # --- espacio (D10, C1) ----------------------------------------------------------
+    posicion = staticmethod(pos_de)
+    distancia = staticmethod(_manhattan)    # sin envoltorio: Amenaza la llama en bucles
+
+    @staticmethod
+    def relacion(a: Any, b: Any) -> Desplazamiento:
+        return desplazamiento(b[0] - a[0], b[1] - a[1])
+
+    @staticmethod
+    def magnitud(relacion: Any) -> int:
+        return int(relacion[0] + relacion[1])
+
+    @staticmethod
+    def orden(relacion: Any) -> Tuple[Any, ...]:
+        """A igual distancia, el desplazamiento más diagonal."""
+        return (relacion[0] + relacion[1], -relacion[0])
+
+    contiguos = staticmethod(_vecinas)
+
+    @staticmethod
+    def percibidas(postura: Optional[Dict[str, Any]]) -> Optional[Set[Any]]:
+        """Las casillas a la vista (``cuerpo["casillas"]``), o None si el mundo no las da."""
+        crudas = (postura or {}).get("casillas")
+        if isinstance(crudas, dict) and crudas:
+            return {(int(k[0]), int(k[1])) for k in crudas}
+        return None
 
     def motor(self) -> Optional[Motor]:
         return self._motor
@@ -58,5 +102,10 @@ class Cuadricula(Cuerpo):
 
     def ir_por_el_mapa(
         self, ctx: Contexto, clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
-    ) -> Optional[Tuple[Tuple[int, int], int, Tuple[int, int]]]:
-        return ir_por_el_mapa(ctx, clase, confianza, excluir)
+    ) -> Optional[Tuple[Tuple[int, int], int, str]]:
+        """(casilla siguiente, pasos, destino ``<clase>@x_y``) hacia la casilla recordada de ``clase``, o None."""
+        ruta = ir_por_el_mapa(ctx, clase, confianza, excluir)
+        if ruta is None:
+            return None
+        primero, d, (x, y) = ruta
+        return primero, d, f"{clase}@{x}_{y}"

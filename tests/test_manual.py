@@ -5,6 +5,7 @@ import pytest
 from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.mundos.minimo import MundoMinimo
 from ida.s3.interpretar.requisito import RequisitoAccion as Requisito
+from ida.cuerpos.cuadricula import Cuadricula
 
 from _secciones import memoria_con_secciones, requisitos
 
@@ -118,15 +119,17 @@ def test_requisito_descubierto_por_experiencia():
 
 def test_desplazamientos_de_cercania_aprendidos():
     """La diagonal (1, 1) y dos casillas en línea (0, 2) no se confunden."""
+    C = Cuadricula()                              # C1: las posiciones relativas y el radio de prueba los da el cuerpo
     m = memoria_con_secciones()
     m.aplicar_manual(MANUAL)                      # make_pico requiere mesa cerca
     r = requisitos(m).requisitos[(Verbo.USAR, "make_pico")]
-    assert r.cerca_basta("mesa", (0, 1)) and r.cerca_basta("mesa", (1, 1)) and r.cerca_basta("mesa", (0, 2))   # se prueba
-    assert not r.cerca_basta("mesa", (1, 2))
-    requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": (0, 2)})
-    assert not r.cerca_basta("mesa", (0, 2))      # en línea falló: ya no se prueba
-    assert r.cerca_basta("mesa", (1, 1))          # la diagonal sigue sin probar
-    requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 0.0, "pico": 1.0}, set(), True, distancias={"mesa": (1, 1)})
+    assert r.cerca_basta("mesa", (0, 1), C) and r.cerca_basta("mesa", (1, 1), C) and r.cerca_basta("mesa", (0, 2), C)   # se prueba
+    assert not r.cerca_basta("mesa", (1, 2), C)
+    requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 1.0}, set(), True, distancias={"mesa": (0, 2)}, espacio=C)
+    assert not r.cerca_basta("mesa", (0, 2), C)      # en línea falló: ya no se prueba
+    assert r.cerca_basta("mesa", (1, 1), C)          # la diagonal sigue sin probar
+    requisitos(m).aprender_requisito(Verbo.USAR, "make_pico", {"madera": 1.0}, {"madera": 0.0, "pico": 1.0}, set(), True,
+                                      distancias={"mesa": (1, 1)}, espacio=C)
     assert r.cerca_ok == {"mesa": {(1, 1)}} and r.cerca_fallida == {"mesa": {(0, 2)}}
 
 

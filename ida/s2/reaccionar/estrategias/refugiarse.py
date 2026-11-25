@@ -33,7 +33,7 @@ class Refugiarse(Definicion):
         if puerta is None and ctx.con_experiencia:
             salto = ctx.memoria.ruta(aqui, hogar)
             if salto:
-                # El retorno por memoria espacial no debe pisar la huida si la casilla implica peligro
+                # El retorno por memoria espacial no debe pisar la huida si el lugar implica peligro
                 umbral_p = 0.2 if peligro >= 0.4 else 0.8
                 puerta = next((lugar for lugar in lugares(ctx) if lugar.id == salto and lugar.rasgo("peligro") < umbral_p), None)
         return puerta

@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from ida.nucleo.azar import Azar
 from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
-from ida.nucleo.mundo import Cuerpo, Observacion, Perfil
+from ida.nucleo.mundo import SIN_ESPACIO, Cuerpo, Observacion, Perfil
 from ida.nucleo.onda import Onda
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.soma import Soma
@@ -80,6 +80,11 @@ class Contexto:
     @property
     def latido(self) -> int:
         return self.onda.ciclo
+
+    @property
+    def espacio(self) -> Cuerpo:
+        """El cuerpo al que se pregunta por el espacio (D10, C1): el registrado o, sin cuerpo, uno sin espacio métrico."""
+        return self.cuerpo if self.cuerpo is not None else SIN_ESPACIO
 
     def registrado(self, nombre: str) -> bool:
         return nombre in self.registrados

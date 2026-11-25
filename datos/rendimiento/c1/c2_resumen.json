@@ -1,0 +1,117 @@
+{
+  "info": {
+    "python": "3.15.1 (tags/v3.15.1:c37e74c, Oct 21 2026, 06:24:08) [MSC v.1951 64 bit (AMD64)]",
+    "plataforma": "Windows-10-10.0.19045-SP0",
+    "pasos": 3000,
+    "reps": 2,
+    "semillas": [
+      31,
+      32
+    ],
+    "argumentos": [
+      "--vista",
+      "oficial",
+      "--sin-herencia",
+      "--manual",
+      "estricto",
+      "--plazo-logico",
+      "40",
+      "--quiet"
+    ],
+    "base": {
+      "raiz": "F:\\tmp\\ida_main",
+      "commit": "221e4f8",
+      "ida": "F:\\tmp\\ida_main\\ida"
+    },
+    "nueva": {
+      "raiz": "F:\\code\\IdA",
+      "commit": "6222ac1",
+      "ida": "F:\\code\\IdA\\ida"
+    }
+  },
+  "filas": [
+    {
+      "version": "base",
+      "semilla": 31,
+      "rep": 0,
+      "ms_por_paso": 15.95,
+      "pared_s": 49.35
+    },
+    {
+      "version": "nueva",
+      "semilla": 31,
+      "rep": 0,
+      "ms_por_paso": 14.32,
+      "pared_s": 43.76
+    },
+    {
+      "version": "nueva",
+      "semilla": 32,
+      "rep": 0,
+      "ms_por_paso": 13.35,
+      "pared_s": 40.85
+    },
+    {
+      "version": "base",
+      "semilla": 32,
+      "rep": 0,
+      "ms_por_paso": 13.29,
+      "pared_s": 40.68
+    },
+    {
+      "version": "nueva",
+      "semilla": 31,
+      "rep": 1,
+      "ms_por_paso": 14.11,
+      "pared_s": 43.08
+    },
+    {
+      "version": "base",
+      "semilla": 31,
+      "rep": 1,
+      "ms_por_paso": 14.18,
+      "pared_s": 43.37
+    },
+    {
+      "version": "base",
+      "semilla": 32,
+      "rep": 1,
+      "ms_por_paso": 13.3,
+      "pared_s": 40.73
+    },
+    {
+      "version": "nueva",
+      "semilla": 32,
+      "rep": 1,
+      "ms_por_paso": 13.83,
+      "pared_s": 42.32
+    }
+  ],
+  "resumen": {
+    "base_31": {
+      "mediana": 15.065,
+      "min": 14.18,
+      "max": 15.95,
+      "n": 2
+    },
+    "nueva_31": {
+      "mediana": 14.215,
+      "min": 14.11,
+      "max": 14.32,
+      "n": 2
+    },
+    "base_32": {
+      "mediana": 13.295,
+      "min": 13.29,
+      "max": 13.3,
+      "n": 2
+    },
+    "nueva_32": {
+      "mediana": 13.59,
+      "min": 13.35,
+      "max": 13.83,
+      "n": 2
+    }
+  },
+  "conducta_identica": true
+}

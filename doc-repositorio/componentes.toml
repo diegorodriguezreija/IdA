@@ -544,7 +544,7 @@ destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "D7"
 aprende = true
-nota = "ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo"
+nota = "ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo; la posición relativa de lo cercano y el radio de prueba, su espacio (Contexto.espacio, C1)"
 
 [[componente]]
 nombre = "Intencion"
@@ -655,7 +655,7 @@ hoy = "cuerpo"
 hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
-nota = "ida/cuerpos/cuadricula/geometria.py: vecinos, distancia, entorno, búsqueda en anchura"
+nota = "ida/cuerpos/cuadricula/geometria.py: posición (pos_de, convención <nombre>_x_y), vecinos (DIRECCIONES), distancia, desplazamiento y radio de prueba, entorno, búsqueda en anchura. Cuadricula la ofrece al código general por la interfaz espacial de Cuerpo (C1)"
 
 [[componente]]
 nombre = "BuscadorPosturas"

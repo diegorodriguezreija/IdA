@@ -6,7 +6,8 @@ propio cuerpo. Escriben en ella ``ModeloDirecto`` y ``MapaLocal``; leerla es lib
 
 from typing import Dict, List, Optional, Set, Tuple
 
-from ida.nucleo.memoria import DIRECCIONES, Pos, Seccion
+from ida.nucleo.memoria import Seccion
+from ida.cuerpos.cuadricula.geometria import DIRECCIONES, Pos
 from ida.nucleo.vocabulario import Verbo
 
 

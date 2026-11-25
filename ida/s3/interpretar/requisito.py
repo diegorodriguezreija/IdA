@@ -4,21 +4,22 @@ Es el dueño de la sección «requisitos» de la Memoria: lo único que escribe 
 anterior (``aprender``) en el mismo punto del latido en que antes lo hacía ``Organismo._aprender``, con lo que había
 justo antes de actuar (``antes_de_actuar``, donde estaba ``Organismo._antes_accion``). No tiene barridos (``activo`` es
 False): no cobra ni cuenta operaciones en el latido. «Delante» y «cerca» los da el cuerpo en la pieza ``Propiocepcion``
-«yo» (``cuerpo["delante"]``) y las ``Exterocepcion``.
+«yo» (``cuerpo["delante"]``) y las ``Exterocepcion``; la posición relativa de lo cercano, el espacio del cuerpo
+(``Contexto.espacio``, D10).
 """
 
 import math
-from typing import Any, Dict, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, Hashable, List, Optional, Set, Tuple, cast
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.nucleo.memoria import RADIO_PRUEBA, Desplazamiento, Memoria, Meta, Seccion, desplazamiento
+from ida.nucleo.memoria import Memoria, Meta, Seccion
 from ida.nucleo.memoria import Requisito as RequisitoAccion
-from ida.nucleo.mundo import Perfil
+from ida.nucleo.mundo import SIN_ESPACIO, Cuerpo, Perfil
 from ida.nucleo.onda import Onda
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 
-Situacion = Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Desplazamiento]]
+Situacion = Tuple[Dict[str, float], Set[str], Optional[str], Dict[str, Hashable]]
 
 
 class Requisitos(Seccion):
@@ -146,7 +147,8 @@ class Requisitos(Seccion):
         exito: bool,
         cerca_despues: Optional[Set[str]] = None,
         delante: Optional[str] = None,
-        distancias: Optional[Dict[str, Desplazamiento]] = None,
+        distancias: Optional[Dict[str, Hashable]] = None,
+        espacio: Cuerpo = SIN_ESPACIO,
     ) -> None:
         """Tras una acción con objetivo: contrasta el inventario de antes y de después.
 
@@ -161,9 +163,9 @@ class Requisitos(Seccion):
         - Ganar un tipo de objeto que no se tenía desbloquea todas las acciones bloqueadas (5.2 b).
         - Un requisito descubierto por un primer éxito sin fallos previos solo registra el efecto: los requisitos
           de inventario los añade la inducción por diferencia.
-        - ``distancias`` (clase → desplazamiento ``(|dx|, |dy|)`` ordenado, hasta ``RADIO_PRUEBA`` casillas): con
-          éxito, el desplazamiento queda como válido para cada requisito de cercanía; con fallo y el inventario
-          cumplido, como fallido (salvo si ya funcionó desde ahí).
+        - ``distancias`` (clase → posición relativa que da el cuerpo, ``espacio``, hasta su ``radio_prueba``): con
+          éxito, la posición relativa queda como válida para cada requisito de cercanía; con fallo y el inventario
+          cumplido, como fallida si está más lejos que lo contiguo (salvo si ya funcionó desde ahí).
         - Inducción por diferencia: solo cuentan los fallos que no explica ya un requisito conocido (con el
           inventario del fallo por debajo de una cantidad conocida o estimada, el fallo ya tiene causa).
         - ``delante`` solo cuenta para USAR (COGER y COMER se orientan hacia su objetivo antes de actuar).
@@ -216,9 +218,10 @@ class Requisitos(Seccion):
         del lista[: max(0, len(lista) - self.MAX_INTENTOS)]
         self.fallos_seguidos[clave] = self.fallos_seguidos.get(clave, 0) + 1
         if r is not None and r.cumple_inventario(antes):
+            contiguo = espacio.magnitud(espacio.junto)
             for c in r.requiere_cerca:
                 dc = distancias.get(c)
-                if dc is not None and sum(dc) > 1 and dc not in r.cerca_ok.get(c, set()):
+                if dc is not None and espacio.magnitud(dc) > contiguo and dc not in r.cerca_ok.get(c, set()):
                     r.cerca_fallida.setdefault(c, set()).add(dc)
         if r is not None and delante and delante not in r.requiere_delante:
             r.delante_fallido.add(delante)
@@ -264,28 +267,28 @@ def situacion_inventario(ctx: Contexto) -> Optional[Situacion]:
     delante = (yo.carga.get("cuerpo") or {}).get("delante")
     return (dict(yo.carga["inventario"]), cerca,
             (str(delante.get("clase")) if isinstance(delante, dict) and delante.get("clase") else None),
-            distancias(str(yo.carga.get("ubicacion") or ""), piezas))
+            distancias(ctx.espacio, str(yo.carga.get("ubicacion") or ""), piezas))
 
 
-def distancias(ubicacion: str, piezas: List[Pieza]) -> Dict[str, Desplazamiento]:
-    """Desplazamiento ``(|dx|, |dy|)`` ordenado a la instancia más cercana de cada clase, hasta ``RADIO_PRUEBA``
-    casillas (a igual distancia, el más diagonal). Con posiciones (ubicación ``<nombre>_x_y`` y ``datos["pos"]``)
-    se calcula; sin ellas, lo que está al alcance (proximidad ≥ 0,9) cuenta como (0, 1)."""
-    partes = ubicacion.rsplit("_", 2)
-    aqui = (int(partes[1]), int(partes[2])) if len(partes) == 3 and all(x.lstrip("-").isdigit() for x in partes[1:]) else None
-    dist: Dict[str, Desplazamiento] = {}
+def distancias(espacio: Cuerpo, ubicacion: str, piezas: List[Pieza]) -> Dict[str, Hashable]:
+    """Posición relativa (``espacio.relacion``) de la instancia más cercana de cada clase, hasta ``espacio.radio_prueba``
+    (entre dos, la primera por ``espacio.orden``). Con posiciones (la del individuo, ``espacio.posicion``, y
+    ``datos["pos"]``) la da el cuerpo; sin ellas, lo que está al alcance (proximidad ≥ 0,9) cuenta como ``espacio.junto``."""
+    aqui = espacio.posicion(ubicacion)
+    dist: Dict[str, Hashable] = {}
     for e in piezas:
         if e.rasgo("lugar") >= 0.5:
             continue
         pos = (e.carga.get("datos") or {}).get("pos")
+        d: Optional[Hashable] = None
         if aqui is not None and isinstance(pos, (list, tuple)) and len(pos) == 2:
-            d = desplazamiento(int(pos[0]) - aqui[0], int(pos[1]) - aqui[1])
+            d = espacio.relacion(aqui, (int(pos[0]), int(pos[1])))
         elif e.rasgo("proximidad") >= 0.9:
-            d = (0, 1)
-        else:
+            d = espacio.junto
+        if d is None:
             continue
         previo = dist.get(e.clase)
-        if sum(d) <= RADIO_PRUEBA and (previo is None or (sum(d), -d[0]) < (sum(previo), -previo[0])):
+        if espacio.magnitud(d) <= espacio.radio_prueba and (previo is None or espacio.orden(d) < espacio.orden(previo)):
             dist[e.clase] = d
     return dist
 
@@ -323,7 +326,7 @@ class Requisito(Componente):
         antes = self._antes
         if c["verbo"] in (Verbo.USAR, Verbo.COGER) and antes is not None and ahora_inv is not None:
             req.aprender_requisito(c["verbo"], objetivo, antes[0], ahora_inv[0], antes[1], bool(c.get("exito")),
-                                   cerca_despues=ahora_inv[1], delante=antes[2], distancias=antes[3])
+                                   cerca_despues=ahora_inv[1], delante=antes[2], distancias=antes[3], espacio=ctx.espacio)
         if req.metas:   # paso 5: metas del manual (solo si el mundo las declara)
             req.registrar_meta(c["verbo"], objetivo, bool(c.get("exito")), antes[0] if antes is not None else None,
                                ahora_inv[0] if ahora_inv is not None else None, dict(c.get("delta", {})))

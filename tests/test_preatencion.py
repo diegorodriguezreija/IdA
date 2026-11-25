@@ -232,6 +232,7 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
 
     from ida.mundos.crafter import MundoCrafter
     from ida.s1.sentir import amenaza as pel
+    from ida.cuerpos.cuadricula import _manhattan, pos_de
     from ida.s1.sentir.amenaza import Amenaza
 
     mundo = MundoCrafter()
@@ -256,9 +257,10 @@ def test_amenaza_escribe_el_peligro_en_la_pieza_y_no_en_la_observacion() -> None
         # Lo que habría escrito la versión anterior en la Observación, con la memoria ya actualizada
         assert ctx.observacion is None             # D4: tras Core · Sentir nadie la lee; se usa la capturada
         entidades = copy.deepcopy(obs_vista[-1].entidades)
-        aqui = pel.pos_de(obs_vista[-1].ubicacion)
+        aqui = pos_de(obs_vista[-1].ubicacion)
         assert aqui is not None
-        pel.estimar(entidades, aqui, ctx.memoria.seccion("peligros"), ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido))
+        pel.estimar(entidades, aqui, ctx.memoria.seccion("peligros"), ctx.soma.vitalidad, ctx.memoria.peligrosa, dormido=bool(ctx.soma.dormido),
+                    distancia=_manhattan)
         esperados.append({e.id: e.rasgos["peligro"] for e in entidades if "peligro" in e.rasgos})
 
     amenaza.reactiva = comprobar  # type: ignore[method-assign]

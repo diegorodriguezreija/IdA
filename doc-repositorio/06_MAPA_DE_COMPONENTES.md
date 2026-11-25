@@ -128,7 +128,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Sentencia` | componente | general | ✓ |  | previo |  |
 | `Logica` | componente | general | ✓ |  | previo |  |
 | `Creencia` | componente | general | ✓ |  | previo |  |
-| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo |
+| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo; la posición relativa de lo cercano y el radio de prueba, su espacio (Contexto.espacio, C1) |
 
 ## S3 · Reaccionar
 
@@ -164,7 +164,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 
 | Componente | Tipo | Clase | Hoy | Paso | Decisión | Nota |
 |---|---|---|---|---|---|---|
-| `Geometria` | biblioteca | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/geometria.py: vecinos, distancia, entorno, búsqueda en anchura |
+| `Geometria` | biblioteca | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/geometria.py: posición (pos_de, convención <nombre>_x_y), vecinos (DIRECCIONES), distancia, desplazamiento y radio de prueba, entorno, búsqueda en anchura. Cuadricula la ofrece al código general por la interfaz espacial de Cuerpo (C1) |
 | `BuscadorPosturas` | biblioteca | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/buscador.py: qué secuencia de MOVER deja en A mirando a C |
 | `Motor` | biblioteca | cuerpo: cuadricula | ✓ |  | D9 | ida/cuerpos/cuadricula/motor.py: intención → primitivas, con sinergias (máx. 2 en la fase A); juzga el éxito; cuenta las primitivas ejecutadas (copia eferente) |
 

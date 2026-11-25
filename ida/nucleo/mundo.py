@@ -11,7 +11,7 @@ a través de su registro (``registro()``), declarado como tal.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Dict, Hashable, List, Optional, Set, Tuple
 
 from ida.nucleo.vocabulario import RASGOS, Verbo
 
@@ -32,9 +32,47 @@ class Cuerpo:
     el objeto y nunca importa ``ida/cuerpos`` (D2).
 
     ``componentes()``: destino -> Componentes, en orden. Destinos válidos: los del registro y ``CORE.Actuar``. El Core
-    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre``."""
+    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre``.
+
+    **Espacio (D10, C1).** El cuerpo dice cómo es el espacio; el código general se lo pregunta (``Contexto.espacio``)
+    y nunca interpreta identificadores ni calcula distancias por su cuenta:
+    - ``posicion(ubicacion)``: la posición del individuo para el identificador de ubicación que da el mundo, o None;
+    - ``distancia(a, b)``: entre dos posiciones (las del cuerpo o las ``datos["pos"]`` del mundo), o None;
+    - ``relacion(a, b)``: posición relativa de ``b`` vista desde ``a``, un valor opaco que solo el cuerpo interpreta;
+    - ``junto``: la relación de lo que está al alcance sin posiciones;
+    - ``magnitud(relacion)``: cuán lejos está una relación (``junto`` tiene magnitud 1);
+    - ``orden(relacion)``: clave para elegir entre relaciones (a igual magnitud, la que prefiera el cuerpo);
+    - ``contiguos(p)``: las posiciones contiguas a ``p``;
+    - ``percibidas(postura)``: las posiciones que el cuerpo percibe, de la ``cuerpo`` de la ``Propiocepcion``, o None;
+    - ``radio_prueba``: hasta qué magnitud se prueba una acción con requisito de cercanía antes de acercarse.
+
+    Por defecto, un cuerpo **sin espacio métrico**: sin posiciones ni distancias, lo que está al alcance es ``junto``
+    y solo cuenta lo contiguo. Es la vía de los mundos que no dan posiciones."""
 
     nombre: str = ""
+    junto: Hashable = "junto"
+    radio_prueba: int = 1
+
+    def posicion(self, ubicacion: Any) -> Optional[Hashable]:
+        return None
+
+    def distancia(self, a: Any, b: Any) -> Optional[float]:
+        return None
+
+    def relacion(self, a: Any, b: Any) -> Optional[Hashable]:
+        return None
+
+    def magnitud(self, relacion: Hashable) -> int:
+        return 1
+
+    def orden(self, relacion: Hashable) -> Tuple[Any, ...]:
+        return (self.magnitud(relacion),)
+
+    def contiguos(self, p: Any) -> List[Any]:
+        return []
+
+    def percibidas(self, postura: Optional[Dict[str, Any]]) -> Optional[Set[Any]]:
+        return None
 
     def componentes(self) -> Dict[str, List["Componente"]]:
         return {}
@@ -51,8 +89,12 @@ class Cuerpo:
     def ir_por_el_mapa(
         self, ctx: "Contexto", clase: str, confianza: float = 0.5, excluir: frozenset = frozenset()
     ) -> Optional[Any]:
-        """Búsqueda de material en el mapa de la memoria si el cuerpo ofrece esa navegación (D16)."""
+        """Búsqueda de material en el mapa de la memoria si el cuerpo ofrece esa navegación (D16): (posición del lugar
+        siguiente, pasos, destino) o None. El destino es un identificador del cuerpo para lo recordado."""
         return None
+
+
+SIN_ESPACIO = Cuerpo()   # el espacio de un mundo sin cuerpo registrado (``Contexto.espacio``)
 
 
 class Motor:
