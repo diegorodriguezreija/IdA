@@ -263,7 +263,7 @@ Al final de la fase, la medición de 100 000 pasos repite campo a campo `mapa_31
 
 **Fase B (cambios de conducta), no inferioridad fijada de antemano.** Comparación pareada conjunta de las semillas 31 y 32 a 100 000 pasos (`resumen_evaluacion.py --pareada-conjunta`):
 - la diferencia de Score tiene una estimación ≥ −0,3 puntos **y** el límite inferior de su IC 95 % ≥ −1,0 puntos (la resolución de la medición, sección 1);
-- en mínimo y archivos, `benchmark.py` pareado (N = 10) sin empeoramiento significativo;
+- en mínimo y archivos, `benchmark.py` pareado (N = 10) con `--plazo-logico 40`, frente a `datos/benchmark/v5_*_logico40.json`, sin empeoramiento significativo;
 - se informa también de cada logro con un cambio significativo, aunque no decida.
 
 Si no se cumple: un diagnóstico y una ronda. Si sigue sin cumplirse, el cambio queda tras un parámetro del cuerpo o del `Perfil` con el valor de la fase A, y se documenta como resultado negativo.
@@ -374,3 +374,4 @@ Los `docs/*_PROGRESO.md` citados abajo se retiraron al cerrar la fase A; siguen 
 | 24/11/2026 | Fase A | Cierre de la fase A (paso A8) | Reorganización completa con equivalencia verificada; medición a 100 000 pasos idéntica a main en semillas 31 y 32 (rama reorg/medicion-a7b) |
 | 24/11/2026 | Sección 5 | Fusión en `main` como `crafter-general-v5`; los pasos siguientes salen de `main` y vuelven a `main` uno a uno | Medición final idéntica a v4 (`datos/evaluacion/v5_31.json` y `v5_32.json`) |
 | 25/11/2026 | D10 | Interfaz espacial de `Cuerpo` (`Contexto.espacio`); la geometría de rejilla, solo en `ida/cuerpos/cuadricula/`; «delante» y «orientación» siguen como vocabulario general con el valor que da el cuerpo. Aprobado por el autor (25/11/2026) | C1 (rama `limpieza/c1-geometria`): equivalencia OK |
+| 25/11/2026 | D17 | El benchmark de mínimo y archivos se mide con plazo lógico 40 frente a una referencia guardada de v5 | C6: con reloj, el criterio dependía de la carga de la máquina; con plazo lógico es determinista (dos ejecuciones idénticas) |

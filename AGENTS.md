@@ -25,7 +25,7 @@ La reorganización por Componentes (fase A) está en `main` con la etiqueta `cra
 - **Implementa solo el paso que te encarguen** (C1, B1...). Cada encargo dice qué partes de la base puede tocar; ese es el permiso expreso del no negociable 5.
 - **Fase B: cada cambio de conducta, por separado y medido** con el criterio de no inferioridad de D17, fijado antes de medir. Comparación pareada conjunta de las semillas 31 y 32 a 100 000 pasos (`resumen_evaluacion.py --pareada-conjunta`):
   - La diferencia de Score tiene una estimación ≥ −0,3 puntos **y** el límite inferior de su IC 95 % ≥ −1,0 puntos.
-  - En mínimo y archivos, `benchmark.py` pareado (N = 10) sin empeoramiento significativo.
+  - En mínimo y archivos, `benchmark.py` pareado (N = 10) con `--plazo-logico 40`, frente a `datos/benchmark/v5_*_logico40.json`, sin empeoramiento significativo.
   - Se informa también de cada logro con un cambio significativo, aunque no decida.
   - Si no se cumple: un diagnóstico y una ronda. Si sigue sin cumplirse, el cambio queda tras un parámetro del cuerpo o del `Perfil` con el valor de la fase A, y se documenta como resultado negativo.
 - **Comprobar la equivalencia antes de tocar conducta:** en pasos que no cambian conducta, `.venv\Scripts\python.exe herramientas/equivalencia.py` debe terminar en `EQUIVALENCIA: OK`.
