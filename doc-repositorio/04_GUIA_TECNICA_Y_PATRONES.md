@@ -9,7 +9,7 @@ Este documento está dirigido a ingenieros de software, investigadores de IA y a
 Una de las premisas rectoras del framework base de IdA es la **sobriedad arquitectónica**: el núcleo no depende de nada, y todo lo demás (mundos, observabilidad, herramientas) entra como extra opcional de `pyproject.toml`.
 
 * **Python 3.12 o posterior:** `dataclasses`, `typing` y la biblioteca estándar. La integración continua prueba 3.12 y 3.15; se desarrolló con 3.15.1.
-* **Sin dependencias en la base:** el núcleo (`ida/nucleo/`), el Core (`ida/core/`) y los sistemas (`ida/s1/`, `ida/s2/`, `ida/s3/`, `ida/sistemas_comun.py`) solo usan la biblioteca estándar de Python. Las dependencias son de cada mundo, como extras: `[crafter]`, `[snake]` (`playwright`), `[ajedrez]` (`python-chess`). La CI ejecuta los tests también sin ningún extra.
+* **Sin dependencias en la base:** el núcleo (`ida/nucleo/`), el Core (`ida/core/`) y los sistemas (`ida/sistemas/`, `ida/s1/`, `ida/s2/`, `ida/s3/`) solo usan la biblioteca estándar de Python. Las dependencias son de cada mundo, como extras: `[crafter]`, `[snake]` (`playwright`), `[ajedrez]` (`python-chess`). La CI ejecuta los tests también sin ningún extra.
 * **Calidad:** `ruff` (linter) y `mypy` (tipos) en verde sobre todo `ida/`, 85 tests con `pytest` (en `7e335ae`, 16/11/2026) y un workflow de **GitHub Actions** que los ejecuta en cada push.
 * **Contenedores:** `Dockerfile` multietapa (imagen de IdA y etapa `dev` con las herramientas), **devcontainer** para VS Code y `docker-compose.yml` con la pila de observabilidad.
 * **Observabilidad estándar (opcional):** **OpenTelemetry** (trazas y métricas por OTLP), un **OpenTelemetry Collector**, **Jaeger**, **Prometheus** y **Grafana** con el panel provisionado como código (`infra/`). Ver el patrón 6.
@@ -189,7 +189,8 @@ IdA/
 │   │   ├── reaccionar/            # intencion.py, impulso.py, feedback.py, estrategia.py, estrategias/
 │   │   ├── actuar/                # accion.py
 │   │   └── comun.py
-│   ├── sistemas_comun.py          # Utilidades y tipos comunes a S1-S3, crear_sistemas
+│   ├── sistemas/                  # Circuito común de S1-S3: accion.py, anticipacion.py, peticion.py, estrategia.py,
+│   │                              # piezas.py y motivacion.py (lecturas comunes); crear_sistemas en __init__.py
 │   ├── cuerpos/                   # CAPAS DE CUERPO
 │   │   └── cuadricula/            # Geometría 2D, modelo directo, mapa local y motor
 │   ├── mundos/                    # ADAPTADORES CONECTABLES (Hexagonal)

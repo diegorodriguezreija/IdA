@@ -44,9 +44,9 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Objeto` | componente | general | ✓ |  | previo |  |
 | `Supervivencia` | componente | general | ✓ |  | previo |  |
-| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a. Dueño de la sección «satisface» de la Memoria (satisface, linea_base, n_base); aprende en el punto del efecto (D7, A7b) |
+| `Apetencia` ✱ | componente | opcional (crafter) | ✓ |  | D15 | Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a. Dueño de la sección «satisface» de la Memoria (satisface, linea_base, n_base) y de su tipo Satisface (C4); aprende en la fase «efecto» (D6, D7, A7b) |
 | `Recinto` | componente | mundo: crafter | ✓ |  | D16 | ida/mundos/crafter/s1/interpretar/recinto.py: emite la afordancia de protección. Lo registra Crafter (A6a, A6b) |
-| `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/s1/interpretar/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter |
+| `MapaLocal` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/s1/interpretar/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter. Aprende en la fase «cuerpo» (D6, C4) |
 
 ## S1 · Reaccionar
 
@@ -128,7 +128,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 | `Sentencia` | componente | general | ✓ |  | previo |  |
 | `Logica` | componente | general | ✓ |  | previo |  |
 | `Creencia` | componente | general | ✓ |  | previo |  |
-| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos); aprende en el punto del efecto, sin barridos (A7b). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo; la posición relativa de lo cercano y el radio de prueba, su espacio (Contexto.espacio, C1) |
+| `Requisito` ✱ | componente | general | ✓ |  | D7 | ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos) y de sus tipos RequisitoAccion y Meta (C4); aprende en la fase «efecto» con la traza de elegibilidad (marcar_elegibilidad), sin barridos (D6, A7b, C4). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo; la posición relativa de lo cercano y el radio de prueba, su espacio (Contexto.espacio, C1) |
 
 ## S3 · Reaccionar
 
@@ -158,7 +158,7 @@ Cada fila es un Componente, una estrategia o una biblioteca de un cuerpo, en el 
 |---|---|---|---|---|---|---|
 | `Tribunal` | componente | general | ✓ |  | previo |  |
 | `Actuador` | componente | general | ✓ |  | previo | Ejecuta primitivas del mundo (A5, D9) |
-| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/core/actuar/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b) |
+| `ModeloDirecto` ✱ | componente | cuerpo: cuadricula | ✓ |  | D10 | ida/cuerpos/cuadricula/core/actuar/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b). Aprende en la fase «cuerpo» (D6, C4) |
 
 ## Bibliotecas de los cuerpos
 

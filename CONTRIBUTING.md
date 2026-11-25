@@ -17,7 +17,7 @@ O abre el repositorio en el [devcontainer](.devcontainer/devcontainer.json). Los
 
 ## Qué no se puede relajar
 
-- **La pureza del framework base.** Nada de vocabulario ni imports de un mundo en los paquetes base (`ida/nucleo/`, `ida/core/`, `ida/s1/`–`ida/s3/`, `ida/sistemas_comun.py`) (lo vigila `tests/test_pureza.py`). El conocimiento de dominio va en `ida/mundos/<mundo>`: su sensor, su perfil y sus componentes propios.
+- **La pureza del framework base.** Nada de vocabulario ni imports de un mundo en los paquetes base (`ida/nucleo/`, `ida/core/`, `ida/sistemas/`, `ida/s1/`–`ida/s3/`) (lo vigila `tests/test_pureza.py`). El conocimiento de dominio va en `ida/mundos/<mundo>`: su sensor, su perfil y sus componentes propios.
 - **El mundo percibe; IdA piensa.** Un sensor traduce lo que hay ahora a rasgos; no calcula por el individuo ni delega la decisión en un motor o un modelo externo ([principio 7](docs/historico/DISENO_FRAMEWORK_BASE.md)).
 - **La guillotina.** Lo lento (disco, red, planificación larga) va fuera del latido: al dormir, al morir o después del plazo.
 - **La separación de licencias.** `chess` solo se importa dentro de `ida/mundos/ajedrez/` (`tests/test_licencias.py`, [`NOTICE`](NOTICE)).
