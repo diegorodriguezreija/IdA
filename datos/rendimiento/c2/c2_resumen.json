@@ -1,0 +1,145 @@
+{
+  "info": {
+    "python": "3.15.1 (tags/v3.15.1:c37e74c, Oct 21 2026, 06:24:08) [MSC v.1951 64 bit (AMD64)]",
+    "plataforma": "Windows-10-10.0.19045-SP0",
+    "pasos": 3000,
+    "reps": 3,
+    "semillas": [
+      31,
+      32
+    ],
+    "argumentos": [
+      "--vista",
+      "oficial",
+      "--sin-herencia",
+      "--manual",
+      "estricto",
+      "--plazo-logico",
+      "40",
+      "--quiet"
+    ],
+    "base": {
+      "raiz": "F:\\tmp\\ida_v4",
+      "commit": "eaeadaa",
+      "ida": "F:\\tmp\\ida_v4\\ida"
+    },
+    "nueva": {
+      "raiz": "F:\\code\\IdA",
+      "commit": "f7e78ea",
+      "ida": "F:\\code\\IdA\\ida"
+    }
+  },
+  "filas": [
+    {
+      "version": "base",
+      "semilla": 31,
+      "rep": 0,
+      "ms_por_paso": 14.1,
+      "pared_s": 44.68
+    },
+    {
+      "version": "nueva",
+      "semilla": 31,
+      "rep": 0,
+      "ms_por_paso": 14.21,
+      "pared_s": 43.99
+    },
+    {
+      "version": "nueva",
+      "semilla": 32,
+      "rep": 0,
+      "ms_por_paso": 13.54,
+      "pared_s": 41.46
+    },
+    {
+      "version": "base",
+      "semilla": 32,
+      "rep": 0,
+      "ms_por_paso": 12.89,
+      "pared_s": 39.82
+    },
+    {
+      "version": "nueva",
+      "semilla": 31,
+      "rep": 1,
+      "ms_por_paso": 14.22,
+      "pared_s": 43.5
+    },
+    {
+      "version": "base",
+      "semilla": 31,
+      "rep": 1,
+      "ms_por_paso": 13.86,
+      "pared_s": 42.32
+    },
+    {
+      "version": "base",
+      "semilla": 32,
+      "rep": 1,
+      "ms_por_paso": 12.94,
+      "pared_s": 39.54
+    },
+    {
+      "version": "nueva",
+      "semilla": 32,
+      "rep": 1,
+      "ms_por_paso": 13.55,
+      "pared_s": 41.53
+    },
+    {
+      "version": "base",
+      "semilla": 31,
+      "rep": 2,
+      "ms_por_paso": 14.16,
+      "pared_s": 43.26
+    },
+    {
+      "version": "nueva",
+      "semilla": 31,
+      "rep": 2,
+      "ms_por_paso": 14.22,
+      "pared_s": 43.76
+    },
+    {
+      "version": "nueva",
+      "semilla": 32,
+      "rep": 2,
+      "ms_por_paso": 13.29,
+      "pared_s": 40.78
+    },
+    {
+      "version": "base",
+      "semilla": 32,
+      "rep": 2,
+      "ms_por_paso": 13.01,
+      "pared_s": 39.88
+    }
+  ],
+  "resumen": {
+    "base_31": {
+      "mediana": 14.1,
+      "min": 13.86,
+      "max": 14.16,
+      "n": 3
+    },
+    "nueva_31": {
+      "mediana": 14.22,
+      "min": 14.21,
+      "max": 14.22,
+      "n": 3
+    },
+    "base_32": {
+      "mediana": 12.94,
+      "min": 12.89,
+      "max": 13.01,
+      "n": 3
+    },
+    "nueva_32": {
+      "mediana": 13.54,
+      "min": 13.29,
+      "max": 13.55,
+      "n": 3
+    }
+  },
+  "conducta_identica": true
+}
