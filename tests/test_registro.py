@@ -6,7 +6,8 @@ import pytest
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.azar import Azar
 from ida.nucleo.estrategia import Definicion
-from ida.core.latido import DESTINOS_VALIDOS_COMPONENTES, Organismo
+from ida.core.latido import Organismo
+from ida.core.montaje import DESTINOS_VALIDOS_COMPONENTES
 from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Alta, Cuerpo, Registro

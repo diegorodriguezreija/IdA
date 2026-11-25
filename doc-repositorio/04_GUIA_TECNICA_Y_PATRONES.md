@@ -159,7 +159,8 @@ IdA/
 │   │   ├── azar.py                # Generador pseudoaleatorio determinista y reproducible
 │   │   ├── estrategia.py          # Definición y propuesta de estrategias
 │   │   ├── linaje.py              # Arquetipos Big Five, mutación y transmisión hereditaria
-│   │   ├── memoria.py             # Memoria activa, expectativas, episodios y proposiciones
+│   │   ├── memoria/               # Memoria (D7): almacen.py (fachada Memoria), proposiciones.py, lugares.py,
+│   │   │                          #   secciones.py (secciones con dueño) y mecanismos.py (bloques E y F)
 │   │   ├── mundo.py               # Contrato formal (Puerto) entre IdA y cualquier entorno
 │   │   ├── onda.py                # La Onda vital en cuatro fases (ei, ev, acc, ef) y Guillotina
 │   │   ├── persistencia.py        # Motor SQLite en modo WAL para consolidación en dos velocidades
@@ -170,6 +171,7 @@ IdA/
 │   │   ├── sentir/                # interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
 │   │   ├── actuar/                # tribunal.py, actuador.py
 │   │   ├── regulacion.py          # Componente de regulación homeostática
+│   │   ├── montaje.py             # Montaje del Organismo al nacer (registro, cuerpo, comprobaciones, secciones)
 │   │   └── latido.py              # Orquestador del latido vital (8 pasos, D1) y Organismo
 │   ├── s1/                        # Tronco encefálico: reflejos, lucha/huida y aversión
 │   │   ├── sentir/                # amenaza.py, saliencia.py

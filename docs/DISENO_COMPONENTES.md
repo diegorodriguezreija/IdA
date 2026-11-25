@@ -65,9 +65,11 @@ La estructura del código es el diagrama de la arquitectura. Un Componente por f
 ```text
 ida/
   nucleo/            mecánica sin cognición: onda, pieza, arquitectura (Componente, Módulo, Sistema),
-                     memoria (almacén), soma, linaje, vocabulario, contrato del mundo, persistencia, azar, estrategia...
+                     memoria/ (almacen, proposiciones, lugares, secciones, mecanismos), soma, linaje,
+                     vocabulario, contrato del mundo, persistencia, azar, estrategia...
   core/
     latido.py        el latido: crea la Onda, siente, regula, lanza la Onda a los sistemas y actúa (Organismo)
+    montaje.py       lo que ocurre al nacer: montaje del registro, del cuerpo y de las secciones de memoria
     sentir/          interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
     actuar/          tribunal.py, actuador.py
     regulacion.py    reglas de la Onda (hoy Marcapasos)
@@ -391,3 +393,4 @@ Los `docs/*_PROGRESO.md` citados abajo se retiraron al cerrar la fase A; siguen 
 | 25/11/2026 | D2 | `ida/sistemas_comun.py` pasa al paquete `ida/sistemas/` (circuito común de S1-S3); orden de importaciones `nucleo` ← `core` ← `sistemas` ← `s1`-`s3` ← `cuerpos` ← `mundos`. Aprobado por el autor (25/11/2026) | C4 (rama `limpieza/c4-deuda`): equivalencia OK |
 | 25/11/2026 | D6 | Un solo gancho `aprender` con fases declaradas (`cuerpo`, `efecto`, `general`) y la traza de elegibilidad (`marcar_elegibilidad`); desaparecen `aprende_con_efecto` y `antes_de_actuar`. Aprobado por el autor (25/11/2026) | C4: mismo punto y orden de llamadas; equivalencia OK |
 | 25/11/2026 | D15 | `Perfil.escala` se mantiene: es la escala declarada del mundo, no un cajón de parámetros. Aprobado por el autor (25/11/2026) | C4 (deuda de la fase A en `PENDIENTES.md`) |
+| 25/11/2026 | — | C3: montaje en `ida/core/montaje.py`; memoria por responsabilidades (paquete `ida/nucleo/memoria/`: `proposiciones`, `lugares`, `secciones`, `mecanismos` y la fachada `Memoria` en `almacen`). Sin decisión nueva | C3 (rama `limpieza/c3-ficheros`): legibilidad; equivalencia OK |
