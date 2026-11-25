@@ -38,11 +38,11 @@ SECCIONES: Dict[str, Tuple[FrozenSet[str], FrozenSet[str], FrozenSet[str]]] = {
 
 # Escritura delegada -> ficheros del dueño y de los autores admitidos (D7, tabla de escrituras delegadas)
 DELEGADAS: Dict[str, FrozenSet[str]] = {
-    "ver_clase": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py"}),                 # Core (plasticidad)
-    "recordar_lugar": frozenset({"ida/nucleo/memoria.py", "ida/core/latido.py",
+    "ver_clase": frozenset({"ida/nucleo/memoria/almacen.py", "ida/core/latido.py"}),                 # Core (plasticidad)
+    "recordar_lugar": frozenset({"ida/nucleo/memoria/lugares.py", "ida/core/latido.py",
                                  "ida/mundos/crafter/s1/interpretar/recinto.py"}),          # Core, autor Recinto
-    "olvidar_donde": frozenset({"ida/nucleo/memoria.py", "ida/s2/reaccionar/estrategias/recordar_comida.py"}),             # Core, autor RecordarComida
-    "fijar_lectura": frozenset({"ida/nucleo/memoria.py", "ida/s3/reaccionar/estrategias/estudio.py"}),             # autor Estudio
+    "olvidar_donde": frozenset({"ida/nucleo/memoria/lugares.py", "ida/s2/reaccionar/estrategias/recordar_comida.py"}),             # Core, autor RecordarComida
+    "fijar_lectura": frozenset({"ida/nucleo/memoria/almacen.py", "ida/s3/reaccionar/estrategias/estudio.py"}),             # autor Estudio
 }
 
 MUTADORES = {"add", "discard", "update", "clear", "pop", "popitem", "setdefault", "append", "extend", "remove", "insert"}
