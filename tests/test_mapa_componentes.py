@@ -23,8 +23,8 @@ from ida.nucleo.azar import Azar  # noqa: E402
 from ida.core.latido import Organismo  # noqa: E402
 from ida.nucleo.linaje import Arquetipo  # noqa: E402
 from ida.nucleo.memoria import Memoria  # noqa: E402
-from ida.sistemas_comun import crear_sistemas  # noqa: E402
-from ida.sistemas_comun import Estrategia  # noqa: E402
+from ida.sistemas import crear_sistemas  # noqa: E402
+from ida.sistemas.estrategia import Estrategia  # noqa: E402
 
 Montado = Set[Tuple[str, str, str]]   # (tipo, ubicación, nombre)
 

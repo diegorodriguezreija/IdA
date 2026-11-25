@@ -3,7 +3,7 @@
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.pieza import acotar
 from ida.s2.comun import EXPLORACION
-from ida.sistemas_comun import lugares, objetos
+from ida.sistemas.piezas import lugares, objetos
 
 
 class Impulso(Componente):

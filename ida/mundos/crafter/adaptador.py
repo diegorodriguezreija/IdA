@@ -421,10 +421,9 @@ class MundoCrafter(Mundo):
         """Las acciones del juego (``constants.actions``)."""
         return list(self.constantes.actions)
 
-    def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
+    def ejecutar_primitivas(self, primitivas: List[str]) -> Efecto:
         """Ejecuta las primitivas en orden y mide antes de la primera y después de la última. ``exito`` queda en True:
-        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después y qué claves son objetos). ``intencion`` no
-        se usa (A4: las visitas son del organismo, ``ValoracionCrafter``); queda por el contrato de ``Mundo``."""
+        juzga el Motor del cuerpo con ``medidas`` (inventario antes y después y qué claves son objetos)."""
         p = self.jugador
         antes = {"salud": p.health, **dict(p.inventory)}
         inventario_antes = dict(p.inventory)

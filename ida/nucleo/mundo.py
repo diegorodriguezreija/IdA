@@ -32,7 +32,8 @@ class Cuerpo:
     el objeto y nunca importa ``ida/cuerpos`` (D2).
 
     ``componentes()``: destino -> Componentes, en orden. Destinos válidos: los del registro y ``CORE.Actuar``. El Core
-    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre``.
+    los monta antes que los del mundo, con las reglas de ``añade``, y les pone ``de_cuerpo = nombre`` y la fase de
+    plasticidad «cuerpo» (D6).
 
     **Espacio (D10, C1).** El cuerpo dice cómo es el espacio; el código general se lo pregunta (``Contexto.espacio``)
     y nunca interpreta identificadores ni calcula distancias por su cuenta:
@@ -226,13 +227,14 @@ MEMORIA_EF = MecanismosMemoria(buffer=True, consolidacion=True, conceptos=True, 
 
 @dataclass(frozen=True)
 class Escala:
-    """Constantes de escala del mundo que usan los Componentes y estrategias generales (D15). Por defecto, los valores
-    de antes de A6a; el mundo que los usa los fija en su ``Perfil``. Lo que no depende de la escala (proporciones
-    internas, pesos de previos, ventanas) se queda en su Componente."""
+    """La escala declarada del mundo (D15): las constantes de escala que usan los Componentes y estrategias generales,
+    en las unidades del mundo y de su cuerpo. Por defecto, los valores de antes de A6a; el mundo que los usa los fija en
+    su ``Perfil``. Lo que no depende de la escala (proporciones internas, pesos de previos, ventanas) se queda en su
+    Componente."""
 
     dano_previo: float = 100.0 * 2.0 / 9.0   # Amenaza: daño de un golpe de lo peligroso sin datos, en vitalidad (0-100)
     golpes_previo: float = 10.0              # Amenaza: golpes para derribar algo sin datos (pesimista)
-    margen_lugar: int = 3                    # Amenaza: casillas más allá del alcance a las que se anula el peligro de un lugar
+    margen_lugar: int = 3                    # Amenaza: margen, en distancia del cuerpo, más allá del alcance a la que se anula el peligro de un lugar
     reserva: float = 100.0 * 3.0 / 9.0       # Afrontar: vitalidad que una lucha debe dejar intacta
     coste_sin_sitio: float = 45.0            # Impulso (alostasis): horizonte del cobijo sin ningún sitio, en pasos
     coste_recordado: float = 15.0            # S3: coste estimado de ir a una casilla recordada (en pasos)
@@ -266,7 +268,7 @@ class Perfil:
     enfriamiento_estrategia: int = 10         # latidos sin volver a elegir una estrategia agotada
     # Rasgos valorados ("peligro", "nutritivo", "recurso", "novedad") entregados hechos por el mundo (D4)
     rasgos_declarados: Tuple[str, ...] = ()
-    escala: Escala = Escala()   # constantes de escala de los generales (D15)
+    escala: Escala = Escala()   # la escala declarada del mundo (D15)
     # La aliestesia (paso 0b) ya no es una perilla: la tiene el mundo que registra ``Apetencia`` (D3, D15).
 
 
@@ -291,9 +293,9 @@ class Mundo(ABC):
         traduce cada intención y el Core llama a ``ejecutar_primitivas``."""
         return None
 
-    def ejecutar_primitivas(self, primitivas: List[str], intencion: Optional[Verbo] = None) -> Efecto:
+    def ejecutar_primitivas(self, primitivas: List[str]) -> Efecto:
         """Ejecuta la secuencia y devuelve el efecto en bruto (``exito`` True: el éxito lo juzga el Motor del cuerpo, con
-        ``Efecto.medidas``). ``intencion`` no cambia lo que se ejecuta."""
+        ``Efecto.medidas``). El mundo solo recibe primitivas: la intención es del organismo."""
         raise NotImplementedError(f"El mundo {self.nombre!r} no ejecuta primitivas")
 
     @abstractmethod

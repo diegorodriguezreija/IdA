@@ -45,7 +45,7 @@ La reorganización por Componentes (fase A) está en `main` con la etiqueta `cra
 ## No negociables
 
 1. **No debilites los tests.** No quites palabras de `PALABRAS_DE_MUNDO` ni imports de `IMPORTS_PROHIBIDOS` en `tests/test_pureza.py`, no añadas excepciones y no relajes aserciones ni umbrales para que algo pase. Si un test falla, di qué falla y por qué.
-2. **No metas conocimiento de un mundo en los paquetes base (`ida/nucleo/`, `ida/core/`, `ida/s1/`-`ida/s3/`, `ida/sistemas_comun.py`)**, ni directamente ni con trucos que el test no ve (cadenas construidas en ejecución, imports dinámicos, umbrales afinados para un mundo). Va en `ida/mundos/<mundo>`.
+2. **No metas conocimiento de un mundo en los paquetes base (`ida/nucleo/`, `ida/core/`, `ida/sistemas/`, `ida/s1/`-`ida/s3/`)**, ni directamente ni con trucos que el test no ve (cadenas construidas en ejecución, imports dinámicos, umbrales afinados para un mundo). Va en `ida/mundos/<mundo>`.
 3. **El mundo percibe; IdA piensa.** No mejores un mundo haciendo que su sensor calcule o valore por el individuo (búsquedas, planes, oráculos externos, rasgos valorados). Mejora su percepción en bruto o sus Componentes propios.
 4. **Harness engineering: consistencia biológica sin atajos ni trucos rígidos.**
    - Las conductas adaptativas deben apoyarse en principios biológicos plausibles: mapas cognitivos/hipocampales, aliestesia homeostática, asimetrías lucha/huida reguladas por el estado somático y equipamiento, o aprendizaje de contingencias.
@@ -65,5 +65,5 @@ La reorganización por Componentes (fase A) está en `main` con la etiqueta `cra
 python -m pytest -q
 ruff check ida tests
 mypy ida
-git diff --stat -- ida/nucleo ida/core ida/s1 ida/s2 ida/s3 ida/sistemas_comun.py   # ¿tocaste el framework base? justifícalo
+git diff --stat -- ida/nucleo ida/core ida/sistemas ida/s1 ida/s2 ida/s3   # ¿tocaste el framework base? justifícalo
 ```

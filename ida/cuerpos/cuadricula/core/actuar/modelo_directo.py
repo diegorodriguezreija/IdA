@@ -20,6 +20,8 @@ from ida.cuerpos.cuadricula.situacion import accion_previa, situacion, vecina
 
 
 class ModeloDirecto(Componente):
+    fase_plasticidad = "cuerpo"   # D6: aprende en la fase del cuerpo (también la pone el montaje)
+
     def activo(self, onda: Onda) -> bool:
         return False   # sin barridos: no cobra ni cuenta operaciones en el latido
 

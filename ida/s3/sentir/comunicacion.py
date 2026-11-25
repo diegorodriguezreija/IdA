@@ -1,7 +1,7 @@
 """Componente Comunicacion para S3."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import exterocepcion
+from ida.sistemas.piezas import exterocepcion
 
 
 class Comunicacion(Componente):

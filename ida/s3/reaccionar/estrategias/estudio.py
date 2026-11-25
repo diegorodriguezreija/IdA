@@ -7,7 +7,7 @@ from ida.nucleo.biblioteca import Consulta, ElementoConsulta, EstadoLectura, Reg
 from ida.nucleo.estrategia import ConPropuestas
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Afecto, EstadoSaber, Verbo
-from ida.sistemas_comun import alarma
+from ida.sistemas.piezas import alarma
 
 
 class Estudio(ConPropuestas):

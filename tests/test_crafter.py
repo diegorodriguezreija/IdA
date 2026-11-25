@@ -27,7 +27,7 @@ def test_observacion_y_aliestesia(mundo):
 
 def test_dormido_lo_decide_el_juego(mundo):
     mundo.jugador.inventory["energy"] = 3
-    mundo.ejecutar_primitivas(["sleep"], Verbo.DORMIR)
+    mundo.ejecutar_primitivas(["sleep"])
     assert mundo.observar().dormido is True
 
 
@@ -35,7 +35,7 @@ def test_coger_sin_obtener_nada_no_es_exito(mundo):
     from ida.nucleo.pieza import Pieza
     from ida.cuerpos.cuadricula import MotorCuadricula
     intencion = Pieza(id="decision", tipo="Decision", carga={"verbo": Verbo.COGER, "objetivo": "suelo_0_0"})
-    ef = mundo.ejecutar_primitivas(["do"], Verbo.COGER)
+    ef = mundo.ejecutar_primitivas(["do"])
     assert ef.exito is True                                  # el adaptador ya no juzga
     assert set(ef.medidas) == {"inventario_antes", "inventario_despues", "objetos"}
     assert MotorCuadricula().juzgar(intencion, ["do"], ef) is False

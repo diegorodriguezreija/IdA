@@ -19,7 +19,7 @@ from ida.nucleo.onda import Onda
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.soma import Soma
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 from ida.s1.interpretar.apetencia import Aliestesia
 
 # --- 0b: aliestesia en la base -------------------------------------------------------------------

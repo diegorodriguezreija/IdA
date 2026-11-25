@@ -3,7 +3,7 @@
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.vocabulario import EstadoSaber, Relacion
 from ida.s3.interpretar.creencia import creencia
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Impulso(Componente):

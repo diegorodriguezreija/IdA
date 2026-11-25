@@ -18,7 +18,7 @@ class Actuador(Componente):
     tipo = "Accion"
 
     def __init__(self, verbo: Verbo, ejecutar: Callable[[Verbo, str, Dict[str, Any]], Efecto], motor: Optional[Motor] = None,
-                 ejecutar_primitivas: Optional[Callable[[List[str], Optional[Verbo]], Efecto]] = None,
+                 ejecutar_primitivas: Optional[Callable[[List[str]], Efecto]] = None,
                  disponibles: Optional[List[str]] = None):
         super().__init__(f"Actuador_{verbo.value}")
         self.verbo = verbo
@@ -42,7 +42,7 @@ class Actuador(Componente):
             aplicar_efecto(ctx, verbo, d, efecto)
             return
         primitivas = self._motor.primitivas(d, ctx, self._disponibles)
-        efecto = self._ejecutar_primitivas(primitivas, verbo) if primitivas else Efecto(exito=False)
+        efecto = self._ejecutar_primitivas(primitivas) if primitivas else Efecto(exito=False)
         self._motor.contar(primitivas)    # copia eferente
         efecto.exito = self._motor.juzgar(d, primitivas, efecto)
         aplicar_efecto(ctx, verbo, d, efecto, primitivas)

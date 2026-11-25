@@ -2,7 +2,8 @@
 
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.vocabulario import EstadoSaber, Relacion
-from ida.sistemas_comun import al_alcance, apetito, objetos
+from ida.sistemas.motivacion import apetito
+from ida.sistemas.piezas import al_alcance, objetos
 
 
 class Sentencia(Componente):

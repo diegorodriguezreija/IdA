@@ -1,7 +1,7 @@
 """Imagen: integra Exterocepcion, Interocepción y el resultado de la acción anterior en una representación del instante."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import exterocepcion, lugares
+from ida.sistemas.piezas import exterocepcion, lugares
 
 
 def _cosas(ctx: Contexto) -> list:

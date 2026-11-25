@@ -12,7 +12,7 @@ SISTEMAS = (
     sorted((RAIZ / "s1").rglob("*.py"))
     + sorted((RAIZ / "s2").rglob("*.py"))
     + sorted((RAIZ / "s3").rglob("*.py"))
-    + ([RAIZ / "sistemas_comun.py"] if (RAIZ / "sistemas_comun.py").exists() else [])
+    + sorted((RAIZ / "sistemas").rglob("*.py"))
 )
 CUERPOS = sorted((RAIZ / "cuerpos").rglob("*.py"))
 BASE = NUCLEO + CORE + SISTEMAS
@@ -60,7 +60,7 @@ def test_pureza(ruta: pathlib.Path) -> None:
 
 
 # Reglas de reparto de importaciones (D2, P4):
-# nucleo ← core (que incluye latido) ← s1-s3 / comun ← cuerpos ← mundos.
+# nucleo ← core (que incluye latido) ← sistemas ← s1-s3 ← cuerpos ← mundos.
 # Ningún paquete importa a los que van detrás de él.
 
 
@@ -87,7 +87,7 @@ def test_importaciones_core(ruta: pathlib.Path) -> None:
 
 @pytest.mark.parametrize("ruta", SISTEMAS, ids=lambda p: p.name)
 def test_importaciones_sistemas(ruta: pathlib.Path) -> None:
-    """ida/s1-s3 y lo común no importan ni ida/cuerpos ni ida/mundos (D2)."""
+    """ida/s1-s3 e ida/sistemas no importan ni ida/cuerpos ni ida/mundos (D2)."""
     arbol = ast.parse(ruta.read_text(encoding="utf-8"))
     for m in _modulos_importados(arbol):
         assert not (m == "ida.cuerpos" or m.startswith("ida.cuerpos.")), f"{ruta.relative_to(RAIZ)} importa {m}"

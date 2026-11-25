@@ -3,7 +3,7 @@
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.vocabulario import EstadoSaber
 from ida.s3.comun import INTENSIDAD_INTENCION_DEL_MUNDO, SABER
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Intencion(Componente):

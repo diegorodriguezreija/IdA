@@ -240,7 +240,7 @@ def _vivir_retono(semilla: int, latidos: int = 150):
     from ida.nucleo.azar import Azar
     from ida.core.latido import Organismo
     from ida.nucleo.linaje import Arquetipo
-    from ida.sistemas_comun import crear_sistemas
+    from ida.sistemas import crear_sistemas
 
     mundo = MundoRetono(p=0.1, semilla=semilla)
     memoria = memoria_con_secciones()

@@ -7,14 +7,8 @@ from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import EstadoSaber, Relacion, Verbo
 from ida.s1.sentir.amenaza import Peligros
 from ida.s3.interpretar.requisito import Requisitos
-from ida.sistemas_comun import (
-    al_alcance,
-    alarma,
-    cautela,
-    lugares,
-    mejor,
-    objetos,
-)
+from ida.sistemas.motivacion import cautela
+from ida.sistemas.piezas import al_alcance, alarma, lugares, mejor, objetos
 
 SEGURIDAD = "seguridad"
 COBIJO = "cobijo"

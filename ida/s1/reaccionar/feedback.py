@@ -2,7 +2,7 @@
 
 from ida.nucleo.arquitectura import Componente, Contexto, expectativa_ejecutada
 from ida.s1.comun import deficits
-from ida.sistemas_comun import PESO_PREDICCION
+from ida.sistemas.anticipacion import PESO_PREDICCION
 
 
 class Feedback(Componente):

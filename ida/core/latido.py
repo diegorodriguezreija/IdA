@@ -5,12 +5,14 @@ Orden de un latido:
 2. Onda nueva: ``ei`` = ``ef`` anterior (solo lectura).
 3. Core · Sentir (exento de peaje). Después, la preatención de S1 (D5): exenta, también dormido (``Amenaza``
    aprende y estima el peligro en las piezas; ``Saliencia`` pone el arousal).
-4. Core: aprende del efecto de la acción anterior (el cuarteto ``ei → ef``); después, el gancho ``aprender`` de cada
-   Componente montado (plasticidad, D6).
+4. Plasticidad (D6), un solo gancho ``aprender`` por fases (``Componente.fase_plasticidad``): dentro de
+   ``_aprender``, los del cuerpo y los dueños de lo que se aprende del efecto; el Core aprende del efecto de la acción
+   anterior (el cuarteto ``ei → ef``); después, la fase general.
 5. S1 → S2 → S3, con un único fondo de amplitud y potencia gastado en ese orden. La guillotina
    solo salta por plazo; si salta, se pasa directamente al paso 6.
    (Dormido: parálisis; solo sueño y vigilancia de alarmas.)
-6. Core · Actuar (exento): Tribunal → actuador del mundo → ``ef["Accion"]``.
+6. Traza de elegibilidad (``marcar_elegibilidad`` de todo lo montado). Core · Actuar (exento): Tribunal → actuador
+   del mundo → ``ef["Accion"]``.
 7. Indicadores, memoria rápida (K piezas de mayor arousal) y episodio.
 """
 
@@ -19,7 +21,8 @@ from collections import deque
 from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple, cast
 
-from ida.nucleo.arquitectura import Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada, variables_proactivas
+from ida.nucleo.arquitectura import (FASES_PLASTICIDAD, Componente, Contexto, Modulo, Preatencion, Sistema, expectativa_ejecutada,
+                                     variables_proactivas)
 from ida.nucleo.azar import Azar
 from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
@@ -94,7 +97,7 @@ class Organismo:
         self._montar_opcionales(reg.opcionales)
 
         # Cuerpo (D10): sus Componentes, antes que los del mundo, con las reglas de ``añade``
-        self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; su ``aprender`` lo llama ``_aprender``
+        self.componentes_cuerpo: List[Componente] = []   # en orden de montaje; aprenden en la fase «cuerpo» (D6)
         if reg.cuerpo is not None:
             for destino, comps in reg.cuerpo.componentes().items():
                 if destino not in DESTINOS_VALIDOS_CUERPO:
@@ -105,6 +108,7 @@ class Organismo:
                 modulo, preatencion, sistema_asignar = self._destino(destino)
                 for comp in comps:
                     comp.de_cuerpo = reg.cuerpo.nombre
+                    comp.fase_plasticidad = "cuerpo"   # D6: lo que aporta un cuerpo aprende en la fase del cuerpo
                     self._añadir(modulo, preatencion, destino, comp, sistema_asignar)
                     self.componentes_cuerpo.append(comp)
 
@@ -190,9 +194,7 @@ class Organismo:
         }
 
         self._comprobar_espacio()
-
-        # Plasticidad con el efecto (D6, D7): los que aprenden en ``_aprender``, en el orden de ``montados``
-        self.componentes_efecto: List[Componente] = [c for c in self.montados() if c.aprende_con_efecto and not c.de_cuerpo]
+        self._comprobar_plasticidad()
 
         # Memoria (D7): las secciones de sus dueños (el cuerpo y después los Componentes montados, en orden), que reciben
         # al registrarse el manual y el legado que la Memoria guardó para ellas
@@ -254,6 +256,16 @@ class Organismo:
         if faltan:
             cuerpo = self.cuerpo.nombre if self.cuerpo is not None else "ninguno"
             raise ValueError(f"{self.mundo.nombre} monta {faltan}, que necesitan un cuerpo con espacio (cuerpo: {cuerpo})")
+
+    def _comprobar_plasticidad(self) -> None:
+        """D6: cada Componente montado declara una fase de plasticidad conocida, y la fase «cuerpo» es solo de lo que aporta
+        un cuerpo."""
+        for c in self.montados():
+            if c.fase_plasticidad not in FASES_PLASTICIDAD:
+                raise ValueError(f"'{c.__class__.__name__}' declara la fase de plasticidad '{c.fase_plasticidad}'. "
+                                 f"Válidas: {list(FASES_PLASTICIDAD)}")
+            if c.fase_plasticidad == "cuerpo" and not c.de_cuerpo:
+                raise ValueError(f"'{c.__class__.__name__}' declara la fase de plasticidad 'cuerpo' y no es de un cuerpo")
 
     def _destino(self, destino: str) -> Tuple[Modulo, Optional[List[Componente]], str]:
         """Módulo de un destino ya validado, su preatención (solo ``S1.Sentir``, D5) y el ``sistema`` que se asigna."""
@@ -351,9 +363,9 @@ class Organismo:
                 self._candidato_core(ctx, Verbo.DORMIR, "agotamiento: sueño ineludible")
         onda.notas["ms_cognicion"] = round(onda.ms_transcurridos(), 2)
 
-        # 6. Actuar
-        for comp in self.componentes_efecto:   # paso 2: lo que había antes de actuar (Requisito)
-            comp.antes_de_actuar(ctx)
+        # 6. Actuar. Antes, la traza de elegibilidad (D6): lo presente al actuar queda marcado para el efecto
+        for comp in self.montados():
+            comp.marcar_elegibilidad(ctx)
         ctx.extra.pop("efecto", None)
         with onda.fase("actuar"):
             self.actuar.ejecutar(ctx)
@@ -403,12 +415,15 @@ class Organismo:
         return [*self.sentir.componentes, self.regulacion, *self.actuar.componentes, *self.preatencion.componentes,
                 *(c for s in self.sistemas for m in s.modulos for c in m.componentes)]
 
+    def _aprenden(self, fase: str) -> List[Componente]:
+        """Lo montado que aprende en ``fase`` (``Componente.fase_plasticidad``, D6), en el orden de ``montados``."""
+        return [c for c in self.montados() if c.fase_plasticidad == fase]
+
     def _plasticidad(self, ctx: Contexto) -> None:
-        """Plasticidad (D6): el gancho ``aprender`` de cada Componente montado, en el orden de ``montados``. Los del cuerpo
-        no: su ``aprender`` lo llama ``_aprender`` en su punto del latido."""
-        for c in self.montados():
-            if not c.de_cuerpo and not c.aprende_con_efecto:
-                c.aprender(ctx)
+        """Plasticidad (D6), fase «general»: el gancho ``aprender`` de cada Componente montado que la declara, en el orden
+        de ``montados``. Las fases «cuerpo» y «efecto» corren antes, dentro de ``_aprender``."""
+        for c in self._aprenden("general"):
+            c.aprender(ctx)
 
     def _ver_clases(self, ctx: Contexto) -> None:
         """Plasticidad del Core (D7): familiaridad por clase de cada entidad percibida (una pieza ``Exterocepcion`` por
@@ -428,7 +443,7 @@ class Organismo:
                     self.memoria.registrar_donde(e.clase, ubicacion, ctx.latido)
         previa = ctx.onda.ei("Accion").get("Accion")
         if self.con_experiencia and self.memoria.activa:
-            for comp in self.componentes_cuerpo:   # cuerpo (D10), en orden de montaje (cuadrícula: ModeloDirecto, MapaLocal)
+            for comp in self._aprenden("cuerpo"):   # D6, fase «cuerpo» (D10; cuadrícula: ModeloDirecto, MapaLocal)
                 comp.aprender(ctx)
         if previa is None or not self.con_experiencia:
             return
@@ -438,8 +453,8 @@ class Organismo:
             if clase_obj:
                 self.memoria.registrar_donde(clase_obj, ubicacion, ctx.latido)
         verbo = c["verbo"] if c["verbo"] not in (Verbo.ACECHAR, Verbo.LEER) else None
-        for comp in self.componentes_efecto:   # D6, D7: los dueños de lo que se aprende del efecto (Apetencia: aliestesia;
-            comp.aprender(ctx)                 # Requisito: requisitos, intentos y metas), en el orden de ``montados``
+        for comp in self._aprenden("efecto"):   # D6, fase «efecto»: los dueños de lo que se aprende del efecto (D7; Apetencia:
+            comp.aprender(ctx)                  # aliestesia; Requisito: requisitos, intentos y metas)
         ap = self.memoria.aprender(verbo, c.get("clase", ""), c.get("delta", {}), c.get("causa"), c.get("obtenido"), bool(c.get("exito")), ctx.latido)
         if ap.rpe:
             ctx.soma.error_prediccion(max(-20.0, min(20.0, ap.rpe * 2.0)))

@@ -1,7 +1,7 @@
 """Componente Predicado para S3."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import al_alcance, objetos
+from ida.sistemas.piezas import al_alcance, objetos
 
 
 class Predicado(Componente):

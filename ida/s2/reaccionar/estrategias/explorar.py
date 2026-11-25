@@ -7,7 +7,8 @@ from ida.nucleo.estrategia import Definicion, Propuesta
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
 from ida.s2.comun import EXPLORACION, _peligro
-from ida.sistemas_comun import al_alcance, cautela, lugares, mejor, objetos
+from ida.sistemas.motivacion import cautela
+from ida.sistemas.piezas import al_alcance, lugares, mejor, objetos
 
 
 class Explorar(Definicion):

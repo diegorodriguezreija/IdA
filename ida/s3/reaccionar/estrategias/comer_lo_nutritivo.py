@@ -7,7 +7,7 @@ from ida.nucleo.estrategia import Definicion, Propuesta
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.s3.comun import _conclusion
-from ida.sistemas_comun import al_alcance, lugares, mejor
+from ida.sistemas.piezas import al_alcance, lugares, mejor
 
 
 class ComerLoNutritivo(Definicion):

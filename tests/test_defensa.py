@@ -16,7 +16,7 @@ from ida.nucleo.linaje import Arquetipo
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.mundo import Efecto, Entidad, Mundo, Necesidad, Observacion, Perfil, Registro
 from ida.nucleo.vocabulario import Relacion, Verbo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 from ida.cuerpos.cuadricula import Cuadricula
 
 Pos = Tuple[int, int]
@@ -407,7 +407,7 @@ def test_el_emisor_pide_tres_veces_junto_y_contingencia():
 def test_afrontar_no_ataca_lo_que_nunca_ha_visto_caer_ni_es_meta():
     """Con una tasa de daño muy baja la lucha saldría favorable incluso con el previo de golpes; aun así, sin derribos de la
     clase ni meta del manual, Afrontar no la considera. Con la meta, sí."""
-    from ida.nucleo.memoria import Meta
+    from ida.s3.interpretar.requisito import Meta
     from ida.s3.interpretar.requisito import Requisitos
     for meta in (False, True):
         mundo = MundoErizos(quieto=True, salud=100.0)

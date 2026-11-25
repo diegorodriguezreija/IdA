@@ -18,7 +18,7 @@ from ida.nucleo.mundo import Efecto
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
 from ida.cuerpos.cuadricula import Cuadricula, MotorCuadricula
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 
 Pos = Tuple[int, int]
 DISPONIBLES = ["noop", "move_left", "move_right", "move_up", "move_down", "do", "sleep", "place_table", "make_wood_pickaxe"]
@@ -192,7 +192,7 @@ def _ejecutar_ahora(m: Any, motor: MotorCuadricula, verbo: Verbo, objetivo: str,
     obs = m.observar()
     intencion = _intencion(verbo, objetivo, datos)
     prims = motor.primitivas(intencion, _ctx_de(obs), m.primitivas())
-    ef = m.ejecutar_primitivas(prims, verbo) if prims else Efecto(exito=False)
+    ef = m.ejecutar_primitivas(prims) if prims else Efecto(exito=False)
     ef.exito = motor.juzgar(intencion, prims, ef)
     return ef, prims
 

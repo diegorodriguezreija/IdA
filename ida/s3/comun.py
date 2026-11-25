@@ -7,7 +7,7 @@ from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.mundo import Escala
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas_comun import al_alcance, exterocepcion, lugares
+from ida.sistemas.piezas import al_alcance, exterocepcion, lugares
 
 SABER = "saber"
 INTENSIDAD_INTENCION_DEL_MUNDO = 0.5

@@ -5,7 +5,7 @@ from typing import Optional
 from ida.nucleo.arquitectura import Contexto
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import Relacion
-from ida.sistemas_comun import alarma
+from ida.sistemas.piezas import alarma
 
 EXPLORACION = "exploracion"
 SEGURIDAD = "seguridad"

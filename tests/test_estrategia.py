@@ -75,7 +75,7 @@ def test_accion_traduce_la_estrategia_activa_y_el_origen_llega_al_estado_final()
     from ida.nucleo.mundo import Efecto
     from ida.core.actuar.actuador import aplicar_efecto
     from ida.core.actuar.tribunal import Tribunal
-    from ida.sistemas_comun import Accion
+    from ida.sistemas.accion import Accion
 
     class _HuirA(est.Definicion):
         nombre = "huir"

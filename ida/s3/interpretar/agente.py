@@ -1,7 +1,7 @@
 """Componente Agente para S3."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 
 class Agente(Componente):

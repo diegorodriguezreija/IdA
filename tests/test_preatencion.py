@@ -12,7 +12,7 @@ from ida.nucleo.memoria import Memoria
 from ida.nucleo.onda import PiezaAjena
 from ida.nucleo.pieza import Pieza, acotar
 from ida.nucleo.vocabulario import Verbo
-from ida.sistemas_comun import crear_sistemas
+from ida.sistemas import crear_sistemas
 from ida.s1.sentir.saliencia import Saliencia
 
 

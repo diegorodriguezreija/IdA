@@ -1,6 +1,6 @@
 """El código general no usa conceptos de un cuerpo concreto (C1b, D10).
 
-Recorre con AST los ficheros de ``ida/nucleo``, ``ida/core``, ``ida/s1``-``ida/s3`` e ``ida/sistemas_comun.py`` y
+Recorre con AST los ficheros de ``ida/nucleo``, ``ida/core``, ``ida/s1``-``ida/s3`` e ``ida/sistemas`` y
 revisa identificadores, atributos, nombres de argumentos, importaciones y literales de cadena (no los comentarios ni
 las docstrings). La geometría de un cuerpo (vecinos, distancia, la convención de identificadores con posición) la da
 el cuerpo a través de ``Cuerpo`` (``ida/nucleo/mundo.py``); lo de cada familia vive en ``ida/cuerpos/``.
@@ -22,7 +22,7 @@ GENERAL = (
     + sorted((RAIZ / "s1").rglob("*.py"))
     + sorted((RAIZ / "s2").rglob("*.py"))
     + sorted((RAIZ / "s3").rglob("*.py"))
-    + ([RAIZ / "sistemas_comun.py"] if (RAIZ / "sistemas_comun.py").exists() else [])
+    + sorted((RAIZ / "sistemas").rglob("*.py"))
 )
 CONCEPTOS_DE_CUERPO = ("casilla", "cuadricula", "rejilla", "manhattan", "direcciones", "pos_de", "cavar")
 

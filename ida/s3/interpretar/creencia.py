@@ -5,7 +5,7 @@ from typing import Dict, Optional
 from ida.nucleo.arquitectura import Componente, Contexto
 from ida.nucleo.pieza import Pieza
 from ida.nucleo.vocabulario import EstadoSaber, Relacion
-from ida.sistemas_comun import objetos
+from ida.sistemas.piezas import objetos
 
 PESO_AFECTIVO = 0.1    # peso de la fuente afectiva frente a la confianza por experiencia y autoridad
 

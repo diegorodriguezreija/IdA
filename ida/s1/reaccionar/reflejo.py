@@ -1,7 +1,7 @@
 """Reflejo: detección de cambios bruscos de peligro."""
 
 from ida.nucleo.arquitectura import Componente, Contexto
-from ida.sistemas_comun import alarma
+from ida.sistemas.piezas import alarma
 
 
 class Reflejo(Componente):

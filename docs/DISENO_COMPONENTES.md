@@ -71,6 +71,8 @@ ida/
     sentir/          interocepcion.py, propiocepcion.py, exterocepcion.py, ambiente.py
     actuar/          tribunal.py, actuador.py
     regulacion.py    reglas de la Onda (hoy Marcapasos)
+  sistemas/          circuito común de S1-S3: accion.py, anticipacion.py, peticion.py, estrategia.py (un Componente
+                     por fichero); piezas.py y motivacion.py (lecturas comunes de la Onda); crear_sistemas() en __init__.py
   s1/  sentir/ interpretar/ reaccionar/ actuar/   (estrategias en reaccionar/estrategias/)
   s2/  ...
   s3/  ...
@@ -87,7 +89,8 @@ ida/
 ```
 
 - El paquete raíz sigue siendo `ida` (minúsculas, convención de Python). `ida/core` pasa a ser el sistema Core; la mecánica que hoy vive en `ida/core/*.py` se mueve a `ida/nucleo/`.
-- **Importaciones permitidas:** `nucleo` ← `core` (que incluye el latido) ← `s1`-`s3` ← `cuerpos` ← `mundos`. Ningún paquete importa a los que van detrás de él. Lo vigila `test_pureza`.
+- **Importaciones permitidas:** `nucleo` ← `core` (que incluye el latido) ← `sistemas` ← `s1`-`s3` ← `cuerpos` ← `mundos`. Ningún paquete importa a los que van detrás de él, con una salvedad: `crear_sistemas()` (`ida/sistemas/__init__.py`) importa `s1`-`s3` dentro de la función, al llamarla, para montarlos en su orden. Lo vigila `test_pureza` (que `ida/sistemas` es base y no importa `cuerpos` ni `mundos`).
+- **El circuito común** (`ida/sistemas/`, C4): los Componentes que repiten S1, S2 y S3 en sus etapas (`Accion`, `Anticipacion`, `Peticion`, `Estrategia`) y las lecturas comunes de la Onda. Cada sistema los monta con su propio catálogo; no son de ningún sistema.
 
 ### D3. Registro declarado de Componentes
 
@@ -143,6 +146,16 @@ Así se cumplen a la vez el punto 2 del autor (el Core no procesa), la nota B (n
 ### D6. Plasticidad
 
 Un Componente que aprende implementa un cuarto método, `aprender(ctx)`, que el Core llama en el paso 4 (después de la preatención), exento de atención y también dormido. Hoy esa lógica está repartida entre `Organismo._aprender`, `_peligro_aprendido` y `Memoria`; pasa al Componente dueño de lo aprendido. El momento es el mismo que hoy, así que el resultado también.
+
+**Un solo gancho, por fases (C4).** `aprender(ctx)` es el único gancho de plasticidad. Cada Componente declara en qué fase aprende (`fase_plasticidad`) y el Core recorre lo montado por fases, en el orden de `Organismo.montados()`:
+
+| Fase | Quién la declara | Cuándo corre |
+|---|---|---|
+| `cuerpo` | Lo que aporta un cuerpo (D10): el montaje se la pone a todos sus Componentes (en cuadrícula, `ModeloDirecto` y `MapaLocal`, que también la declaran). Ningún otro puede declararla | Dentro de `Organismo._aprender`, con experiencia y memoria activa, antes de aprender del efecto |
+| `efecto` | El dueño de lo que se aprende del efecto de la acción anterior (D7): `Apetencia` y `Requisito` | Dentro de `Organismo._aprender`, solo si hubo acción y con experiencia, antes de que el Core aprenda sus proposiciones |
+| `general` | Todos los demás (valor por defecto) | Después de `Organismo._aprender` y `_contrastar`, en cada latido |
+
+**Traza de elegibilidad.** `marcar_elegibilidad(ctx)` es un gancho general (por defecto no hace nada) que el Core llama para todo lo montado justo antes de actuar, también dormido. Lo que estaba presente al actuar queda marcado para que el efecto lo refuerce en el latido siguiente (biología: la traza de elegibilidad sináptica, que deja marcada una sinapsis activa para que la modulación posterior la refuerce). Hoy la usa `Requisito` (el inventario, lo cercano y lo de delante antes de actuar).
 
 Excepción de orden: `Amenaza` aprende (daño, emisores, eficacia) en su propio paso preatentivo, justo antes de estimar, porque hoy se aprende y se estima antes de Sentir.
 
@@ -375,3 +388,6 @@ Los `docs/*_PROGRESO.md` citados abajo se retiraron al cerrar la fase A; siguen 
 | 24/11/2026 | Sección 5 | Fusión en `main` como `crafter-general-v5`; los pasos siguientes salen de `main` y vuelven a `main` uno a uno | Medición final idéntica a v4 (`datos/evaluacion/v5_31.json` y `v5_32.json`) |
 | 25/11/2026 | D10 | Interfaz espacial de `Cuerpo` (`Contexto.espacio`); la geometría de rejilla, solo en `ida/cuerpos/cuadricula/`; «delante» y «orientación» siguen como vocabulario general con el valor que da el cuerpo. Aprobado por el autor (25/11/2026) | C1 (rama `limpieza/c1-geometria`): equivalencia OK |
 | 25/11/2026 | D17 | El benchmark de mínimo y archivos se mide con plazo lógico 40 frente a una referencia guardada de v5 | C6: con reloj, el criterio dependía de la carga de la máquina; con plazo lógico es determinista (dos ejecuciones idénticas) |
+| 25/11/2026 | D2 | `ida/sistemas_comun.py` pasa al paquete `ida/sistemas/` (circuito común de S1-S3); orden de importaciones `nucleo` ← `core` ← `sistemas` ← `s1`-`s3` ← `cuerpos` ← `mundos`. Aprobado por el autor (25/11/2026) | C4 (rama `limpieza/c4-deuda`): equivalencia OK |
+| 25/11/2026 | D6 | Un solo gancho `aprender` con fases declaradas (`cuerpo`, `efecto`, `general`) y la traza de elegibilidad (`marcar_elegibilidad`); desaparecen `aprende_con_efecto` y `antes_de_actuar`. Aprobado por el autor (25/11/2026) | C4: mismo punto y orden de llamadas; equivalencia OK |
+| 25/11/2026 | D15 | `Perfil.escala` se mantiene: es la escala declarada del mundo, no un cajón de parámetros. Aprobado por el autor (25/11/2026) | C4 (deuda de la fase A en `PENDIENTES.md`) |
