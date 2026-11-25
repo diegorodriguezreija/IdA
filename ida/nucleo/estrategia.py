@@ -74,6 +74,7 @@ class Definicion:
     reflejo: bool = False
     ultimo_recurso: bool = False
     opcional: bool = False   # D3: general, pero solo se monta si el mundo la nombra en ``Registro.opcionales``
+    requiere_espacio: bool = False   # C7a: como en ``Componente``
 
     def sirve(self, impulso: str, rasgo: Optional[str]) -> bool:
         return self.cualquier_impulso or impulso in self.impulsos or (self.rasgo is not None and self.rasgo == rasgo)

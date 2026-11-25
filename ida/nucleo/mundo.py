@@ -52,6 +52,7 @@ class Cuerpo:
     nombre: str = ""
     junto: Hashable = "junto"
     radio_prueba: int = 1
+    con_espacio: bool = False   # C7a: si da posiciones y distancias (lo exigen los Componentes con ``requiere_espacio``)
 
     def posicion(self, ubicacion: Any) -> Optional[Hashable]:
         return None

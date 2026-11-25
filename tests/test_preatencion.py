@@ -210,12 +210,14 @@ def test_exterocepcion_en_bruto_y_saliencia_de_antes() -> None:
 def test_amenaza_va_antes_que_saliencia() -> None:
     """Amenaza es opcional (D3): el mínimo no la registra; quien la registra la tiene antes que Saliencia."""
     from ida.nucleo.mundo import Registro
+    from ida.cuerpos.cuadricula import Cuadricula
     from ida.mundos.minimo import MundoMinimo
 
     class MundoConAmenaza(MundoMinimo):
         def registro(self) -> Registro:
             reg = super().registro()
             reg.opcionales = ["Amenaza"]
+            reg.cuerpo = Cuadricula()   # C7a: Amenaza necesita un cuerpo con espacio
             return reg
 
     assert [type(c).__name__ for c in _organismo().preatencion.componentes] == ["Saliencia"]

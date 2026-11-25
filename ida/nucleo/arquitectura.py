@@ -110,6 +110,7 @@ class Componente:
     # Opcional (D3, D15): general, pero solo se monta si el mundo lo nombra en ``Registro.opcionales``; si no, se quita al
     # montar y lo demás conserva su orden. Sustituye a las activaciones condicionales.
     opcional: bool = False
+    requiere_espacio: bool = False   # C7a: sin un cuerpo con espacio (``Cuerpo.con_espacio``) no hace nada; montarlo así es un error
     propio_del_mundo: bool = False   # lo pone el Core al montar lo que declara el registro del mundo (D3), cuerpo incluido
 
     def __init__(self, nombre: Optional[str] = None):
