@@ -68,11 +68,28 @@ UMBRAL_PELIGRO = 0.3   # indicador de peligro de Soma a partir del cual un latid
 
 
 def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None, grupos: Optional[List[str]] = None,
-             mecanismos: Optional[List[str]] = None, tasa_herencia: Optional[float] = None) -> None:
+             mecanismos: Optional[List[str]] = None, tasa_herencia: Optional[float] = None,
+             plazo_logico: Optional[float] = None) -> None:
     sys.path.insert(0, os.path.abspath(raiz))
     from dataclasses import replace
 
     from ida.ejecutor import ejecutar as vivir
+
+    if plazo_logico is not None:
+        import ida.ejecutor as _ej
+        if not hasattr(_ej, "Organismo"):
+            sys.exit(f"Error: la versión en '{raiz}' no tiene el atributo Organismo en ida.ejecutor")
+        _Base = _ej.Organismo
+
+        class _ConPlazo(_Base):  # type: ignore[misc, valid-type]
+            def __init__(self, *a, **k):
+                super().__init__(*a, **k)
+                if not hasattr(self, "ops_por_ms"):
+                    sys.exit(f"Error: la instancia de Organismo en '{raiz}' no tiene el atributo 'ops_por_ms'")
+                self.ops_por_ms = plazo_logico
+
+        _ej.Organismo = _ConPlazo
+
     from ida.mundos import cargar
 
     clase_mundo = cargar(mundo)
@@ -174,7 +191,7 @@ def ejecutar(raiz: str, mundo: str, salida: str, amplitud: Optional[int] = None,
                           "logros": logros_vidas, "indicadores": ind})
             print(f"{mundo} {grupo} semilla {semilla}: {len(vidas)} vidas", flush=True)
     with open(salida, "w", encoding="utf-8") as f:
-        json.dump({"mundo": mundo, "filas": filas}, f)
+        json.dump({"mundo": mundo, "plazo_logico": plazo_logico, "filas": filas}, f)
 
 
 def _ic(xs: List[float]) -> str:
@@ -188,6 +205,10 @@ def comparar(base: str, nueva: str) -> None:
         a = json.load(f)
     with open(nueva, encoding="utf-8") as f:
         b = json.load(f)
+    plazo_a = a.get("plazo_logico")
+    plazo_b = b.get("plazo_logico")
+    if plazo_a != plazo_b:
+        print(f"⚠ plazos distintos: base {plazo_a}, nueva {plazo_b}")
     mundo = a["mundo"]
     metricas = list(dict.fromkeys(list(a["filas"][0]["vidas"][0]) + list(b["filas"][0]["vidas"][0])))
     print(f"\n### {mundo} (N = {len(SEMILLAS)} linajes, IC 95 %; Δ = nueva − base, pareado por semilla)\n")
@@ -272,12 +293,13 @@ def main() -> int:
     e.add_argument("--grupos", nargs="*", default=None, help="solo estos grupos (p. ej. Equilibrado)")
     e.add_argument("--mecanismos", nargs="*", default=None, help="mecanismos de memoria activados (bloque E)")
     e.add_argument("--tasa-herencia", type=float, default=None, help="tasa de herencia (bloque E, E7)")
+    e.add_argument("--plazo-logico", type=float, default=None, help="operaciones por ms de plazo lógico (None = reloj)")
     c = sub.add_parser("comparar")
     c.add_argument("base")
     c.add_argument("nueva")
     args = p.parse_args()
     if args.orden == "ejecutar":
-        ejecutar(args.raiz, args.mundo, args.salida, args.amplitud, args.grupos, args.mecanismos, args.tasa_herencia)
+        ejecutar(args.raiz, args.mundo, args.salida, args.amplitud, args.grupos, args.mecanismos, args.tasa_herencia, args.plazo_logico)
     else:
         comparar(args.base, args.nueva)
     return 0
