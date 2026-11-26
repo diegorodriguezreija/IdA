@@ -309,6 +309,7 @@ def test_claves_del_laboratorio_que_se_forman_en_ejecucion():
                 + [f"lab.sistema.{s}" for s in ("CORE", "S1", "S2", "S3", "cuerpo")]
                 + [f"lab.clase.{c}" for c in mc.CLASES] + [f"lab.tipo.{t}" for t in mc.TIPOS]
                 + [f"lab.vista.{v}" for v in ("latido", "ingenieria", "grabaciones")]
+                + [f"lab.nivel_valor.{n}" for n in ("vital", "cognitivo", "completo")]
                 + [f"lab.hecho.{h}" for h in ("nace", "primera_vez", "aprende", "logro", "peligro", "sorpresa", "duda",
                                                "refuta", "muere", "duerme", "despierta")])
     assert not [k for k in familias if k not in es or k not in en]

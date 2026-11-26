@@ -753,4 +753,5 @@ pre.json { margin: 0; padding: 10px; border-radius: 10px; background: var(--supe
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+.grabaciones-tabla .confirmar-borrado { flex-basis: 100%; }
 .lab-detalle hr.separador { border: 0; border-top: 1px dashed var(--linea-fuerte); margin: 10px 0; width: 100%; }

@@ -283,7 +283,7 @@ class IdaLab extends HTMLElement {
     const mundo = t(`mundo.${f.mundo}.nombre`);
     let texto;
     if (f.tipo === 'directo') texto = t('lab.fuente_directo_info', { mundo, n: f.indice.length, max: f.maximo });
-    else if (f.tipo === 'grabacion') texto = t('lab.fuente_grabacion_info', { id: f.id, mundo, n: f.indice.length, nivel: (f.cabecera || {}).nivel || '–' });
+    else if (f.tipo === 'grabacion') texto = t('lab.fuente_grabacion_info', { id: f.id, mundo, n: f.indice.length, nivel: (f.cabecera || {}).nivel ? t(`lab.nivel_valor.${f.cabecera.nivel}`) : '–' });
     else texto = t('lab.fuente_fichero_info', { nombre: f.nombre, mundo, n: f.indice.length });
     caja.innerHTML = `<span class="chip sin-punto ${f.tipo === 'directo' ? 'listo' : ''}">${esc(texto)}</span>${f.truncada ? ` <span class="chip aviso">${esc(t('lab.truncada'))}</span>` : ''}`;
   }
@@ -410,7 +410,7 @@ class IdaLab extends HTMLElement {
       return `<tr class="${abierta ? 'abierta' : ''}">
         <td><b>${esc(g.id)}</b>${g.en_curso ? ` <span class="chip falta grabando">${esc(t('grabar.grabando'))}</span>` : ''}${g.valida ? '' : ` <span class="chip aviso">${esc(t('lab.no_valida'))}</span>`}
           <br><span class="mini suave">${esc(t(`mundo.${g.mundo}.nombre`))} · ${esc(String(g.creada || '').replace('T', ' ').slice(0, 16))} · ${esc(tras)}</span></td>
-        <td>${esc(g.nivel || '–')}</td><td>${g.registros ?? '–'}</td><td>${esc(tamano(g.bytes))}</td>
+        <td>${esc(g.nivel ? t(`lab.nivel_valor.${g.nivel}`) : '–')}</td><td>${g.registros ?? '–'}</td><td>${esc(tamano(g.bytes))}</td>
         <td><div class="acciones-fila">
           <button type="button" class="boton pequeno primario" data-abrir="${esc(g.id)}" ${g.en_curso || !g.valida ? 'disabled' : ''}>${esc(t('lab.abrir'))}</button>
           <a class="boton pequeno" href="${esc(descargas.grabacion(g.id))}" download ${g.en_curso ? 'aria-disabled="true" tabindex="-1"' : ''}>⬇ ${esc(t('lab.descargar'))}</a>
