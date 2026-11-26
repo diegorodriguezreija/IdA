@@ -57,9 +57,10 @@ OPCIONES = [
               "Difficulty on playsnake.org: 0 (slug), 1 (worm) or 2 (python)."),
            min=0, max=2),
     opcion("ventana", "booleano", False,
-           _t("Ventana del navegador", "Browser window"),
-           _t("Abre la ventana visible de Chromium en vez de correr en segundo plano.",
-              "Opens the visible Chromium window instead of running headless.")),
+           _t("Ver también la web real (playsnake.org)", "Also watch the real website (playsnake.org)"),
+           _t("Abre en otra ventana el Chromium en el que IdA juega en playsnake.org; si no, corre en segundo plano.",
+              "Opens, in another window, the Chromium where IdA plays on playsnake.org; otherwise it runs headless."),
+           destacada=True),   # O21: fuera de «Avanzado», apagada por defecto
     opcion("ritmo", "entero", 60,
            _t("Ritmo del juego", "Game pace"),
            _t("Periodo del latido en milisegundos (60 por defecto).",

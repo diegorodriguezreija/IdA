@@ -6,7 +6,7 @@ import { t, texto } from '../i18n.js';
 import { esc } from './util.js';
 
 export function esAvanzada(d) {
-  return d.tipo === 'booleano' || Boolean(d.vacia);
+  return !d.destacada && (d.tipo === 'booleano' || Boolean(d.vacia));   // «destacada»: siempre a la vista (O21)
 }
 
 function paso(d) {

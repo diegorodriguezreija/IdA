@@ -216,3 +216,13 @@ def test_opciones_con_etiquetas_no_cambian_nombres_valores_ni_defectos():
     assert crafter["vista"]["etiquetas_valores"]["oficial"]["es"] == "Oficial (9×7, como el benchmark)"
     ajedrez = {d["nombre"]: d for d in _clase("ajedrez").opciones()}
     assert ajedrez["color"]["valores"] == ["blancas", "negras"] and ajedrez["color"]["defecto"] == "blancas"
+
+
+def test_ventana_de_snake_destacada_o21():
+    """O21: la ventana de Snake (la web real) se enseña fuera de «Avanzado», apagada por defecto; nombre y valor igual."""
+    snake = {d["nombre"]: d for d in cargar("snake").opciones()}
+    v = snake["ventana"]
+    assert v["tipo"] == "booleano" and v["defecto"] is False and v.get("destacada") is True
+    assert "playsnake.org" in v["etiqueta"]["es"] and "playsnake.org" in v["etiqueta"]["en"]
+    mal = dict(v, destacada="si")
+    assert any("destacada" in e for e in validar_declaracion(mal))
