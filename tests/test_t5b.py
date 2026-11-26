@@ -18,7 +18,7 @@ import shutil
 import pytest
 
 from ida.ejecutor import ejecutar
-from ida.telemetria.analisis import Series, clave_proposicion, comparar_estirpes, historia, series_de
+from ida.telemetria.analisis import Series, clave_proposicion, comparar_estirpes, historia, redondear, series_de
 from ida.telemetria.grabacion import Grabacion, comparar, divergencia, diferencias, leer
 from ida.telemetria.laboratorio import Directo, Grabaciones
 from ida.telemetria.servidor import WEB, Telemetria
@@ -93,7 +93,7 @@ def test_historia_de_una_proposicion_desde_una_grabacion_real(grabaciones_minimo
     for n, _latido, estado, confianza, _, _ in h:
         saber = {(x["sujeto"], x["relacion"]): x for x in regs[n]["saber"]}
         x = saber[("baya", "NUTRITIVO")]
-        assert (x["estado"], round(x["confianza"], 4)) == (estado, confianza)
+        assert (x["estado"], redondear(x["confianza"])) == (estado, confianza)
 
 
 def test_las_series_son_las_de_cada_registro(grabaciones_minimo):

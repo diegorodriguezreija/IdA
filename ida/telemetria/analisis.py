@@ -16,6 +16,7 @@ La Score de cada latido es la de la colección y el linaje (``ida/historico.py``
 no es la Score oficial de D17, que no se puede dar por latido.
 """
 
+import math
 from collections import Counter
 from typing import Any, Dict, List, Optional
 
@@ -32,11 +33,18 @@ RESUMEN = ("proposiciones", "demostradas", "hipotesis", "refutadas", "heredadas"
 DECIMALES = 4
 
 
+def redondear(x: float, decimales: int = DECIMALES) -> float:
+    """Redondeo con la misma aritmética que ``Math.round(x * 10^d) / 10^d`` de JS (``web/lab/series.js``): así las series
+    de un fichero cargado en el navegador son idénticas a las del servidor."""
+    escala = 10 ** decimales
+    return math.floor(float(x) * escala + 0.5) / escala
+
+
 def _num(x: Any) -> Optional[float]:
     if isinstance(x, bool):
         return float(x)
     if isinstance(x, (int, float)) and x == x:
-        return round(float(x), DECIMALES)
+        return redondear(x)
     return None
 
 
@@ -113,7 +121,7 @@ class Series:
             "ritmo/amplitud": _num(amplitud[0]), "ritmo/amplitud_max": _num(amplitud[1]),
             "ritmo/potencia": _num(potencia[0]), "ritmo/potencia_max": _num(potencia[1]),
             "ritmo/guillotina": bool(ritmo.get("guillotina")), "ritmo/ms": _num(ritmo.get("ms")),
-            "rpe": round(sum(rpe), 3) if rpe else None,
+            "rpe": redondear(sum(rpe), 3) if rpe else None,
             "sistema": str((r.get("accion") or {}).get("sistema") or ""),
         }
         for nec in r.get("necesidades") or []:
@@ -143,7 +151,7 @@ class Series:
             antes = _num((previo.get("cuerpo") or {}).get("vitalidad"))
             ahora = _num((r.get("cuerpo") or {}).get("vitalidad"))
             if antes is not None and ahora is not None and ahora < antes:
-                self.hechos.append({**base, "tipo": "dano", "perdida": round(antes - ahora, 3), "vitalidad": ahora})
+                self.hechos.append({**base, "tipo": "dano", "perdida": redondear(antes - ahora, 3), "vitalidad": ahora})
 
     def _saber(self, r: Dict[str, Any], n: int, hechos: List[Dict[str, Any]]) -> None:
         nivel = r.get("nivel")
