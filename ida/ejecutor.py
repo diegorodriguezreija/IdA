@@ -11,6 +11,8 @@ from ida.core.latido import Organismo
 from ida.nucleo.linaje import Arquetipo, Linaje
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.persistencia import Persistencia
+from ida.telemetria.grabacion import Grabacion, cabecera, commit_actual
+from ida.telemetria.observador import Observador
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
 from ida.sistemas import crear_sistemas
@@ -43,7 +45,19 @@ def ejecutar(
     arquetipo_inicial: Optional[Dict[str, float]] = None,
     legado_inicial: Optional[Dict[str, Any]] = None,
     biblioteca: Optional[Any] = None,
+    nivel: Optional[str] = None,
+    grabar: Optional[str] = None,
+    plazo_logico: Optional[float] = None,
 ) -> List[Dict[str, Any]]:
+    """Vive ``generaciones`` vidas de un linaje en ``mundo``.
+
+    - ``nivel``: nivel del registro del latido (``vital``, ``cognitivo`` o ``completo``, O4). Con un nivel, el observador
+      corre siempre; sin él (``None``), corre al nivel cognitivo solo si alguien consume el registro (consola,
+      telemetría, OTel o grabación).
+    - ``grabar``: ruta de la grabación ``.jsonl.gz`` de la vida (O7).
+    - ``plazo_logico``: operaciones por ms de plazo de la guillotina (``Onda.ops_por_ms``, O11). ``None``: plazo de reloj,
+      como siempre.
+    """
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
         shutil.rmtree(datos)
@@ -64,6 +78,13 @@ def ejecutar(
     if otel:
         from ida.telemetria.otel import Observabilidad   # requiere el extra [observabilidad]
         observabilidad = Observabilidad(mundo)
+    observador: Optional[Observador] = None
+    if nivel is not None or grabar:
+        observador = Observador(nivel or "cognitivo")
+    grabacion: Optional[Grabacion] = None
+    if grabar and observador is not None:
+        grabacion = Grabacion(grabar, cabecera(mundo, observador.nivel, semilla, latidos, generaciones, opciones_mundo,
+                                               arquetipo_inicial, plazo_logico, sin_experiencia, commit_actual()))
     resumenes = []
     vivencia = None
     try:
@@ -103,6 +124,8 @@ def ejecutar(
             elif biblioteca is not None:
                 org_biblioteca = biblioteca
             org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=not sin_experiencia, biblioteca=org_biblioteca)
+            if plazo_logico is not None:
+                org.ops_por_ms = plazo_logico   # O11: plazo lógico (la misma semilla da la misma vida)
             heredados = memoria.heredados   # D7: con lo que tomaron las secciones al montarse sus dueños
             persistencia.nueva_vida()
             org.al_dormir = lambda o: persistencia.volcar(o.memoria, o.arquetipo.id, o.ciclo)
@@ -110,6 +133,9 @@ def ejecutar(
                 print(f"\n=== {arq.id} · {mundo} · generación {arq.generacion} · {arq.texto()} · heredados: {heredados}")
 
             def latir(o: Organismo, onda) -> None:
+                registro = observador.registrar(o, onda) if observador is not None else None
+                if grabacion is not None and registro is not None:
+                    grabacion.escribir(registro)
                 r = resumen_latido(o, onda)
                 if consola and (onda.ciclo % cada == 0 or r["experiencia"]["aprendizaje"] or r["guillotina"]):
                     print(linea(r))
@@ -175,6 +201,8 @@ def ejecutar(
             if consola:
                 _imprimir_resumen(arq, resumen)
     finally:
+        if grabacion is not None:
+            grabacion.cerrar()
         m.cerrar()
         persistencia.cerrar()
         if telemetria is not None and telemetria_propia:
