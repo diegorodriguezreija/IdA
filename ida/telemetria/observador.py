@@ -20,6 +20,7 @@ from ida.nucleo.onda import Onda
 from ida.nucleo.soma import VITALES
 from ida.nucleo.vocabulario import EstadoSaber
 from ida.telemetria.esquema import NIVELES, VERSION
+from ida.telemetria.hechos import Deductor
 
 RASGOS_ARQUETIPO = ("apertura", "responsabilidad", "neuroticismo", "extraversion", "umbral_miedo")
 SABER_COGNITIVO = 20      # proposiciones de más confianza en el nivel cognitivo (como el panel de hoy)
@@ -62,11 +63,13 @@ class Observador:
         self._n = NIVELES.index(nivel)
         self.vida = 0
         self._org: Any = None
+        self._hechos = Deductor()
 
     # --- vida ------------------------------------------------------------------------------------------------------
     def _nueva_vida(self, org: Any) -> None:
         self._org = org
         self.vida += 1
+        self._hechos = Deductor()
 
     # --- registro --------------------------------------------------------------------------------------------------
     def registrar(self, org: Any, onda: Onda) -> Dict[str, Any]:
@@ -79,6 +82,7 @@ class Observador:
             "individuo": str(arq.id), "mundo": str(org.mundo.nombre), "con_experiencia": bool(org.con_experiencia),
         }
         self._vital(org, onda, r)
+        r["hechos"] = self._hechos.deducir(org, onda, r)
         if self._n >= 1:
             self._cognitivo(org, onda, r)
         if self._n >= 2:
