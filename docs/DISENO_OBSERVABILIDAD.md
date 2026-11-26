@@ -384,7 +384,8 @@ sea la del propio servidor (`http://127.0.0.1:<puerto>`, `http://localhost:<puer
 clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_no_permitido`, `ruta_desconocida`,
 `mundo_desconocido`, `mundo_no_instalado`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`,
 `ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_pausa`, `sin_extra`, `extra_desconocido`,
-`instalacion_en_curso`, `instalacion_desconocida`, `error_interno`.
+`instalacion_en_curso`, `instalacion_desconocida`, `error_interno` y, desde T4b, `sin_companero`, `id_invalido`,
+`elemento_desconocido`, `nombre_invalido`, `testigo_invalido`.
 
 | Método y ruta | Cuerpo | Respuesta | Errores |
 |---|---|---|---|
@@ -398,6 +399,18 @@ clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_n
 | `POST /api/v1/vidas/actual/ritmo` | `{ritmo: "pausa" \| "lento" \| "comodo" \| "x4" \| "max"}` (`x1` se admite como `comodo`) | 200 `{ritmo}` con el nombre canónico | 404 `sin_vida`; 400 `ritmo_invalido`; 409 `ritmo_fijo` (tiempo real) |
 | `POST /api/v1/vidas/actual/paso` | — | 200 `{ritmo: "pausa", pendientes, latido}`: deja pasar un latido | 404 `sin_vida`; 409 `sin_pausa` (no está en pausa), `ritmo_fijo` (tiempo real) |
 | `POST /api/v1/vidas/actual/parar` | — | 200 `{vida}` (ya parada; también desde la pausa) | 404 `sin_vida` |
+| `GET /api/v1/companeros` | — | 200 `{companeros: [{mundo, existe, nombre, individuo, generacion, generaciones, mejor_score, ultimo, arquetipo}]}`, uno por mundo (T4b, sección 13) | — |
+| `GET /api/v1/companeros/{m}` | — | 200 `{companero}` con lo anterior y `linaje`: las vidas en orden de generación (`individuo`, `generacion`, `latidos`, `score`, `causa_muerte`, `vivo`, `logros`, `arquetipo`) | 404 `mundo_desconocido` |
+| `POST /api/v1/companeros/{m}/guardar` | `{nombre?}` | 201 `{ficha}`: la ficha del último individuo, guardada en la colección | 404 `mundo_desconocido`, `sin_companero`; 400 `nombre_invalido` |
+| `POST /api/v1/companeros/{m}/archivar` | — | 200 `{archivada}` (la estirpe archivada, o `null` si no había compañero) | 404 `mundo_desconocido`; 409 `vida_en_curso` |
+| `GET /api/v1/coleccion[?mundo=m]` | — | 200 `{fichas, estirpes, companeros, ranking: {mundo: [{tipo, id, nombre, mejor_score, generacion, ...}]}}` | 404 `mundo_desconocido` |
+| `GET /api/v1/coleccion/{id}` | — | 200 `{elemento}`: la ficha entera o los metadatos y el linaje de la estirpe archivada | 400 `id_invalido`; 404 `elemento_desconocido` |
+| `GET /api/v1/coleccion/{id}/exportar` · `GET /api/v1/companeros/{m}/exportar` | — | 200 la ficha v1 en JSON, con `Content-Disposition: attachment` | 400 `id_invalido`; 404 `elemento_desconocido`, `sin_companero` |
+| `POST /api/v1/coleccion/importar` | `{ficha}` (JSON v1 o antiguo) | 201 `{ficha, avisos}` | 400 `ficha_invalida`, `mundo_desconocido` |
+| `POST /api/v1/coleccion/{id}/renombrar` | `{nombre}` (1–60 caracteres, sin saltos de línea) | 200 `{elemento}` | 400 `id_invalido`, `nombre_invalido`; 404 `elemento_desconocido` |
+| `POST /api/v1/coleccion/{id}/adoptar` | — | 200 `{companero, archivada}` | 400 `id_invalido`; 404 `elemento_desconocido`; 409 `vida_en_curso` |
+| `POST /api/v1/coleccion/{id}/borrar` | — | 200 `{testigo, caduca_s, elemento}`: **no borra**; dice qué se borraría | 400 `id_invalido`; 404 `elemento_desconocido` |
+| `POST /api/v1/coleccion/{id}/borrar/confirmar` | `{testigo}` | 200 `{borrado: id}` | 400 `id_invalido`, `testigo_invalido` (falta, caducado, usado o de otro elemento); 404 `elemento_desconocido` |
 
 **Lanzar una vida.** `mundo` es obligatorio. Las opciones se completan con los defectos declarados y se validan con
 `ida/mundos/opciones.py` (O8). El carácter, por orden: `arquetipo` (los cinco rasgos, en [0, 1]); un preset `caracter`
@@ -524,3 +537,148 @@ Otras: [detalle de Ahora](img/t4a_ver_mas_ahora.png), [de Cuerpo y ánimo](img/t
 [de Logros](img/t4a_ver_mas_logros.png), [de Carácter](img/t4a_ver_mas_caracter.png), [pausa con «Paso a
 paso»](img/t4a_vivero_pausa.png), [mínimo](img/t4a_vivero_minimo.png), [archivos](img/t4a_vivero_archivos.png),
 [presets con el teclado](img/t4a_presets_flechas.png) y [Laboratorio desde el Vivero](img/t4a_lab_desde_vivero.png).
+
+## 13. Vivero: compañero, colección y fichas (T4b)
+
+Fijado en T4b (26/11/2026). Desarrolla O9 y O10. El código: `ida/telemetria/vivero.py` (modelo, ficha v1, conversión,
+archivo y borrado), las rutas en `api_v1.py`, la antesala en `web/vistas/antesala.js`, la tarjeta Estirpe en
+`web/vistas/vivero.js` y la Colección en `web/vistas/coleccion.js`. **Regla de esta sección: nada de lo que el usuario
+ha criado se borra ni se sobrescribe sin una confirmación expresa.**
+
+### 13.1 Dónde vive cada cosa
+
+```
+<datos>/                       datos/ del proyecto o, con python -m ida --datos RUTA, RUTA
+  <mundo>/                     el compañero de ese mundo: su estirpe viva (O9), como hasta ahora
+    linaje.json                generaciones, último arquetipo y legado (ida/nucleo/linaje.py)
+    memoria.db, -wal, -shm     lo vivido (ida/nucleo/persistencia.py)
+    bioma/                     (archivos) es del mundo, no de la estirpe: no se archiva ni se mueve
+  vivero/                      la colección
+    indice.json                índice (se rehace leyendo fichas/ y estirpes/ si falta o no cuadra)
+    fichas/<id>.json           fichas de individuo v1
+    estirpes/<id>/             estirpes archivadas: sus linaje.json y memoria.db* y estirpe.json (metadatos)
+```
+
+- **Compañero** de un mundo = `<datos>/<mundo>/linaje.json` y `memoria.db*`. Cada «Empezar» lo continúa con una
+  generación nueva (el ejecutor no cambia). Si no hay `linaje.json`, el mundo no tiene compañero.
+- **Estirpe archivada** = esos mismos ficheros, copiados a `vivero/estirpes/<id>/`, con `estirpe.json` (`id`, `mundo`,
+  `nombre`, `archivada` (fecha), `motivo` (`adoptar`, `empezar_de_cero` o `archivar`), `generaciones`, `mejor_score`,
+  `ultimo`).
+- **Identificadores**: `<mundo>-<AAAAMMDD>-<HHMMSS>-<6 hex al azar>`. La API solo acepta `^[a-z]+-\d{8}-\d{6}-[0-9a-f]{6}$`:
+  ninguna ruta sale de `vivero/`.
+- **Score** de una vida = el `fitness` que ya calcula `ida/historico.py` (`calcular_fitness`, por mundo; en Crafter,
+  1000 × logros + pasos) y que ordena el linaje. No es la Score oficial de D17 (media geométrica sobre episodios), que no
+  se puede dar por vida. *Mejor Score* de una estirpe o ficha = el máximo de sus vidas.
+- Lo aprendido es de cada mundo: una ficha o estirpe de otro mundo no se puede adoptar.
+
+### 13.2 Ficha de individuo v1 (O10)
+
+```jsonc
+{
+  "tipo": "ida_ficha", "version": 1,
+  "id": "crafter-20261126-101500-a1b2c3",
+  "nombre": "Crafter_G3",                       // se puede renombrar; por defecto, el individuo
+  "mundo": "crafter",
+  "individuo": "Crafter_G3", "generacion": 3,
+  "arquetipo": {"nombre": "IdA", "linaje": "Crafter", "generacion": 3, "padre": "Crafter_G2",
+                "apertura": 0.55, "responsabilidad": 0.7, "neuroticismo": 0.45, "extraversion": 0.3, "umbral_miedo": 0.65},
+  "legado": {},                                 // Memoria.legado(): lo que hereda su descendencia
+  "vidas": [{"individuo": "Crafter_G1", "generacion": 1, "latidos": 812, "score": 4812.0, "causa_muerte": "zombi",
+             "vivo": false, "logros": ["collect_wood"], "puntuacion": {}}],
+  "mejor_score": 4812.0,
+  "fecha": "2026-11-26T10:15:00",               // cuándo se guardó o se importó
+  "commit": "63191b9…",                         // git rev-parse HEAD (local, sin red); null si no se puede leer
+  "origen": "companero",                        // companero | importada | panel
+  "avisos": []                                  // lo que faltaba al convertir una ficha antigua
+}
+```
+
+`vidas` va en orden de generación; es lo que guarda el linaje (la retención de `historico.py` conserva hasta 20
+generaciones, las de más Score, así que en estirpes largas hay huecos). El legado es el de la estirpe en el momento de
+guardar: el que heredaría la generación siguiente.
+
+**Guardar** hace una ficha del compañero: su último individuo (el de la vida que acaba de terminar) con el historial de
+la estirpe.
+
+**Fichas antiguas** (las que descarga `panel.html` y las que acepta la antesala de T3). Se convierten al importarlas;
+lo que falta se apunta en `avisos` y la interfaz lo enseña:
+
+| Antigua | Cómo se convierte | Lo que suele faltar (aviso) |
+|---|---|---|
+| `tipo: "ida_individuo_v1"` (descarga de un individuo o «Restaurar en antesala») | una vida con `latidos`, `puntuacion`, `vivo` y Score (`fitness` o recalculado); `arquetipo` y `legado` tal cual | causa de muerte, logros (salvo `puntuacion.logros`), fecha, commit, historial (solo una vida), legado (el de «Restaurar» va vacío: no hereda saber) |
+| `tipo: "ida_linaje_completo_v1"` (descarga del linaje) | `vidas` = sus `generaciones`; individuo = la de mayor generación; `arquetipo_actual` y `legado` | fecha y commit |
+| sin `tipo`, con `arquetipo`, `arquetipo_actual` o `generaciones`, y/o `legado` (lo que aceptaba T3) | como las anteriores | lo mismo |
+| ficha v1 | se valida y recibe un `id` nuevo | — |
+
+Una ficha sin carácter ni legado, o con un carácter fuera de rango, no se importa (`ficha_invalida`). El arquetipo se
+completa con los campos de `Arquetipo` que falten (`linaje` = el nombre del mundo, `generacion` de la ficha, `padre`
+nulo) y se descartan los que no son suyos.
+
+### 13.3 Acciones y qué tocan en disco
+
+| Acción | Qué hace | Lo que nunca hace |
+|---|---|---|
+| **Guardar** | crea `vivero/fichas/<id>.json` | no sobrescribe: si el fichero existiera, otro `id` |
+| **Adoptar una ficha** | archiva el compañero (si lo hay) y escribe un `linaje.json` nuevo en `<datos>/<mundo>/` con el arquetipo, el legado y las vidas de la ficha; la ficha se queda en la colección | no borra el compañero anterior: queda como estirpe archivada (motivo `adoptar`) |
+| **Adoptar una estirpe archivada** | archiva el compañero (si lo hay) y devuelve la estirpe a `<datos>/<mundo>/` (sale de `estirpes/`) | ídem |
+| **Empezar de cero** (antesala y `POST vidas` con `tabula_rasa`) | archiva el compañero (motivo `empezar_de_cero`) y lanza la vida sin linaje | no hace `rmtree`. Solo la CLI (`--tabula-rasa`) conserva su conducta de siempre (borrar `<datos>/<mundo>`) |
+| **Renombrar** | cambia `nombre` en la ficha o en `estirpe.json` (escritura atómica) | nada más cambia |
+| **Exportar** | descarga la ficha (de una estirpe archivada o del compañero, la ficha que daría «Guardar») | no toca disco |
+| **Importar** | convierte (13.2) y crea una ficha nueva | no sobrescribe |
+| **Borrar** | dos pasos: `pedir` devuelve un testigo (un solo uso, 120 s, ligado a ese elemento) y lo que se perdería; `confirmar` con ese testigo borra la ficha o la estirpe archivada | sin testigo válido no borra. El compañero no se borra por la API: hay que archivarlo antes |
+
+**Archivar** copia cada fichero de la estirpe a la carpeta nueva, comprueba que la copia tiene el mismo tamaño y solo
+entonces quita los originales; si algo falla, los originales se quedan y la carpeta a medias se marca `incompleta` en su
+`estirpe.json`. Escribir (fichas, índice, `estirpe.json`, `linaje.json` de una adopción) es atómico: fichero temporal y
+`os.replace`. Con una vida de ese mundo en marcha, adoptar y archivar responden 409 `vida_en_curso` (la vida escribe
+en esos ficheros); «Empezar de cero» desde la antesala para antes la vida, como cualquier lanzamiento con `reemplazar`.
+
+**Ranking por mundo**: el compañero, sus estirpes archivadas y sus fichas, por mejor Score (de mayor a menor).
+
+### 13.4 Antesala, Estirpe y Colección
+
+- **Antesala, paso 3**: un bloque «Tu compañero» con tres opciones. *Continuar con tu compañero* (por defecto si
+  existe; dice su generación y su mejor Score), *Adoptar de la colección* (fichas y estirpes de ese mundo, con su
+  Score) y *Empezar de cero (se archiva)*. Sin compañero, solo las dos últimas. La carga de ficha de T3 pasa a ser
+  «Importar a la colección» (la ficha importada queda elegida para adoptar). El carácter del paso 2 solo cuenta al
+  empezar de cero o sin compañero: una estirpe que continúa hereda el de su padre con mutación (el ejecutor no cambia),
+  y la antesala lo dice.
+- **Tarjeta Estirpe** (Vivero): las generaciones en una línea de tiempo (individuo, Score, causa de muerte; la vida en
+  curso al final), el mejor Score y los botones *Guardar* y *Colección*. Su «Ver más»: el linaje entero en tabla y la
+  mutación de cada rasgo a lo largo de las generaciones (una línea por rasgo). Sale del linaje (`GET companeros/{m}`),
+  no de lo visto en la página; se vuelve a pedir al empezar cada vida y al terminar.
+- **Carácter**: el cambio respecto a la generación anterior sale también del linaje.
+- **Colección** (`#/vivero/coleccion`): por mundo, el compañero, las estirpes archivadas y las fichas, con su ranking, y
+  las acciones de 13.3 (adoptar, renombrar, exportar, importar y borrar con confirmación).
+
+### 13.5 Registro: cierre, resumen del saber y requisitos (añadidos a v1)
+
+Son campos nuevos: el registro sigue siendo v1 (sección 4).
+
+| Campo | Nivel | Contenido |
+|---|---|---|
+| `cierre` | — | `true` solo en el **registro de cierre**: cuando una vida termina por muerte, después de `Organismo._aprender_de_la_muerte`, el ejecutor pide al observador un registro más con el mismo `latido`. Es el último registro de esa vida, con `memoria`, `resumen_saber` (y, en cognitivo, `saber` y `requisitos`) al día, `experiencia.aprendizaje` con lo que se apuntó al morir y `hechos` con lo que cambió en la memoria al morir (`aprende`, `peligro`, `duda`, `refuta`; nunca otra vez `muere`). Va a la grabación y a la SSE; no a la consola ni a `al_latir`, así que la salida de siempre no cambia |
+| `resumen_saber` | vital | totales de toda la memoria: `proposiciones`, `demostradas`, `hipotesis`, `refutadas`, `heredadas` (proposiciones con la marca de herencia), `aciertos`, `sorpresas`, `requisitos` y `requisitos_confirmados`, y `fuentes` (`{manual, experiencia, herencia, biblioteca}`: de cuántos saberes, proposiciones y requisitos, es cada fuente) |
+| `requisitos` | cognitivo | todos los requisitos de acción de la sección «requisitos» (si el mundo la monta), con la forma del hecho `aprende` de requisito (`verbo`, `clase`, `requiere`, `cerca`, `efecto`, `confirmado`, `fuente`, `confianza`): así «Lo que sabe» enseña también los del manual que no cambian en la vida |
+
+Las cifras de «Lo que sabe» salen de `resumen_saber`, y «y N cosas más» = proposiciones no refutadas + requisitos −
+las 5 que se ven. El diario enseña los hechos del cierre con «Al morir, …».
+
+### 13.6 Etiquetas del cuerpo por mundo
+
+Las cuatro barras del registro (`cuerpo`) son las constantes del `Soma`; lo que representan depende del mundo. Cada
+`web/i18n/clases/<mundo>.json` declara en `cuerpo` las barras que se enseñan, con su etiqueta y una ayuda en es/en; una
+barra que no tiene sentido en un mundo no se declara y no se enseña.
+
+| Mundo | `vitalidad` | `alimentacion` | `energia` | `descanso` | De dónde sale |
+|---|---|---|---|---|---|
+| Crafter | Salud (salud del juego, 0–9) | Comida y bebida (la menor de las dos) | Energía (la del juego; sube durmiendo) | — (el adaptador le da la misma energía) | `MundoCrafter._vitales` (`vitales_propios`) |
+| mínimo | Salud | Alimentación (bayas +20) | Energía | Descanso (duerme) | metabolismo del `Soma` |
+| archivos | Salud | Alimentación (comida +8) | Energía (atacar cuesta 2) | Descanso (duerme) | metabolismo del `Soma` |
+| Snake | Vida (100 hasta chocar) | Saciedad (comida +25) | Energía (baja si pasa hambre) | — (no duerme: solo baja) | metabolismo del `Soma` |
+| ajedrez | Material propio (100 × material / 39) | Balance de material (60 + 5 × diferencia) | — (fija en 100) | — (fija en 100) | `MundoAjedrez.observar` (`vitales_propios`) |
+
+### 13.7 Reparto entre sistemas
+
+El servidor cuenta el sistema de cada acción de la vida en curso desde su primer latido (como el diario) y lo manda en
+el evento `diario`; el Vivero lo continúa con cada registro. «Ver más» de Ahora dice ya «desde el inicio de la vida».
