@@ -1,30 +1,34 @@
 // Vivero (O1, O3, O9, O19, O20, O21): IdA de un vistazo.
 // - La escena en grande (dibujo.js, el mismo del visor), con el ritmo (pausa, lento, cómodo, ×4, máximo y, en pausa,
 //   paso a paso) y un diario vivo de los hechos de la vida, en frases (frases.js).
-// - Tarjetas: Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter y Estirpe (hueco hasta T4b). Cada una
-//   con «Ver más», que abre un panel lateral con su detalle y, al pie, «Abrir en el Laboratorio».
+// - Tarjetas: Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter y Estirpe. Cada una con «Ver más», que
+//   abre un panel lateral con su detalle y, al pie, «Abrir en el Laboratorio».
+// - T4b: la Estirpe y el cambio de carácter salen del linaje del compañero (GET companeros/{m}), no de lo visto en la
+//   página; las barras del cuerpo, de las etiquetas de cada mundo; el reparto entre sistemas, del servidor (desde el
+//   inicio de la vida); y el registro de cierre (cierre: true) pone en el diario lo aprendido al morir.
 // - Datos: la SSE de la vida al nivel cognitivo (?nivel=cognitivo) y su evento «diario» (lo de antes de conectarse).
 //   Nada se pide al motor: todo sale del registro del latido (secciones 4 y 5 de DISENO_OBSERVABILIDAD).
 
-import { api, escuchar } from '../api.js';
+import { api, descargas, escuchar } from '../api.js';
 import { t } from '../i18n.js';
 import { cargarSprites, dibujarEscena, urlSprite } from '../dibujo.js';
 import { avisar, esc } from '../componentes/util.js';
 import { radar } from '../componentes/radar.js';
 import {
-  ICONOS_HECHO, ahoraFrase, accionFrase, cargarFrases, capital, clase, claseDeHecho, etiquetaPuntos, fuenteDe, hechoFrase,
-  logro, logrosDelMundo, planDeAccion, planNombre, requisitoFrase, saberFrase, spriteDe, totalLogros, valorPuntos,
+  ICONOS_HECHO, ahoraFrase, accionFrase, barrasDelCuerpo, cargarFrases, capital, causaMuerte, clase, claseDeHecho,
+  etiquetaPuntos, fuenteDe, hechoFraseConCierre, logro, logrosDelMundo, planDeAccion, planNombre, requisitoFrase, saberFrase,
+  spriteDe, totalLogros, valorPuntos,
 } from '../frases.js';
 
 const RITMOS = ['pausa', 'lento', 'comodo', 'x4', 'max'];
 const ICONOS_RITMO = { pausa: '❚❚', lento: '◀▶', comodo: '▶', x4: '▶▶', max: '⏭' };
-const MEDIDORES = ['vitalidad', 'alimentacion', 'energia', 'descanso'];
 const QUIMICA = { dopamina: 100, placer: 100, estres: 1 };   // escala de cada sustancia en el registro
 const RASGOS = ['apertura', 'responsabilidad', 'neuroticismo', 'extraversion', 'umbral_miedo'];
 const DIARIO_VISIBLE = 7;          // hechos en el diario de un vistazo
 const DIARIO_MAX = 400;            // hechos que se guardan de la vida en curso
 const NUEVO_MS = 2600;             // cuánto se resalta lo recién aprendido
 const SISTEMAS = ['S1', 'S2', 'S3'];
+const ESTIRPE_VISIBLE = 6;         // generaciones en la línea de tiempo de la tarjeta Estirpe
 // Hechos que el diario de un vistazo no enseña (son muchos y técnicos): van al detalle de «Ahora».
 const FUERA_DEL_DIARIO = new Set(['estrategia']);
 const TARJETAS = ['cuerpo', 'ahora', 'sabe', 'logros', 'caracter', 'estirpe'];
@@ -39,6 +43,7 @@ function barra(valor, nombre, { max = 100, nivel = true } = {}) {
 }
 
 function claveSaber(p) { return `p:${p.sujeto ?? p.clase}|${p.relacion}`; }
+function puntos(v) { return v == null || !Number.isFinite(Number(v)) ? '–' : String(Math.round(Number(v))); }
 function claveReq(h) { return `r:${h.verbo}|${h.clase}`; }
 
 class IdaVivero extends HTMLElement {
@@ -52,19 +57,25 @@ class IdaVivero extends HTMLElement {
     this.diario = [];              // hechos de la vida en curso, del más antiguo al más reciente
     this.requisitos = new Map();   // clave -> último «aprende requisito»
     this.nuevos = new Map();       // clave de lo aprendido -> momento (ms) en que se aprendió
-    this.reparto = [];             // sistema de las últimas 100 acciones
-    this.generaciones = new Map(); // generación -> arquetipo visto (para la mutación entre generaciones)
+    this.reparto = { vida: null, cuenta: {} };   // sistema de cada acción de la vida, desde su inicio (lo da el servidor)
+    this.generaciones = new Map(); // generación -> arquetipo visto (por si aún no está en el linaje)
+    this.estirpe = null;           // el compañero de este mundo con su linaje (GET companeros/{m})
     this.detalle = null;           // tarjeta abierta en el panel lateral
     this.foco = null;              // a quién devolver el foco al cerrar el panel
     this._alIdioma = () => this.pintar();
     this._alTema = () => this.dibujar();
     this._alTecla = (ev) => { if (ev.key === 'Escape' && this.detalle) this.cerrarDetalle(); };
+    this._alClic = (ev) => {
+      const b = ev.target.closest('[data-estirpe]');
+      if (b && this.contains(b)) this.accionEstirpe(b.dataset.estirpe, b);
+    };
   }
 
   connectedCallback() {
     document.addEventListener('ida:idioma', this._alIdioma);
     document.addEventListener('ida:tema', this._alTema);
     document.addEventListener('keydown', this._alTecla);
+    this.addEventListener('click', this._alClic);
     this.innerHTML = `<p class="suave">${esc(t('vivero.conectando'))}</p>`;
     this.iniciar();
   }
@@ -73,11 +84,21 @@ class IdaVivero extends HTMLElement {
     document.removeEventListener('ida:idioma', this._alIdioma);
     document.removeEventListener('ida:tema', this._alTema);
     document.removeEventListener('keydown', this._alTecla);
+    this.removeEventListener('click', this._alClic);
     if (this.cerrar) this.cerrar();
   }
 
   async prepararMundo(mundo) {
-    await Promise.all([cargarSprites(mundo), cargarFrases(mundo)]);
+    await Promise.all([cargarSprites(mundo), cargarFrases(mundo), this.cargarEstirpe(mundo)]);
+  }
+
+  /** El compañero con su linaje: al empezar cada vida y al terminar (el linaje solo cambia entre vidas). */
+  async cargarEstirpe(mundo = this.vida && this.vida.mundo) {
+    if (!mundo) return;
+    try {
+      this.estirpe = (await api.companero(mundo)).companero;
+    } catch { /* sin linaje: la tarjeta lo dice */ }
+    this.programar();
   }
 
   reiniciarVida() {
@@ -86,7 +107,7 @@ class IdaVivero extends HTMLElement {
     this.diario = [];
     this.requisitos = new Map();
     this.nuevos = new Map();
-    this.reparto = [];
+    this.reparto = { vida: null, cuenta: {} };
     this.generaciones = new Map();
   }
 
@@ -109,25 +130,28 @@ class IdaVivero extends HTMLElement {
       diario: (d) => {
         this.diario = (d.hechos || []).slice(-DIARIO_MAX);
         this.requisitos = new Map((d.requisitos || []).map((h) => [claveReq(h), h]));
+        if (d.reparto) this.reparto = { vida: d.reparto.vida, cuenta: { ...(d.reparto.cuenta || {}) } };
         this.programar();
       },
       registro: (r) => this.recibir(r),
       ritmo: (d) => { if (this.vida) { this.vida.ritmo = d.ritmo; this.pintarRitmo(); } },
-      fin: (v) => { this.vida = v; this.pintar(); },
+      fin: (v) => { this.vida = v; this.pintar(); this.cargarEstirpe(v.mundo); },
     });
   }
 
   /** Un registro nuevo: el estado de la vida, el diario, lo recién aprendido y el reparto entre sistemas. */
   recibir(r) {
-    if (this.registro && r.vida !== this.registro.vida) this.escena = null;
-    const repetido = this.registro && this.registro.vida === r.vida && this.registro.latido === r.latido;
+    const otraVida = this.registro && r.vida !== this.registro.vida;
+    if (otraVida) { this.escena = null; this.cargarEstirpe(); }   // la generación anterior ya está en el linaje
+    const repetido = this.registro && this.registro.vida === r.vida && this.registro.latido === r.latido
+      && Boolean(this.registro.cierre) === Boolean(r.cierre);
     this.registro = r;
     if (r.escena) this.escena = r.escena;
     if (r.arquetipo) this.generaciones.set(r.generacion, r.arquetipo);
     if (!repetido) {
       const ahora = performance.now();
       for (const h of r.hechos || []) {
-        const marcado = { ...h, latido: r.latido, vida: r.vida, generacion: r.generacion };
+        const marcado = { ...h, latido: r.latido, vida: r.vida, generacion: r.generacion, ...(r.cierre ? { cierre: true } : {}) };
         this.diario.push(marcado);
         if (h.tipo === 'aprende') {
           if (h.saber === 'requisito') { this.requisitos.set(claveReq(h), marcado); this.nuevos.set(claveReq(h), ahora); }
@@ -135,9 +159,9 @@ class IdaVivero extends HTMLElement {
         }
       }
       if (this.diario.length > DIARIO_MAX) this.diario.splice(0, this.diario.length - DIARIO_MAX);
-      if (r.accion && r.accion.sistema) {
-        this.reparto.push(r.accion.sistema);
-        if (this.reparto.length > 100) this.reparto.shift();
+      if (!r.cierre && r.accion && r.accion.sistema) {
+        if (this.reparto.vida !== r.vida) this.reparto = { vida: r.vida, cuenta: {} };
+        this.reparto.cuenta[r.accion.sistema] = (this.reparto.cuenta[r.accion.sistema] || 0) + 1;
       }
     }
     this.programar();
@@ -207,7 +231,7 @@ class IdaVivero extends HTMLElement {
         </div>
         <div class="columna-tarjetas">${tarjeta('cuerpo')}${tarjeta('ahora')}${tarjeta('sabe')}</div>
       </div>
-      <div class="fila-tarjetas">${tarjeta('logros')}${tarjeta('caracter')}${tarjeta('estirpe', 'hueco')}</div>
+      <div class="fila-tarjetas">${tarjeta('logros')}${tarjeta('caracter')}${tarjeta('estirpe')}</div>
       <div class="velo" data-velo hidden></div>
       <aside class="cajon tarjeta" role="dialog" aria-modal="true" aria-labelledby="cajon-titulo" data-cajon hidden>
         <header><h2 id="cajon-titulo" tabindex="-1"></h2>
@@ -324,12 +348,20 @@ class IdaVivero extends HTMLElement {
       añadir(claveSaber(p), { clave: claveSaber(p), frase: saberFrase(mundo, p), clase: p.sujeto,
         hipotesis: p.estado === 'hipotesis', fuente: fuenteDe(p), confianza: p.confianza });
     }
-    for (const req of this.requisitos.values()) {
-      if (req.vida !== r.vida) continue;
+    // Todos los requisitos (T4b: el registro cognitivo los trae, también los del manual que no cambian en la vida)
+    const reqs = Array.isArray(r.requisitos) ? r.requisitos : [...this.requisitos.values()].filter((q) => q.vida === r.vida);
+    for (const req of reqs) {
       añadir(claveReq(req), { clave: claveReq(req), frase: requisitoFrase(mundo, req), clase: req.clase,
         hipotesis: !req.confirmado, fuente: fuenteDe(req), confianza: req.confianza, req });
     }
     return items;
+  }
+
+  /** Cuánto sabe en total (T4b): proposiciones no refutadas y requisitos, de toda la memoria (resumen_saber). */
+  totalSaber() {
+    const rs = (this.registro || {}).resumen_saber;
+    if (!rs) return null;
+    return Math.max(0, Number(rs.proposiciones) - Number(rs.refutadas)) + Number(rs.requisitos || 0);
   }
 
   itemSaber(it, detalle = false) {
@@ -357,10 +389,10 @@ class IdaVivero extends HTMLElement {
   }
 
   itemHecho(h) {
-    const frase = hechoFrase(this.vida.mundo, h);
+    const frase = hechoFraseConCierre(this.vida.mundo, h);
     if (!frase) return '';
     const c = claseDeHecho(h);
-    return `<li class="hecho hecho-${esc(h.tipo)}"><span class="icono-hecho" aria-hidden="true">${ICONOS_HECHO[h.tipo] || '•'}</span>
+    return `<li class="hecho hecho-${esc(h.tipo)}${h.cierre ? ' al-morir' : ''}"><span class="icono-hecho" aria-hidden="true">${h.cierre ? '🕯️' : ICONOS_HECHO[h.tipo] || '•'}</span>
       ${c && h.tipo !== 'muere' ? this.icono(c) : ''}<span class="texto">${esc(frase)}</span>
       <span class="latido-hecho">${esc(t('vivero.latido_corto', { n: h.latido ?? '' }))}</span></li>`;
   }
@@ -380,7 +412,7 @@ class IdaVivero extends HTMLElement {
     pintar('sabe', this.htmlSabe(false));
     pintar('logros', this.htmlLogros(false));
     pintar('caracter', this.htmlCaracter(false));
-    pintar('estirpe', this.htmlEstirpe());
+    pintar('estirpe', this.htmlEstirpe(false));
     const diario = this.querySelector('[data-diario]');
     if (diario) {
       const visibles = this.diario.filter((h) => !FUERA_DEL_DIARIO.has(h.tipo)).slice(-DIARIO_VISIBLE).reverse();
@@ -393,8 +425,9 @@ class IdaVivero extends HTMLElement {
     const r = this.registro;
     if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
     const cuerpo = r.cuerpo || {};
-    const medidores = MEDIDORES.map((m) => `<div class="medidor ${m}"><span>${esc(t(`cuerpo.${m}`))}</span>
-      ${barra(cuerpo[m], t(`cuerpo.${m}`))}<output>${Number.isFinite(Number(cuerpo[m])) ? Number(cuerpo[m]).toFixed(0) : '–'}</output></div>`).join('');
+    const barras = barrasDelCuerpo(this.vida.mundo);   // T4b: las de este mundo, con sus nombres (sección 13.6)
+    const medidores = barras.map(({ clave: m, etiqueta, ayuda }) => `<div class="medidor ${m}" ${ayuda ? `title="${esc(ayuda)}"` : ''}><span>${esc(etiqueta)}</span>
+      ${barra(cuerpo[m], etiqueta)}<output>${Number.isFinite(Number(cuerpo[m])) ? Number(cuerpo[m]).toFixed(0) : '–'}</output></div>`).join('');
     const afecto = (r.afecto || {}).estado;
     const tono = ['MIEDO', 'PANICO', 'ALERTA'].includes(afecto) ? 'falta' : ['CALMA', 'CURIOSIDAD'].includes(afecto) ? 'listo' : 'aviso';
     const estados = [cuerpo.dormido ? t('cuerpo.dormida') : '', cuerpo.cargando ? t('cuerpo.cargando', { que: clase(this.vida.mundo, cuerpo.cargando) }) : '']
@@ -412,7 +445,9 @@ class IdaVivero extends HTMLElement {
     const nec = (r.necesidades || []).map((n) => `<div class="medidor"><span>${esc(t(`necesidad.${n.nombre}`) === `necesidad.${n.nombre}` ? n.nombre : t(`necesidad.${n.nombre}`))}</span>
       ${barra(Number(n.deficit) * 100, n.nombre, { nivel: false })}<output>${Math.round(Number(n.deficit) * 100)} %</output></div>`).join('');
     const valencia = Number((r.afecto || {}).valencia ?? 0);
+    const ayudas = barras.filter((b) => b.ayuda).map((b) => `<li><b>${esc(b.etiqueta)}</b>: ${esc(b.ayuda)}</li>`).join('');
     return `${medidores}${animo}
+      ${ayudas ? `<ul class="lista-simple suave pequeno">${ayudas}</ul>` : ''}
       <h4>${esc(t('detalle.quimica'))}</h4>${quimica}
       <p class="suave pequeno">${esc(t('detalle.valencia', { v: valencia.toFixed(2) }))}</p>
       <h4>${esc(t('detalle.indicadores'))}</h4>${ind || `<p class="suave pequeno">–</p>`}
@@ -438,8 +473,10 @@ class IdaVivero extends HTMLElement {
     }).join('');
     const activas = ((r.estrategias || {}).activas || []).map((e) => `<li>🧭 ${esc(planNombre(e.nombre))} <span class="suave">· ${esc(e.sistema)}</span></li>`).join('');
     const cuenta = Object.fromEntries(SISTEMAS.map((s) => [s, 0]));
-    for (const s of this.reparto) cuenta[s] = (cuenta[s] || 0) + 1;
-    const total = Math.max(1, this.reparto.length);
+    const propia = this.reparto.vida === r.vida ? this.reparto.cuenta : {};
+    for (const [s, n] of Object.entries(propia)) cuenta[s] = (cuenta[s] || 0) + n;
+    const acciones = Object.values(cuenta).reduce((a, b) => a + b, 0);
+    const total = Math.max(1, acciones);
     const reparto = Object.entries(cuenta).filter(([, n]) => n || true).map(([s, n]) => `<div class="medidor"><span>${esc(t(`sistema.${s}`) === `sistema.${s}` ? s : t(`sistema.${s}`))}</span>
       ${barra((n / total) * 100, s, { nivel: false })}<output>${Math.round((n / total) * 100)} %</output></div>`).join('');
     const planes = this.diario.filter((h) => h.tipo === 'estrategia').slice(-8).reverse().map((h) => this.itemHecho(h)).join('');
@@ -450,7 +487,7 @@ class IdaVivero extends HTMLElement {
       ${candidatos ? `<table class="tabla"><thead><tr><th>${esc(t('detalle.sistema'))}</th><th>${esc(t('detalle.candidato'))}</th><th class="num">${esc(t('detalle.total'))}</th></tr></thead><tbody>${candidatos}</tbody></table>` : `<p class="suave pequeno">–</p>`}
       ${trib.plus_decide ? `<p class="suave pequeno">${esc(t('detalle.plus_decide'))}</p>` : ''}
       <h4>${esc(t('detalle.estrategias'))}</h4>${activas ? `<ul class="lista-simple">${activas}</ul>` : `<p class="suave pequeno">–</p>`}
-      <h4>${esc(t('detalle.reparto', { n: this.reparto.length }))}</h4>${reparto}
+      <h4>${esc(t('detalle.reparto', { n: acciones }))}</h4>${reparto}
       <h4>${esc(t('detalle.planes'))}</h4>${planes ? `<ol class="lista-diario">${planes}</ol>` : `<p class="suave pequeno">–</p>`}`;
   }
 
@@ -459,13 +496,17 @@ class IdaVivero extends HTMLElement {
     if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
     const items = this.loQueSabe();
     if (!detalle) {
+      const vistos = Math.min(5, items.length);
+      const total = this.totalSaber() ?? items.length;   // T4b: de toda la memoria, no de lo que trae el registro
       return items.length ? `<ul class="lista-saber">${items.slice(0, 5).map((it) => this.itemSaber(it)).join('')}</ul>
-        ${items.length > 5 ? `<p class="suave pequeno">${esc(t('sabe.y_mas', { n: items.length - 5 }))}</p>` : ''}`
+        ${total > vistos ? `<p class="suave pequeno">${esc(t('sabe.y_mas', { n: total - vistos }))}</p>` : ''}`
         : `<p class="suave">${esc(t('sabe.nada'))}</p>`;
     }
     const m = r.memoria || {};
-    const cifras = [['demostradas', m.demostradas], ['hipotesis', m.hipotesis], ['refutadas', m.refutadas],
-      ['aciertos', m.aciertos], ['sorpresas', m.sorpresas], ['heredados', m.heredados]]
+    const rs = r.resumen_saber || {};
+    const cifras = [['demostradas', rs.demostradas ?? m.demostradas], ['hipotesis', rs.hipotesis ?? m.hipotesis],
+      ['refutadas', rs.refutadas ?? m.refutadas], ['requisitos', rs.requisitos ?? 0], ['aciertos', rs.aciertos ?? m.aciertos],
+      ['sorpresas', rs.sorpresas ?? m.sorpresas], ['heredadas', rs.heredadas ?? m.heredados]]
       .map(([k, v]) => `<div class="cifra"><b>${esc(v ?? 0)}</b><span>${esc(t(`sabe.cifra.${k}`))}</span></div>`).join('');
     const mundo = this.vida.mundo;
     const refutadas = (r.saber || []).filter((p) => p.estado === 'refutada')
@@ -475,6 +516,8 @@ class IdaVivero extends HTMLElement {
       .map((h) => this.itemHecho(h)).join('');
     return `<div class="cifras">${cifras}</div>
       <p class="suave pequeno">${esc(t('sabe.leyenda'))}</p>
+      ${rs.fuentes ? `<p class="suave pequeno">${esc(t('sabe.fuentes', { manual: rs.fuentes.manual ?? 0, experiencia: rs.fuentes.experiencia ?? 0,
+        herencia: rs.fuentes.herencia ?? 0, biblioteca: rs.fuentes.biblioteca ?? 0 }))}</p>` : ''}
       <ul class="lista-saber detalle">${items.map((it) => this.itemSaber(it, true)).join('') || `<li class="suave">${esc(t('sabe.nada'))}</li>`}</ul>
       <h4>${esc(t('sabe.refutadas'))}</h4>${refutadas ? `<ul class="lista-saber detalle">${refutadas}</ul>` : `<p class="suave pequeno">${esc(t('sabe.refutadas_vacio', { n: m.refutadas ?? 0 }))}</p>`}
       <h4>${esc(t('sabe.sorpresas'))}</h4>${sorpresas ? `<ol class="lista-diario">${sorpresas}</ol>` : `<p class="suave pequeno">–</p>`}
@@ -515,7 +558,7 @@ class IdaVivero extends HTMLElement {
     const etiquetas = RASGOS.map((x) => t(`rasgo.${x}.nombre`).slice(0, 5));
     const grafico = radar(arq, RASGOS, { etiquetas: detalle ? etiquetas : null, titulo: t('tarjeta.caracter') });
     const gen = r ? r.generacion : null;
-    const previo = gen != null ? this.generaciones.get(gen - 1) : null;
+    const previo = gen != null ? this.arquetipoDe(gen - 1) : null;
     const filas = RASGOS.map((x) => {
       const d = previo ? Number(arq[x]) - Number(previo[x]) : null;
       const cambio = d == null ? '' : `<span class="cambio ${d > 0.004 ? 'sube' : d < -0.004 ? 'baja' : ''}">${d > 0 ? '+' : ''}${d.toFixed(2)}</span>`;
@@ -524,16 +567,107 @@ class IdaVivero extends HTMLElement {
     }).join('');
     if (!detalle) return `<div class="caracter-mini">${grafico}<div>${filas}</div></div>`;
     const nota = previo ? t('caracter.mutacion', { g: gen - 1 }) : t('caracter.sin_previa');
+    const linaje = this.lineaEstirpe();
+    const evolucion = linaje.filter((v) => v.arquetipo).length > 1 ? `<h4>${esc(t('estirpe.mutacion'))}</h4>${this.htmlMutacion(linaje)}` : '';
     return `<div class="caracter-grande">${grafico}</div>${filas}
       <p class="suave pequeno">${esc(nota)}</p>
-      <ul class="lista-simple">${RASGOS.map((x) => `<li><b>${esc(t(`rasgo.${x}.nombre`))}</b>: ${esc(t(`rasgo.${x}.desc`))}</li>`).join('')}</ul>`;
+      <ul class="lista-simple">${RASGOS.map((x) => `<li><b>${esc(t(`rasgo.${x}.nombre`))}</b>: ${esc(t(`rasgo.${x}.desc`))}</li>`).join('')}</ul>
+      ${evolucion}`;
   }
 
-  htmlEstirpe() {
+  /** Los rasgos de una generación de la estirpe: del linaje (o, si aún no está, de lo visto en esta página). */
+  arquetipoDe(gen) {
+    const v = this.lineaEstirpe().find((x) => x.generacion === gen && x.arquetipo);
+    return v ? v.arquetipo : this.generaciones.get(gen) || null;
+  }
+
+  /**
+   * La línea de la estirpe: las vidas del linaje en orden de generación y, al final, la que está en curso (si aún no
+   * ha terminado). Cada una: individuo, generación, Score, causa de muerte, arquetipo.
+   */
+  lineaEstirpe() {
+    const linaje = ((this.estirpe && this.estirpe.linaje) || []).map((v) => ({ ...v }));
+    const r = this.registro;
+    if (r && !linaje.some((v) => v.individuo === r.individuo)) {
+      linaje.push({ individuo: r.individuo, generacion: r.generacion, score: null, causa_muerte: null, vivo: true,
+        en_curso: Boolean(this.vida && this.vida.activa) && !r.cierre, latidos: r.latido, arquetipo: r.arquetipo });
+    }
+    return linaje;
+  }
+
+  itemEstirpe(v) {
+    const mundo = this.vida.mundo;
+    const fin = v.en_curso ? t('estirpe.en_curso', { n: v.latidos ?? 0 })
+      : v.vivo === false ? t('estirpe.murio', { causa: causaMuerte(mundo, v.causa_muerte || 'desgaste'), n: v.latidos ?? '?' })
+        : v.vivo ? t('estirpe.vivio', { n: v.latidos ?? '?' }) : t('estirpe.sin_dato');
+    const mejor = this.estirpe && v.score != null && v.score === this.estirpe.mejor_score;
+    return `<li class="gen${v.en_curso ? ' en-curso' : ''}${mejor ? ' mejor' : ''}"><span class="nudo" aria-hidden="true"></span>
+      <span class="texto"><b>${esc(v.individuo)}</b> <span class="suave pequeno">· ${esc(fin)}</span></span>
+      <span class="score" title="${esc(t('estirpe.score'))}">${mejor ? '🏆 ' : ''}${esc(puntos(v.score))}</span></li>`;
+  }
+
+  htmlEstirpe(detalle) {
+    const linea = this.lineaEstirpe();
+    const e = this.estirpe || {};
     const r = this.registro;
     const gen = r ? r.generacion : (this.vida && this.vida.generacion) || 1;
-    return `<p class="generacion-grande"><b>${esc(t('vivero.generacion', { n: gen }))}</b></p>
-      <p class="suave pequeno">${esc(t('estirpe.pronto'))}</p>`;
+    const visibles = detalle ? linea : linea.slice(-ESTIRPE_VISIBLE);
+    const ocultas = linea.length - visibles.length;
+    const cabeza = `<div class="estirpe-cabeza"><p class="generacion-grande"><b>${esc(t('vivero.generacion', { n: gen }))}</b></p>
+      <p class="suave pequeno">${esc(t('estirpe.resumen', { n: e.generaciones ?? 0, score: puntos(e.mejor_score) }))}</p></div>`;
+    const lista = linea.length ? `<ol class="linea-estirpe">${ocultas > 0 ? `<li class="suave pequeno">${esc(t('estirpe.anteriores', { n: ocultas }))}</li>` : ''}
+      ${visibles.map((v) => this.itemEstirpe(v)).join('')}</ol>` : `<p class="suave pequeno">${esc(t('estirpe.vacia'))}</p>`;
+    const puedeGuardar = Boolean(e.existe);
+    const botones = `<div class="botones-estirpe">
+      <button type="button" class="boton pequeno" data-estirpe="guardar" ${puedeGuardar ? '' : 'disabled'} title="${esc(t('estirpe.guardar_ayuda'))}">💾 ${esc(t('estirpe.guardar'))}</button>
+      <a class="boton pequeno discreto" href="#/vivero/coleccion">🗂️ ${esc(t('estirpe.coleccion'))}</a>
+      ${detalle && puedeGuardar ? `<a class="boton pequeno discreto" href="${esc(descargas.companero(this.vida.mundo))}" download>⬇️ ${esc(t('coleccion.exportar'))}</a>` : ''}</div>`;
+    if (!detalle) return `${cabeza}${lista}${botones}`;
+    const filas = linea.map((v) => `<tr class="${v.en_curso ? 'en-curso' : ''}"><td>${esc(v.generacion ?? '–')}</td><td>${esc(v.individuo)}</td>
+      <td class="num">${esc(puntos(v.score))}</td><td class="num">${esc(v.latidos ?? '–')}</td>
+      <td>${esc(v.en_curso ? t('estirpe.en_curso_corto') : v.vivo === false ? causaMuerte(this.vida.mundo, v.causa_muerte || 'desgaste') : v.vivo ? t('estirpe.vivo') : '–')}</td>
+      <td class="num">${esc((v.logros || []).length || '')}</td></tr>`).join('');
+    const tabla = linea.length ? `<table class="tabla"><thead><tr><th>${esc(t('estirpe.col_gen'))}</th><th>${esc(t('estirpe.col_individuo'))}</th>
+      <th class="num">${esc(t('estirpe.score'))}</th><th class="num">${esc(t('estirpe.col_latidos'))}</th><th>${esc(t('estirpe.col_fin'))}</th>
+      <th class="num">${esc(t('estirpe.col_logros'))}</th></tr></thead><tbody>${filas}</tbody></table>` : '';
+    const mutacion = linea.filter((v) => v.arquetipo).length > 1 ? this.htmlMutacion(linea) : `<p class="suave pequeno">${esc(t('estirpe.sin_mutacion'))}</p>`;
+    const adoptada = e.adoptada_de ? `<p class="suave pequeno">${esc(t('estirpe.adoptada'))}</p>` : '';
+    return `${cabeza}${botones}${adoptada}
+      <h4>${esc(t('estirpe.linaje'))}</h4><p class="suave pequeno">${esc(t('estirpe.linaje_ayuda'))}</p>${tabla}
+      <h4>${esc(t('estirpe.mutacion'))}</h4>${mutacion}`;
+  }
+
+  /** La mutación de cada rasgo a lo largo de las generaciones: una línea por rasgo, con el primero y el último. */
+  htmlMutacion(linea) {
+    const puntosArq = linea.filter((v) => v.arquetipo);
+    const n = puntosArq.length;
+    const ancho = 220;
+    const alto = 34;
+    const x = (i) => (n === 1 ? ancho / 2 : 6 + (i * (ancho - 12)) / (n - 1));
+    const y = (v) => alto - 4 - Number(v) * (alto - 8);
+    return `<div class="mutacion">${RASGOS.map((rasgo) => {
+      const valores = puntosArq.map((v) => Number(v.arquetipo[rasgo] ?? 0.5));
+      const camino = valores.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+      const d = valores[valores.length - 1] - valores[0];
+      return `<div class="mutacion-fila"><span>${esc(t(`rasgo.${rasgo}.nombre`))}</span>
+        <svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="${esc(t('estirpe.mutacion_rasgo', { rasgo: t(`rasgo.${rasgo}.nombre`), desde: valores[0].toFixed(2), hasta: valores[valores.length - 1].toFixed(2), n }))}">
+          <line x1="0" x2="${ancho}" y1="${y(0.5).toFixed(1)}" y2="${y(0.5).toFixed(1)}" class="guia"/>
+          <polyline points="${camino}" class="trazo"/>${valores.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" class="punto"/>`).join('')}</svg>
+        <output>${valores[0].toFixed(2)} → ${valores[valores.length - 1].toFixed(2)}
+          <span class="cambio ${d > 0.004 ? 'sube' : d < -0.004 ? 'baja' : ''}">${d > 0 ? '+' : ''}${d.toFixed(2)}</span></output></div>`;
+    }).join('')}</div>`;
+  }
+
+  async accionEstirpe(accion, boton) {
+    if (accion !== 'guardar' || !this.vida) return;
+    boton.disabled = true;
+    try {
+      const { ficha } = await api.guardar(this.vida.mundo);
+      avisar(t('estirpe.guardada', { nombre: ficha.nombre }));
+    } catch (err) {
+      avisar(t(`error.${err.codigo || 'red'}`));
+    }
+    boton.disabled = false;
   }
 
   // --- panel lateral ----------------------------------------------------------------------------------------------
@@ -557,7 +691,7 @@ class IdaVivero extends HTMLElement {
     if (!caja) return;
     const id = this.detalle;
     const html = id === 'cuerpo' ? this.htmlCuerpo(true) : id === 'ahora' ? this.htmlAhora(true) : id === 'sabe' ? this.htmlSabe(true)
-      : id === 'logros' ? this.htmlLogros(true) : id === 'caracter' ? this.htmlCaracter(true) : this.htmlEstirpe();
+      : id === 'logros' ? this.htmlLogros(true) : id === 'caracter' ? this.htmlCaracter(true) : this.htmlEstirpe(true);
     if (html === this._ultimoDetalle) return;
     this._ultimoDetalle = html;
     const scroll = caja.scrollTop;
