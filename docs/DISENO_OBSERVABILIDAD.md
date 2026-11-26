@@ -247,6 +247,8 @@ de declaraciones; por defecto, vacía. Cada declaración:
 | `defecto` | el valor que da más Score de base (O8); pasa su propia validación |
 | `etiqueta`, `ayuda` | `{"es": ..., "en": ...}` |
 | `vacia` | opcional: la opción admite no tener valor (`None`, el campo vacío); solo entonces `defecto` puede ser `None` |
+| `etiquetas_valores` | opcional, solo en las de tipo `opcion` (T4a): `{valor: {es, en}}`, el texto que enseña la interfaz para cada valor; cubre exactamente `valores`. No cambia el valor guardado ni el que llega al mundo. Lo declaran Crafter (`vista`, `manual`) y ajedrez (`color`) |
+| `destacada` | opcional, booleano (T4a, O21): la antesala la enseña siempre, aunque sea booleana o admita vacío (las que van en «Avanzado»). La declara la `ventana` de Snake |
 
 `ida/mundos/opciones.py` da `opcion(...)` (crea una declaración y la valida), `validar_declaracion`, `convertir`
 (comprueba y convierte los valores de `--opcion`, que llegan como texto, y los de la antesala, que llegan como JSON;
@@ -362,6 +364,7 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O6, O8, O18, secciones 4, 6 y 8 | T2a: contratos `escena()` v1 (rejilla, árbol, tablero) y opciones declaradas (formato, validación, defecto = el de la medición oficial; los del constructor no cambian), con su implementación completa en Crafter (escena, siete opciones con `mapa` y `semilla_mapa`, sprites MIT) y un visor de comprobación en `/escena`. La escena va en el registro solo cuando cambia (sigue siendo v1). Único cambio en la base: los dos métodos de `Mundo`. Equivalencia OK; invariancia OK con el observador completo en los cuatro mundos; 1208 tests | Rama `vista/t2a-escena` |
 | 26/11/2026 | O6, O8, O18, sección 8 | T2b: `escena()` y opciones declaradas en mínimo (rejilla, tamano/depredadores/comida), archivos (árbol, biomas/frecuencia_brotes/agresividad), Snake (rejilla, dificultad/ventana/ritmo; tablero fijo de la web fuera) y ajedrez (tablero, color/dificultad/elo/apertura; stockfish libre fuera). Sprites SVG e índices para los tres mundos y piezas Unicode para ajedrez; visor ampliado con dibujo de árbol y tablero. Opción CLI `--datos`. Equivalencia OK; invariancia OK con observador completo; 1239 tests | Rama `vista/t2b-mundos` |
 | 26/11/2026 | O9, O19, O20, O21, fase T4 | Tras la prueba de usuario del autor: O9 confirmado (compañero por mundo); O19 (profundidad por capas), O20 (el visionado no es el plazo del latido) y O21 (Snake en la web real, a la vista), aprobadas por el autor. T4 se parte en T4a y T4b | Prueba de usuario del autor de T3 |
+| 26/11/2026 | O3, O5, O8, O19, O20, O21, secciones 6.2, 11 y 12 | T4a: Vivero por tarjetas (Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter; Estirpe como hueco) con «Ver más» en panel lateral y «Abrir en el Laboratorio»; diario de hechos y acción en frase (plantillas es/en y etiquetas de clases por mundo en `web/i18n/clases/`); ritmo cómodo por mundo en el catálogo, ritmos pausa/lento/cómodo/×4/máximo y paso a paso (`POST vidas/actual/paso`); SSE al nivel cognitivo con el diario de la vida; opciones con `etiquetas_valores` y `destacada`; Snake con la web real a la vista; escena sin franjas, tema sistema/claro/oscuro, flechas entre presets. Equivalencia OK; invariancia OK con observador completo; 1305 tests | Rama `vista/t4a-vivero` |
 | 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
 
 ## 11. API v1 del servidor (T3)
@@ -380,19 +383,20 @@ sea la del propio servidor (`http://127.0.0.1:<puerto>`, `http://localhost:<puer
 **Errores.** `{"error": {"codigo": "...", "mensaje": "...", "campo"?: "..."}}`. La interfaz traduce el código con la
 clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_no_permitido`, `ruta_desconocida`,
 `mundo_desconocido`, `mundo_no_instalado`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`,
-`ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_extra`, `extra_desconocido`,
+`ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_pausa`, `sin_extra`, `extra_desconocido`,
 `instalacion_en_curso`, `instalacion_desconocida`, `error_interno`.
 
 | Método y ruta | Cuerpo | Respuesta | Errores |
 |---|---|---|---|
-| `GET /api/v1/mundos` | — | 200 `{mundos: [{nombre, estado, lanzable, extra, tiempo_real, frecuencia_ms, estrella, opciones, instalacion}]}`, Crafter primero | — |
+| `GET /api/v1/mundos` | — | 200 `{mundos: [{nombre, estado, lanzable, extra, tiempo_real, frecuencia_ms, ritmo_comodo_ms, estrella, opciones, instalacion}]}`, Crafter primero | — |
 | `POST /api/v1/mundos/{m}/instalar` | (se ignora) | 202 `{instalacion: {id, mundo, extra, estado, codigo, lineas, url}}` | 404 `mundo_desconocido`; 400 `sin_extra`, `extra_desconocido`; 409 `instalacion_en_curso` |
 | `GET /api/v1/instalaciones/{id}` | — | SSE: `linea` `{texto}` por línea de salida (las anteriores se reenvían) y `fin` con el resumen (`estado` `ok` o `error`, `codigo`) | 404 `instalacion_desconocida` |
 | `GET /api/v1/presets` | — | 200 `{presets: [{id, icono, nombre{es,en}, descripcion{es,en}, arquetipo, por_mundo?}], rasgos, rangos}` | — |
 | `POST /api/v1/vidas` | `{mundo, opciones?, caracter?, arquetipo?, ficha?, semilla?, latidos?, generaciones?, sin_experiencia?, tabula_rasa?, nivel?, reemplazar?}` | 201 `{vida}` | 400 `mundo_desconocido`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`, `ficha_de_otro_mundo`, `json_invalido`; 409 `mundo_no_instalado`, `vida_en_curso` |
-| `GET /api/v1/vidas/actual` | — | 200 `{vida}` (o `null`): la última lanzada, con `activa`, `ritmo`, `ritmo_ajustable` y el último `latido`, `vida`, `generacion`, `individuo` | — |
-| `GET /api/v1/vidas/actual/registro[?nivel=vital]` | — | SSE: `vida` al conectar, `registro` (el registro del latido v1; con `nivel=vital`, recortado a ese nivel), `ritmo` y `fin` | — |
-| `POST /api/v1/vidas/actual/ritmo` | `{ritmo: "pausa" \| "x1" \| "x4" \| "max"}` | 200 `{ritmo}` | 404 `sin_vida`; 400 `ritmo_invalido`; 409 `ritmo_fijo` (tiempo real) |
+| `GET /api/v1/vidas/actual` | — | 200 `{vida}` (o `null`): la última lanzada, con `activa`, `ritmo`, `ritmo_ajustable`, `ritmos`, `ritmo_comodo_ms` y el último `latido`, `vida`, `generacion`, `individuo` | — |
+| `GET /api/v1/vidas/actual/registro[?nivel=vital\|cognitivo]` | — | SSE: `vida` y `diario` al conectar, `registro` (el registro del latido v1; con `nivel`, recortado a ese nivel), `ritmo` y `fin` | — |
+| `POST /api/v1/vidas/actual/ritmo` | `{ritmo: "pausa" \| "lento" \| "comodo" \| "x4" \| "max"}` (`x1` se admite como `comodo`) | 200 `{ritmo}` con el nombre canónico | 404 `sin_vida`; 400 `ritmo_invalido`; 409 `ritmo_fijo` (tiempo real) |
+| `POST /api/v1/vidas/actual/paso` | — | 200 `{ritmo: "pausa", pendientes, latido}`: deja pasar un latido | 404 `sin_vida`; 409 `sin_pausa` (no está en pausa), `ritmo_fijo` (tiempo real) |
 | `POST /api/v1/vidas/actual/parar` | — | 200 `{vida}` (ya parada; también desde la pausa) | 404 `sin_vida` |
 
 **Lanzar una vida.** `mundo` es obligatorio. Las opciones se completan con los defectos declarados y se validan con
@@ -405,12 +409,31 @@ JSON de individuo de hoy (`arquetipo`, `arquetipo_actual` o la última de `gener
 `reemplazar: true`, que la para antes. Los datos van a `datos/<mundo>` o, si el servidor se arrancó con
 `python -m ida --datos RUTA`, a `RUTA/<mundo>`.
 
-**Ritmo (O3).** `ida/telemetria/ritmo.py`. El ejecutor llama a `Regulador.esperar(frecuencia_ms, parada)` en el
-`al_latir`, después de publicar el registro: el latido ya terminó y el siguiente no ha empezado. `x1` espera
-`frecuencia_ms` del `Perfil` (lo de antes de T3), `x4` la cuarta parte, `max` nada y `pausa` hasta que cambie el ritmo o
-se pare la vida. En los mundos de tiempo real no se llama y la API responde `ritmo_fijo`. Con plazo lógico la guillotina
-cuenta operaciones, no tiempo: `tests/test_ritmo.py` comprueba que una vida de mínimo hace las mismas acciones a `x1`
-que a `max`.
+**Ritmo (O3, O20).** `ida/telemetria/ritmo.py`. El ejecutor llama a `Regulador.esperar(frecuencia_ms, parada)` en el
+`al_latir`, después de publicar el registro: el latido ya terminó y el siguiente no ha empezado. Desde T4a el regulador
+de una vida lanzada por la API lleva el **ritmo cómodo** del mundo (`catalogo.RITMO_COMODO_MS`, ms por latido, de la
+telemetría y no del motor): `comodo` espera ese periodo, `lento` el doble, `x4` la cuarta parte, `max` nada y `pausa`
+hasta que cambie el ritmo, se pida un paso o se pare la vida. El periodo se mide entre dos salidas de la espera, así que
+lo que se ve avanza con un periodo regular aunque el latido tarde. **Paso a paso** (`POST vidas/actual/paso`, solo en
+pausa): cada petición deja pasar exactamente un latido (se acumulan: N peticiones, N latidos). Sin cómodo (la CLI con
+`--ver`, la antesala antigua) el periodo es `frecuencia_ms` del `Perfil`, como antes; `x1` sigue aceptándose como
+`comodo`. En los mundos de tiempo real no se llama y la API responde `ritmo_fijo`. Con plazo lógico la guillotina cuenta
+operaciones, no tiempo: `tests/test_ritmo.py` comprueba que una vida de mínimo hace las mismas acciones con lento,
+cómodo, ×4, máximo y avanzando de uno en uno en pausa.
+
+| Mundo | Cómodo (ms por latido) | Lento / ×4 | Por qué |
+|---|---|---|---|
+| ajedrez | 1000 | 2000 / 250 | cada latido es una jugada de IdA y la respuesta del rival: con menos de un segundo no se ven las dos piezas moverse |
+| Crafter | 250 | 500 / 62,5 | un paso por casilla; a cuatro casillas por segundo se sigue a IdA por el mapa y se ven acercarse las criaturas. Un latido con plazo lógico tarda unos 20-30 ms de reloj (174 latidos en 5,3 s, incluido el arranque, 26/11/2026), así que ×4 sigue marcándolo el ritmo y no el cálculo |
+| mínimo, archivos | 300 | 600 / 75 | casi todos los latidos son un paso o una espera; más deprisa, el diario corre más de lo que se lee |
+| Snake | — | — | tiempo real: lo marca el mundo |
+
+Son los de la propuesta de partida: en las capturas a ritmo cómodo el diario y la escena se siguen sin perder hechos, y
+no hubo motivo medido para cambiarlos. Se ajustarán con la prueba del autor.
+
+**Diario al conectarse.** El servidor guarda los últimos 400 hechos de la vida en curso (cada uno con `latido`, `vida`
+y `generacion`) y el último «aprende requisito» de cada acción, y los manda en el evento `diario` al abrir la SSE: quien
+recarga la página no pierde el diario ni lo que sabe. Es lo que ya salió por el registro; no se pide nada al motor.
 
 **Estado de cada mundo.** Sin red y sin importar las dependencias:
 
@@ -449,3 +472,55 @@ El dibujo de la escena es un módulo compartido (`web/dibujo.js`) entre el visor
 Otras: [paso 3 a 1024 px](img/t3_antesala_3_empezar_1024.png), [paso 3 en oscuro](img/t3_antesala_3_empezar_oscuro.png),
 [Vivero a ×4](img/t3_vivero_minimo.png), [Vivero tras «Parar»](img/t3_vivero_parada.png),
 [Laboratorio](img/t3_lab.png) y [visor de escena con i18n](img/t3_visor_escena.png).
+
+## 12. Vivero de un vistazo (T4a)
+
+Fijado en T4a (26/11/2026). `ida/telemetria/web/vistas/vivero.js`, con las frases en `web/frases.js`. Se suscribe a la
+SSE al nivel cognitivo (`?nivel=cognitivo`): no necesita nada del completo.
+
+| Tarjeta | De un vistazo | «Ver más» (panel lateral) | Campos del registro |
+|---|---|---|---|
+| Cuerpo y ánimo | vitalidad, alimentación, energía y descanso; ánimo; dormida o lo que lleva | química (dopamina, placer, estrés), valencia, indicadores viscerales, déficit de cada necesidad | `cuerpo`, `quimica`, `afecto`, `necesidades` |
+| Ahora | la acción en frase con su motivo («Come una baya porque tiene hambre») y su plan y sistema | motivo tal como lo anota IdA, acción en bruto, candidatos del Tribunal (los 8 primeros, con el ganador), planes activos, reparto S1/S2/S3/Core de las últimas 100 acciones vistas, cambios de plan recientes | `accion`, `tribunal`, `estrategias`, hechos `estrategia` |
+| Lo que sabe | 5 frases con el sprite de la clase: lo aprendido en esta vida primero; lo nuevo, resaltado unos segundos; las hipótesis con borde discontinuo | cifras (demostradas, hipótesis, refutadas, aciertos, sorpresas, heredados), cada saber con su fuente (manual, experiencia, herencia, biblioteca), confianza y, en los requisitos, cantidades y efecto; refutadas; sorpresas y dudas recientes | `saber` (20 de más confianza), `memoria`, hechos `aprende` (requisitos), `sorpresa`, `duda`, `refuta` |
+| Logros y puntuación | logros conseguidos (n de 22 en Crafter), puntuación del mundo con sus etiquetas, últimos logros | todos los logros del mundo (conseguidos y pendientes) e historia de la vida (hasta 400 hechos) | `score`, hechos |
+| Carácter | radar y los cinco rasgos | radar grande, rasgos con su descripción y cambio respecto a la generación anterior de la misma ejecución | `arquetipo`, `generacion` |
+| Estirpe | hueco: la generación actual | lo mismo; linaje, ranking y fichas son T4b | `generacion` |
+
+Al pie de cada detalle, «Abrir en el Laboratorio» lleva a `#/lab?seccion=<tarjeta>` (el Laboratorio dice de dónde se
+viene; la vista es T5). Junto a la escena va el diario: los 7 hechos más recientes con icono y sprite (los cambios de
+plan, muchos y técnicos, van al detalle de «Ahora»).
+
+**Frases.** Ninguna sale del motor: la interfaz las forma con el tipo y los parámetros (O5). Las plantillas comunes
+(una por tipo de hecho y variante, verbos en presente e infinitivo, relaciones con su género, planes por estrategia y
+motivos por impulso o necesidad) están en `web/i18n/es.json` y `en.json`. Lo propio de cada mundo, en
+`web/i18n/clases/<mundo>.json`: cada clase con artículo definido e indefinido («la madera» / «madera»; «the cow» / «a
+cow») y su género en español, su sprite si su nombre no es el del índice (`wood` → `madera`) o su icono de texto (las
+piezas de ajedrez), las frases de acción propias (`VERBO` o `VERBO:clase`: «tala un árbol», «captura un peón (e4d5)»),
+los logros y las claves de la puntuación. `tests/test_frases_web.py` comprueba que toda clase que declara el código de
+cada mundo (tablas del adaptador, manual de Crafter, índice de sprites) o que sale en una vida corta (mínimo, archivos,
+Crafter y ajedrez; Snake necesita la web real) tiene etiqueta en los dos idiomas, y que cada tipo de hecho del catálogo,
+verbo, relación, estrategia e impulso tiene plantilla.
+
+**Límites conocidos.** Los requisitos del manual que no cambian durante la vida no salen en «Lo que sabe» (el registro
+solo los da como hecho cuando cambian o se cumplen); la fuente «biblioteca» solo se distingue de «manual» en los
+requisitos (en las proposiciones el registro da `autoridad`, que en las vidas de la aplicación es el manual, porque no
+usan biblioteca); el reparto entre sistemas cuenta desde que se abre la página.
+
+**Capturas** (26/11/2026, Chromium de Playwright a 1280 px; servidor con datos en `F:\tmp\t4a\datos`; commit
+`63191b9`; sin errores en la consola).
+
+![Vivero con Crafter, Recomendado, a ritmo cómodo](img/t4a_vivero_crafter.png)
+
+![«Ver más» de Lo que sabe](img/t4a_ver_mas_sabe.png)
+
+![Ajedrez a ritmo cómodo](img/t4a_vivero_ajedrez.png)
+
+![Vivero en inglés y tema oscuro](img/t4a_vivero_en_oscuro.png)
+
+![Antesala de Snake con la web real fuera de «Avanzado»](img/t4a_antesala_snake.png)
+
+Otras: [detalle de Ahora](img/t4a_ver_mas_ahora.png), [de Cuerpo y ánimo](img/t4a_ver_mas_cuerpo.png),
+[de Logros](img/t4a_ver_mas_logros.png), [de Carácter](img/t4a_ver_mas_caracter.png), [pausa con «Paso a
+paso»](img/t4a_vivero_pausa.png), [mínimo](img/t4a_vivero_minimo.png), [archivos](img/t4a_vivero_archivos.png),
+[presets con el teclado](img/t4a_presets_flechas.png) y [Laboratorio desde el Vivero](img/t4a_lab_desde_vivero.png).
