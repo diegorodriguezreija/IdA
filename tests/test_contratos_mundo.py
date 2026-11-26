@@ -176,3 +176,43 @@ def test_cada_mundo_declara_opciones_validas(nombre):
     for d in declaraciones:
         assert validar_declaracion(d) == [], d["nombre"]
         assert convertir(declaraciones, {d["nombre"]: d["defecto"]}) == {d["nombre"]: d["defecto"]}
+
+
+# --- T4a: etiquetas por valor de las opciones de tipo «opcion» --------------------------------------------------------
+def test_etiquetas_valores_validas_y_mal_formadas():
+    es_en = {"oficial": {"es": "Oficial", "en": "Official"}, "cuadrada": {"es": "Cuadrada", "en": "Square"}}
+    d = opcion("vista", "opcion", "oficial", {"es": "Vista", "en": "View"}, {"es": "a", "en": "b"},
+               valores=["oficial", "cuadrada"], etiquetas_valores=es_en)
+    assert d["etiquetas_valores"] == es_en and d["valores"] == ["oficial", "cuadrada"] and d["defecto"] == "oficial"
+    base = dict(d)
+    assert any("faltan 'cuadrada'" in e for e in validar_declaracion(dict(base, etiquetas_valores={"oficial": es_en["oficial"]})))
+    assert any("no están en valores" in e for e in validar_declaracion(
+        dict(base, etiquetas_valores=dict(es_en, otra={"es": "x", "en": "y"}))))
+    assert any("texto en es y en" in e for e in validar_declaracion(
+        dict(base, etiquetas_valores={"oficial": {"es": "Oficial"}, "cuadrada": es_en["cuadrada"]})))
+    numero = {"nombre": "radio", "tipo": "entero", "defecto": 4, "min": 2, "max": 8, "etiqueta": {"es": "r", "en": "r"},
+              "ayuda": {"es": "a", "en": "a"}, "etiquetas_valores": {}}
+    assert any("solo en las opciones de tipo" in e for e in validar_declaracion(numero))
+    with pytest.raises(OpcionInvalida):
+        opcion("vista", "opcion", "oficial", {"es": "Vista", "en": "View"}, {"es": "a", "en": "b"},
+               valores=["oficial", "cuadrada"], etiquetas_valores={"oficial": es_en["oficial"]})
+
+
+@pytest.mark.parametrize("nombre", sorted(MUNDOS))
+def test_cada_opcion_de_tipo_opcion_traduce_sus_valores(nombre):
+    """T4a: toda opción de tipo «opcion» de un mundo trae etiquetas es/en para cada valor (y siguen siendo válidas)."""
+    declaraciones = cargar(nombre).opciones() if nombre != "ajedrez" else _clase(nombre).opciones()
+    for d in declaraciones:
+        if d["tipo"] == "opcion":
+            assert set(d.get("etiquetas_valores", {})) == set(d["valores"]), (nombre, d["nombre"])
+            assert validar_declaracion(d) == []
+
+
+def test_opciones_con_etiquetas_no_cambian_nombres_valores_ni_defectos():
+    """Los nombres, valores y defectos de T2 siguen igual (sección 8 de DISENO_OBSERVABILIDAD)."""
+    crafter = {d["nombre"]: d for d in cargar("crafter").opciones()}
+    assert crafter["vista"]["valores"] == ["oficial", "cuadrada"] and crafter["vista"]["defecto"] == "oficial"
+    assert crafter["manual"]["valores"] == ["estricto", "ampliado"] and crafter["manual"]["defecto"] == "estricto"
+    assert crafter["vista"]["etiquetas_valores"]["oficial"]["es"] == "Oficial (9×7, como el benchmark)"
+    ajedrez = {d["nombre"]: d for d in _clase("ajedrez").opciones()}
+    assert ajedrez["color"]["valores"] == ["blancas", "negras"] and ajedrez["color"]["defecto"] == "blancas"

@@ -11,7 +11,10 @@ dependencias). Cada declaración es un diccionario, listo para JSON, con:
   invariancia lo usa); la antesala y el Vivero lanzan con los declarados (``con_defectos``);
 - ``etiqueta`` y ``ayuda``: textos ``{"es": ..., "en": ...}``;
 - ``vacia`` (opcional, por defecto ``False``): la opción admite no tener valor (``None``; en la antesala, el campo
-  vacío). Solo entonces ``defecto`` puede ser ``None``.
+  vacío). Solo entonces ``defecto`` puede ser ``None``;
+- ``etiquetas_valores`` (opcional, solo en las de tipo ``opcion``): ``{valor: {"es": ..., "en": ...}}`` con el texto que
+  enseña la interfaz para cada valor, p. ej. ``{"oficial": {"es": "Oficial (9×7, como el benchmark)", ...}}``. Si está,
+  cubre exactamente los ``valores``. No cambia el valor que se guarda ni el que llega al mundo.
 
 ``convertir`` comprueba y convierte los valores que llegan por ``--opcion`` (texto) o por la antesala (JSON). Un mundo
 sin declaraciones recibe los valores tal cual (compatibilidad con los mundos que aún no declaran).
@@ -32,7 +35,7 @@ class OpcionInvalida(ValueError):
 
 def opcion(nombre: str, tipo: str, defecto: Any, etiqueta: Mapping[str, str], ayuda: Mapping[str, str], *,
            min: Optional[float] = None, max: Optional[float] = None, valores: Optional[List[str]] = None,
-           vacia: bool = False) -> Dict[str, Any]:
+           vacia: bool = False, etiquetas_valores: Optional[Mapping[str, Mapping[str, str]]] = None) -> Dict[str, Any]:
     """Una declaración de opción, validada. Atajo para escribir las de cada mundo."""
     d: Dict[str, Any] = {"nombre": nombre, "tipo": tipo, "defecto": defecto, "etiqueta": dict(etiqueta), "ayuda": dict(ayuda)}
     if min is not None:
@@ -43,6 +46,8 @@ def opcion(nombre: str, tipo: str, defecto: Any, etiqueta: Mapping[str, str], ay
         d["valores"] = list(valores)
     if vacia:
         d["vacia"] = True
+    if etiquetas_valores is not None:
+        d["etiquetas_valores"] = {str(k): dict(v) if isinstance(v, Mapping) else v for k, v in etiquetas_valores.items()}
     errores = validar_declaracion(d)
     if errores:
         raise OpcionInvalida(f"Declaración de la opción {nombre!r} mal formada: " + "; ".join(errores))
@@ -85,12 +90,35 @@ def validar_declaracion(d: Any) -> List[str]:
             errores.append("valores: repetidos")
     if "vacia" in d and not isinstance(d["vacia"], bool):
         errores.append("vacia: debe ser booleano")
+    if "etiquetas_valores" in d:
+        errores.extend(_errores_etiquetas_valores(d))
     if not errores:
         try:
             if convertir_valor(d, d["defecto"]) != d["defecto"]:
                 errores.append(f"defecto {d['defecto']!r}: no está en su forma convertida")
         except OpcionInvalida as e:
             errores.append(f"defecto: {e}")
+    return errores
+
+
+def _errores_etiquetas_valores(d: Dict[str, Any]) -> List[str]:
+    """Errores de ``etiquetas_valores``: solo en las de tipo opción, un texto es/en por cada valor y ninguno de más."""
+    ev = d["etiquetas_valores"]
+    if d["tipo"] != "opcion":
+        return ["etiquetas_valores: solo en las opciones de tipo «opcion»"]
+    if not isinstance(ev, dict):
+        return ["etiquetas_valores: debe ser un objeto {valor: {es, en}}"]
+    valores = d.get("valores") if isinstance(d.get("valores"), list) else []
+    errores = []
+    faltan = [v for v in valores if v not in ev]
+    sobran = [k for k in ev if k not in valores]
+    if faltan:
+        errores.append(f"etiquetas_valores: faltan {', '.join(map(repr, faltan))}")
+    if sobran:
+        errores.append(f"etiquetas_valores: {', '.join(map(repr, sobran))} no están en valores")
+    for k, textos in ev.items():
+        if not isinstance(textos, dict) or any(not isinstance(textos.get(i), str) or not textos[i].strip() for i in IDIOMAS):
+            errores.append(f"etiquetas_valores[{k!r}]: debe tener texto en {' y '.join(IDIOMAS)}")
     return errores
 
 
