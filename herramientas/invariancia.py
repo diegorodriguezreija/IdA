@@ -6,6 +6,11 @@ constantes vitales y la amplitud consumida, y al final la puntuación.
 
     python herramientas/invariancia.py --referencia   # guarda la referencia (antes de cambiar nada)
     python herramientas/invariancia.py                # compara: "OK" o el primer latido distinto
+    python herramientas/invariancia.py --observador completo   # compara con el observador encendido (O3)
+
+Con ``--observador NIVEL`` el observador del registro del latido corre en cada latido a ese nivel (O3: no debe cambiar
+la conducta) y cada registro se valida contra el esquema v1. Los valores que se comparan se leen siempre del
+organismo y de la Onda, no del registro, así que son los mismos con el observador encendido y apagado.
 
 Las etiquetas (nombres de componentes y canales) no se comparan, porque los renombres las cambian.
 
@@ -26,6 +31,7 @@ sys.path.insert(0, RAIZ)
 
 from ida.nucleo.onda import Onda  # noqa: E402
 from ida.ejecutor import ejecutar  # noqa: E402
+from ida.telemetria.esquema import NIVELES, validar  # noqa: E402
 
 MUNDOS = ("minimo", "archivos", "crafter", "ajedrez")
 SEMILLAS = (1, 2, 3)
@@ -58,16 +64,22 @@ def _redondear(valores: Dict[str, Any]) -> Dict[str, Any]:
     return {k: round(v, DECIMALES) if isinstance(v, float) else v for k, v in sorted(valores.items())}
 
 
-def vida(mundo: str, semilla: int) -> Dict[str, Any]:
+def vida(mundo: str, semilla: int, observador: Optional[str] = None, invalidos: Optional[List[str]] = None) -> Dict[str, Any]:
     latidos: List[List[Any]] = []
 
-    def al_latir(_o: Any, _onda: Any, r: Dict[str, Any]) -> None:
-        d = r["decision"]
-        latidos.append([r["latido"], d["verbo"], d["objetivo"], _redondear(r["soma"]), r["amplitud"][0]])
+    def al_latir(o: Any, onda: Any, registro: Optional[Dict[str, Any]]) -> None:
+        ej = onda.reactiva.ef.get("Accion", {}).get("Accion")
+        verbo = ej.carga["verbo"].value if ej else ""
+        objetivo = ej.carga["objetivo"] if ej else ""
+        latidos.append([onda.ciclo, verbo, objetivo, _redondear(o.soma.valores()), onda.amplitud_consumida])
+        if registro is not None and invalidos is not None:
+            errores = validar(registro)
+            if errores:
+                invalidos.append(f"{mundo}:{semilla} latido {onda.ciclo}: {errores[0]}")
 
     with tempfile.TemporaryDirectory(prefix=f"ida_inv_{mundo}_{semilla}_") as datos:
         resumenes = ejecutar(mundo, latidos=LATIDOS, semilla=semilla, generaciones=1, tabula_rasa=True,
-                             consola=False, datos=datos, al_latir=al_latir)
+                             consola=False, datos=datos, al_latir=al_latir, nivel=observador)
     puntuacion = resumenes[0]["puntuacion"] if resumenes else None
     return {"latidos": latidos, "puntuacion": json.loads(json.dumps(puntuacion, default=str))}
 
@@ -90,11 +102,15 @@ def main() -> int:
     p.add_argument("--referencia", action="store_true", help="guarda la referencia en lugar de comparar")
     p.add_argument("--mundos", nargs="*", default=list(MUNDOS))
     p.add_argument("--mecanismos", nargs="*", default=[], help="interruptores de Perfil.mecanismos que se encienden (por defecto, ninguno)")
+    p.add_argument("--observador", default=None, choices=NIVELES, help="enciende el observador del registro del latido a ese nivel")
     args = p.parse_args()
+    if args.referencia and args.observador:
+        p.error("la referencia se guarda con el observador apagado")
     _congelar_reloj()
     _apagar_mecanismos(args.mundos, args.mecanismos)
 
-    actual = {f"{m}:{s}": vida(m, s) for m in args.mundos for s in SEMILLAS}
+    invalidos: List[str] = []
+    actual = {f"{m}:{s}": vida(m, s, args.observador, invalidos) for m in args.mundos for s in SEMILLAS}
     if args.referencia:
         os.makedirs(os.path.dirname(REFERENCIA), exist_ok=True)
         with open(REFERENCIA, "w", encoding="utf-8") as f:
@@ -115,6 +131,10 @@ def main() -> int:
                 diferencias.append(f"semilla {s}, {d}")
         fallos += bool(diferencias)
         print(f"{m}: " + ("OK" if not diferencias else " | ".join(diferencias)))
+    if args.observador:
+        print(f"observador {args.observador}: " + ("todos los registros válidos (esquema v1)" if not invalidos
+                                                   else f"{len(invalidos)} registros inválidos; el primero: {invalidos[0]}"))
+        fallos += bool(invalidos)
     return 1 if fallos else 0
 
 
