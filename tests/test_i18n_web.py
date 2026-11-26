@@ -73,6 +73,10 @@ def test_claves_que_se_forman_en_ejecucion():
         + [f"ritmo.{r}" for r in RITMOS]
         + [f"cuerpo.{m}" for m in ("vitalidad", "alimentacion", "energia", "descanso")]
         + [f"afecto.{a.value}" for a in Afecto]
+        # T4b: la colección forma estas claves con el tipo de elemento y el motivo del archivo
+        + [f"coleccion.tipo.{x}" for x in ("companero", "estirpe", "ficha")]
+        + [f"coleccion.motivo.{x}" for x in ("adoptar", "empezar_de_cero", "archivar")]
+        + [f"sabe.cifra.{x}" for x in ("demostradas", "hipotesis", "refutadas", "requisitos", "aciertos", "sorpresas", "heredadas")]
     )
     faltan = [c for c in familias if c not in ES]
     assert not faltan, faltan
