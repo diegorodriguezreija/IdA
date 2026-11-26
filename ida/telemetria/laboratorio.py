@@ -27,7 +27,7 @@ import time
 import zlib
 from collections import OrderedDict, deque
 from datetime import datetime
-from typing import Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple
 
 from ida.telemetria.grabacion import FORMATO, Grabacion
 
@@ -176,23 +176,44 @@ class _Abierta:
         self.medias = Medias()
         self.truncada = False
         try:
-            with gzip.open(ruta, "rt", encoding="utf-8") as f:
-                for texto in f:
-                    if not texto.strip():
-                        continue
-                    datos = json.loads(texto)
-                    if not self.cabecera:
-                        if not isinstance(datos, dict) or datos.get("tipo") != "cabecera" or datos.get("formato") != FORMATO:
-                            raise ErrorLab(400, "grabacion_invalida", "no es una grabación de IdA (falta la cabecera)")
-                        self.cabecera = datos
-                        continue
-                    self._linea(texto, datos)
-        except (OSError, EOFError, zlib.error, json.JSONDecodeError, UnicodeDecodeError) as e:
+            for texto in self._lineas(ruta):
+                if not texto.strip():
+                    continue
+                datos = json.loads(texto)
+                if not self.cabecera:
+                    if not isinstance(datos, dict) or datos.get("tipo") != "cabecera" or datos.get("formato") != FORMATO:
+                        raise ErrorLab(400, "grabacion_invalida", "no es una grabación de IdA (falta la cabecera)")
+                    self.cabecera = datos
+                    continue
+                self._linea(texto, datos)
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError) as e:
             if not self.cabecera:
                 raise ErrorLab(400, "grabacion_invalida", f"no se puede leer: {e}") from None
-            self.truncada = True          # una grabación cortada (p. ej. sin cerrar): vale hasta la última línea entera
+            self.truncada = True
         if not self.cabecera:
-            raise ErrorLab(400, "grabacion_invalida", "grabación vacía")
+            raise ErrorLab(400, "grabacion_invalida", "grabación vacía o que no es gzip")
+
+    def _lineas(self, ruta: str) -> Iterator[str]:
+        """Las líneas enteras del gzip, descomprimiendo poco a poco: una grabación cortada (sin cerrar, o con el final
+        dañado) vale hasta su última línea completa, y ``truncada`` lo dice."""
+        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+        resto = b""
+        with open(ruta, "rb") as f:
+            while not d.eof:
+                trozo = f.read(1 << 16)
+                if not trozo:
+                    break
+                try:
+                    resto += d.decompress(trozo)
+                except zlib.error:
+                    break
+                *enteras, resto = resto.split(b"\n")
+                for linea in enteras:
+                    yield linea.decode("utf-8")
+        if not d.eof:
+            self.truncada = True               # lo que quede en ``resto`` es una línea a medias: se descarta
+        elif resto.strip():
+            yield resto.decode("utf-8")
 
     def _linea(self, texto: str, r: Dict[str, Any]) -> None:
         i = len(self.lineas)
