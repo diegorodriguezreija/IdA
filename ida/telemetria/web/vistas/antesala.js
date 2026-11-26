@@ -248,7 +248,8 @@ class IdaAntesala extends HTMLElement {
   htmlPaso2() {
     const e = this.e;
     const rasgos = e.rasgos;
-    const tarjeta = (id, icono, nombre, desc, arq) => `<button type="button" role="radio" class="tarjeta preset" data-preset="${esc(id)}" aria-checked="${e.caracter === id}">
+    const tarjeta = (id, icono, nombre, desc, arq) => `<button type="button" role="radio" class="tarjeta preset" data-preset="${esc(id)}" aria-checked="${e.caracter === id}"
+        tabindex="${e.caracter === id ? '0' : '-1'}">
         <span class="icono" aria-hidden="true">${icono}</span><b>${esc(nombre)}</b>
         ${radar(arq, rasgos, { titulo: nombre })}
         <small>${esc(desc)}</small></button>`;
@@ -376,6 +377,20 @@ class IdaAntesala extends HTMLElement {
       this.pintar();
       this.querySelector(`[data-preset="${CSS.escape(e.caracter)}"]`)?.focus();
     }));
+    // flechas, Inicio y Fin entre los presets (patrón radiogroup: el foco y la elección se mueven juntos)
+    const grupo = this.querySelector('.presets[role="radiogroup"]');
+    if (grupo) {
+      if (!grupo.querySelector('[tabindex="0"]')) grupo.querySelector('[data-preset]')?.setAttribute('tabindex', '0');
+      grupo.addEventListener('keydown', (ev) => {
+        const lista = [...grupo.querySelectorAll('[data-preset]')];
+        const i = lista.indexOf(document.activeElement);
+        if (i < 0) return;
+        const destino = { ArrowRight: i + 1, ArrowDown: i + 1, ArrowLeft: i - 1, ArrowUp: i - 1, Home: 0, End: lista.length - 1 }[ev.key];
+        if (destino === undefined) return;
+        ev.preventDefault();
+        lista[(destino + lista.length) % lista.length].click();
+      });
+    }
     this.querySelectorAll('[data-rasgo]').forEach((s) => s.addEventListener('input', () => {
       const base = this.arquetipoActual() || Object.fromEntries(e.rasgos.map((r) => [r, Number(this.querySelector(`#rasgo-${r}`).value)]));
       e.arquetipo = { ...base, [s.dataset.rasgo]: Number(s.value) };

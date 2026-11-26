@@ -40,6 +40,26 @@ DEPENDENCIAS: Dict[str, Tuple[Optional[str], Optional[str]]] = {
 ORDEN = ("crafter", "minimo", "archivos", "snake", "ajedrez")
 ESTRELLA = "crafter"
 
+# O20: ritmo cómodo para seguir cada mundo a ojo, en ms por latido. Es de la telemetría, no del motor: el plazo del latido
+# (``Perfil.frecuencia_ms``) no cambia. ``None``: mundo de tiempo real (el ritmo lo marca el mundo).
+# - ajedrez, 1000 ms: cada latido es una jugada de IdA y la respuesta del rival; con menos de un segundo no da tiempo a ver
+#   las dos piezas moverse.
+# - Crafter, 250 ms: un paso por casilla; a 4 casillas por segundo se sigue a IdA por el mapa y se ven las criaturas.
+# - mínimo y archivos, 300 ms: casi todos los latidos son un movimiento o una espera; con menos, el diario corre más de
+#   lo que se lee.
+RITMO_COMODO_MS: Dict[str, Optional[float]] = {"ajedrez": 1000.0, "crafter": 250.0, "minimo": 300.0, "archivos": 300.0,
+                                               "snake": None}
+RITMO_COMODO_DEFECTO = 300.0
+
+
+def ritmo_comodo(mundo: str) -> Optional[float]:
+    """Ms por latido del ritmo cómodo de un mundo (O20); ``None`` en los de tiempo real."""
+    c = clase(mundo)
+    if c is not None and c.perfil.tiempo_real:
+        return None
+    return RITMO_COMODO_MS.get(mundo, RITMO_COMODO_DEFECTO)
+
+
 ESTADOS = ("listo", "no_instalado", "falta_navegador", "sin_stockfish")
 LANZABLES = ("listo", "sin_stockfish")
 
@@ -122,6 +142,7 @@ def ficha(mundo: str, extras: Optional[List[str]] = None) -> Dict[str, Any]:
         "extra": extra if extra in extras else None,
         "tiempo_real": bool(c.perfil.tiempo_real) if c is not None else None,
         "frecuencia_ms": float(c.perfil.frecuencia_ms) if c is not None else None,
+        "ritmo_comodo_ms": ritmo_comodo(mundo) if c is not None else RITMO_COMODO_MS.get(mundo, RITMO_COMODO_DEFECTO),
         "estrella": mundo == ESTRELLA,
         "opciones": c.opciones() if c is not None else None,
     }

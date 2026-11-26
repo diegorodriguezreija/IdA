@@ -1,12 +1,12 @@
 // Formulario de las opciones de un mundo, generado desde sus declaraciones (O8, Mundo.opciones()).
 // Cada declaración: nombre, tipo (entero, real, opcion, booleano), min/max o valores, defecto, etiqueta y ayuda {es, en}
-// y, opcional, vacia. Las básicas (números y opciones) se ven; las avanzadas (booleanas o que admiten vacío) van plegadas.
+// y, opcionales, vacia y etiquetas_valores ({valor: {es, en}}: el texto de cada valor de una opción, T4a). Las básicas (números y opciones) se ven; las avanzadas (booleanas o que admiten vacío) van plegadas.
 
 import { t, texto } from '../i18n.js';
 import { esc } from './util.js';
 
 export function esAvanzada(d) {
-  return d.tipo === 'booleano' || Boolean(d.vacia);
+  return !d.destacada && (d.tipo === 'booleano' || Boolean(d.vacia));   // «destacada»: siempre a la vista (O21)
 }
 
 function paso(d) {
@@ -15,9 +15,16 @@ function paso(d) {
   return rango <= 1 ? 0.01 : rango <= 10 ? 0.1 : 1;
 }
 
-function mostrarValor(d, v) {
+/** El texto de un valor de una opción de tipo «opcion»: su etiqueta en el idioma actual o, si no la tiene, el valor. */
+export function etiquetaValor(d, v) {
+  const ev = d.etiquetas_valores && d.etiquetas_valores[v];
+  return ev ? texto(ev) : String(v);
+}
+
+export function mostrarValor(d, v) {
   if (v === null || v === undefined || v === '') return t('empezar.vacio');
   if (d.tipo === 'booleano') return v ? t('empezar.si') : t('empezar.no');
+  if (d.tipo === 'opcion') return etiquetaValor(d, v);
   return String(v);
 }
 
@@ -28,7 +35,7 @@ function control(d, valor, id) {
       <span>${esc(texto(d.etiqueta))}</span></label>`;
   }
   if (d.tipo === 'opcion') {
-    const opciones = d.valores.map((v) => `<option value="${esc(v)}" ${v === valor ? 'selected' : ''}>${esc(v)}</option>`).join('');
+    const opciones = d.valores.map((v) => `<option value="${esc(v)}" ${v === valor ? 'selected' : ''}>${esc(etiquetaValor(d, v))}</option>`).join('');
     return `<select class="entrada" id="${id}" data-opcion="${nombre}">${opciones}</select>`;
   }
   const v = valor === null || valor === undefined ? '' : valor;

@@ -1,0 +1,50 @@
+{
+ "mundo": "ajedrez",
+ "clases": {
+  "peon": {"es": {"el": "el peón", "un": "un peón", "g": "m"}, "en": {"el": "the pawn", "un": "a pawn"}, "icono": "♟"},
+  "caballo": {"es": {"el": "el caballo", "un": "un caballo", "g": "m"}, "en": {"el": "the knight", "un": "a knight"}, "icono": "♞"},
+  "alfil": {"es": {"el": "el alfil", "un": "un alfil", "g": "m"}, "en": {"el": "the bishop", "un": "a bishop"}, "icono": "♝"},
+  "torre": {"es": {"el": "la torre", "un": "una torre", "g": "f"}, "en": {"el": "the rook", "un": "a rook"}, "icono": "♜"},
+  "dama": {"es": {"el": "la dama", "un": "una dama", "g": "f"}, "en": {"el": "the queen", "un": "a queen"}, "icono": "♛"},
+  "rey": {"es": {"el": "el rey", "un": "un rey", "g": "m"}, "en": {"el": "the king", "un": "a king"}, "icono": "♚"},
+  "captura_peon": {"es": {"el": "la captura de un peón", "un": "una captura de un peón", "g": "f"}, "en": {"el": "capturing a pawn", "un": "capturing a pawn"}, "icono": "♟"},
+  "peon_atacado": {"es": {"el": "el peón atacado", "un": "un peón atacado", "g": "m"}, "en": {"el": "the pawn under attack", "un": "a pawn under attack"}, "icono": "♟"},
+  "captura_caballo": {"es": {"el": "la captura de un caballo", "un": "una captura de un caballo", "g": "f"}, "en": {"el": "capturing a knight", "un": "capturing a knight"}, "icono": "♞"},
+  "caballo_atacado": {"es": {"el": "el caballo atacado", "un": "un caballo atacado", "g": "m"}, "en": {"el": "the knight under attack", "un": "a knight under attack"}, "icono": "♞"},
+  "captura_alfil": {"es": {"el": "la captura de un alfil", "un": "una captura de un alfil", "g": "f"}, "en": {"el": "capturing a bishop", "un": "capturing a bishop"}, "icono": "♝"},
+  "alfil_atacado": {"es": {"el": "el alfil atacado", "un": "un alfil atacado", "g": "m"}, "en": {"el": "the bishop under attack", "un": "a bishop under attack"}, "icono": "♝"},
+  "captura_torre": {"es": {"el": "la captura de una torre", "un": "una captura de una torre", "g": "f"}, "en": {"el": "capturing a rook", "un": "capturing a rook"}, "icono": "♜"},
+  "torre_atacado": {"es": {"el": "la torre atacada", "un": "una torre atacada", "g": "f"}, "en": {"el": "the rook under attack", "un": "a rook under attack"}, "icono": "♜"},
+  "captura_dama": {"es": {"el": "la captura de una dama", "un": "una captura de una dama", "g": "f"}, "en": {"el": "capturing a queen", "un": "capturing a queen"}, "icono": "♛"},
+  "dama_atacado": {"es": {"el": "la dama atacada", "un": "una dama atacada", "g": "f"}, "en": {"el": "the queen under attack", "un": "a queen under attack"}, "icono": "♛"},
+  "captura_rey": {"es": {"el": "la captura de un rey", "un": "una captura de un rey", "g": "f"}, "en": {"el": "capturing a king", "un": "capturing a king"}, "icono": "♚"},
+  "rey_atacado": {"es": {"el": "el rey atacado", "un": "un rey atacado", "g": "m"}, "en": {"el": "the king under attack", "un": "a king under attack"}, "icono": "♚"},
+  "jaque": {"es": {"el": "el jaque", "un": "un jaque", "g": "m"}, "en": {"el": "the check", "un": "a check"}, "icono": "♚"},
+  "jaque_recibido": {"es": {"el": "el jaque recibido", "un": "un jaque recibido", "g": "m"}, "en": {"el": "being in check", "un": "being in check"}, "icono": "♔"},
+  "jaque_mate": {"es": {"el": "el jaque mate", "un": "un jaque mate", "g": "m"}, "en": {"el": "checkmate", "un": "checkmate"}, "icono": "♚"},
+  "enroque": {"es": {"el": "el enroque", "un": "un enroque", "g": "m"}, "en": {"el": "castling", "un": "castling"}, "icono": "♜"}
+ },
+ "acciones": {
+  "MOVER": {"es": {"inf": "mover {el} ({objetivo})", "pres": "mueve {el} ({objetivo})"}, "en": {"inf": "move {el} ({objetivo})", "pres": "moves {el} ({objetivo})"}},
+  "MOVER:jaque": {"es": {"inf": "dar jaque ({objetivo})", "pres": "da jaque ({objetivo})"}, "en": {"inf": "give check ({objetivo})", "pres": "gives check ({objetivo})"}},
+  "MOVER:enroque": {"es": {"inf": "enrocar ({objetivo})", "pres": "enroca ({objetivo})"}, "en": {"inf": "castle ({objetivo})", "pres": "castles ({objetivo})"}},
+  "MOVER:captura_peon": {"es": {"inf": "capturar un peón ({objetivo})", "pres": "captura un peón ({objetivo})"}, "en": {"inf": "capture a pawn ({objetivo})", "pres": "captures a pawn ({objetivo})"}},
+  "MOVER:captura_caballo": {"es": {"inf": "capturar un caballo ({objetivo})", "pres": "captura un caballo ({objetivo})"}, "en": {"inf": "capture a knight ({objetivo})", "pres": "captures a knight ({objetivo})"}},
+  "MOVER:captura_alfil": {"es": {"inf": "capturar un alfil ({objetivo})", "pres": "captura un alfil ({objetivo})"}, "en": {"inf": "capture a bishop ({objetivo})", "pres": "captures a bishop ({objetivo})"}},
+  "MOVER:captura_torre": {"es": {"inf": "capturar una torre ({objetivo})", "pres": "captura una torre ({objetivo})"}, "en": {"inf": "capture a rook ({objetivo})", "pres": "captures a rook ({objetivo})"}},
+  "MOVER:captura_dama": {"es": {"inf": "capturar una dama ({objetivo})", "pres": "captura una dama ({objetivo})"}, "en": {"inf": "capture a queen ({objetivo})", "pres": "captures a queen ({objetivo})"}},
+  "MOVER:captura_rey": {"es": {"inf": "capturar un rey ({objetivo})", "pres": "captura un rey ({objetivo})"}, "en": {"inf": "capture a king ({objetivo})", "pres": "captures a king ({objetivo})"}}
+ },
+ "logros": {},
+ "puntos": {
+  "resultado": {"es": "Resultado", "en": "Result"},
+  "jugadas": {"es": "Jugadas", "en": "Moves"},
+  "material": {"es": "Material (IdA / rival)", "en": "Material (IdA / rival)"}
+ },
+ "valores": {
+  "VICTORIA": {"es": "Victoria", "en": "Win"},
+  "DERROTA": {"es": "Derrota", "en": "Loss"},
+  "TABLAS": {"es": "Tablas", "en": "Draw"},
+  "SIN TERMINAR": {"es": "Sin terminar", "en": "Ongoing"}
+ }
+}

@@ -36,6 +36,7 @@ export const api = {
   lanzar: (cuerpo) => pedir('POST', 'vidas', cuerpo),
   vidaActual: () => pedir('GET', 'vidas/actual'),
   ritmo: (ritmo) => pedir('POST', 'vidas/actual/ritmo', { ritmo }),
+  paso: () => pedir('POST', 'vidas/actual/paso', {}),
   parar: () => pedir('POST', 'vidas/actual/parar', {}),
 };
 

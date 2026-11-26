@@ -3,6 +3,7 @@
 import { t } from '../i18n.js';
 import { esc } from '../componentes/util.js';
 
+const SECCIONES = ['cuerpo', 'ahora', 'sabe', 'logros', 'caracter', 'estirpe'];
 const LISTA = ['lab.lista.latido', 'lab.lista.componentes', 'lab.lista.saber', 'lab.lista.quimica', 'lab.lista.comparar'];
 
 class IdaLab extends HTMLElement {
@@ -17,8 +18,12 @@ class IdaLab extends HTMLElement {
   }
 
   pintar() {
+    // «Abrir en el Laboratorio» desde el Vivero llega con #/lab?seccion=<tarjeta> (O19); la vista llega en T5.
+    const seccion = new URLSearchParams(location.hash.split('?')[1] || '').get('seccion');
+    const desde = SECCIONES.includes(seccion)
+      ? `<div class="aviso-caja info" role="status" style="margin-bottom:18px">${esc(t('lab.desde', { seccion: t(`tarjeta.${seccion}`) }))}</div>` : '';
     this.innerHTML = `
-      <div class="paso-titulo"><h1>${esc(t('lab.titulo'))}</h1></div>
+      <div class="paso-titulo"><h1>${esc(t('lab.titulo'))}</h1></div>${desde}
       <div class="lab">
         <section class="tarjeta">
           <span class="chip aviso" style="align-self:flex-start">${esc(t('lab.proximamente'))}</span>
