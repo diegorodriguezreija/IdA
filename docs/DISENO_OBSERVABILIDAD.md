@@ -142,8 +142,9 @@ motor. Lo que el individuo ya trae al nacer (manual, herencia) es la línea de p
 
 **Fuera de v1** (no se deducen sin tocar el motor, o se dejan para más adelante):
 
-- Lo que se aprende de la acción que mató (`Organismo._aprender_de_la_muerte`) ocurre después del último latido
-  observado: no da hechos (tampoco sale hoy en la consola).
+- ~~Lo que se aprende de la acción que mató (`Organismo._aprender_de_la_muerte`) ocurre después del último latido
+  observado: no da hechos (tampoco sale hoy en la consola).~~ Desde T4b lo da el registro de cierre (sección 13.5): sus
+  hechos `aprende`, `peligro`, `duda` y `refuta`, con `cierre: true`. La consola sigue sin enseñarlo.
 - Las proposiciones olvidadas al dormir (olvido, reducción nocturna) no dan hecho: el catálogo no tiene `olvida`.
 - Los recuerdos agregados verbo × clase (`Memoria.registros`) cambian casi en cada acción: no dan `aprende`.
 - `duerme` no lleva la causa (sueño elegido o forzado por agotamiento): el Core no la deja en la Onda de forma
@@ -365,6 +366,7 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O6, O8, O18, sección 8 | T2b: `escena()` y opciones declaradas en mínimo (rejilla, tamano/depredadores/comida), archivos (árbol, biomas/frecuencia_brotes/agresividad), Snake (rejilla, dificultad/ventana/ritmo; tablero fijo de la web fuera) y ajedrez (tablero, color/dificultad/elo/apertura; stockfish libre fuera). Sprites SVG e índices para los tres mundos y piezas Unicode para ajedrez; visor ampliado con dibujo de árbol y tablero. Opción CLI `--datos`. Equivalencia OK; invariancia OK con observador completo; 1239 tests | Rama `vista/t2b-mundos` |
 | 26/11/2026 | O9, O19, O20, O21, fase T4 | Tras la prueba de usuario del autor: O9 confirmado (compañero por mundo); O19 (profundidad por capas), O20 (el visionado no es el plazo del latido) y O21 (Snake en la web real, a la vista), aprobadas por el autor. T4 se parte en T4a y T4b | Prueba de usuario del autor de T3 |
 | 26/11/2026 | O3, O5, O8, O19, O20, O21, secciones 6.2, 11 y 12 | T4a: Vivero por tarjetas (Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter; Estirpe como hueco) con «Ver más» en panel lateral y «Abrir en el Laboratorio»; diario de hechos y acción en frase (plantillas es/en y etiquetas de clases por mundo en `web/i18n/clases/`); ritmo cómodo por mundo en el catálogo, ritmos pausa/lento/cómodo/×4/máximo y paso a paso (`POST vidas/actual/paso`); SSE al nivel cognitivo con el diario de la vida; opciones con `etiquetas_valores` y `destacada`; Snake con la web real a la vista; escena sin franjas, tema sistema/claro/oscuro, flechas entre presets. Equivalencia OK; invariancia OK con observador completo; 1305 tests | Rama `vista/t4a-vivero` |
+| 26/11/2026 | O3, O5, O9, O10, O19, secciones 4, 5, 11, 12 y 13 | T4b: compañero por mundo y colección (`<datos>/vivero/`: fichas v1, estirpes archivadas e índice), ficha de individuo v1 con conversión de las antiguas del panel, guardar, adoptar (archiva el compañero de antes), renombrar, exportar, importar y borrar en dos pasos con testigo; «Empezar de cero» desde la aplicación archiva en vez de borrar (la CLI no cambia); ranking por mundo; antesala con «Tu compañero»; tarjeta Estirpe con su «Ver más» (linaje y mutación de cada rasgo) y página Colección. Registro (sigue siendo v1): registro de cierre con lo aprendido al morir (`cierre: true`), `resumen_saber` (vital) y `requisitos` (cognitivo). Barras del cuerpo con nombre por mundo; reparto entre sistemas desde el inicio de la vida. Equivalencia OK; invariancia OK con observador completo; 1325 tests | Rama `vista/t4b-estirpe` |
 | 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
 
 ## 11. API v1 del servidor (T3)
@@ -498,7 +500,7 @@ SSE al nivel cognitivo (`?nivel=cognitivo`): no necesita nada del completo.
 | Lo que sabe | 5 frases con el sprite de la clase: lo aprendido en esta vida primero; lo nuevo, resaltado unos segundos; las hipótesis con borde discontinuo | cifras (demostradas, hipótesis, refutadas, aciertos, sorpresas, heredados), cada saber con su fuente (manual, experiencia, herencia, biblioteca), confianza y, en los requisitos, cantidades y efecto; refutadas; sorpresas y dudas recientes | `saber` (20 de más confianza), `memoria`, hechos `aprende` (requisitos), `sorpresa`, `duda`, `refuta` |
 | Logros y puntuación | logros conseguidos (n de 22 en Crafter), puntuación del mundo con sus etiquetas, últimos logros | todos los logros del mundo (conseguidos y pendientes) e historia de la vida (hasta 400 hechos) | `score`, hechos |
 | Carácter | radar y los cinco rasgos | radar grande, rasgos con su descripción y cambio respecto a la generación anterior de la misma ejecución | `arquetipo`, `generacion` |
-| Estirpe | hueco: la generación actual | lo mismo; linaje, ranking y fichas son T4b | `generacion` |
+| Estirpe | desde T4b, la línea de tiempo de la estirpe, su mejor Score, *Guardar* y *Colección* (sección 13.4) | el linaje entero y la mutación de cada rasgo | `GET companeros/{m}`, `generacion` |
 
 Al pie de cada detalle, «Abrir en el Laboratorio» lleva a `#/lab?seccion=<tarjeta>` (el Laboratorio dice de dónde se
 viene; la vista es T5). Junto a la escena va el diario: los 7 hechos más recientes con icono y sprite (los cambios de
@@ -515,10 +517,11 @@ cada mundo (tablas del adaptador, manual de Crafter, índice de sprites) o que s
 Crafter y ajedrez; Snake necesita la web real) tiene etiqueta en los dos idiomas, y que cada tipo de hecho del catálogo,
 verbo, relación, estrategia e impulso tiene plantilla.
 
-**Límites conocidos.** Los requisitos del manual que no cambian durante la vida no salen en «Lo que sabe» (el registro
-solo los da como hecho cuando cambian o se cumplen); la fuente «biblioteca» solo se distingue de «manual» en los
-requisitos (en las proposiciones el registro da `autoridad`, que en las vidas de la aplicación es el manual, porque no
-usan biblioteca); el reparto entre sistemas cuenta desde que se abre la página.
+**Límites conocidos.** La fuente «biblioteca» solo se distingue de «manual» en los requisitos (en las proposiciones el
+registro da `autoridad`, que en las vidas de la aplicación es el manual, porque no usan biblioteca). Resueltos en T4b
+(sección 13): los requisitos del manual que no cambian durante la vida ya salen en «Lo que sabe» (campo `requisitos`),
+las cifras salen de toda la memoria (`resumen_saber`), el reparto entre sistemas cuenta desde el inicio de la vida y la
+mutación del carácter sale del linaje.
 
 **Capturas** (26/11/2026, Chromium de Playwright a 1280 px; servidor con datos en `F:\tmp\t4a\datos`; commit
 `63191b9`; sin errores en la consola).
@@ -674,7 +677,7 @@ barra que no tiene sentido en un mundo no se declara y no se enseña.
 |---|---|---|---|---|---|
 | Crafter | Salud (salud del juego, 0–9) | Comida y bebida (la menor de las dos) | Energía (la del juego; sube durmiendo) | — (el adaptador le da la misma energía) | `MundoCrafter._vitales` (`vitales_propios`) |
 | mínimo | Salud | Alimentación (bayas +20) | Energía | Descanso (duerme) | metabolismo del `Soma` |
-| archivos | Salud | Alimentación (comida +8) | Energía (atacar cuesta 2) | Descanso (duerme) | metabolismo del `Soma` |
+| archivos | Salud | Alimentación (comida +8) | Energía (moverse cuesta 0,5 y atacar 2) | Descanso (duerme) | metabolismo del `Soma` |
 | Snake | Vida (100 hasta chocar) | Saciedad (comida +25) | Energía (baja si pasa hambre) | — (no duerme: solo baja) | metabolismo del `Soma` |
 | ajedrez | Material propio (100 × material / 39) | Balance de material (60 + 5 × diferencia) | — (fija en 100) | — (fija en 100) | `MundoAjedrez.observar` (`vitales_propios`) |
 
