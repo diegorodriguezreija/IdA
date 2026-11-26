@@ -53,7 +53,7 @@ git clone https://github.com/diegorodriguezreija/IdA.git
 cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
-pip install -e ".[dev,crafter,ajedrez]"
+pip install -e ".[todos]"
 python -m pytest -q                       # 155 tests
 python -m ida                             # antesala interactiva en http://127.0.0.1:8000
 ```
