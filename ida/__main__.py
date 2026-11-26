@@ -26,6 +26,7 @@ def main(argv=None) -> int:
     p.add_argument("--opcion", action="append", default=[], metavar="CLAVE=VALOR", help="opción propia del mundo")
     p.add_argument("--biblioteca", default=None, choices=["nula", "fija", "erronea"], help="biblioteca externa de autoridad")
     p.add_argument("--grabar", default=None, metavar="RUTA", help="graba la vida en RUTA (.jsonl.gz): cabecera y un registro por latido")
+    p.add_argument("--datos", default=None, metavar="RUTA", help="directorio de datos del mundo (por defecto, datos/<mundo>)")
     p.add_argument("--nivel", default="cognitivo", choices=["vital", "cognitivo", "completo"], help="nivel del registro del latido (por defecto, cognitivo)")
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
                    help="plazo lógico de la guillotina: OPS operaciones por ms (vidas reproducibles); por defecto, reloj")
@@ -75,6 +76,7 @@ def main(argv=None) -> int:
         nivel=a.nivel,
         grabar=a.grabar,
         plazo_logico=a.plazo_logico,
+        datos=a.datos,
     )
     return 0
 
