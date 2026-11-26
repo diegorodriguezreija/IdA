@@ -357,3 +357,90 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O2–O5, O7, O11, secciones 4 y 5 | T1: el registro del latido pasa de esbozo a v1 (esquema y catálogo de hechos finales, con lo que queda fuera); grabación `.jsonl.gz`; consola sobre el registro; plazo lógico 40 desde la antesala salvo en tiempo real. Excepción de lectura de `vista()` en Crafter (caché de ids), aprobada por el autor. Equivalencia OK; invariancia OK con el observador en los tres niveles; coste con nivel cognitivo, +4,6 % por latido (Crafter, 3000 latidos, plazo lógico 40, semilla 31, 2 repeticiones) | Rama `vista/t1-registro` |
 | 26/11/2026 | O6, O8, O18, secciones 4, 6 y 8 | T2a: contratos `escena()` v1 (rejilla, árbol, tablero) y opciones declaradas (formato, validación, defecto = el de la medición oficial; los del constructor no cambian), con su implementación completa en Crafter (escena, siete opciones con `mapa` y `semilla_mapa`, sprites MIT) y un visor de comprobación en `/escena`. La escena va en el registro solo cuando cambia (sigue siendo v1). Único cambio en la base: los dos métodos de `Mundo`. Equivalencia OK; invariancia OK con el observador completo en los cuatro mundos; 1208 tests | Rama `vista/t2a-escena` |
 | 26/11/2026 | O6, O8, O18, sección 8 | T2b: `escena()` y opciones declaradas en mínimo (rejilla, tamano/depredadores/comida), archivos (árbol, biomas/frecuencia_brotes/agresividad), Snake (rejilla, dificultad/ventana/ritmo; tablero fijo de la web fuera) y ajedrez (tablero, color/dificultad/elo/apertura; stockfish libre fuera). Sprites SVG e índices para los tres mundos y piezas Unicode para ajedrez; visor ampliado con dibujo de árbol y tablero. Opción CLI `--datos`. Equivalencia OK; invariancia OK con observador completo; 1239 tests | Rama `vista/t2b-mundos` |
+| 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
+
+## 11. API v1 del servidor (T3)
+
+Fijada en T3 (26/11/2026). El servidor (`ida/telemetria/servidor.py`) usa solo la biblioteca estándar y escucha en
+`127.0.0.1` (en un contenedor, `IDA_TELEMETRIA_HOST`). Las rutas de la API están en `ida/telemetria/api_v1.py`; la
+detección de mundos, en `catalogo.py`; la instalación, en `instalador.py`; los presets, en `presets.py`; el ritmo, en
+`ritmo.py`. La aplicación (`web/index.html`, rutas `#/antesala`, `#/vivero` y `#/lab`) se sirve en `/`; la antesala y el
+panel de antes siguen en `/antesala-antigua` (también `/antesala`) y `/panel`, con sus rutas sin versión, hasta T6.
+
+**Seguridad.** Todo `POST` (de la API y de las rutas antiguas) exige que la cabecera `Origin` o, si falta, `Referer`
+sea la del propio servidor (`http://127.0.0.1:<puerto>`, `http://localhost:<puerto>` o `http://[::1]:<puerto>`); si no,
+403 `origen_no_permitido`. La instalación solo ejecuta órdenes fijas con extras de la lista cerrada de
+`pyproject.toml`; ningún texto del cliente llega a una orden.
+
+**Errores.** `{"error": {"codigo": "...", "mensaje": "...", "campo"?: "..."}}`. La interfaz traduce el código con la
+clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_no_permitido`, `ruta_desconocida`,
+`mundo_desconocido`, `mundo_no_instalado`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`,
+`ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_extra`, `extra_desconocido`,
+`instalacion_en_curso`, `instalacion_desconocida`, `error_interno`.
+
+| Método y ruta | Cuerpo | Respuesta | Errores |
+|---|---|---|---|
+| `GET /api/v1/mundos` | — | 200 `{mundos: [{nombre, estado, lanzable, extra, tiempo_real, frecuencia_ms, estrella, opciones, instalacion}]}`, Crafter primero | — |
+| `POST /api/v1/mundos/{m}/instalar` | (se ignora) | 202 `{instalacion: {id, mundo, extra, estado, codigo, lineas, url}}` | 404 `mundo_desconocido`; 400 `sin_extra`, `extra_desconocido`; 409 `instalacion_en_curso` |
+| `GET /api/v1/instalaciones/{id}` | — | SSE: `linea` `{texto}` por línea de salida (las anteriores se reenvían) y `fin` con el resumen (`estado` `ok` o `error`, `codigo`) | 404 `instalacion_desconocida` |
+| `GET /api/v1/presets` | — | 200 `{presets: [{id, icono, nombre{es,en}, descripcion{es,en}, arquetipo, por_mundo?}], rasgos, rangos}` | — |
+| `POST /api/v1/vidas` | `{mundo, opciones?, caracter?, arquetipo?, ficha?, semilla?, latidos?, generaciones?, sin_experiencia?, tabula_rasa?, nivel?, reemplazar?}` | 201 `{vida}` | 400 `mundo_desconocido`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`, `ficha_de_otro_mundo`, `json_invalido`; 409 `mundo_no_instalado`, `vida_en_curso` |
+| `GET /api/v1/vidas/actual` | — | 200 `{vida}` (o `null`): la última lanzada, con `activa`, `ritmo`, `ritmo_ajustable` y el último `latido`, `vida`, `generacion`, `individuo` | — |
+| `GET /api/v1/vidas/actual/registro[?nivel=vital]` | — | SSE: `vida` al conectar, `registro` (el registro del latido v1; con `nivel=vital`, recortado a ese nivel), `ritmo` y `fin` | — |
+| `POST /api/v1/vidas/actual/ritmo` | `{ritmo: "pausa" \| "x1" \| "x4" \| "max"}` | 200 `{ritmo}` | 404 `sin_vida`; 400 `ritmo_invalido`; 409 `ritmo_fijo` (tiempo real) |
+| `POST /api/v1/vidas/actual/parar` | — | 200 `{vida}` (ya parada; también desde la pausa) | 404 `sin_vida` |
+
+**Lanzar una vida.** `mundo` es obligatorio. Las opciones se completan con los defectos declarados y se validan con
+`ida/mundos/opciones.py` (O8). El carácter, por orden: `arquetipo` (los cinco rasgos, en [0, 1]); un preset `caracter`
+(`optimo` por defecto, que depende del mundo; `azar` deja que lo derive la semilla); el de la `ficha`. La `ficha` es el
+JSON de individuo de hoy (`arquetipo`, `arquetipo_actual` o la última de `generaciones`, y `legado`); si dice otro
+`mundo`, es un error: lo aprendido no pasa de un mundo a otro. Límites: `semilla` 0–2 147 483 646 (defecto 1),
+`latidos` 1–1 000 000 (300), `generaciones` 1–100 (1). Plazo lógico 40 salvo en tiempo real (O11); nivel del registro
+`completo` por defecto (el panel clásico enseña los tiempos por Componente). Con una vida en marcha, 409 salvo
+`reemplazar: true`, que la para antes. Los datos van a `datos/<mundo>` o, si el servidor se arrancó con
+`python -m ida --datos RUTA`, a `RUTA/<mundo>`.
+
+**Ritmo (O3).** `ida/telemetria/ritmo.py`. El ejecutor llama a `Regulador.esperar(frecuencia_ms, parada)` en el
+`al_latir`, después de publicar el registro: el latido ya terminó y el siguiente no ha empezado. `x1` espera
+`frecuencia_ms` del `Perfil` (lo de antes de T3), `x4` la cuarta parte, `max` nada y `pausa` hasta que cambie el ritmo o
+se pare la vida. En los mundos de tiempo real no se llama y la API responde `ritmo_fijo`. Con plazo lógico la guillotina
+cuenta operaciones, no tiempo: `tests/test_ritmo.py` comprueba que una vida de mínimo hace las mismas acciones a `x1`
+que a `max`.
+
+**Estado de cada mundo.** Sin red y sin importar las dependencias:
+
+| Estado | Cuándo | ¿Se puede lanzar? |
+|---|---|---|
+| `listo` | sus paquetes están | sí |
+| `no_instalado` | `importlib.util.find_spec` no encuentra su paquete (`crafter`, `playwright`, `chess`) | no |
+| `falta_navegador` | Snake con Playwright pero sin una carpeta `chromium-*` ni `chromium_headless_shell-*` en la caché de navegadores de Playwright (`PLAYWRIGHT_BROWSERS_PATH`, o `%LOCALAPPDATA%\ms-playwright` en Windows, `~/Library/Caches/ms-playwright` en macOS, `~/.cache/ms-playwright` en Linux) | no |
+| `sin_stockfish` | ajedrez con `chess` pero sin `stockfish` en el `PATH` (`shutil.which`) | sí: juega contra su rival local, el de por defecto (`stockfish=""`) |
+
+La ruta de Stockfish sigue siendo opción de la CLI (`--opcion stockfish=RUTA`), no del formulario. «Instalar» ejecuta
+`[sys.executable, "-m", "pip", "install", "-e", ".[<extra>]"]` desde la raíz del proyecto y, en Snake, además
+`[sys.executable, "-m", "playwright", "install", "chromium"]`; una instalación a la vez. El extra `[todos]` de
+`pyproject.toml` reúne crafter, snake y ajedrez (sin `[observabilidad]`, que solo sirve con la pila de `infra/`).
+
+**Idiomas (O16).** `web/i18n.js` con `web/i18n/es.json` y `en.json`: por defecto el del navegador (`es*` → español; el
+resto → inglés), con la elección en `localStorage` (`ida.idioma`, dentro de `try/catch`). Los textos de las opciones y
+los presets llegan de la API en los dos idiomas. `tests/test_i18n_web.py` comprueba que los dos diccionarios tienen las
+mismas claves (y los mismos marcadores) y que toda clave usada en `web/` existe. El visor de escena usa el mismo módulo.
+El dibujo de la escena es un módulo compartido (`web/dibujo.js`) entre el visor y el Vivero.
+
+**Capturas** (26/11/2026, Chromium de Playwright a 1280 px salvo la de 1024; servidor con `--datos F:\tmp\t3\datos`).
+
+![Antesala, paso 1 (mundo), en español](img/t3_antesala_1_mundo_es.png)
+
+![Antesala, paso 2 (carácter) con «Avanzado» abierto](img/t3_antesala_2_caracter_es.png)
+
+![Antesala, paso 3 (empezar) con las opciones de Crafter](img/t3_antesala_3_empezar_es.png)
+
+![Antesala, paso 1 en inglés](img/t3_antesala_1_mundo_en.png)
+
+![Tema oscuro: paso 2 con mínimo elegido](img/t3_antesala_2_caracter_oscuro.png)
+
+![Vivero (esqueleto) con mínimo en marcha, tema oscuro](img/t3_vivero_minimo_oscuro.png)
+
+Otras: [paso 3 a 1024 px](img/t3_antesala_3_empezar_1024.png), [paso 3 en oscuro](img/t3_antesala_3_empezar_oscuro.png),
+[Vivero a ×4](img/t3_vivero_minimo.png), [Vivero tras «Parar»](img/t3_vivero_parada.png),
+[Laboratorio](img/t3_lab.png) y [visor de escena con i18n](img/t3_visor_escena.png).
