@@ -39,7 +39,7 @@ ida = "ida.__main__:main"
 include = ["ida*"]
 
 [tool.setuptools.package-data]
-"ida.telemetria" = ["*.html"]
+"ida.telemetria" = ["*.html", "web/**/*"]   # web/: visor, sprites (O12)
 "ida.mundos.ajedrez" = ["*.md"]
 
 [tool.pytest.ini_options]
