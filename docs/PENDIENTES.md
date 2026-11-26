@@ -72,7 +72,9 @@ T4 debe observar también lo aprendido de la muerte (`_aprender_de_la_muerte` co
 
 Para T6: la línea de pip de «Pruébalo en 1 minuto» es ya `pip install -e ".[todos]"`, pero la siguiente (`python -m pytest -q`) necesita el extra `[dev]`; el resto del README sigue describiendo la antesala y el panel de antes.
 
-T4: traducir los valores de las opciones de tipo lista (opciones() con etiquetas por valor); acción en lenguaje natural en lugar de "MOVER celda_5_4"; selector sistema/claro/oscuro; navegación con flechas entre presets; la escena sin franjas negras cuando no ocupa todo el ancho.
+Para T6, de la prueba de usuario del autor (26/11/2026, copia limpia en Windows): (1) el README debe pedir Python 3.12 o posterior y dar una receta que no dependa del `python` del PATH (con el gestor de instalación nuevo de Windows: `py list`, `py install 3.12`, y crear el venv con ese Python; comprobar con `python --version`), porque con un Python antiguo pip falla con «File 'setup.py' not found», que no explica nada; (2) `python -m pip install --upgrade pip` antes de instalar; (3) `pip install -e .` avisa de que `ida.mundos.ajedrez` no está en la configuración de paquetes: comprobar que un `pip install .` normal (no editable) incluye los cinco mundos y sus datos; (4) si `python -m ida` corre con un Python < 3.12, mensaje claro. El botón «Instalar» de Crafter funcionó en la prueba real.
+
+T4a: traducir los valores de las opciones de tipo lista (opciones() con etiquetas por valor); acción en lenguaje natural en lugar de "MOVER celda_5_4"; selector sistema/claro/oscuro; navegación con flechas entre presets; la escena sin franjas negras cuando no ocupa todo el ancho.
 
 ## Orden propuesto (25/11/2026)
 
