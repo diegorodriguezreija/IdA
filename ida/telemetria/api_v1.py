@@ -13,6 +13,17 @@ Rutas (detalle de cuerpos y errores en ``docs/DISENO_OBSERVABILIDAD.md``, secci�
 - ``POST /api/v1/vidas/actual/ritmo``          ``{"ritmo": "pausa" | "lento" | "comodo" | "x4" | "max"}`` (``x1`` = ``comodo``)
 - ``POST /api/v1/vidas/actual/paso``           en pausa, deja pasar un latido (O20)
 - ``POST /api/v1/vidas/actual/parar``          para la vida en curso
+- ``GET  /api/v1/companeros[/{m}]``             el compañero de cada mundo (T4b); con ``{m}``, también su linaje
+- ``POST /api/v1/companeros/{m}/guardar``      guarda el compañero como ficha en la colección
+- ``POST /api/v1/companeros/{m}/archivar``     archiva el compañero en la colección (nunca lo borra)
+- ``GET  /api/v1/companeros/{m}/exportar``     la ficha v1 del compañero, para descargar
+- ``GET  /api/v1/coleccion[?mundo=m]``         fichas, estirpes archivadas, compañeros y ranking por mundo
+- ``GET  /api/v1/coleccion/{id}[/exportar]``   una ficha o estirpe archivada (o su ficha v1, para descargar)
+- ``POST /api/v1/coleccion/importar``          importa una ficha (v1 o antigua del panel) como ficha nueva
+- ``POST /api/v1/coleccion/{id}/renombrar``    ``{"nombre": ...}``
+- ``POST /api/v1/coleccion/{id}/adoptar``      la hace compañero (el de antes se archiva)
+- ``POST /api/v1/coleccion/{id}/borrar``       primer paso: un testigo; no borra nada
+- ``POST /api/v1/coleccion/{id}/borrar/confirmar``  ``{"testigo": ...}``: borra
 
 Errores: ``{"error": {"codigo": ..., "mensaje": ..., "campo"?: ...}}`` con 400, 403, 404, 409 o 500.
 """
@@ -28,6 +39,7 @@ from ida.telemetria import catalogo, presets
 from ida.telemetria.esquema import ESQUEMA, NIVELES
 from ida.telemetria.instalador import ErrorInstalacion
 from ida.telemetria.ritmo import RITMOS, SINONIMOS
+from ida.telemetria.vivero import ErrorVivero
 
 if TYPE_CHECKING:   # pragma: no cover
     from ida.telemetria.servidor import Telemetria, _Manejador
@@ -37,15 +49,17 @@ PLAZO_LOGICO = 40.0          # O11: como D17
 LIMITES = {"latidos": (1, 1_000_000), "generaciones": (1, 100), "semilla": (0, 2_147_483_646)}
 DEFECTOS = {"latidos": 300, "generaciones": 1, "semilla": 1}
 NIVEL_DEFECTO = "completo"   # el panel clásico enseña los tiempos por Componente (hasta T6)
-CAMPOS_VITAL = set(ESQUEMA["base"]) | set(ESQUEMA["vital"]) | {"escena"}
-CAMPOS_COGNITIVO = CAMPOS_VITAL | set(ESQUEMA["cognitivo"])
+CAMPOS_VITAL = {c.lstrip("?") for c in (*ESQUEMA["base"], *ESQUEMA["vital"])}
+CAMPOS_COGNITIVO = CAMPOS_VITAL | {c.lstrip("?") for c in ESQUEMA["cognitivo"]}
 SABER_COGNITIVO = 20   # como el observador al nivel cognitivo
 
 # Códigos de error de la API (la interfaz los traduce con la clave i18n «error.<codigo>»).
 CODIGOS = ("json_invalido", "origen_no_permitido", "ruta_desconocida", "mundo_desconocido", "mundo_no_instalado",
            "opcion_invalida", "campo_invalido", "caracter_invalido", "ficha_invalida", "ficha_de_otro_mundo",
            "vida_en_curso", "sin_vida", "ritmo_invalido", "ritmo_fijo", "sin_pausa", "sin_extra", "extra_desconocido",
-           "instalacion_en_curso", "instalacion_desconocida", "error_interno")
+           "instalacion_en_curso", "instalacion_desconocida", "error_interno",
+           # T4b: compañero y colección
+           "sin_companero", "id_invalido", "elemento_desconocido", "elemento_incompleto", "nombre_invalido", "testigo_invalido")
 
 
 class ErrorApi(Exception):
@@ -196,6 +210,8 @@ def atender(h: "_Manejador", metodo: str, cuerpo: bytes = b"") -> None:
             _get(h, tel, partes, query)
     except ErrorApi as e:
         h._json(e.http, e.cuerpo())
+    except ErrorVivero as e:
+        h._json(e.http, ErrorApi(e.http, e.codigo, e.mensaje).cuerpo())
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
         pass
     except Exception as e:   # pragma: no cover - el servidor no se cae por un fallo de una ruta
@@ -219,6 +235,8 @@ def _get(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list
         h._json(200, {"vida": tel.vida_actual()})
     elif partes == ["vidas", "actual", "registro"]:
         _sse_registro(h, tel, RECORTES.get(query.get("nivel", [""])[0]))
+    elif partes and partes[0] in ("companeros", "coleccion"):
+        _get_vivero(h, tel, partes, query)
     elif len(partes) == 2 and partes[0] == "instalaciones":
         inst = tel.instalador.instalaciones.get(partes[1])
         if inst is None:
@@ -260,12 +278,91 @@ def _post(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
             h._json(200, tel.paso())
         except ValueError:
             raise ErrorApi(409, "sin_pausa", "«paso a paso» solo con la vida en pausa") from None
+    elif partes and partes[0] in ("companeros", "coleccion"):
+        _post_vivero(h, tel, partes, datos)
     elif partes == ["vidas", "actual", "parar"]:
         vida = tel.vida_actual()
         if vida is None or not vida["activa"]:
             raise ErrorApi(404, "sin_vida", "no hay ninguna vida en curso")
         tel.detener_simulacion()
         h._json(200, {"vida": tel.vida_actual()})
+    else:
+        raise _desconocida()
+
+
+# --- compañero y colección (T4b, sección 13) ----------------------------------------------------------------------------
+def _mundo(nombre: str) -> str:
+    if nombre not in MUNDOS:
+        raise ErrorApi(404, "mundo_desconocido", f"mundo desconocido: {nombre!r} (conocidos: {', '.join(MUNDOS)})")
+    return nombre
+
+
+def _descarga(h: "_Manejador", doc: Dict[str, Any]) -> None:
+    """La ficha como fichero JSON para descargar (nombre de fichero solo con caracteres seguros)."""
+    base = "".join(c if c.isalnum() or c in "-_." else "_" for c in f"ida-ficha-{doc.get('mundo')}-{doc.get('individuo')}")
+    cuerpo = json.dumps(doc, ensure_ascii=False, indent=2).encode("utf-8")
+    h.send_response(200)
+    h.send_header("Content-Type", "application/json; charset=utf-8")
+    h.send_header("Content-Disposition", f'attachment; filename="{base}.json"')
+    h.send_header("Content-Length", str(len(cuerpo)))
+    h.end_headers()
+    h.wfile.write(cuerpo)
+
+
+def _sin_vida_en(tel: "Telemetria", mundo: str) -> None:
+    if tel.vida_de(mundo):
+        raise ErrorApi(409, "vida_en_curso", f"hay una vida de {mundo} en marcha y escribe en su estirpe: párala antes")
+
+
+def _get_vivero(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list]) -> None:
+    viv = tel.vivero
+    if partes == ["companeros"]:
+        h._json(200, {"companeros": viv.companeros()})
+    elif len(partes) == 2 and partes[0] == "companeros":
+        h._json(200, {"companero": viv.companero(_mundo(partes[1]))})
+    elif len(partes) == 3 and partes[0] == "companeros" and partes[2] == "exportar":
+        _descarga(h, viv.ficha_del_companero(_mundo(partes[1])))
+    elif partes == ["coleccion"]:
+        mundo = query.get("mundo", [None])[0]
+        h._json(200, viv.coleccion(_mundo(mundo) if mundo is not None else None))
+    elif len(partes) == 2 and partes[0] == "coleccion":
+        h._json(200, {"elemento": viv.elemento(partes[1])})
+    elif len(partes) == 3 and partes[0] == "coleccion" and partes[2] == "exportar":
+        el = viv.elemento(partes[1])
+        if el["tipo_elemento"] == "ficha":
+            ficha = {k: v for k, v in el.items() if k != "tipo_elemento"}
+        else:
+            ficha = viv.ficha_de_estirpe(partes[1])
+        _descarga(h, ficha)
+    else:
+        raise _desconocida()
+
+
+def _post_vivero(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
+    viv = tel.vivero
+    cuerpo = datos if isinstance(datos, dict) else {}
+    if len(partes) == 3 and partes[0] == "companeros" and partes[2] == "guardar":
+        nombre = cuerpo.get("nombre")
+        h._json(201, {"ficha": viv.guardar(_mundo(partes[1]), nombre)})
+    elif len(partes) == 3 and partes[0] == "companeros" and partes[2] == "archivar":
+        mundo = _mundo(partes[1])
+        _sin_vida_en(tel, mundo)
+        h._json(200, {"archivada": viv.archivar(mundo, motivo="archivar")})
+    elif partes == ["coleccion", "importar"]:
+        if "ficha" not in cuerpo:
+            raise ErrorApi(400, "ficha_invalida", "falta la ficha", "ficha")
+        ficha = viv.importar(cuerpo["ficha"])
+        h._json(201, {"ficha": ficha, "avisos": ficha["avisos"]})
+    elif len(partes) == 3 and partes[0] == "coleccion" and partes[2] == "renombrar":
+        h._json(200, {"elemento": viv.renombrar(partes[1], cuerpo.get("nombre"))})
+    elif len(partes) == 3 and partes[0] == "coleccion" and partes[2] == "adoptar":
+        el = viv.elemento(partes[1])
+        _sin_vida_en(tel, el["mundo"])
+        h._json(200, viv.adoptar(partes[1]))
+    elif len(partes) == 3 and partes[0] == "coleccion" and partes[2] == "borrar":
+        h._json(200, viv.pedir_borrado(partes[1]))
+    elif len(partes) == 4 and partes[0] == "coleccion" and partes[2:] == ["borrar", "confirmar"]:
+        h._json(200, viv.confirmar_borrado(partes[1], cuerpo.get("testigo")))
     else:
         raise _desconocida()
 

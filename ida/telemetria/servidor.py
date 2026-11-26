@@ -36,6 +36,7 @@ from ida.telemetria.compat import a_panel
 from ida.telemetria.esquema import VERSION
 from ida.telemetria.instalador import Instalador
 from ida.telemetria.ritmo import RITMOS, Regulador
+from ida.telemetria.vivero import Vivero
 
 PLAZO_LOGICO_ANTESALA = 40.0   # O11: como D17
 NIVEL_ANTESALA = "completo"     # el panel de hoy enseña los tiempos por Componente (nivel completo); hasta T6
@@ -272,10 +273,13 @@ class Telemetria:
         self.modo_antesala = modo_antesala
         self.simulacion_activa = bool(mundo and not modo_antesala)
         self.datos = datos
+        from ida.ejecutor import DATOS
+        self.vivero = Vivero(datos or DATOS)                      # T4b: compañeros y colección (sección 13)
         self.instalador = instalador or Instalador()
         self.ritmo = Regulador("comodo")                          # O3, O20: ritmo visible de la vida en curso
         self._diario: deque = deque(maxlen=DIARIO_MAX)            # hechos recientes de la vida en curso (con su latido)
         self._requisitos: Dict[Tuple[Any, Any, Any], Dict[str, Any]] = {}   # el último «aprende requisito» de cada acción
+        self._reparto: Dict[str, Any] = {"vida": None, "cuenta": {}}   # sistema de cada acción de la vida (desde su inicio)
         self.ultimo: Optional[Dict[str, Any]] = None             # lo último enviado al panel (forma de antes)
         self.ultimo_registro: Optional[Dict[str, Any]] = None    # el último registro del latido v1
         self._escena: Optional[Dict[str, Any]] = None             # la última escena de la vida (llega solo cuando cambia)
@@ -339,6 +343,11 @@ class Telemetria:
 
         self.detener_simulacion()
         mundo = config["mundo"]
+        archivada = None
+        if config.get("tabula_rasa"):
+            # T4b: desde la aplicación, «Empezar de cero» archiva la estirpe en la colección; nunca la borra. Solo la CLI
+            # (``--tabula-rasa``) conserva su conducta de siempre. La vida anterior ya está parada.
+            archivada = self.vivero.archivar(mundo, motivo="empezar_de_cero")
         self.mundo = mundo
         self.ultimo = None
         self.ultimo_registro = None
@@ -348,6 +357,7 @@ class Telemetria:
         self.ritmo = Regulador("comodo", comodo)
         self._diario.clear()
         self._requisitos.clear()
+        self._reparto = {"vida": None, "cuenta": {}}
         self._vidas += 1
         tiempo_real = bool(config["tiempo_real"])
         frecuencia = float(cargar(mundo).perfil.frecuencia_ms)
@@ -359,6 +369,7 @@ class Telemetria:
             "frecuencia_ms": frecuencia, "ritmo": None if tiempo_real else "comodo",
             "ritmo_ajustable": not tiempo_real, "ritmos": [] if tiempo_real else list(RITMOS),
             "ritmo_comodo_ms": None if tiempo_real else (frecuencia if comodo is None else float(comodo)),
+            "archivada": archivada["id"] if archivada else None,
         }
         self.simulacion_activa = True
         evento_parada, regulador = self.evento_parada, self.ritmo
@@ -374,7 +385,7 @@ class Telemetria:
                     generaciones=config["generaciones"],
                     ver=False,
                     sin_experiencia=bool(config.get("sin_experiencia", False)),
-                    tabula_rasa=bool(config.get("tabula_rasa", False)),
+                    tabula_rasa=False,   # ya archivada arriba (T4b): la aplicación nunca borra la estirpe
                     cada=int(config.get("cada", 10)),
                     datos=datos,
                     opciones_mundo=config["opciones"],
@@ -409,6 +420,11 @@ class Telemetria:
             self._difundir(dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion"))
         self._difundir_registro("fin", self.vida_actual())
 
+    def vida_de(self, mundo: str) -> bool:
+        """¿Hay una vida en marcha en ``mundo``? (escribe en los ficheros de su compañero)."""
+        v = self._vida
+        return bool(v is not None and v["activa"] and v["mundo"] == mundo and self.simulacion_activa)
+
     def vida_actual(self) -> Optional[Dict[str, Any]]:
         """La vida lanzada más reciente (en curso o terminada), con su ritmo y el último latido visto; ``None`` si no hay."""
         if self._vida is None:
@@ -435,9 +451,11 @@ class Telemetria:
 
     def diario(self) -> Dict[str, Any]:
         """Los hechos recientes de la vida en curso (cada uno con ``latido``, ``vida`` y ``generacion``) y el último
-        «aprende requisito» de cada acción: lo que necesita quien se conecta tarde para el diario y «Lo que sabe»."""
+        «aprende requisito» de cada acción: lo que necesita quien se conecta tarde para el diario y «Lo que sabe»; y el
+        reparto entre sistemas de las acciones de la vida en curso desde su inicio (T4b)."""
         with self._cerrojo:
-            return {"hechos": list(self._diario), "requisitos": list(self._requisitos.values())}
+            return {"hechos": list(self._diario), "requisitos": list(self._requisitos.values()),
+                    "reparto": {"vida": self._reparto["vida"], "cuenta": dict(self._reparto["cuenta"])}}
 
     def detener_simulacion(self) -> None:
         """Detiene de forma cooperativa la simulación en curso si la hubiera (también si está en pausa)."""
@@ -491,8 +509,17 @@ class Telemetria:
             self._escena = registro["escena"]
         self.ultimo_registro = registro
         hechos = registro.get("hechos") or []
+        accion = registro.get("accion")
+        if not registro.get("cierre") and isinstance(accion, dict) and accion.get("sistema"):
+            with self._cerrojo:
+                if self._reparto["vida"] != registro.get("vida"):
+                    self._reparto = {"vida": registro.get("vida"), "cuenta": {}}
+                cuenta = self._reparto["cuenta"]
+                cuenta[accion["sistema"]] = cuenta.get(accion["sistema"], 0) + 1
         if hechos:
             marca = {"latido": registro.get("latido"), "vida": registro.get("vida"), "generacion": registro.get("generacion")}
+            if registro.get("cierre"):
+                marca["cierre"] = True   # T4b: lo aprendido al morir
             with self._cerrojo:
                 for h in hechos:
                     h2 = dict(h, **marca)
