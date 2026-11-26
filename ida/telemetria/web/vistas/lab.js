@@ -442,7 +442,11 @@ class IdaLab extends HTMLElement {
     if (!s) html = `<p class="suave">${esc(t(this.vista === 'ingenieria' ? 'lab.detalle_vacio_ing' : 'lab.detalle_vacio'))}</p>`;
     else if (s.tipo === 'paso') html = detallePaso(s.id, r, this.analisis, this.cat, this.fuente.medias);
     else if (s.tipo === 'pieza') html = detallePieza(s.clave, this.analisis);
-    else if (s.tipo === 'componente') html = this.htmlFicha(s);
+    else if (s.tipo === 'componente') {
+      // Abierta desde una pieza: la ficha del autor encima y la pieza debajo, las dos a la vista.
+      html = this.htmlFicha(s);
+      if (s.anterior && s.anterior.tipo === 'pieza') html += `<hr class="separador">${detallePieza(s.anterior.clave, this.analisis)}`;
+    }
     else html = '';
     const volver = s && s.anterior ? `<button type="button" class="boton pequeno discreto volver" data-volver>← ${esc(t('lab.volver'))}</button>` : '';
     caja.innerHTML = volver + html;
