@@ -24,6 +24,9 @@
 #   decision     D<n> de docs/DISENO_COMPONENTES.md, o «previo» si es anterior a la reorganización
 #   preatentivo  corre en la preatención (D5)
 #   aprende      tiene plasticidad (D6)
+#   analogo      O13: correspondencia biológica, { es = "...", en = "..." }; vacía en los dos idiomas si no hay
+#                un análogo honesto. La lee el Laboratorio (docs/DISENO_OBSERVABILIDAD.md); no sale en 06 ni en 07
+#   descripcion  O13: qué hace en IdA, para alguien no técnico, { es = "...", en = "..." }
 
 [[componente]]
 nombre = "Interocepcion"
@@ -32,6 +35,8 @@ clase = "general"
 destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
+analogo = { es = "Corteza insular posterior: el estado del cuerpo sentido desde dentro (vías interoceptivas por el núcleo del tracto solitario y el tálamo)", en = "Posterior insular cortex: the body's state sensed from within (interoceptive pathways through the nucleus of the solitary tract and the thalamus)" }
+descripcion = { es = "Convierte cada constante vital (salud, alimento, energía, descanso) en una pieza con su valor y lo que cambió desde el latido anterior.", en = "Turns each vital sign (health, food, energy, rest) into a piece with its value and how much it changed since the previous heartbeat." }
 
 [[componente]]
 nombre = "Propiocepcion"
@@ -40,6 +45,8 @@ clase = "general"
 destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
+analogo = { es = "Propiocepción y esquema corporal: husos musculares y corteza somatosensorial y parietal posterior (dónde está el propio cuerpo y qué lleva)", en = "Proprioception and body schema: muscle spindles and somatosensory and posterior parietal cortex (where one's own body is and what it carries)" }
+descripcion = { es = "La pieza «yo»: dónde está, hacia dónde mira, qué lleva encima (el inventario) y el estado de su cuerpo.", en = "The «self» piece: where it is, which way it faces, what it carries (the inventory) and the state of its body." }
 
 [[componente]]
 nombre = "Ambiente"
@@ -48,6 +55,8 @@ clase = "general"
 destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
+analogo = { es = "Percepción de las condiciones del entorno, como la luz por la vía retinohipotalámica hasta el núcleo supraquiasmático (día y noche)", en = "Perception of environmental conditions, such as light through the retinohypothalamic tract to the suprachiasmatic nucleus (day and night)" }
+descripcion = { es = "Una pieza con las condiciones del entorno que da el mundo, como la luz del día.", en = "A piece with the environmental conditions the world provides, such as daylight." }
 
 [[componente]]
 nombre = "Exterocepcion"
@@ -57,6 +66,8 @@ destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
 nota = "En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5)"
+analogo = { es = "Exterocepción: las vías sensoriales hasta las cortezas primarias, que transducen el estímulo sin valorarlo", en = "Exteroception: the sensory pathways to the primary cortices, which transduce the stimulus without appraising it" }
+descripcion = { es = "Una pieza por cada cosa percibida fuera (qué clase es, a qué distancia está, si se mueve), en bruto: la saliencia se la pone después la preatención.", en = "One piece per thing perceived outside (what class it is, how far it is, whether it moves), raw: pre-attention adds its salience afterwards." }
 
 [[componente]]
 nombre = "Regulacion"
@@ -66,6 +77,8 @@ destino = "CORE.Regulacion"
 hoy = "CORE.Regulacion"
 decision = "D12"
 nota = "Reglas instantáneas de la Onda (ida/core/regulacion.py), antes Marcapasos.ritmo; en la fase A se calcula al crear la Onda, tras la preatención es B2"
+analogo = { es = "Sistemas de activación ascendentes del tronco encefálico (locus coeruleus, formación reticular): ajustan la ganancia y el ritmo del procesamiento según el estado", en = "Ascending brainstem arousal systems (locus coeruleus, reticular formation): they set processing gain and pace from the body's state" }
+descripcion = { es = "Fija con reglas instantáneas el plazo de cada latido, cuántas piezas caben en la atención (amplitud) y cuánto arousal se puede repartir (potencia), según el cansancio, el sueño y el peligro.", en = "Uses instant rules to set each heartbeat's deadline, how many pieces fit in attention (amplitude) and how much arousal can be handed out (power), from tiredness, sleep and danger." }
 
 [[componente]]
 nombre = "Tribunal"
@@ -74,6 +87,8 @@ clase = "general"
 destino = "CORE.Actuar"
 hoy = "CORE.Actuar"
 decision = "previo"
+analogo = { es = "Selección de acción en los ganglios basales: el estriado compara las propuestas y el pálido desinhibe solo la ganadora", en = "Action selection in the basal ganglia: the striatum compares proposals and the pallidum disinhibits only the winner" }
+descripcion = { es = "Compara las acciones que proponen S1, S2 y S3 y elige una: con estrés pesa la urgencia y en calma, la confianza; la experiencia sesga un poco y seguir con lo que ya se hacía tiene un pequeño plus.", en = "Compares the actions proposed by S1, S2 and S3 and picks one: under stress urgency weighs most and when calm, confidence; experience biases a little and carrying on with what was already being done gets a small plus." }
 
 [[componente]]
 nombre = "Actuador"
@@ -83,6 +98,8 @@ destino = "CORE.Actuar"
 hoy = "CORE.Actuar"
 decision = "previo"
 nota = "Ejecuta primitivas del mundo (A5, D9)"
+analogo = { es = "Vía motora final: corteza motora primaria, tracto corticoespinal y motoneuronas", en = "Final motor pathway: primary motor cortex, corticospinal tract and motor neurons" }
+descripcion = { es = "Ejecuta en el mundo la acción decidida, como las primitivas del mundo (teclas, movimientos) que le da la capa motora del cuerpo.", en = "Carries out the chosen action in the world, as the world's primitives (keys, moves) given by the body's motor layer." }
 
 [[componente]]
 nombre = "ModeloDirecto"
@@ -96,6 +113,8 @@ registran = ["crafter"]
 decision = "D10"
 aprende = true
 nota = "ida/cuerpos/cuadricula/core/actuar/modelo_directo.py: qué hace cada acción con el cuerpo (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b). Aprende en la fase «cuerpo» (D6, C4)"
+analogo = { es = "Modelo directo del cerebelo: predice la consecuencia de cada orden motora a partir de la copia eferente y aprende del error", en = "Cerebellar forward model: it predicts the outcome of each motor command from the efference copy and learns from the error" }
+descripcion = { es = "Del cuerpo cuadrícula: aprende qué hace cada acción con el propio cuerpo (si avanza, si gira, si queda mirando a algo) comparando la orden con lo que se percibe después.", en = "From the grid body: learns what each action does to the body itself (whether it moves, turns, ends up facing something) by comparing the command with what is perceived afterwards." }
 
 [[componente]]
 nombre = "Saliencia"
@@ -106,6 +125,8 @@ hoy = "S1.Sentir"
 decision = "D5"
 preatentivo = true
 nota = "ida/s1/sentir/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
+analogo = { es = "Mapa de saliencia ascendente (colículo superior y pulvinar) y red de saliencia (ínsula anterior y cíngulo anterior); aquí, antes del cuello de botella de la atención", en = "Bottom-up salience map (superior colliculus and pulvinar) and salience network (anterior insula and anterior cingulate); here, before the attention bottleneck" }
+descripcion = { es = "Pone a cada cosa percibida su saliencia: lo más fuerte entre su peligro según la cercanía, lo nutritiva que es según la cercanía y lo nueva que es. Así decide qué entra antes en la atención.", en = "Gives each perceived thing its salience: the strongest of its danger by closeness, how nourishing it is by closeness and how new it is. That decides what enters attention first." }
 
 [[componente]]
 nombre = "Amenaza"
@@ -119,6 +140,8 @@ decision = "D5"
 preatentivo = true
 aprende = true
 nota = "ida/s1/sentir/amenaza.py: aprende y estima el peligro en las piezas Exterocepcion (sustituyó a ida/core/peligro.py y a _peligro_aprendido); dueño de la sección «peligros» de la Memoria, que se construye con Perfil.escala (D7, A7b)"
+analogo = { es = "Vía rápida de la amígdala (tálamo → amígdala lateral) y condicionamiento del miedo: aprende qué daña y valora el peligro antes de la atención", en = "The amygdala's fast route (thalamus → lateral amygdala) and fear conditioning: it learns what harms and appraises danger before attention" }
+descripcion = { es = "Aprende de la experiencia qué cosas hacen daño, cuánto y desde qué distancia, y estima el peligro de cada cosa percibida, también dormido.", en = "Learns from experience which things cause harm, how much and from what distance, and estimates the danger of each perceived thing, also while asleep." }
 
 [[componente]]
 nombre = "ValoracionCrafter"
@@ -131,6 +154,8 @@ hoy_en = ["crafter"]
 decision = "D4"
 preatentivo = true
 nota = "ida/mundos/crafter/s1/sentir/valoracion.py: nutritivo y recurso (cosas), nutritivo y novedad (lugares), con las fórmulas que tenía el adaptador; lleva su memoria de visitas con la cuenta de primitivas del Motor. Recibe del registro de Crafter las clases NUTRITIVO y UTIL del manual"
+analogo = { es = "Valoración rápida del estímulo: lo comestible (hipotálamo lateral) y lo nuevo (hipocampo y área tegmental ventral), antes de la atención", en = "Fast stimulus appraisal: the edible (lateral hypothalamus) and the novel (hippocampus and ventral tegmental area), before attention" }
+descripcion = { es = "Propio de Crafter: anota en cada cosa vista si es comestible (las plantas, solo maduras) o útil según el manual, y en cada lugar lo nuevo que es según las visitas que recuerda.", en = "Crafter only: marks each thing seen as edible (plants only when ripe) or useful according to the manual, and each place as new according to the visits it remembers." }
 
 [[componente]]
 nombre = "Imagen"
@@ -139,6 +164,8 @@ clase = "general"
 destino = "S1.Sentir"
 hoy = "S1.Sentir"
 decision = "previo"
+analogo = { es = "Integración multisensorial del instante en las cortezas de asociación (parietal posterior y temporal)", en = "Multisensory integration of the moment in the association cortices (posterior parietal and temporal)" }
+descripcion = { es = "Junta lo que se ve, el estado del cuerpo y el resultado de la acción anterior en una sola representación del instante.", en = "Brings together what is seen, the body's state and the outcome of the previous action into a single picture of the moment." }
 
 [[componente]]
 nombre = "Objeto"
@@ -147,6 +174,8 @@ clase = "general"
 destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
 decision = "previo"
+analogo = { es = "Individuación de objetos en la vía visual ventral, con capacidad limitada de la memoria de trabajo (el «7 ± 2» de Miller)", en = "Object individuation in the ventral visual stream, with limited working-memory capacity (Miller's «7 ± 2»)" }
+descripcion = { es = "Elige los cuerpos más salientes de la imagen (unos siete) y los pasa a la atención como objetos; cada uno cuesta una unidad de amplitud.", en = "Picks the most salient bodies in the picture (about seven) and passes them to attention as objects; each one costs one unit of amplitude." }
 
 [[componente]]
 nombre = "Supervivencia"
@@ -155,6 +184,8 @@ clase = "general"
 destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
 decision = "previo"
+analogo = { es = "Evaluación de la amenaza por cercanía y número (amígdala y sustancia gris periacueductal, distancias de defensa), modulada por el temperamento", en = "Threat appraisal by closeness and number (amygdala and periaqueductal grey, defence distances), modulated by temperament" }
+descripcion = { es = "Calcula cuánto peligro supone cada objeto según lo cerca que está y cuántos hay; el carácter (neuroticismo) cambia la sensibilidad.", en = "Works out how dangerous each object is from how close it is and how many there are; character (neuroticism) changes the sensitivity." }
 
 [[componente]]
 nombre = "Apetencia"
@@ -167,6 +198,8 @@ registran = ["crafter"]
 decision = "D15"
 aprende = true
 nota = "Aliestesia; sustituye a Perfil.aliestesia, que desapareció en A6a. Dueño de la sección «satisface» de la Memoria (satisface, linea_base, n_base) y de su tipo Satisface (C4); aprende en la fase «efecto» (D6, D7, A7b)"
+analogo = { es = "Aliestesia (Cabanac, 1971): el valor del alimento depende del estado interno (hipotálamo lateral y corteza orbitofrontal)", en = "Alliesthesia (Cabanac, 1971): the value of food depends on the internal state (lateral hypothalamus and orbitofrontal cortex)" }
+descripcion = { es = "Calcula cuánto desea cada cosa comestible según las necesidades del momento y lo que ha aprendido que satisface cada una: el agua apetece con sed, no con hambre.", en = "Works out how much it wants each edible thing from the current needs and what it has learnt each one satisfies: water is appealing when thirsty, not when hungry." }
 
 [[componente]]
 nombre = "Recinto"
@@ -178,6 +211,8 @@ hoy = "S1.Interpretar"
 hoy_en = ["crafter"]
 decision = "D16"
 nota = "ida/mundos/crafter/s1/interpretar/recinto.py: emite la afordancia de protección. Lo registra Crafter (A6a, A6b)"
+analogo = { es = "Percepción de affordances de protección (Gibson) sobre el mapa espacial del hipocampo; construir el refugio es propio de este mundo", en = "Perception of protective affordances (Gibson) on the hippocampal spatial map; building the shelter is specific to this world" }
+descripcion = { es = "Propio de Crafter: busca dónde encerrarse para protegerse, cuánto cuesta (cavar, cerrar accesos) y con qué confianza, y si ya está dentro de un recinto.", en = "Crafter only: looks for where to shut itself in for protection, how much it costs (digging, closing openings) and with what confidence, and whether it is already inside an enclosure." }
 
 [[componente]]
 nombre = "MapaLocal"
@@ -191,6 +226,8 @@ registran = ["crafter"]
 decision = "D10"
 aprende = true
 nota = "ida/cuerpos/cuadricula/s1/interpretar/mapa_local.py: mapa métrico, transformaciones y cierres (salió de _aprender_mapa); escribe en la sección «cuadricula» de la Memoria, del cuerpo (D7, A7b): las transformaciones son geometría del cuerpo. Las visitas (novedad) no son suyas: las lleva ValoracionCrafter. Aprende en la fase «cuerpo» (D6, C4)"
+analogo = { es = "Mapa métrico del entorno cercano: células de lugar del hipocampo y de rejilla de la corteza entorrinal", en = "Metric map of the nearby surroundings: hippocampal place cells and entorhinal grid cells" }
+descripcion = { es = "Del cuerpo cuadrícula: lleva el mapa de las casillas vistas (libres, ocupadas, peligrosas) y aprende qué hace cada acción con una casilla (talar un árbol la deja en hierba).", en = "From the grid body: keeps the map of the cells seen (free, occupied, dangerous) and learns what each action does to a cell (felling a tree leaves grass)." }
 
 [[componente]]
 nombre = "Reflejo"
@@ -199,6 +236,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Reflejo de sobresalto: núcleo reticular caudal del puente, que responde a un cambio brusco sin pasar por la corteza", en = "Startle reflex: caudal pontine reticular nucleus, which answers a sudden change without going through the cortex" }
+descripcion = { es = "Detecta si el peligro sube de golpe respecto al latido anterior y dispara un sobresalto: una respuesta corta, innata y de máxima prioridad.", en = "Detects whether danger jumps suddenly since the previous heartbeat and triggers a startle: a short, innate, top-priority response." }
 
 [[componente]]
 nombre = "Impulso"
@@ -207,6 +246,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Impulsos homeostáticos: el hipotálamo traduce cada déficit en una motivación; para el cobijo, con alostasis (anticipa el déficit)", en = "Homeostatic drives: the hypothalamus turns each deficit into a motivation; for shelter, with allostasis (it anticipates the deficit)" }
+descripcion = { es = "Convierte cada necesidad del cuerpo y el peligro en un impulso con su intensidad; para el cobijo, anticipa el déficit que viene (la noche).", en = "Turns each bodily need and danger into a drive with its intensity; for shelter, it anticipates the coming deficit (the night)." }
 
 [[componente]]
 nombre = "Feedback"
@@ -215,6 +256,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Reducción de la pulsión (Hull): el alivio homeostático como señal de refuerzo (hipotálamo y núcleo accumbens)", en = "Drive reduction (Hull): homeostatic relief as a reinforcement signal (hypothalamus and nucleus accumbens)" }
+descripcion = { es = "Mide si las necesidades del cuerpo y el peligro bajaron respecto al latido anterior: es la nota con la que S1 juzga si sus estrategias funcionan.", en = "Measures whether bodily needs and danger went down since the previous heartbeat: it is the score S1 uses to judge whether its strategies work." }
 
 [[componente]]
 nombre = "Estrategia"
@@ -223,6 +266,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Selección de patrones de acción innatos para cada motivación: sustancia gris periacueductal e hipotálamo (defensa, alimentación)", en = "Selection of innate action patterns for each motivation: periaqueductal grey and hypothalamus (defence, feeding)" }
+descripcion = { es = "Elige, mantiene o abandona la estrategia de S1 para cada impulso (huir, comer, protegerse...) según progrese; en S1 hay además reflejo y último recurso.", en = "Chooses, keeps or drops S1's strategy for each drive (flee, eat, take shelter...) depending on progress; S1 also has a reflex and a last resort." }
 
 [[componente]]
 nombre = "Peticion"
@@ -231,6 +276,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "D11"
+analogo = { es = "La motivación que recluta la planificación: bucles del estriado ventral hacia la corteza prefrontal (análogo aproximado)", en = "Motivation recruiting planning: ventral striatum loops to the prefrontal cortex (approximate analogue)" }
+descripcion = { es = "Pide al planificador de S3 lo que necesitan las estrategias activas de S1 (lo que falta para el refugio, un arma para afrontar una amenaza), con la urgencia de su impulso.", en = "Asks S3's planner for what S1's active strategies need (what the shelter lacks, a weapon to face a threat), with the urgency of their drive." }
 
 [[componente]]
 nombre = "Accion"
@@ -239,6 +286,8 @@ clase = "general"
 destino = "S1.Actuar"
 hoy = "S1.Actuar"
 decision = "previo"
+analogo = { es = "Preparación de la respuesta motora (corteza premotora) para los circuitos de supervivencia", en = "Preparation of the motor response (premotor cortex) for the survival circuits" }
+descripcion = { es = "Convierte cada estrategia activa de S1 en una acción propuesta al Tribunal, con su origen (impulso y estrategia).", en = "Turns each active S1 strategy into an action proposed to the Tribunal, with its origin (drive and strategy)." }
 
 [[componente]]
 nombre = "Anticipacion"
@@ -248,6 +297,8 @@ destino = "S1.Actuar"
 hoy = "S1.Actuar"
 decision = "D11"
 nota = "Copia eferente"
+analogo = { es = "Copia eferente (Sperry; von Holst): la predicción de las consecuencias viaja con la orden motora", en = "Efference copy (Sperry; von Holst): the prediction of consequences travels with the motor command" }
+descripcion = { es = "Apunta qué espera que cambie en el latido siguiente si se ejecuta su propuesta más fuerte, para medir después la sorpresa.", en = "Notes what it expects to change in the next heartbeat if its strongest proposal is carried out, to measure the surprise afterwards." }
 
 [[componente]]
 nombre = "Huir"
@@ -256,6 +307,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Huida activa: sustancia gris periacueductal dorsolateral", en = "Active flight: dorsolateral periaqueductal grey" }
+descripcion = { es = "Alejarse hacia el lugar más seguro mientras el peligro supere el umbral de miedo; dentro de un refugio no huye.", en = "Move away to the safest place while danger exceeds the fear threshold; inside a shelter it does not flee." }
 
 [[componente]]
 nombre = "Defenderse"
@@ -264,6 +317,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Defensa sin salida: sustancia gris periacueductal dorsal e hipotálamo medial", en = "Defence with no way out: dorsal periaqueductal grey and medial hypothalamus" }
+descripcion = { es = "Sin salida y con la amenaza al alcance, defenderse atacándola.", en = "With no way out and the threat within reach, defend itself by attacking it." }
 
 [[componente]]
 nombre = "Sobresalto"
@@ -272,6 +327,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Respuesta defensiva refleja tras el sobresalto (núcleo reticular del puente y sustancia gris periacueductal)", en = "Reflex defensive response after the startle (pontine reticular nucleus and periaqueductal grey)" }
+descripcion = { es = "La respuesta a un salto brusco del peligro: empezar a huir (o defenderse si no hay salida). Corta, innata y prioritaria.", en = "The response to a sudden jump in danger: start fleeing (or defend if there is no way out). Short, innate and prioritised." }
 
 [[componente]]
 nombre = "QuietoOHuir"
@@ -280,6 +337,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "Inmovilidad defensiva (freezing, sustancia gris periacueductal ventrolateral) o huida si hay adónde", en = "Defensive immobility (freezing, ventrolateral periaqueductal grey) or flight if there is somewhere to go" }
+descripcion = { es = "Último recurso de la seguridad cuando lo demás se agotó: huir si hay un sitio menos peligroso; si no, quedarse quieto.", en = "Last resort for safety when everything else is exhausted: flee if there is a less dangerous place; otherwise, keep still." }
 
 [[componente]]
 nombre = "Alimentarse"
@@ -289,6 +348,8 @@ destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
 nota = "Por necesidad si Apetencia está registrada (ctx.registrado, D15); Perfil.aliestesia ya no existe (A6a)"
+analogo = { es = "Conducta alimentaria en fase apetitiva y consumatoria: hipotálamo lateral y estriado", en = "Feeding behaviour in its appetitive and consummatory phases: lateral hypothalamus and striatum" }
+descripcion = { es = "Buscar, acercarse y comer: el mejor alimento al alcance o a la vista, por lo nutritivo menos el peligro.", en = "Search, approach and eat: the best food within reach or in sight, by nourishment minus danger." }
 
 [[componente]]
 nombre = "SeguirEnMovimiento"
@@ -297,6 +358,8 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
+analogo = { es = "", en = "" }
+descripcion = { es = "Último recurso de cualquier impulso en un mundo que no deja esperar (Snake): moverse al lugar menos malo hasta que otra estrategia vuelva a valer.", en = "Last resort of any drive in a world that does not allow waiting (Snake): move to the least bad place until another strategy applies again." }
 
 [[componente]]
 nombre = "Afrontar"
@@ -307,6 +370,8 @@ hoy = "S1.Reaccionar"
 hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D15"
+analogo = { es = "Decisión de luchar o huir según el coste y la capacidad propia: corteza prefrontal ventromedial y sustancia gris periacueductal", en = "Fight-or-flight decision by cost and one's own ability: ventromedial prefrontal cortex and periaqueductal grey" }
+descripcion = { es = "Para cada amenaza, compara los golpes que haría falta para vencerla con el daño esperado y la salud que queda, y decide luchar o huir.", en = "For each threat, compares the hits needed to beat it with the expected damage and remaining health, and decides to fight or flee." }
 
 [[componente]]
 nombre = "Proteger"
@@ -317,6 +382,8 @@ hoy = "S1.Reaccionar"
 hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D16"
+analogo = { es = "Búsqueda anticipatoria de refugio (alostasis): hipotálamo y amígdala con la planificación espacial del hipocampo", en = "Anticipatory shelter seeking (allostasis): hypothalamus and amygdala with hippocampal spatial planning" }
+descripcion = { es = "Cuando la necesidad de cobijo pesa más que las de fuera, ir al refugio que propone Recinto y encerrarse; de noche, abrir si hace falta.", en = "When the need for shelter outweighs the outside needs, go to the shelter Recinto proposes and shut itself in; at night, open up if needed." }
 
 [[componente]]
 nombre = "SalirDelRecinto"
@@ -328,6 +395,8 @@ hoy = "S1.Reaccionar"
 hoy_en = ["crafter"]
 decision = "D16"
 nota = "ida/mundos/crafter/s1/reaccionar/estrategias/salir_del_recinto.py: la registra Crafter (A6a, A6b)"
+analogo = { es = "Conflicto aproximación-evitación (Miller, 1944), regulado por la corteza prefrontal ventromedial y la amígdala", en = "Approach-avoidance conflict (Miller, 1944), regulated by the ventromedial prefrontal cortex and the amygdala" }
+descripcion = { es = "Propia de Crafter: dentro del recinto, abrirlo y salir cuando una necesidad de fuera (comer, beber) pesa más que quedarse a salvo.", en = "Crafter only: inside the enclosure, open it and go out when an outside need (eating, drinking) outweighs staying safe." }
 
 [[componente]]
 nombre = "Defensa"
@@ -338,6 +407,8 @@ destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
 nota = "plantar_cara"
+analogo = { es = "Agresión defensiva ante un depredador que persigue: hipotálamo medial y sustancia gris periacueductal", en = "Defensive aggression against a pursuing predator: medial hypothalamus and periaqueductal grey" }
+descripcion = { es = "Propia del mundo mínimo: si el lobo está al alcance y queda salud, plantarle cara para ahuyentarlo, porque huir solo aplaza el problema.", en = "Minimal world only: if the wolf is within reach and there is health left, stand up to it to drive it off, because fleeing only postpones the problem." }
 
 [[componente]]
 nombre = "Defensa"
@@ -348,6 +419,8 @@ destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "previo"
 nota = "plantar_cara"
+analogo = { es = "Agresión defensiva ante un depredador que no se va: hipotálamo medial y sustancia gris periacueductal", en = "Defensive aggression against a predator that does not leave: medial hypothalamus and periaqueductal grey" }
+descripcion = { es = "Propia del mundo de archivos: si el depredador de la carpeta está al alcance y queda salud, atacarlo, porque muerde mientras se esté allí.", en = "Files world only: if the folder's predator is within reach and there is health left, attack it, because it bites as long as one stays there." }
 
 [[componente]]
 nombre = "AlimentarseConPrudencia"
@@ -358,6 +431,8 @@ destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 sustituye = "Alimentarse"
 decision = "previo"
+analogo = { es = "Neofobia y aversión gustativa condicionada (efecto García): núcleo parabraquial y amígdala", en = "Neophobia and conditioned taste aversion (Garcia effect): parabrachial nucleus and amygdala" }
+descripcion = { es = "Propia del mundo de archivos, en lugar de Alimentarse: no come lo que tiene indicios de ser tóxico, aunque sea una sospecha, porque lo tóxico se parece a lo comestible.", en = "Files world only, instead of Alimentarse: it does not eat what shows signs of being toxic, even on suspicion, because toxic food looks like edible food." }
 
 [[componente]]
 nombre = "Patron"
@@ -366,6 +441,8 @@ clase = "general"
 destino = "S2.Sentir"
 hoy = "S2.Sentir"
 decision = "previo"
+analogo = { es = "Reconocimiento de lo familiar: corteza perirrinal (familiaridad) y recuperación de lo asociado", en = "Recognition of the familiar: perirhinal cortex (familiarity) and retrieval of associations" }
+descripcion = { es = "Reconoce cada objeto como más o menos familiar según cuántas veces lo ha visto y recupera lo que la experiencia dice de su clase.", en = "Recognises each object as more or less familiar from how often it has seen it and retrieves what experience says about its class." }
 
 [[componente]]
 nombre = "Emocion"
@@ -374,6 +451,8 @@ clase = "general"
 destino = "S2.Sentir"
 hoy = "S2.Sentir"
 decision = "previo"
+analogo = { es = "Sentimiento del propio estado afectivo: ínsula anterior (marcadores somáticos de Damasio)", en = "Feeling one's own affective state: anterior insula (Damasio's somatic markers)" }
+descripcion = { es = "Registra el estado afectivo que se siente (calma, alerta, pánico...) tal como lo calcula el cuerpo, sin coste de atención.", en = "Records the affective state that is felt (calm, alert, panic...) as the body computes it, at no attention cost." }
 
 [[componente]]
 nombre = "Recuerdo"
@@ -382,6 +461,8 @@ clase = "general"
 destino = "S2.Sentir"
 hoy = "S2.Sentir"
 decision = "previo"
+analogo = { es = "Recuperación evocada: el hipocampo completa un patrón a partir de una pista (completado de patrones en CA3)", en = "Cued recall: the hippocampus completes a pattern from a cue (pattern completion in CA3)" }
+descripcion = { es = "Con la potencia que sobra, trae a la atención lo que la memoria asocia a lo que se ve: que algo hace daño o dónde hubo comida.", en = "With the power left over, brings to attention what memory associates with what is seen: that something harms, or where there was food." }
 
 [[componente]]
 nombre = "Sujeto"
@@ -390,6 +471,8 @@ clase = "general"
 destino = "S2.Interpretar"
 hoy = "S2.Interpretar"
 decision = "previo"
+analogo = { es = "", en = "" }
+descripcion = { es = "Representa cada objeto atendido como un sujeto al que S2 puede dar valor, con la mitad de su saliencia.", en = "Represents each attended object as a subject that S2 can value, with half its salience." }
 
 [[componente]]
 nombre = "Valor"
@@ -398,6 +481,8 @@ clase = "general"
 destino = "S2.Interpretar"
 hoy = "S2.Interpretar"
 decision = "previo"
+analogo = { es = "Valor subjetivo en una moneda común: corteza orbitofrontal y prefrontal ventromedial, estriado ventral", en = "Subjective value in a common currency: orbitofrontal and ventromedial prefrontal cortex, ventral striatum" }
+descripcion = { es = "Da a cada sujeto un valor en cuatro dimensiones: lo que satisface ahora, su fuerza, el afecto que la memoria le asocia y su novedad.", en = "Gives each subject a value in four dimensions: what it satisfies now, its strength, the feeling memory associates with it and its novelty." }
 
 [[componente]]
 nombre = "Exteriorizacion"
@@ -406,6 +491,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Expresión emocional: hipotálamo y sustancia gris periacueductal hacia la musculatura facial y vocal", en = "Emotional expression: hypothalamus and periaqueductal grey driving facial and vocal muscles" }
+descripcion = { es = "Registra cómo expresa IdA su afecto (estado, placer, estrés); no cambia ninguna acción.", en = "Records how IdA expresses its feelings (state, pleasure, stress); it changes no action." }
 
 [[componente]]
 nombre = "Impulso"
@@ -414,6 +501,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Impulso exploratorio ante la novedad: dopamina mesolímbica (búsqueda de novedad)", en = "Exploratory drive towards novelty: mesolimbic dopamine (novelty seeking)" }
+descripcion = { es = "El impulso de explorar: su intensidad es la apertura del carácter por la novedad máxima a la vista.", en = "The drive to explore: its intensity is the character's openness times the greatest novelty in sight." }
 
 [[componente]]
 nombre = "Feedback"
@@ -422,6 +511,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Señal hedónica y de estrés: núcleo accumbens (placer) y amígdala e hipotálamo (estrés)", en = "Hedonic and stress signal: nucleus accumbens (pleasure) and amygdala and hypothalamus (stress)" }
+descripcion = { es = "Mide si el placer subió y el estrés bajó respecto al latido anterior: la nota con la que S2 juzga sus estrategias.", en = "Measures whether pleasure rose and stress fell since the previous heartbeat: the score S2 uses to judge its strategies." }
 
 [[componente]]
 nombre = "Estrategia"
@@ -430,6 +521,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Selección de conducta guiada por el valor: estriado ventral y corteza orbitofrontal", en = "Value-guided behaviour selection: ventral striatum and orbitofrontal cortex" }
+descripcion = { es = "Elige, mantiene o abandona las estrategias de S2 (explorar, refugiarse, volver a la comida recordada) según su progreso.", en = "Chooses, keeps or drops S2's strategies (explore, take refuge, go back to remembered food) depending on their progress." }
 
 [[componente]]
 nombre = "Peticion"
@@ -438,6 +531,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "D11"
+analogo = { es = "La motivación que recluta la planificación: bucles del estriado ventral hacia la corteza prefrontal (análogo aproximado)", en = "Motivation recruiting planning: ventral striatum loops to the prefrontal cortex (approximate analogue)" }
+descripcion = { es = "Pide al planificador de S3 lo que necesitan las estrategias activas de S2, con la urgencia de su impulso.", en = "Asks S3's planner for what S2's active strategies need, with the urgency of their drive." }
 
 [[componente]]
 nombre = "Accion"
@@ -446,6 +541,8 @@ clase = "general"
 destino = "S2.Actuar"
 hoy = "S2.Actuar"
 decision = "previo"
+analogo = { es = "Preparación de la respuesta en los circuitos de valor: cortezas premotora y cingulada", en = "Response preparation in the value circuits: premotor and cingulate cortices" }
+descripcion = { es = "Convierte cada estrategia activa de S2 en una acción propuesta al Tribunal, con su origen.", en = "Turns each active S2 strategy into an action proposed to the Tribunal, with its origin." }
 
 [[componente]]
 nombre = "Anticipacion"
@@ -455,6 +552,8 @@ destino = "S2.Actuar"
 hoy = "S2.Actuar"
 decision = "D11"
 nota = "Copia eferente"
+analogo = { es = "Copia eferente (Sperry; von Holst): la predicción de las consecuencias viaja con la orden motora", en = "Efference copy (Sperry; von Holst): the prediction of consequences travels with the motor command" }
+descripcion = { es = "Apunta qué espera que cambie en el latido siguiente si se ejecuta la propuesta más fuerte de S2, para medir después la sorpresa.", en = "Notes what it expects to change in the next heartbeat if S2's strongest proposal is carried out, to measure the surprise afterwards." }
 
 [[componente]]
 nombre = "Explorar"
@@ -463,6 +562,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Exploración por novedad: dopamina mesolímbica e hipocampo", en = "Novelty-driven exploration: mesolimbic dopamine and hippocampus" }
+descripcion = { es = "Sin peligro ni mucha hambre, recorrer el lugar más nuevo y coger lo útil que esté al alcance.", en = "With no danger and no great hunger, wander to the newest place and pick up anything useful within reach." }
 
 [[componente]]
 nombre = "Refugiarse"
@@ -471,6 +572,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Vuelta al hogar: navegación del hipocampo hacia un lugar valorado", en = "Homing: hippocampal navigation towards a valued place" }
+descripcion = { es = "Con cansancio o peligro, volver al hogar recordado por la vista o por la ruta del mapa, y descansar allí.", en = "When tired or in danger, return to the remembered home by sight or by the map's route, and rest there." }
 
 [[componente]]
 nombre = "RecordarComida"
@@ -479,6 +582,8 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "previo"
+analogo = { es = "Memoria espacial del alimento: la ruta del hipocampo hacia donde se encontró comida", en = "Spatial memory of food: the hippocampal route to where food was found" }
+descripcion = { es = "Con hambre y sin comida a la vista, ir por la ruta del mapa a donde se vio algo que se cree nutritivo; si no está, lo olvida.", en = "When hungry with no food in sight, follow the map's route to where something believed nutritious was seen; if it is gone, forget it." }
 
 [[componente]]
 nombre = "Comunicacion"
@@ -487,6 +592,8 @@ clase = "general"
 destino = "S3.Sentir"
 hoy = "S3.Sentir"
 decision = "previo"
+analogo = { es = "Comprensión del lenguaje: área de Wernicke y corteza temporal superior", en = "Language comprehension: Wernicke's area and superior temporal cortex" }
+descripcion = { es = "Lee los mensajes que traen las cosas percibidas (en el mundo de archivos, el texto de un fichero) y los pasa a S3.", en = "Reads the messages carried by perceived things (in the files world, the text of a file) and passes them to S3." }
 
 [[componente]]
 nombre = "Agente"
@@ -495,6 +602,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Detección de agentes (lo que se mueve por sí mismo): surco temporal superior posterior", en = "Agency detection (what moves by itself): posterior superior temporal sulcus" }
+descripcion = { es = "Distingue en cada objeto si actúa por sí mismo (un animal) o no (una piedra).", en = "Tells for each object whether it acts by itself (an animal) or not (a stone)." }
 
 [[componente]]
 nombre = "Predicado"
@@ -503,6 +612,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Representación semántica de lo observado: lóbulo temporal anterior y giro angular", en = "Semantic representation of what is observed: anterior temporal lobe and angular gyrus" }
+descripcion = { es = "Describe con predicados lo que observa ahora: qué hay y cómo está.", en = "Describes what it observes now with predicates: what is there and how it is." }
 
 [[componente]]
 nombre = "Proposicion"
@@ -511,6 +622,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Memoria semántica: lóbulo temporal anterior (conocimiento sobre las cosas)", en = "Semantic memory: anterior temporal lobe (knowledge about things)" }
+descripcion = { es = "Trae lo que se sabe de cada clase presente («la vaca nutre», «el zombi hace daño»), con su confianza.", en = "Brings up what is known about each class present («the cow nourishes», «the zombie harms»), with its confidence." }
 
 [[componente]]
 nombre = "Sentencia"
@@ -519,6 +632,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Razonamiento condicional (si… entonces…): corteza prefrontal lateral", en = "Conditional reasoning (if… then…): lateral prefrontal cortex" }
+descripcion = { es = "Encadena lo que sabe con la situación: «si la vaca está cerca y tengo hambre, comerla».", en = "Links what it knows with the situation: «if the cow is near and I am hungry, eat it»." }
 
 [[componente]]
 nombre = "Logica"
@@ -527,6 +642,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Detección y resolución de conflictos: corteza cingulada anterior (detecta) y prefrontal lateral (resuelve)", en = "Conflict detection and resolution: anterior cingulate cortex (detects) and lateral prefrontal cortex (resolves)" }
+descripcion = { es = "Combina las sentencias y resuelve sus conflictos: evitar el daño prevalece sobre comer o coger.", en = "Combines the sentences and resolves their conflicts: avoiding harm takes precedence over eating or picking up." }
 
 [[componente]]
 nombre = "Creencia"
@@ -535,6 +652,8 @@ clase = "general"
 destino = "S3.Interpretar"
 hoy = "S3.Interpretar"
 decision = "previo"
+analogo = { es = "Evaluación y mantenimiento de creencias con su confianza: corteza prefrontal ventromedial y lateral", en = "Evaluation and maintenance of beliefs with their confidence: ventromedial and lateral prefrontal cortex" }
+descripcion = { es = "Una creencia por cada cosa que se sabe: si la sostiene, en qué estado está (hipótesis, demostrada o refutada) y de qué fuentes viene.", en = "One belief for each thing known: whether it holds it, its state (hypothesis, proven or refuted) and which sources it comes from." }
 
 [[componente]]
 nombre = "Requisito"
@@ -545,6 +664,8 @@ hoy = "S3.Interpretar"
 decision = "D7"
 aprende = true
 nota = "ida/s3/interpretar/requisito.py: dueño de la sección «requisitos» de la Memoria (requisitos, intentos, claves de inventario, metas, fallos seguidos) y de sus tipos RequisitoAccion y Meta (C4); aprende en la fase «efecto» con la traza de elegibilidad (marcar_elegibilidad), sin barridos (D6, A7b, C4). Las transformaciones son del cuerpo (MapaLocal). «delante» y «cerca» los da el cuerpo; la posición relativa de lo cercano y el radio de prueba, su espacio (Contexto.espacio, C1)"
+analogo = { es = "Aprendizaje de contingencias acción-resultado (estriado dorsomedial y corteza prefrontal), con traza de elegibilidad: aprendizaje de tres factores, la dopamina como señal de refuerzo diferido", en = "Action-outcome contingency learning (dorsomedial striatum and prefrontal cortex), with an eligibility trace: three-factor learning, dopamine as a delayed reinforcement signal" }
+descripcion = { es = "Aprende qué hace falta para cada acción (la mesa necesita madera; el horno, estar cerca de la mesa) y qué produce, y recuerda qué acciones cumplieron metas.", en = "Learns what each action needs (the table needs wood; the furnace, being near the table) and what it produces, and remembers which actions met goals." }
 
 [[componente]]
 nombre = "Intencion"
@@ -553,6 +674,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Intención deliberada y mantenimiento de metas: corteza prefrontal dorsolateral y frontopolar", en = "Deliberate intention and goal maintenance: dorsolateral and frontopolar prefrontal cortex" }
+descripcion = { es = "Los «qué» deliberados de S3: saber más (reducir lo que aún es hipótesis) y las metas sostenidas que declara el mundo (progresar).", en = "S3's deliberate «whats»: knowing more (reducing what is still a hypothesis) and the sustained goals the world declares (making progress)." }
 
 [[componente]]
 nombre = "Impulso"
@@ -561,6 +684,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Control cognitivo de arriba abajo: la corteza prefrontal modula las motivaciones subcorticales", en = "Top-down cognitive control: the prefrontal cortex modulates subcortical motivations" }
+descripcion = { es = "Con lo que sabe con certeza, sube los impulsos que encajan y baja los que no, de cualquier sistema, en proporción a su confianza.", en = "With what it knows for certain, it raises the drives that fit and lowers those that do not, in any system, in proportion to its confidence." }
 
 [[componente]]
 nombre = "Feedback"
@@ -569,6 +694,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Error de predicción: dopamina (Schultz) y corteza cingulada anterior", en = "Prediction error: dopamine (Schultz) and anterior cingulate cortex" }
+descripcion = { es = "Mide si predice mejor que en el latido anterior (más aciertos y menos sorpresas): la nota con la que S3 juzga sus estrategias.", en = "Measures whether it predicts better than in the previous heartbeat (more hits, fewer surprises): the score S3 uses to judge its strategies." }
 
 [[componente]]
 nombre = "Estrategia"
@@ -577,6 +704,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Selección de planes: corteza prefrontal y estriado dorsal", en = "Plan selection: prefrontal cortex and dorsal striatum" }
+descripcion = { es = "Elige, mantiene o abandona las estrategias de S3 (evitar lo peligroso, comer lo nutritivo, perseguir metas, estudiar) según su progreso.", en = "Chooses, keeps or drops S3's strategies (avoid the dangerous, eat the nutritious, pursue goals, study) depending on their progress." }
 
 [[componente]]
 nombre = "Prudencia"
@@ -586,6 +715,8 @@ dueno = "archivos"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Evitación de lugares asociados al malestar: hipocampo y amígdala", en = "Avoidance of places associated with discomfort: hippocampus and amygdala" }
+descripcion = { es = "Propio del mundo de archivos: recuerda durante un tiempo las carpetas donde solo había comida dañina y las desaconseja.", en = "Files world only: for a while it remembers the folders where there was only harmful food and advises against them." }
 
 [[componente]]
 nombre = "Accion"
@@ -594,6 +725,8 @@ clase = "general"
 destino = "S3.Actuar"
 hoy = "S3.Actuar"
 decision = "previo"
+analogo = { es = "Preparación de acciones planificadas: corteza premotora y área motora suplementaria", en = "Preparation of planned actions: premotor cortex and supplementary motor area" }
+descripcion = { es = "Convierte cada estrategia activa de S3 en una acción propuesta al Tribunal, con su origen.", en = "Turns each active S3 strategy into an action proposed to the Tribunal, with its origin." }
 
 [[componente]]
 nombre = "EvitarLoPeligroso"
@@ -602,6 +735,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Evitación aprendida: corteza prefrontal ventromedial y amígdala", en = "Learned avoidance: ventromedial prefrontal cortex and amygdala" }
+descripcion = { es = "Alejarse de lo que se sabe peligroso (demostrado), aunque en ese momento no dé miedo.", en = "Move away from what is known (proven) to be dangerous, even if it is not frightening at the moment." }
 
 [[componente]]
 nombre = "ComerLoNutritivo"
@@ -610,6 +745,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Elección del alimento por conocimiento: corteza orbitofrontal", en = "Knowledge-based food choice: orbitofrontal cortex" }
+descripcion = { es = "Comer lo que se sabe nutritivo cuando hay necesidad.", en = "Eat what is known to be nutritious when there is a need." }
 
 [[componente]]
 nombre = "CogerLoUtil"
@@ -618,6 +755,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Conducta instrumental dirigida a metas: estriado dorsomedial y corteza prefrontal", en = "Goal-directed instrumental behaviour: dorsomedial striatum and prefrontal cortex" }
+descripcion = { es = "Coger lo que se sabe útil.", en = "Pick up what is known to be useful." }
 
 [[componente]]
 nombre = "Estudio"
@@ -626,6 +765,8 @@ clase = "general"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Búsqueda activa de información para reducir la incertidumbre: corteza prefrontal y el valor de la información en el sistema de recompensa", en = "Active information seeking to reduce uncertainty: prefrontal cortex and the value of information in the reward system" }
+descripcion = { es = "Con la intención de saber, consulta una biblioteca externa sobre las hipótesis pendientes, con atención sostenida.", en = "With the intention of knowing, consults an external library about pending hypotheses, with sustained attention." }
 
 [[componente]]
 nombre = "PerseguirMetas"
@@ -635,6 +776,8 @@ destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
 nota = "General; resuelto en A6b: la búsqueda de material en el mapa es geometría de cuadrícula (ida/cuerpos/cuadricula/mapa.py) y la ofrece el cuerpo (Contexto.cuerpo); sin cuerpo no la hay"
+analogo = { es = "Planificación jerárquica de medios a fines: corteza prefrontal dorsolateral y frontopolar", en = "Hierarchical means-ends planning: dorsolateral and frontopolar prefrontal cortex" }
+descripcion = { es = "Encadena requisitos hacia atrás desde las metas del manual (para el pico, una mesa; para la mesa, madera) y propone la primera acción que acerca a una.", en = "Chains requirements backwards from the manual's goals (for the pickaxe, a table; for the table, wood) and proposes the first action that brings one closer." }
 
 [[componente]]
 nombre = "BuscarEnOtraCarpeta"
@@ -644,6 +787,8 @@ dueno = "archivos"
 destino = "S3.Reaccionar"
 hoy = "S3.Reaccionar"
 decision = "previo"
+analogo = { es = "Abandono de un parche de forrajeo por otro (teorema del valor marginal): corteza cingulada anterior", en = "Leaving one foraging patch for another (marginal value theorem): anterior cingulate cortex" }
+descripcion = { es = "Propia del mundo de archivos: si aquí solo había comida dañina, ir a otra carpeta prometedora y no recordada como mala.", en = "Files world only: if there was only harmful food here, go to another promising folder not remembered as bad." }
 
 [[componente]]
 nombre = "Geometria"
@@ -656,6 +801,8 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 nota = "ida/cuerpos/cuadricula/geometria.py: posición (pos_de, convención <nombre>_x_y), vecinos (DIRECCIONES), distancia, desplazamiento y radio de prueba, entorno, búsqueda en anchura. Cuadricula la ofrece al código general por la interfaz espacial de Cuerpo (C1)"
+analogo = { es = "", en = "" }
+descripcion = { es = "La geometría del cuerpo cuadrícula: posiciones, vecinos, distancias, desplazamientos y búsquedas sobre la rejilla. El código general se la pregunta al cuerpo.", en = "The grid body's geometry: positions, neighbours, distances, displacements and searches on the grid. General code asks the body for it." }
 
 [[componente]]
 nombre = "BuscadorPosturas"
@@ -668,6 +815,8 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D10"
 nota = "ida/cuerpos/cuadricula/buscador.py: qué secuencia de MOVER deja en A mirando a C"
+analogo = { es = "Planificación motora inversa (qué movimientos llevan a la postura deseada): corteza parietal posterior y premotora", en = "Inverse motor planning (which movements reach the desired posture): posterior parietal and premotor cortex" }
+descripcion = { es = "Calcula qué secuencia de pasos deja al cuerpo en una casilla mirando hacia otra (para golpear o coger lo que hay delante).", en = "Works out which sequence of steps leaves the body on one cell facing another (to hit or pick up what is in front)." }
 
 [[componente]]
 nombre = "Motor"
@@ -680,3 +829,5 @@ hoy_en = ["crafter"]
 registran = ["crafter"]
 decision = "D9"
 nota = "ida/cuerpos/cuadricula/motor.py: intención → primitivas, con sinergias (máx. 2 en la fase A); juzga el éxito; cuenta las primitivas ejecutadas (copia eferente)"
+analogo = { es = "Capa motora: sinergias de la médula espinal y el tronco encefálico, con la copia eferente de cada orden", en = "Motor layer: spinal and brainstem synergies, with the efference copy of each command" }
+descripcion = { es = "Traduce la intención decidida (comer esa vaca) en las primitivas del mundo (girar y golpear), juzga si salió bien comparando lo pretendido con lo medido y cuenta las primitivas que ejecuta.", en = "Translates the chosen intention (eat that cow) into the world's primitives (turn and hit), judges success by comparing the intended with the measured, and counts the primitives it executes." }
