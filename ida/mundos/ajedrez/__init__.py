@@ -16,13 +16,16 @@ Opciones: ``--opcion dificultad=0..3`` (por defecto 2), ``--opcion color=negras`
 ``--opcion stockfish=RUTA`` con ``--opcion elo=1350`` para usar Stockfish como rival.
 """
 
+import copy
 from typing import Any, Dict, List, Optional, Set
 
 import chess
 import chess.engine
 
+from ida.nucleo.azar import Azar
 from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 from ida.nucleo.vocabulario import Verbo
+from ida.mundos.opciones import opcion
 from ida.mundos.ajedrez.rival import VALOR, RivalLocal
 
 NOMBRE = {chess.PAWN: "peon", chess.KNIGHT: "caballo", chess.BISHOP: "alfil", chess.ROOK: "torre", chess.QUEEN: "dama", chess.KING: "rey"}
@@ -62,6 +65,34 @@ def perdida_inmediata(tablero: chess.Board) -> float:
     return peor
 
 
+def _t(es: str, en: str) -> Dict[str, str]:
+    return {"es": es, "en": en}
+
+
+OPCIONES = [
+    opcion("color", "opcion", "blancas",
+           _t("Color de IdA", "IdA colour"),
+           _t("Bando con el que juega IdA: blancas (mueven primero) o negras.",
+              "Side IdA plays as: white (moves first) or black."),
+           valores=["blancas", "negras"]),
+    opcion("dificultad", "entero", 2,
+           _t("Dificultad del rival", "Opponent difficulty"),
+           _t("Nivel del bot rival local: 0 (azar), 1 (material), 2 (posicional) o 3 (profundo).",
+              "Local bot difficulty: 0 (random), 1 (material), 2 (positional) or 3 (deep)."),
+           min=0, max=3),
+    opcion("elo", "entero", 1350,
+           _t("Elo de Stockfish", "Stockfish Elo"),
+           _t("Fuerza Elo asignada a Stockfish cuando se usa como motor rival.",
+              "Elo rating assigned to Stockfish when used as opponent engine."),
+           min=500, max=3000),
+    opcion("apertura", "entero", 0,
+           _t("Apertura aleatoria", "Random opening"),
+           _t("Número de medias jugadas al azar con que empieza la partida (0 por defecto: posición inicial estándar).",
+              "Number of random half-moves with which the game starts (0 by default: standard initial position)."),
+           min=0, max=20),
+]
+
+
 class MundoAjedrez(Mundo):
     nombre = "ajedrez"
     perfil = Perfil(
@@ -76,25 +107,41 @@ class MundoAjedrez(Mundo):
     )
     MATERIAL_INICIAL = 39.0
 
-    def __init__(self, dificultad: Any = 2, color: str = "blancas", stockfish: str = "", elo: Any = 1350, semilla: Optional[int] = None, **_):
+    def __init__(self, dificultad: Any = 2, color: str = "blancas", stockfish: str = "", elo: Any = 1350,
+                 semilla: Optional[int] = None, apertura: Any = 0, **_):
         self.dificultad = int(dificultad)
         self.color = chess.BLACK if str(color).lower().startswith("n") else chess.WHITE
         self.ruta_stockfish = stockfish
         self.elo = int(elo)
+        self.apertura = int(apertura)
+        self.azar = Azar(semilla)
         self.motor: Optional[chess.engine.SimpleEngine] = None
         self.tablero = chess.Board()
-        self.rival = RivalLocal(self.dificultad)
+        self.rival = RivalLocal(self.dificultad, semilla)
         self.resultado = ""
         self.jugadas = 0
 
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        return copy.deepcopy(OPCIONES)
+
     # --- ciclo de vida -------------------------------------------------------
     def reiniciar(self, semilla: Optional[int]) -> None:
+        self.azar = Azar(semilla)
         self.tablero = chess.Board()
         self.rival = RivalLocal(self.dificultad, semilla)
         self.resultado, self.jugadas = "", 0
         if self.ruta_stockfish and self.motor is None:
             self.motor = chess.engine.SimpleEngine.popen_uci(self.ruta_stockfish)
             self.motor.configure({"UCI_LimitStrength": True, "UCI_Elo": self.elo})
+        for _ in range(self.apertura):
+            if self.tablero.is_game_over():
+                break
+            jugadas_legales = list(self.tablero.legal_moves)
+            if not jugadas_legales:
+                break
+            jugada = self.azar.eleccion(jugadas_legales)
+            self.tablero.push(jugada)
         if self.tablero.turn != self.color:
             self._turno_rival()
 
@@ -246,3 +293,33 @@ class MundoAjedrez(Mundo):
     def vista(self) -> str:
         ultima = self.tablero.peek().uci() if self.tablero.move_stack else "—"
         return f"{self.tablero}\núltima: {ultima} · jugadas de IdA: {self.jugadas}"
+
+    def escena(self) -> Dict[str, Any]:
+        piezas = []
+        for sq, p in sorted(self.tablero.piece_map().items()):
+            piezas.append({
+                "clase": NOMBRE[p.piece_type],
+                "color": "blanco" if p.color == chess.WHITE else "negro",
+                "x": chess.square_file(sq),
+                "y": 7 - chess.square_rank(sq),
+            })
+        marcas = []
+        if self.tablero.move_stack:
+            ult = self.tablero.peek()
+            marcas.append({"clase": "ultima", "x": chess.square_file(ult.from_square), "y": 7 - chess.square_rank(ult.from_square)})
+            marcas.append({"clase": "ultima", "x": chess.square_file(ult.to_square), "y": 7 - chess.square_rank(ult.to_square)})
+        return {
+            "tipo": "tablero",
+            "ancho": 8,
+            "alto": 8,
+            "piezas": piezas,
+            "yo": {"color": "blanco" if self.color == chess.WHITE else "negro"},
+            "turno": "blanco" if self.tablero.turn == chess.WHITE else "negro",
+            "marcas": marcas,
+            "inventario": {},
+            "extra": {
+                "fen": self.tablero.fen(),
+                "resultado": self.resultado,
+                "jugadas": self.jugadas,
+            },
+        }
