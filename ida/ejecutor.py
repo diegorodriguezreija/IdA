@@ -2,7 +2,6 @@
 
 import os
 import shutil
-import time
 from typing import Any, Callable, Dict, List, Optional
 
 from ida.consola import imprimir_latido, linea
@@ -14,6 +13,7 @@ from ida.nucleo.persistencia import Persistencia
 from ida.telemetria.compat import a_panel
 from ida.telemetria.grabacion import Grabacion, cabecera, commit_actual
 from ida.telemetria.observador import Observador
+from ida.telemetria.ritmo import Regulador
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
 from ida.mundos.opciones import convertir
@@ -50,6 +50,7 @@ def ejecutar(
     nivel: Optional[str] = None,
     grabar: Optional[str] = None,
     plazo_logico: Optional[float] = None,
+    ritmo: Optional[Regulador] = None,
 ) -> List[Dict[str, Any]]:
     """Vive ``generaciones`` vidas de un linaje en ``mundo``.
 
@@ -61,6 +62,8 @@ def ejecutar(
       O8). Las que no se dan toman el valor por defecto del constructor (la antesala añade antes los declarados).
     - ``plazo_logico``: operaciones por ms de plazo de la guillotina (``Onda.ops_por_ms``, O11). ``None``: plazo de reloj,
       como siempre.
+    - ``ritmo``: el regulador del ritmo visible (O3), aplicado entre latidos cuando hay telemetría y el mundo no es de
+      tiempo real. Sin él, ×1: cada latido dura al menos ``frecuencia_ms`` del ``Perfil``, como siempre.
     """
     datos = datos or os.path.join(DATOS, mundo)
     if tabula_rasa and os.path.isdir(datos):
@@ -84,6 +87,7 @@ def ejecutar(
     if otel:
         from ida.telemetria.otel import Observabilidad   # requiere el extra [observabilidad]
         observabilidad = Observabilidad(mundo)
+    regulador = ritmo if ritmo is not None else (Regulador("x1") if telemetria is not None else None)
     observador: Optional[Observador] = None
     if nivel is not None or grabar or consola or telemetria is not None or observabilidad is not None:
         observador = Observador(nivel or "cognitivo")   # O2: la consola, el directo, la grabación y OTel leen el registro
@@ -148,8 +152,8 @@ def ejecutar(
                     observabilidad.latido(onda, a_panel(registro))   # compatibilidad hasta T6 (O15)
                 if telemetria is not None and registro is not None:
                     telemetria.publicar(registro)
-                    if not o.perfil.tiempo_real:      # a ritmo visible: cada latido dura al menos su plazo
-                        time.sleep(o.perfil.frecuencia_ms / 1000.0)
+                    if regulador is not None and not o.perfil.tiempo_real:   # O3: ritmo visible, entre latidos
+                        regulador.esperar(o.perfil.frecuencia_ms, evento_parada)
                 if al_latir:
                     al_latir(o, onda, registro)
                 if evento_parada is not None and evento_parada.is_set():
