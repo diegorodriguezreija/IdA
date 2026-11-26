@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visor de escena</title>
+<style>
+  :root {
+    --fondo: #f6f5f1; --panel: #ffffff; --texto: #1d1d1b; --suave: #6b6a65; --borde: #dddcd6; --acento: #2f6f4f;
+    --vacio: #2a2a2a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --fondo: #161614; --panel: #1f1f1d; --texto: #ecebe6; --suave: #a19f97; --borde: #34332f; --acento: #7cc39b;
+      --vacio: #0c0c0c;
+    }
+  }
+  :root[data-theme="dark"] {
+    --fondo: #161614; --panel: #1f1f1d; --texto: #ecebe6; --suave: #a19f97; --borde: #34332f; --acento: #7cc39b;
+    --vacio: #0c0c0c;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fondo); color: var(--texto); font: 14px/1.45 system-ui, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .pista { color: var(--suave); font-size: 12.5px; margin: 0 0 12px; }
+  .barra { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: var(--panel); border: 1px solid var(--borde);
+           border-radius: 8px; padding: 10px; margin-bottom: 12px; }
+  .barra input[type=range] { flex: 1 1 200px; min-width: 120px; }
+  button, select { font: inherit; padding: 4px 10px; border-radius: 6px; border: 1px solid var(--borde); background: var(--fondo); color: var(--texto); cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  .rejilla { display: grid; grid-template-columns: minmax(0, auto) minmax(220px, 1fr); gap: 12px; align-items: start; }
+  @media (max-width: 720px) { .rejilla { grid-template-columns: 1fr; } }
+  .lienzo { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px; overflow: auto; max-width: 100%; }
+  canvas { image-rendering: pixelated; display: block; max-width: 100%; height: auto; }
+  .datos { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px; font-size: 13px; min-width: 0; }
+  .datos dt { color: var(--suave); font-size: 12px; margin-top: 6px; }
+  .datos dd { margin: 0; overflow-wrap: anywhere; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; background: var(--fondo); border: 1px solid var(--borde); border-radius: 6px; padding: 8px; max-height: 340px; overflow: auto; }
+  #error { color: #b3261e; }
+  #soltar { border: 2px dashed var(--borde); border-radius: 8px; padding: 12px; text-align: center; color: var(--suave); margin-bottom: 12px; }
+  #soltar.encima { border-color: var(--acento); color: var(--texto); }
+</style>
+</head>
+<body>
+<main>
+  <h1 data-t="titulo">Visor de escena</h1>
+  <p class="pista" data-t="pista">Comprobación de escena() (T2a), no es el Vivero. Carga una grabación .jsonl.gz o .jsonl, o un registro .json.</p>
+  <div id="soltar">
+    <input type="file" id="fichero" accept=".gz,.jsonl,.json">
+    <span data-t="soltar">o suelta aquí el fichero</span>
+  </div>
+  <p id="error" role="alert"></p>
+  <div class="barra">
+    <button id="atras" disabled aria-label="◀">◀</button>
+    <button id="jugar" disabled data-t="jugar">▶ Reproducir</button>
+    <button id="adelante" disabled aria-label="▶">▶</button>
+    <input type="range" id="cursor" min="0" max="0" value="0" disabled aria-label="latido">
+    <select id="velocidad" aria-label="velocidad">
+      <option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option><option value="64">×64</option>
+    </select>
+    <span id="posicion">–</span>
+  </div>
+  <div class="rejilla">
+    <div class="lienzo"><canvas id="lienzo" width="432" height="400"></canvas></div>
+    <dl class="datos" id="datos"></dl>
+  </div>
+  <pre id="crudo" hidden></pre>
+</main>
+<script type="module" src="/web/escena.js"></script>
+</body>
+</html>
