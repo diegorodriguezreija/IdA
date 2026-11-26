@@ -1,0 +1,29 @@
+{
+ "mundo": "archivos",
+ "clases": {
+  "raiz": {"es": {"el": "la raíz del bioma", "un": "la raíz del bioma", "g": "f"}, "en": {"el": "the biome root", "un": "the biome root"}},
+  "carpeta": {"es": {"el": "la carpeta", "un": "una carpeta", "g": "f"}, "en": {"el": "the folder", "un": "a folder"}},
+  "Boletus_edulis": {"es": {"el": "el boleto", "un": "un boleto", "g": "m"}, "en": {"el": "the penny bun", "un": "a penny bun"}},
+  "Taraxacum_officinale": {"es": {"el": "el diente de león", "un": "un diente de león", "g": "m"}, "en": {"el": "the dandelion", "un": "a dandelion"}},
+  "Vaccinium_myrtillus": {"es": {"el": "el arándano", "un": "un arándano", "g": "m"}, "en": {"el": "the bilberry", "un": "a bilberry"}},
+  "Amanita_phalloides": {"es": {"el": "la oronja verde", "un": "una oronja verde", "g": "f"}, "en": {"el": "the death cap", "un": "a death cap"}},
+  "Atropa_belladonna": {"es": {"el": "la belladona", "un": "una belladona", "g": "f"}, "en": {"el": "the belladonna", "un": "a belladonna"}},
+  "Conium_maculatum": {"es": {"el": "la cicuta", "un": "una cicuta", "g": "f"}, "en": {"el": "the hemlock", "un": "a hemlock"}},
+  "brote": {"es": {"el": "el brote", "un": "un brote", "g": "m"}, "en": {"el": "the sprout", "un": "a sprout"}},
+  "depredador": {"es": {"el": "el depredador", "un": "un depredador", "g": "m"}, "en": {"el": "the predator", "un": "a predator"}},
+  "arroyo_cristalino": {"es": {"el": "el arroyo cristalino", "un": "un arroyo cristalino", "g": "m"}, "en": {"el": "the clear stream", "un": "a clear stream"}},
+  "musgo_suave": {"es": {"el": "el musgo suave", "un": "musgo suave", "g": "m"}, "en": {"el": "the soft moss", "un": "soft moss"}},
+  "cristal_resonante": {"es": {"el": "el cristal resonante", "un": "un cristal resonante", "g": "m"}, "en": {"el": "the resonant crystal", "un": "a resonant crystal"}},
+  "fango_putrefacto": {"es": {"el": "el fango putrefacto", "un": "fango putrefacto", "g": "m"}, "en": {"el": "the rotten mud", "un": "rotten mud"}},
+  "mensaje": {"es": {"el": "el mensaje", "un": "un mensaje", "g": "m"}, "en": {"el": "the message", "un": "a message"}}
+ },
+ "acciones": {
+  "MOVER": {"es": {"inf": "ir a otra carpeta", "pres": "va a otra carpeta"}, "en": {"inf": "go to another folder", "pres": "goes to another folder"}}
+ },
+ "logros": {},
+ "puntos": {
+  "comido": {"es": "Comido", "en": "Eaten"},
+  "nutritivos": {"es": "Nutritivos", "en": "Nourishing"},
+  "toxicos": {"es": "Tóxicos", "en": "Toxic"}
+ }
+}

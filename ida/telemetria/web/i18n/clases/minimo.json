@@ -1,0 +1,18 @@
+{
+ "mundo": "minimo",
+ "clases": {
+  "pradera": {"es": {"el": "la pradera", "un": "la pradera", "g": "f"}, "en": {"el": "the meadow", "un": "the meadow"}},
+  "baya": {"es": {"el": "la baya", "un": "una baya", "g": "f"}, "en": {"el": "the berry", "un": "a berry"}},
+  "seta": {"es": {"el": "la seta", "un": "una seta", "g": "f"}, "en": {"el": "the mushroom", "un": "a mushroom"}},
+  "piedra": {"es": {"el": "la piedra", "un": "una piedra", "g": "f"}, "en": {"el": "the stone", "un": "a stone"}},
+  "lobo": {"es": {"el": "el lobo", "un": "un lobo", "g": "m"}, "en": {"el": "the wolf", "un": "a wolf"}}
+ },
+ "acciones": {
+  "MOVER": {"es": {"inf": "caminar", "pres": "camina"}, "en": {"inf": "walk", "pres": "walks"}}
+ },
+ "logros": {},
+ "puntos": {
+  "bayas": {"es": "Bayas comidas", "en": "Berries eaten"},
+  "setas": {"es": "Setas comidas", "en": "Mushrooms eaten"}
+ }
+}

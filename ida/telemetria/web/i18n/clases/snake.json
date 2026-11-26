@@ -1,0 +1,19 @@
+{
+ "mundo": "snake",
+ "clases": {
+  "fondo": {"es": {"el": "el tablero", "un": "el tablero", "g": "m"}, "en": {"el": "the board", "un": "the board"}},
+  "cuerpo": {"es": {"el": "su cuerpo", "un": "su cuerpo", "g": "m"}, "en": {"el": "its body", "un": "its body"}},
+  "comida": {"es": {"el": "la comida", "un": "comida", "g": "f"}, "en": {"el": "the food", "un": "food"}},
+  "casilla": {"es": {"el": "la casilla", "un": "una casilla", "g": "f"}, "en": {"el": "the square", "un": "a square"}},
+  "pared": {"es": {"el": "la pared", "un": "la pared", "g": "f"}, "en": {"el": "the wall", "un": "the wall"}}
+ },
+ "acciones": {
+  "MOVER": {"es": {"inf": "avanzar", "pres": "avanza"}, "en": {"inf": "move on", "pres": "moves on"}}
+ },
+ "logros": {},
+ "puntos": {
+  "puntos": {"es": "Puntos", "en": "Points"},
+  "longitud": {"es": "Longitud", "en": "Length"},
+  "causa_muerte": {"es": "Causa", "en": "Cause"}
+ }
+}
