@@ -67,6 +67,8 @@ Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/
 
 T4 debe observar también lo aprendido de la muerte (`_aprender_de_la_muerte` corre después del último latido observado), para el diario del Vivero.
 
+T3: la antesala detecta si Stockfish está disponible (ajedrez) y lo indica; la ruta sigue siendo opción de la CLI, no del formulario.
+
 ## Orden propuesto (25/11/2026)
 
 Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
