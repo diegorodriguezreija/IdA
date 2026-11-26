@@ -23,6 +23,10 @@ Traducción al vocabulario común:
 
 Diferencias con el benchmark oficial: IdA lee el estado simbólico del juego, no los píxeles.
 
+Escena (O6) y opciones (O8): ``escena()`` describe en rejilla lo que se ve (la misma ventana que ``vista()``) y
+``opciones()`` declara las opciones con los valores por defecto de la medición oficial de D17 (``evaluar_crafter.py``).
+Los valores por defecto del constructor no cambian: son los de la invariancia.
+
 La tecnología (fabricar, colocar, qué recoger) ya no es conducta del mundo: la persigue la estrategia
 general ``PerseguirMetas`` de S3 (paso 5) a partir de las metas y los requisitos del manual. La
 propiocepción incluye lo que hay delante (``cuerpo["delante"]``), que se ve, y la clase de cada casilla a la vista
@@ -36,6 +40,7 @@ import os
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.nucleo.mundo import Alta, Efecto, Entidad, Escala, Mundo, Necesidad, Observacion, Perfil, Registro
+from ida.mundos.opciones import opcion
 from ida.cuerpos.cuadricula import Cuadricula
 from ida.mundos.crafter.s1.sentir.valoracion import ValoracionCrafter
 from ida.mundos.crafter.s1.interpretar.recinto import ALCANCE_SITIO, Recinto
@@ -57,7 +62,57 @@ INVENTARIO = {"wood": "madera", "stone": "piedra", "coal": "carbon", "iron": "hi
               "wood_pickaxe": "pico_madera", "stone_pickaxe": "pico_piedra", "iron_pickaxe": "pico_hierro",
               "wood_sword": "espada_madera", "stone_sword": "espada_piedra", "iron_sword": "espada_hierro"}
 
+VITALES_JUEGO = {"health": "salud", "food": "comida", "drink": "bebida", "energy": "energia"}   # para la escena
+ORIENTACION = {(0, -1): "norte", (0, 1): "sur", (1, 0): "este", (-1, 0): "oeste"}   # x a la derecha, y hacia abajo
+LADO_MAPA = 64          # el de crafter.Env (area=(64, 64))
+
 Pos = Tuple[int, int]
+
+
+def _t(es: str, en: str) -> Dict[str, str]:
+    return {"es": es, "en": en}
+
+
+# O8: el defecto declarado es el de la medición oficial de D17 (``herramientas/evaluar_crafter.py``: vista «oficial»,
+# longitud 10000, manual «estricto», radio y ventana sin tocar). Las opciones nuevas (sección 8), por defecto, dan lo
+# de hoy: el mapa de 64×64 de crafter y la semilla del mapa igual a la del organismo.
+OPCIONES = [
+    opcion("vista", "opcion", "oficial",
+           _t("Vista", "View"),
+           _t("Oficial: 9×7 casillas, como el benchmark de Crafter. Cuadrada: (2·radio+1)² casillas. De noche, la mitad.",
+              "Official: 9×7 tiles, as in the Crafter benchmark. Square: (2·radius+1)² tiles. Half at night."),
+           valores=["oficial", "cuadrada"]),
+    opcion("radio", "entero", 4,
+           _t("Radio de visión", "Sight radius"),
+           _t("Alcance de la vista cuadrada y escala de la proximidad y del gradiente de la valoración, en casillas.",
+              "Reach of the square view and scale of proximity and of the valuation gradient, in tiles."),
+           min=2, max=8),
+    opcion("manual", "opcion", "estricto",
+           _t("Manual", "Manual"),
+           _t("Lo que IdA sabe al nacer. Estricto: el artículo y el README de Crafter. Ampliado: además, hechos de su código.",
+              "What IdA knows at birth. Strict: the Crafter paper and README. Extended: also facts from its code."),
+           valores=["estricto", "ampliado"]),
+    opcion("longitud", "entero", 10000,
+           _t("Longitud del episodio", "Episode length"),
+           _t("Pasos del juego tras los que Crafter termina la partida (10 000 en el benchmark oficial).",
+              "Game steps after which Crafter ends the episode (10,000 in the official benchmark)."),
+           min=100, max=1000000),
+    opcion("mapa", "entero", LADO_MAPA,
+           _t("Tamaño del mapa", "Map size"),
+           _t("Lado del mapa en casillas (64 en Crafter). IdA nace en el centro.",
+              "Map side in tiles (64 in Crafter). IdA is born at the centre."),
+           min=32, max=128),
+    opcion("semilla_mapa", "entero", None,
+           _t("Semilla del mapa", "Map seed"),
+           _t("Fija el mapa con independencia de la semilla del organismo. Vacía: la del organismo (cada generación, un mapa).",
+              "Fixes the map regardless of the organism seed. Empty: the organism's (each generation, a new map)."),
+           min=0, max=2**31 - 2, vacia=True),
+    opcion("ventana", "booleano", False,
+           _t("Ventana de Crafter", "Crafter window"),
+           _t("Abre una ventana con el dibujo oficial de Crafter (necesita tkinter y Pillow).",
+              "Opens a window with the official Crafter rendering (needs tkinter and Pillow)."),
+           ),
+]
 
 
 class _ConjuntoOrdenado:
@@ -156,7 +211,7 @@ class MundoCrafter(Mundo):
                                   coste_sin_productor=30.0))          # reponer sin acción conocida
 
     def __init__(self, radio: Any = 4, ventana: Any = 0, vista: str = "cuadrada", longitud: int = 100000,
-                 manual: str = "estricto", **_):
+                 manual: str = "estricto", mapa: Any = LADO_MAPA, semilla_mapa: Any = None, **_):
         import crafter                     # dependencia solo de este mundo
         from crafter import constants
         self._crafter = crafter
@@ -169,7 +224,9 @@ class MundoCrafter(Mundo):
         self.radio = int(radio)
         self.modo_vista = str(vista)
         self.longitud = int(longitud)
-        self.ventana = str(ventana) in ("1", "si", "sí", "true")
+        self.ventana = ventana is True or str(ventana).lower() in ("1", "si", "sí", "true")
+        self.lado_mapa = int(mapa)
+        self.semilla_mapa = None if semilla_mapa in (None, "") else int(semilla_mapa)
         self.env: Any = None
         self.t = 0
         self.fin = False
@@ -177,10 +234,16 @@ class MundoCrafter(Mundo):
         self._label: Any = None
         self._photo: Any = None
 
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        """O8: vista, radio, manual, longitud, mapa, semilla del mapa y ventana, con los defectos de la medición oficial."""
+        return copy.deepcopy(OPCIONES)
+
     # --- ciclo de vida -------------------------------------------------------
     def reiniciar(self, semilla: Optional[int], longitud: Optional[int] = None) -> None:
         long_ep = self.longitud if longitud is None else int(longitud)
-        self.env = self._crafter.Env(seed=semilla, length=long_ep)
+        semilla_env = semilla if self.semilla_mapa is None else self.semilla_mapa   # opción ``semilla_mapa``
+        self.env = self._crafter.Env(area=(self.lado_mapa, self.lado_mapa), seed=semilla_env, length=long_ep)
         mundo = self.env._world
         reset_original = mundo.reset
 
@@ -466,6 +529,39 @@ class MundoCrafter(Mundo):
 
     def puntuacion(self) -> Dict[str, Any]:
         return {"logros": self.logros(), "n_logros": len(self.logros()), "pasos": self.t}
+
+    def escena(self) -> Dict[str, Any]:
+        """Escena v1 en rejilla (O6): la ventana que se ve (la de ``vista()``; de noche, más pequeña), con el fondo de
+        cada casilla (``None`` fuera del mapa), las criaturas y plantas, el individuo en el centro con su orientación,
+        el inventario (con las constantes del juego) y, en ``extra``, la luz del día y los logros. Coordenadas desde la
+        esquina de arriba a la izquierda de la ventana; ``origen`` es esa esquina en el mapa.
+
+        Solo lee (O3). Las criaturas salen de ``_cosas()``, la misma vía que ``observar()`` y ``vista()``: asigna un id a
+        la que se ve por primera vez, pero el observador llama a ``vista()`` y a ``escena()`` al final del latido, sin
+        que el entorno avance antes del ``observar()`` siguiente, así que los ids y su orden son los mismos."""
+        p = self.jugador
+        px, py = int(p.pos[0]), int(p.pos[1])
+        rx, ry = self._limites_vista()
+        x0, y0 = px - rx, py - ry
+        fondo = self._casillas()
+        celdas = [[fondo.get((x0 + i, y0 + j)) for i in range(2 * rx + 1)] for j in range(2 * ry + 1)]
+        entidades: List[Dict[str, Any]] = []
+        for cid, clase, (x, y), obj in self._cosas():
+            if obj is None:            # los materiales ya están en el fondo
+                continue
+            e: Dict[str, Any] = {"clase": clase, "x": int(x) - x0, "y": int(y) - y0, "id": cid}
+            if clase == "planta" and bool(getattr(obj, "ripe", False)):
+                e["estado"] = "madura"
+            elif clase == "flecha":
+                e["estado"] = ORIENTACION.get((int(obj.facing[0]), int(obj.facing[1])), "")
+            entidades.append(e)
+        yo: Dict[str, Any] = {"x": rx, "y": ry, "orientacion": ORIENTACION.get((int(p.facing[0]), int(p.facing[1])))}
+        if p.sleeping:
+            yo["estado"] = "dormido"
+        inventario = {VITALES_JUEGO.get(k) or INVENTARIO.get(k, k): int(v) for k, v in p.inventory.items()}
+        return {"tipo": "rejilla", "ancho": 2 * rx + 1, "alto": 2 * ry + 1, "origen": [x0, y0], "celdas": celdas,
+                "entidades": entidades, "yo": yo, "inventario": inventario,
+                "extra": {"luz": round(float(self.env._world.daylight), 2), "logros": self.logros()}}
 
     def vista(self) -> str:
         pos = tuple(self.jugador.pos)
