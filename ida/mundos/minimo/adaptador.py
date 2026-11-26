@@ -10,11 +10,13 @@ Los lugares son las cuatro casillas vecinas. Para cada una, el mundo calcula sus
 (si no se ha pisado hace tiempo).
 """
 
+import copy
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.nucleo.azar import Azar
 from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
 from ida.nucleo.vocabulario import Verbo
+from ida.mundos.opciones import opcion
 from ida.mundos.minimo.s1.reaccionar.estrategias.defensa import Defensa
 
 TAM = 9
@@ -25,6 +27,29 @@ VECINOS = {"N": (0, -1), "S": (0, 1), "E": (1, 0), "O": (-1, 0)}
 
 def _dist(a: Tuple[int, int], b: Tuple[int, int]) -> int:
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
+def _t(es: str, en: str) -> Dict[str, str]:
+    return {"es": es, "en": en}
+
+
+OPCIONES = [
+    opcion("tamano", "entero", 9,
+           _t("Tamaño de la rejilla", "Grid size"),
+           _t("Lado de la pradera en casillas (9 por defecto). IdA nace en el centro.",
+              "Side of the meadow in tiles (9 by default). IdA is born at the centre."),
+           min=5, max=25),
+    opcion("depredadores", "entero", 1,
+           _t("Número de depredadores", "Number of predators"),
+           _t("Lobos que persiguen y atacan en la pradera (1 por defecto).",
+              "Wolves that chase and attack in the meadow (1 by default)."),
+           min=0, max=5),
+    opcion("comida", "entero", 4,
+           _t("Abundancia de comida", "Food abundance"),
+           _t("Número de bayas nutritivas sembradas en la pradera (4 por defecto).",
+              "Number of nutritious berries seeded in the meadow (4 by default)."),
+           min=1, max=20),
+]
 
 
 class MundoMinimo(Mundo):
@@ -39,28 +64,39 @@ class MundoMinimo(Mundo):
         rasgos_declarados=("peligro", "nutritivo", "recurso", "novedad"),
     )
 
-    def __init__(self, **_):
+    def __init__(self, tamano: Any = 9, depredadores: Any = 1, comida: Any = 4, **_):
+        self.tam = int(tamano)
+        self.depredadores = int(depredadores)
+        self.comida = int(comida)
         self.azar = Azar(0)
         self.reiniciar(0)
 
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        return copy.deepcopy(OPCIONES)
+
     def reiniciar(self, semilla: Optional[int]) -> None:
         self.azar = Azar(semilla)
-        self.pos = (TAM // 2, TAM // 2)
+        self.pos = (self.tam // 2, self.tam // 2)
         self.cosas: Dict[str, Dict[str, Any]] = {}
         self.n = 0
-        for _ in range(4):
+        for _ in range(self.comida):
             self._sembrar("baya")
         for _ in range(3):
             self._sembrar("seta")
         for _ in range(2):
             self._sembrar("piedra")
-        self.lobo: Dict[str, Any] = {"pos": (0, 0), "vivo": True}
+        self.lobos: List[Dict[str, Any]] = []
+        for i in range(self.depredadores):
+            lid = "lobo" if self.depredadores == 1 else f"lobo_{i+1}"
+            self.lobos.append({"id": lid, "pos": (0, 0), "vivo": True})
+        self.lobo = self.lobos[0] if self.lobos else {"pos": (0, 0), "vivo": False}
         self.pisadas: Dict[Tuple[int, int], int] = {}
         self.t = 0
         self.comido = {"baya": 0, "seta": 0}
 
     def _sembrar(self, clase: str) -> None:
-        libres = [(x, y) for x in range(TAM) for y in range(TAM) if (x, y) != self.pos and all(c["pos"] != (x, y) for c in self.cosas.values())]
+        libres = [(x, y) for x in range(self.tam) for y in range(self.tam) if (x, y) != self.pos and all(c["pos"] != (x, y) for c in self.cosas.values())]
         self.n += 1
         self.cosas[f"{clase}_{self.n}"] = {"clase": clase, "pos": self.azar.eleccion(libres)}
 
@@ -75,12 +111,13 @@ class MundoMinimo(Mundo):
                     "nutritivo": APARIENCIA.get(c["clase"], 0.0),
                     "recurso": 0.7 if c["clase"] == "piedra" else 0.0,
                 }, {"pos": c["pos"]}))
-        if self.lobo["vivo"] and _dist(self.pos, self.lobo["pos"]) <= VISION:
-            d = _dist(self.pos, self.lobo["pos"])
-            entidades.append(Entidad("lobo", "lobo", {"proximidad": 1.0 if d <= 1 else 1.0 - d / (VISION + 1), "peligro": 0.8, "agente": 1.0}))
+        for l in self.lobos:
+            if l["vivo"] and _dist(self.pos, l["pos"]) <= VISION:
+                d = _dist(self.pos, l["pos"])
+                entidades.append(Entidad(l["id"], "lobo", {"proximidad": 1.0 if d <= 1 else 1.0 - d / (VISION + 1), "peligro": 0.8, "agente": 1.0}))
         for nombre, (dx, dy) in VECINOS.items():
             celda = (self.pos[0] + dx, self.pos[1] + dy)
-            if not (0 <= celda[0] < TAM and 0 <= celda[1] < TAM):
+            if not (0 <= celda[0] < self.tam and 0 <= celda[1] < self.tam):
                 continue
             entidades.append(Entidad(f"celda_{celda[0]}_{celda[1]}", "pradera", {
                 "lugar": 1.0,
@@ -102,10 +139,14 @@ class MundoMinimo(Mundo):
         return mejor
 
     def _peligro(self, celda: Tuple[int, int]) -> float:
-        if not self.lobo["vivo"]:
-            return 0.0
-        d = _dist(celda, self.lobo["pos"])
-        return 1.0 if d <= 1 else max(0.0, 0.8 - 0.2 * d)
+        peligro_max = 0.0
+        for l in self.lobos:
+            if not l["vivo"]:
+                continue
+            d = _dist(celda, l["pos"])
+            p = 1.0 if d <= 1 else max(0.0, 0.8 - 0.2 * d)
+            peligro_max = max(peligro_max, p)
+        return peligro_max
 
     # --- acción --------------------------------------------------------------
     def verbos(self) -> Set[Verbo]:
@@ -116,7 +157,7 @@ class MundoMinimo(Mundo):
         ef = Efecto(exito=False)
         if verbo == Verbo.MOVER and objetivo.startswith("celda_"):
             x, y = (int(v) for v in objetivo.split("_")[1:])
-            if _dist(self.pos, (x, y)) == 1 and 0 <= x < TAM and 0 <= y < TAM:
+            if _dist(self.pos, (x, y)) == 1 and 0 <= x < self.tam and 0 <= y < self.tam:
                 self.pos = (x, y)
                 self.pisadas[self.pos] = self.t
                 ef = Efecto(exito=True)
@@ -134,30 +175,37 @@ class MundoMinimo(Mundo):
                     ef = Efecto(True, obtenido="piedra")
                 else:
                     ef = Efecto(True, obtenido=None)   # comer una piedra: no pasa nada
-        elif verbo == Verbo.ATACAR and objetivo == "lobo" and self.lobo["vivo"]:
-            if _dist(self.pos, self.lobo["pos"]) <= 1 and self.azar.probabilidad(0.5):
-                self.lobo = {"pos": (0, 0), "vivo": False, "renace": self.t + 30}
-            ef = Efecto(True)
+        elif verbo == Verbo.ATACAR:
+            for l in self.lobos:
+                if objetivo == l["id"] and l["vivo"]:
+                    if _dist(self.pos, l["pos"]) <= 1 and self.azar.probabilidad(0.5):
+                        l["pos"] = (0, 0)
+                        l["vivo"] = False
+                        l["renace"] = self.t + 30
+                    ef = Efecto(True)
+                    break
         elif verbo in (Verbo.DORMIR, Verbo.ESPERAR, Verbo.SOLTAR):
             ef = Efecto(True)
         self._mover_lobo(ef)
         return ef
 
     def _mover_lobo(self, ef: Efecto) -> None:
-        if not self.lobo["vivo"]:
-            if self.t >= self.lobo.get("renace", 0):
-                self.lobo = {"pos": (TAM - 1, 0) if self.azar.probabilidad(0.5) else (0, TAM - 1), "vivo": True}
-            return
-        lx, ly = self.lobo["pos"]
-        if self.azar.probabilidad(0.5):
-            dx = (self.pos[0] > lx) - (self.pos[0] < lx)
-            dy = (self.pos[1] > ly) - (self.pos[1] < ly)
-            nuevo = (lx + dx, ly) if dx and self.azar.probabilidad(0.5) or not dy else (lx, ly + dy)
-            if nuevo != self.pos:
-                self.lobo["pos"] = nuevo
-        if _dist(self.pos, self.lobo["pos"]) <= 1:
-            ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 8.0
-            ef.causa = "lobo"
+        for l in self.lobos:
+            if not l["vivo"]:
+                if self.t >= l.get("renace", 0):
+                    l["pos"] = (self.tam - 1, 0) if self.azar.probabilidad(0.5) else (0, self.tam - 1)
+                    l["vivo"] = True
+                continue
+            lx, ly = l["pos"]
+            if self.azar.probabilidad(0.5):
+                dx = (self.pos[0] > lx) - (self.pos[0] < lx)
+                dy = (self.pos[1] > ly) - (self.pos[1] < ly)
+                nuevo = (lx + dx, ly) if dx and self.azar.probabilidad(0.5) or not dy else (lx, ly + dy)
+                if nuevo != self.pos:
+                    l["pos"] = nuevo
+            if _dist(self.pos, l["pos"]) <= 1:
+                ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 8.0
+                ef.causa = "lobo"
 
     def registro(self) -> Registro:
         return Registro(estrategias={"S1": Alta(añade=[Defensa()])})
@@ -167,20 +215,38 @@ class MundoMinimo(Mundo):
 
     def vista(self) -> str:
         filas = []
-        for y in range(TAM):
+        for y in range(self.tam):
             fila = ""
-            for x in range(TAM):
+            for x in range(self.tam):
                 ch = "."
                 for c in self.cosas.values():
                     if c["pos"] == (x, y):
                         ch = {"baya": "b", "seta": "s", "piedra": "p"}[c["clase"]]
-                if self.lobo["vivo"] and self.lobo["pos"] == (x, y):
-                    ch = "L"
+                for l in self.lobos:
+                    if l["vivo"] and l["pos"] == (x, y):
+                        ch = "L"
                 if self.pos == (x, y):
                     ch = "@"
                 fila += ch
             filas.append(fila)
         return "\n".join(filas)
 
-
-
+    def escena(self) -> Dict[str, Any]:
+        celdas = [["pradera"] * self.tam for _ in range(self.tam)]
+        entidades: List[Dict[str, Any]] = []
+        for cid in sorted(self.cosas):
+            c = self.cosas[cid]
+            entidades.append({"clase": c["clase"], "x": c["pos"][0], "y": c["pos"][1], "id": cid})
+        for l in self.lobos:
+            if l["vivo"]:
+                entidades.append({"clase": "lobo", "x": l["pos"][0], "y": l["pos"][1], "id": l["id"]})
+        return {
+            "tipo": "rejilla",
+            "ancho": self.tam,
+            "alto": self.tam,
+            "celdas": celdas,
+            "entidades": entidades,
+            "yo": {"x": self.pos[0], "y": self.pos[1]},
+            "inventario": {},
+            "extra": {"bayas": self.comido["baya"], "setas": self.comido["seta"]},
+        }
