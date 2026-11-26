@@ -50,53 +50,100 @@
 | **O17** | **Mundos instalables desde la antesala.** La antesala muestra el estado de cada mundo (listo / no instalado). «Instalar» ejecuta `pip install -e ".[<extra>]"` con el Python del propio entorno de IdA (y `playwright install chromium` para Snake), con la salida en pantalla. Solo extras conocidos de `pyproject.toml`, nunca texto libre. Nuevo extra `[todos]` para instalarlo todo |
 | **O18** | **Pruebas.** Validación del esquema del registro (biblioteca estándar), invariancia con observador, paridad de claves de idioma, que cada mundo declare opciones válidas y que `escena()` cumpla su contrato. Las vistas se revisan a mano con una lista de comprobación por fase |
 
-## 4. Registro del latido v1 (esbozo)
+## 4. Registro del latido v1
 
-```jsonc
-{
-  "v": 1, "latido": 1234, "vida": 3, "generacion": 2, "individuo": "ida-7f3a", "mundo": "crafter",
-  // nivel vital
-  "cuerpo":   {"vitalidad": 72, "energia": 55, "descanso": 80, "dormido": false},
-  "afecto":   {"valencia": 0.3, "activacion": 0.6, "animo": "curioso"},
-  "quimica":  {"dopamina": 0.4, "cortisol": 0.2, "...": 0},
-  "necesidades": [{"nombre": "hambre", "deficit": 0.4}, {"nombre": "sed", "deficit": 0.1}],
-  "accion":   {"verbo": "hacer", "objetivo": "mesa", "exito": true, "sistema": "S3"},
-  "score":    {"valor": 15.9, "logros": ["collect_wood", "place_table"]},
-  "hechos":   [{"tipo": "aprende", "verbo": "hacer", "clase": "mesa", "requiere": {"madera": 1}, "fuente": "experiencia"}],
-  "escena":   { /* sección 6; solo si cambia */ },
-  // nivel cognitivo
-  "onda": {
-    "canales": {"Exterocepcion": 9, "Imagen": 4, "Accion": 3},
-    "flujo":   [{"pieza": "Imagen:arbol", "de": "S1.Sentir.Imagen", "a": "S2.Interpretar.Valor"}],
-    "consumo": {"S1": {"amplitud": 31, "potencia": 2.6}, "S2": {"...": 0}, "S3": {"...": 0}},
-    "guillotina": false
-  },
-  "tribunal":    {"ganador": "S3", "candidatos": [{"sistema": "S1", "verbo": "comer", "puntuacion": 0.41}]},
-  "estrategias": {"S1": "alimentarse", "S3": "progresar"},
-  // nivel completo
-  "tiempos_ms": {"S1.Sentir.Imagen": 0.12, "...": 0},
-  "fases":      [["sentir", 0, 1.2], ["preatencion", 1.2, 1.9]],
-  "piezas":     [{"id": "...", "tipo": "...", "arousal": 0.7, "origen": "S1.Imagen", "registro": []}]
-}
-```
+Fijado en T1 (26/11/2026). Lo produce `Observador(nivel).registrar(org, onda)` (`ida/telemetria/observador.py`) al
+final de cada latido; el esquema y su validador, con la biblioteca estándar, están en `ida/telemetria/esquema.py`
+(`ESQUEMA`, `HECHOS`, `validar`). Cada nivel incluye al anterior. Las versiones futuras solo **añaden** campos (el
+validador de v1 acepta campos que no conoce); quitar o renombrar exige `v: 2` y un conversor de las grabaciones antiguas.
 
-Los nombres exactos se fijan en T1 a partir de lo que exponen `Onda`, `Soma`, `Memoria` y `Mundo`. Cada versión nueva
-del esquema solo puede **añadir** campos; quitar o renombrar exige `v: 2` y un conversor para las grabaciones antiguas.
+**Siempre.** `v` (1), `nivel`, `latido`, `vida` (número de vida en la ejecución, desde 1), `generacion`, `individuo`,
+`mundo`, `con_experiencia`.
 
-## 5. Catálogo inicial de hechos
+**Nivel vital.**
 
-| Tipo | Parámetros | Ejemplo de frase (es) |
+| Campo | Contenido | De dónde sale |
 |---|---|---|
-| `nace` | individuo, generación, heredados | «Nace Ida-7f3a, generación 2, con 14 recuerdos heredados» |
-| `primera_vez` | verbo, clase | «Por primera vez: come una vaca» |
-| `aprende` | verbo, clase, efecto o requisito, fuente, confianza | «Ha aprendido que la mesa necesita madera» |
-| `duda` / `refuta` | proposición | «Ya no cree que el agua quite el hambre» |
-| `sorpresa` | esperado, obtenido | «Esperaba ganar y perdió: sorpresa» |
-| `logro` | nombre (del mundo) | «Logro: colocar una mesa» |
-| `peligro` | clase, daño estimado | «Ha aprendido a temer al zombi» |
-| `estrategia` | sistema, nombre, inicio o abandono | «Cambia de plan: buscar refugio» |
-| `duerme` / `despierta` | | «Se duerme agotada» |
-| `muere` | causa, latidos, Score | «Muere de hambre tras 812 latidos» |
+| `ritmo` | `ms`, `ms_total` (lógicos con plazo lógico, de reloj sin él), `plazo_ms`, `amplitud` [consumida, máxima], `potencia` [consumida, máxima], `guillotina` (motivo o vacío), `logico` | `Onda`, `onda.notas` |
+| `cuerpo` | `vitalidad`, `alimentacion`, `energia`, `descanso`, `dormido`, `cargando`, `vivo` | `Soma.valores()` |
+| `quimica` | `dopamina`, `placer`, `estres` | `Soma.valores()` |
+| `afecto` | `estado` (CALMA, CURIOSIDAD, ALERTA...), `valencia`, `indicadores` (peligro, tensión, calma) | `Soma` |
+| `necesidades` | `[{nombre, deficit}]` de cada necesidad declarada | `Perfil.necesidades`, `Necesidad.deficit` |
+| `accion` | `verbo`, `objetivo`, `clase`, `sistema`, `exito`, `mensaje`, `motivo` y, si viene de una, `estrategia`; `null` si no hubo | `ef["Accion"]` |
+| `score` | `puntuacion` (el diccionario del mundo) y `logros` (su lista `logros`, si la tiene) | `Mundo.puntuacion()` |
+| `hechos` | lista de hechos del latido (sección 5) | deducidos |
+| `experiencia` | `aprendizaje`, `expectativa`, `cambio_decision`, `episodio`: las frases de la consola de siempre (O5) | `onda.notas` |
+| `memoria` | `aciertos`, `sorpresas`, `episodios`, `demostradas`, `hipotesis`, `refutadas`, `recuerdos`, `heredados` | `Memoria` |
+| `contadores` | los del organismo (miedo, calma, hambre, guillotinas, dormido...) | `Organismo.contadores` |
+| `arquetipo` | los cinco rasgos | `Arquetipo` |
+| `vista` | la vista de texto del mundo (la escena estructurada llega en T2) | `Mundo.vista()` |
+
+**Nivel cognitivo.**
+
+| Campo | Contenido |
+|---|---|
+| `onda.canales` | por canal, cuántas piezas hay en `ev`, `acc` y `ef` |
+| `onda.piezas` | las piezas de `ev` y `acc`: `id`, `canal`, `fase`, `tipo`, `arousal`, `confianza`, `origen` (autoría, `Pieza.origen`), `sistema` |
+| `onda.flujo` | `[{pieza, de, a, op}]`: cada pieza que otro Componente modificó en este latido (de su autor a quien la tocó, según `Pieza.registro`) y cada pieza formada a partir de otra (`entradas`, `op: "entrada"`) |
+| `onda.consumo`, `onda.restante` | gasto, rechazos y recortes de amplitud y potencia por sistema; lo que quedaba al entrar en cada sistema |
+| `onda.operaciones`, `onda.guillotina`, `onda.excepciones` | operaciones del plazo lógico, si saltó la guillotina, usos de excepciones a la propiedad |
+| `tribunal` | `ganador` (`id` del candidato y `sistema`), `candidatos` (los 8 primeros, con `base`, `activa`, `proactiva`, `plus` y `total`), `cambio_experiencia`, `plus_decide` |
+| `estrategias` | `activas` (`id`, `sistema`, `nombre`) y `por_sistema` (lo que anota cada sistema: activas, ejecutada, abandonos, reflejo...) |
+| `saber` | las 20 proposiciones de más confianza: `sujeto`, `relacion`, `estado` (`hipotesis`, `demostrada`, `refutada`), `confianza`, `heredada`, `autoridad` |
+
+**Nivel completo.** `tiempos_ms` (cada Componente), `fases` (`[nombre, inicio_ms, fin_ms]` desde el inicio del latido),
+`piezas` (todas las de `ef`, con `creada`, `actualizada`, `entradas`, `carga` y su `registro`) y `saber` entero.
+
+**Campos de tiempo** (`esquema.CAMPOS_TIEMPO`): `ritmo.ms`, `ritmo.ms_total`, `tiempos_ms` y `fases`. Son los únicos que
+pueden cambiar entre dos grabaciones de la misma vida con plazo lógico (con plazo de reloj, `ritmo.ms` y
+`ritmo.ms_total` también son de reloj).
+
+**Lectura sin efectos.** El observador solo lee atributos y métodos de consulta. Una excepción, revisada con el autor
+en T1: en Crafter `vista()` llama a `_cosas()`, que asigna un id a cada criatura vista por primera vez. Entre el final
+del latido y el `observar()` siguiente (que también empieza por `_cosas()`) el entorno no avanza, así que asigna los
+mismos ids en el mismo orden. `herramientas/invariancia.py --observador completo` da OK en los cuatro mundos.
+
+**Grabación** (O7, `ida/telemetria/grabacion.py`). `.jsonl.gz`: una cabecera (`formato`, `esquema`, `commit` de
+`git rev-parse HEAD` con `+cambios` si los hay, `mundo`, `opciones`, `semilla`, `arquetipo`, `latidos`,
+`generaciones`, `plazo_logico`, `nivel`, `sin_experiencia`, `creada`) y un registro por línea. Se graba con
+`python -m ida --mundo M --grabar RUTA [--nivel vital|cognitivo|completo] [--plazo-logico OPS]`; por defecto, nivel
+cognitivo. El lector (`leer`, `iterar`) rehace la secuencia y `comparar` compara dos grabaciones sin los campos de tiempo.
+
+**Consumidores.** La consola forma su línea desde el registro (`ida/consola.py`, la misma salida byte a byte). El panel,
+la antesala y OTel reciben, hasta T6, la forma de antes por la capa `ida/telemetria/compat.py` (`a_panel`). Lo lanzado
+desde la antesala usa plazo lógico 40 (O11) salvo en los mundos cuyo `Perfil.tiempo_real` es verdadero (Snake), y nivel
+completo (el panel enseña los tiempos por Componente).
+
+## 5. Catálogo de hechos v1
+
+Los deduce `ida/telemetria/hechos.py` comparando el estado al final de cada latido con el del anterior; no se toca el
+motor. Lo que el individuo ya trae al nacer (manual, herencia) es la línea de partida y no cuenta como aprendido.
+
+| Tipo | Parámetros | Cuándo | Ejemplo de frase (es) |
+|---|---|---|---|
+| `nace` | `individuo`, `generacion`, `heredados` | primer latido de un organismo | «Nace Crafter_G2, generación 2, con 14 recuerdos heredados» |
+| `primera_vez` | `verbo`, `clase` | primera acción con éxito de ese verbo sobre esa clase en la vida | «Por primera vez: come una vaca» |
+| `aprende` | `saber: "proposicion"`, `clase`, `relacion`, `estado`, `fuente`, `confianza` | una proposición nueva, que pasa a demostrada o que vuelve de refutada | «Ha aprendido que el agua nutre» |
+| `aprende` | `saber: "requisito"`, `verbo`, `clase`, `requiere`, `cerca`, `efecto`, `confirmado`, `fuente`, `confianza` | un requisito nuevo, que cambia lo que pide o produce, o que se cumple por primera vez (sección «requisitos») | «Ha aprendido que la mesa necesita madera» |
+| `duda` | `clase`, `relacion`, `confianza` | una proposición demostrada vuelve a hipótesis | «Ya no está segura de que la seta nutra» |
+| `refuta` | `clase`, `relacion`, `confianza` | una proposición pasa a refutada | «Ya no cree que el agua quite el hambre» |
+| `sorpresa` | `origen: "expectativa"`, `verbo`, `clase`, `esperado`, `obtenido`, `rpe` | pieza `Sorpresa` de la expectativa (lo esperado es la expectativa que quedó al final del latido anterior) | «Esperaba ganar y perdió: sorpresa» |
+| `sorpresa` | `origen: "modelo"`, `sistema`, `clase`, `error` | pieza `Sorpresa` del modelo de transiciones (F1) | «Lo de la vaca no salió como preveía» |
+| `logro` | `nombre` (del mundo) | logro nuevo en `score.logros` | «Logro: colocar una mesa» |
+| `peligro` | `clase`, `estado`, `dano`, `confianza` | con cada `aprende` de «hace daño»; `dano` es el daño esperado de un encuentro según la sección «peligros», si la hay | «Ha aprendido a temer al zombi» |
+| `estrategia` | `sistema`, `nombre`, `cambio` (`inicio` o `fin`) y, al terminar, `estado` | una estrategia entra en las activas o sale | «Cambia de plan: buscar refugio» |
+| `duerme` | — | el cuerpo pasa a dormido | «Se duerme» |
+| `despierta` | `motivo` (`alarma`, `descansado` o vacío) | el cuerpo deja de estar dormido | «Despierta por una alarma» |
+| `muere` | `causa`, `latidos`, `puntuacion` | la vitalidad llega a cero (la causa es la del Core) | «Muere de hambre tras 812 latidos» |
+
+**Fuera de v1** (no se deducen sin tocar el motor, o se dejan para más adelante):
+
+- Lo que se aprende de la acción que mató (`Organismo._aprender_de_la_muerte`) ocurre después del último latido
+  observado: no da hechos (tampoco sale hoy en la consola).
+- Las proposiciones olvidadas al dormir (olvido, reducción nocturna) no dan hecho: el catálogo no tiene `olvida`.
+- Los recuerdos agregados verbo × clase (`Memoria.registros`) cambian casi en cada acción: no dan `aprende`.
+- `duerme` no lleva la causa (sueño elegido o forzado por agotamiento): el Core no la deja en la Onda de forma
+  estructurada.
 
 ## 6. Contrato de `escena()` (esbozo)
 
@@ -154,3 +201,4 @@ El orden pone el Vivero antes que el Laboratorio, como pidió el autor. T1 y T2 
 |---|---|---|---|
 | 25/11/2026 | O1–O18 | Propuesta inicial | Conversación con el autor sobre la evolución de la telemetría y la experiencia de usuario |
 | 26/11/2026 | O1–O18, sección 8 | Aprobadas por el autor. O8: el valor por defecto de cada opción es el que da más Score de base | Aprobación del autor |
+| 26/11/2026 | O2–O5, O7, O11, secciones 4 y 5 | T1: el registro del latido pasa de esbozo a v1 (esquema y catálogo de hechos finales, con lo que queda fuera); grabación `.jsonl.gz`; consola sobre el registro; plazo lógico 40 desde la antesala salvo en tiempo real. Excepción de lectura de `vista()` en Crafter (caché de ids), aprobada por el autor. Equivalencia OK; invariancia OK con el observador en los tres niveles; coste con nivel cognitivo, +4,6 % por latido (Crafter, 3000 latidos, plazo lógico 40, semilla 31, 2 repeticiones) | Rama `vista/t1-registro` |

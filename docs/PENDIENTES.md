@@ -61,7 +61,7 @@ Puntos abiertos de [`docs/historico/DEUDA_TECNICA_CRAFTER.md`](historico/DEUDA_T
 
 ## T · Observabilidad y experiencia de usuario
 
-Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/11/2026). Fases: T1 observador, registro del latido, hechos y grabación · T2 escena() y opciones declaradas por mundo · T3 servidor v1 y antesala nueva · T4 Vivero · T5 Laboratorio · T6 cierre (OTel sobre el registro, README, retirar panel.html y antesala.html).
+Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/11/2026). Fases: ~~T1 observador, registro del latido, hechos y grabación~~ (hecho el 26/11/2026, rama `vista/t1-registro`, pendiente de fusión: registro v1 en tres niveles, hechos deducidos, grabación `.jsonl.gz`, consola sobre el registro, `--plazo-logico`; equivalencia OK, invariancia OK con observador, coste cognitivo +4,6 % por latido en Crafter) · T2 escena() y opciones declaradas por mundo · T3 servidor v1 y antesala nueva · T4 Vivero · T5 Laboratorio · T6 cierre (OTel sobre el registro, README, retirar panel.html y antesala.html).
 
 ## Orden propuesto (25/11/2026)
 
