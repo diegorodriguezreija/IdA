@@ -393,6 +393,7 @@
   "resumen.companero": "Companion",
 
   "estirpe.resumen": "{n} lives in the lineage · best Score {score}",
+  "estirpe.resumen_1": "1 life in the lineage · best Score {score}",
   "estirpe.anteriores": "… and {n} earlier generations",
   "estirpe.vacia": "No life of this lineage has ended yet.",
   "estirpe.en_curso": "alive (heartbeat {n})",
@@ -421,6 +422,7 @@
   "companero.titulo": "Your companion",
   "companero.continuar": "Continue with your companion",
   "companero.continuar_ayuda": "{nombre}: generation {g} will be born ({n} lives in the lineage, best Score {score}).",
+  "companero.continuar_ayuda_1": "{nombre}: generation {g} will be born (1 life in the lineage, best Score {score}).",
   "companero.adoptar": "Adopt from the collection",
   "companero.adoptar_ayuda": "A saved card or lineage becomes your companion; the current one is archived in the collection.",
   "companero.adoptar_ayuda_sin": "A saved card or lineage becomes your companion.",
@@ -459,6 +461,7 @@
   "coleccion.motivo.empezar_de_cero": "when starting from scratch",
   "coleccion.motivo.archivar": "by hand",
   "coleccion.companero_ayuda": "this world's living lineage",
+  "coleccion.vidas_1": "1 life",
   "coleccion.vidas": "{n} lives",
   "coleccion.archivada": "archived {fecha}, {motivo}",
   "coleccion.guardada": "saved {fecha}",

@@ -393,6 +393,7 @@
   "resumen.companero": "Compañero",
 
   "estirpe.resumen": "{n} vidas en el linaje · mejor Score {score}",
+  "estirpe.resumen_1": "1 vida en el linaje · mejor Score {score}",
   "estirpe.anteriores": "… y {n} generaciones antes",
   "estirpe.vacia": "Aún no ha terminado ninguna vida de esta estirpe.",
   "estirpe.en_curso": "viviendo (latido {n})",
@@ -421,6 +422,7 @@
   "companero.titulo": "Tu compañero",
   "companero.continuar": "Continuar con tu compañero",
   "companero.continuar_ayuda": "{nombre}: nacerá la generación {g} ({n} vidas en el linaje, mejor Score {score}).",
+  "companero.continuar_ayuda_1": "{nombre}: nacerá la generación {g} (1 vida en el linaje, mejor Score {score}).",
   "companero.adoptar": "Adoptar de la colección",
   "companero.adoptar_ayuda": "Una ficha o una estirpe guardada pasa a ser tu compañero; el de ahora se archiva en la colección.",
   "companero.adoptar_ayuda_sin": "Una ficha o una estirpe guardada pasa a ser tu compañero.",
@@ -459,6 +461,7 @@
   "coleccion.motivo.empezar_de_cero": "al empezar de cero",
   "coleccion.motivo.archivar": "a mano",
   "coleccion.companero_ayuda": "la estirpe viva de este mundo",
+  "coleccion.vidas_1": "1 vida",
   "coleccion.vidas": "{n} vidas",
   "coleccion.archivada": "archivada {fecha}, {motivo}",
   "coleccion.guardada": "guardada {fecha}",

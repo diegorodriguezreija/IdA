@@ -131,6 +131,7 @@ class IdaVivero extends HTMLElement {
         this.diario = (d.hechos || []).slice(-DIARIO_MAX);
         this.requisitos = new Map((d.requisitos || []).map((h) => [claveReq(h), h]));
         if (d.reparto) this.reparto = { vida: d.reparto.vida, cuenta: { ...(d.reparto.cuenta || {}) } };
+        this.hasta = d.hasta || null;   // el último registro que el diario y el reparto ya cuentan
         this.programar();
       },
       registro: (r) => this.recibir(r),
@@ -143,8 +144,9 @@ class IdaVivero extends HTMLElement {
   recibir(r) {
     const otraVida = this.registro && r.vida !== this.registro.vida;
     if (otraVida) { this.escena = null; this.cargarEstirpe(); }   // la generación anterior ya está en el linaje
-    const repetido = this.registro && this.registro.vida === r.vida && this.registro.latido === r.latido
-      && Boolean(this.registro.cierre) === Boolean(r.cierre);
+    const mismo = (x) => x && x.vida === r.vida && x.latido === r.latido && Boolean(x.cierre) === Boolean(r.cierre);
+    const repetido = mismo(this.registro) || mismo(this.hasta);   // ya contado (p. ej. el que llega al conectarse)
+    this.hasta = null;
     this.registro = r;
     if (r.escena) this.escena = r.escena;
     if (r.arquetipo) this.generaciones.set(r.generacion, r.arquetipo);
@@ -614,7 +616,7 @@ class IdaVivero extends HTMLElement {
     const visibles = detalle ? linea : linea.slice(-ESTIRPE_VISIBLE);
     const ocultas = linea.length - visibles.length;
     const cabeza = `<div class="estirpe-cabeza"><p class="generacion-grande"><b>${esc(t('vivero.generacion', { n: gen }))}</b></p>
-      <p class="suave pequeno">${esc(t('estirpe.resumen', { n: e.generaciones ?? 0, score: puntos(e.mejor_score) }))}</p></div>`;
+      <p class="suave pequeno">${esc(t(e.generaciones === 1 ? 'estirpe.resumen_1' : 'estirpe.resumen', { n: e.generaciones ?? 0, score: puntos(e.mejor_score) }))}</p></div>`;
     const lista = linea.length ? `<ol class="linea-estirpe">${ocultas > 0 ? `<li class="suave pequeno">${esc(t('estirpe.anteriores', { n: ocultas }))}</li>` : ''}
       ${visibles.map((v) => this.itemEstirpe(v)).join('')}</ol>` : `<p class="suave pequeno">${esc(t('estirpe.vacia'))}</p>`;
     const puedeGuardar = Boolean(e.existe);

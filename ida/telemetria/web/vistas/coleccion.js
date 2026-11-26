@@ -11,6 +11,7 @@ import { radar } from '../componentes/radar.js';
 const RASGOS = ['apertura', 'responsabilidad', 'neuroticismo', 'extraversion', 'umbral_miedo'];
 const ICONOS = { companero: '🌱', estirpe: '🌳', ficha: '🧬' };
 
+function vidas(n) { return Number(n) === 1 ? t('coleccion.vidas_1') : t('coleccion.vidas', { n }); }
 function puntos(v) { return v == null || !Number.isFinite(Number(v)) ? '–' : String(Math.round(Number(v))); }
 function fecha(iso) {
   if (!iso) return '';
@@ -111,7 +112,7 @@ class IdaColeccion extends HTMLElement {
     const detalles = [
       x.individuo && x.individuo !== x.nombre ? x.individuo : '',
       x.generacion ? t('vivero.generacion', { n: x.generacion }) : '',
-      el.vidas != null ? t('coleccion.vidas', { n: el.vidas }) : el.generaciones != null ? t('coleccion.vidas', { n: el.generaciones }) : '',
+      el.vidas != null ? vidas(el.vidas) : el.generaciones != null ? vidas(el.generaciones) : '',
       x.tipo === 'estirpe' ? t('coleccion.archivada', { fecha: fecha(el.fecha), motivo: t(`coleccion.motivo.${el.motivo || 'archivar'}`) })
         : x.tipo === 'ficha' ? t('coleccion.guardada', { fecha: fecha(el.fecha) }) : t('coleccion.companero_ayuda'),
     ].filter(Boolean).map((d) => `<span>${esc(d)}</span>`).join(' · ');

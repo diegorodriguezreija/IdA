@@ -294,6 +294,7 @@ def test_el_servidor_marca_los_hechos_del_cierre_y_cuenta_el_reparto(servidor, m
     d = servidor.diario()
     assert d["reparto"] == {"vida": 1, "cuenta": {"S1": 1, "S2": 1}}   # el cierre no cuenta otra acción
     assert d["hechos"][-1]["cierre"] is True and d["hechos"][-1]["latido"] == 6
+    assert d["hasta"] == {"vida": 1, "latido": 6, "cierre": True}   # el Vivero no vuelve a sumar ese registro
 
 
 # --- resumen del saber -----------------------------------------------------------------------------------------------------------

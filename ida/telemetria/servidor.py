@@ -452,10 +452,13 @@ class Telemetria:
     def diario(self) -> Dict[str, Any]:
         """Los hechos recientes de la vida en curso (cada uno con ``latido``, ``vida`` y ``generacion``) y el último
         «aprende requisito» de cada acción: lo que necesita quien se conecta tarde para el diario y «Lo que sabe»; y el
-        reparto entre sistemas de las acciones de la vida en curso desde su inicio (T4b)."""
+        reparto entre sistemas de las acciones de la vida en curso desde su inicio (T4b). ``hasta`` es el último registro
+        que ya cuentan (``vida``, ``latido``, ``cierre``): el Vivero no vuelve a sumar ese registro cuando le llega."""
         with self._cerrojo:
+            r = self.ultimo_registro
+            hasta = None if r is None else {"vida": r.get("vida"), "latido": r.get("latido"), "cierre": bool(r.get("cierre"))}
             return {"hechos": list(self._diario), "requisitos": list(self._requisitos.values()),
-                    "reparto": {"vida": self._reparto["vida"], "cuenta": dict(self._reparto["cuenta"])}}
+                    "reparto": {"vida": self._reparto["vida"], "cuenta": dict(self._reparto["cuenta"])}, "hasta": hasta}
 
     def detener_simulacion(self) -> None:
         """Detiene de forma cooperativa la simulación en curso si la hubiera (también si está en pausa)."""
@@ -507,25 +510,23 @@ class Telemetria:
             self._escena, self._vida_escena = None, registro.get("vida")
         if "escena" in registro:
             self._escena = registro["escena"]
-        self.ultimo_registro = registro
         hechos = registro.get("hechos") or []
         accion = registro.get("accion")
-        if not registro.get("cierre") and isinstance(accion, dict) and accion.get("sistema"):
-            with self._cerrojo:
+        marca = {"latido": registro.get("latido"), "vida": registro.get("vida"), "generacion": registro.get("generacion")}
+        if registro.get("cierre"):
+            marca["cierre"] = True   # T4b: lo aprendido al morir
+        with self._cerrojo:          # el registro, su reparto y sus hechos entran juntos (``diario().hasta`` cuadra)
+            self.ultimo_registro = registro
+            if not registro.get("cierre") and isinstance(accion, dict) and accion.get("sistema"):
                 if self._reparto["vida"] != registro.get("vida"):
                     self._reparto = {"vida": registro.get("vida"), "cuenta": {}}
                 cuenta = self._reparto["cuenta"]
                 cuenta[accion["sistema"]] = cuenta.get(accion["sistema"], 0) + 1
-        if hechos:
-            marca = {"latido": registro.get("latido"), "vida": registro.get("vida"), "generacion": registro.get("generacion")}
-            if registro.get("cierre"):
-                marca["cierre"] = True   # T4b: lo aprendido al morir
-            with self._cerrojo:
-                for h in hechos:
-                    h2 = dict(h, **marca)
-                    self._diario.append(h2)
-                    if h.get("tipo") == "aprende" and h.get("saber") == "requisito":
-                        self._requisitos[(registro.get("vida"), h.get("verbo"), h.get("clase"))] = h2
+            for h in hechos:
+                h2 = dict(h, **marca)
+                self._diario.append(h2)
+                if h.get("tipo") == "aprende" and h.get("saber") == "requisito":
+                    self._requisitos[(registro.get("vida"), h.get("verbo"), h.get("clase"))] = h2
         self._difundir_registro("registro", registro)
         self._difundir(a_panel(registro))
 

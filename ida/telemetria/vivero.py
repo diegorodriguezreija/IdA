@@ -373,7 +373,8 @@ class Vivero:
                                  "individuo": ultimo.get("individuo"), "generacion": meta.get("generacion"),
                                  "vidas": meta.get("generaciones"), "mejor_score": meta.get("mejor_score"),
                                  "fecha": meta.get("archivada"), "motivo": meta.get("motivo"),
-                                 "incompleta": bool(meta.get("incompleta"))})
+                                 "incompleta": bool(meta.get("incompleta")),
+                                 "arquetipo": {r: (ultimo.get("arquetipo") or {}).get(r) for r in RASGOS_CARACTER}})
         return entradas
 
     def _rehacer_indice(self) -> List[Dict[str, Any]]:

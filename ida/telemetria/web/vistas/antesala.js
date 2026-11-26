@@ -380,9 +380,10 @@ class IdaAntesala extends HTMLElement {
         <input type="radio" name="origen" value="${valor}" ${origen === valor ? 'checked' : ''} ${deshabilitada ? 'disabled' : ''}>
         <span><b>${esc(titulo)}</b><small>${esc(ayuda)}</small></span></label>`;
     const continuar = c ? opcion('continuar', t('companero.continuar'),
-      t('companero.continuar_ayuda', { nombre: c.nombre || c.individuo, g: c.generacion + 1, n: c.generaciones, score: puntos(c.mejor_score) })) : '';
-    const elegir = lista.length ? `<div class="campo"><label for="adoptar-id">${esc(t('companero.cual'))}</label>
-        <select class="entrada" id="adoptar-id" ${origen === 'adoptar' ? '' : 'disabled'}>
+      t(c.generaciones === 1 ? 'companero.continuar_ayuda_1' : 'companero.continuar_ayuda',
+        { nombre: c.nombre || c.individuo, g: c.generacion + 1, n: c.generaciones, score: puntos(c.mejor_score) })) : '';
+    const elegir = origen !== 'adoptar' ? '' : lista.length ? `<div class="campo"><label for="adoptar-id">${esc(t('companero.cual'))}</label>
+        <select class="entrada" id="adoptar-id">
           <option value="">${esc(t('companero.elige'))}</option>
           ${lista.map((x) => `<option value="${esc(x.id)}" ${x.id === e.adoptarId ? 'selected' : ''}>${esc(`${x.tipo === 'estirpe' ? '🌳' : '🧬'} ${x.nombre} · ${t('vivero.generacion', { n: x.generacion ?? '?' })} · ${t('companero.score', { score: puntos(x.mejor_score) })}`)}</option>`).join('')}
         </select></div>` : `<p class="suave pequeno">${esc(t('companero.coleccion_vacia'))}</p>`;
