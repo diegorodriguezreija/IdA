@@ -276,6 +276,7 @@ class IdaVivero extends HTMLElement {
     const pre = lienzo.nextElementSibling;
     const ok = this.escena && dibujarEscena(lienzo, this.escena, this.vida.mundo, { inventario: t('escena.inventario') });
     lienzo.hidden = !ok;
+    lienzo.parentElement.dataset.tipo = ok ? this.escena.tipo : 'texto';
     pre.hidden = Boolean(ok) || !this.registro;
     if (!ok && this.registro) pre.textContent = this.registro.vista || t('vivero.sin_escena');
   }

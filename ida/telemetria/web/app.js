@@ -9,26 +9,26 @@ import './vistas/lab.js';
 const RUTAS = { antesala: 'ida-antesala', vivero: 'ida-vivero', lab: 'ida-lab' };
 const CLAVE_TEMA = 'ida.tema';
 
-function temaActual() {
+/** El modo elegido: «sistema» (el del sistema operativo), «light» o «dark». */
+function modoTema() {
   const fijado = document.documentElement.dataset.theme;
-  if (fijado === 'light' || fijado === 'dark') return fijado;
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  return fijado === 'light' || fijado === 'dark' ? fijado : 'sistema';
 }
 
 function pintarTema() {
-  const oscuro = temaActual() === 'dark';
-  const boton = document.getElementById('tema');
-  boton.setAttribute('aria-pressed', String(oscuro));
-  boton.querySelector('.icono-sol').style.display = oscuro ? '' : 'none';
-  boton.querySelector('.icono-luna').style.display = oscuro ? 'none' : '';
+  const modo = modoTema();
+  document.querySelectorAll('#temas [data-tema]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tema === modo)));
 }
 
-function cambiarTema() {
-  const nuevo = temaActual() === 'dark' ? 'light' : 'dark';
-  document.documentElement.dataset.theme = nuevo;
-  try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch { /* sin almacenamiento: no se recuerda */ }
+function elegirTema(modo) {
+  if (modo === 'light' || modo === 'dark') document.documentElement.dataset.theme = modo;
+  else delete document.documentElement.dataset.theme;
+  try {
+    if (modo === 'light' || modo === 'dark') localStorage.setItem(CLAVE_TEMA, modo);
+    else localStorage.removeItem(CLAVE_TEMA);
+  } catch { /* sin almacenamiento: no se recuerda */ }
   pintarTema();
-  document.dispatchEvent(new CustomEvent('ida:tema', { detail: { tema: nuevo } }));
+  document.dispatchEvent(new CustomEvent('ida:tema', { detail: { tema: modo } }));
 }
 
 function pintarIdioma() {
@@ -61,7 +61,7 @@ document.querySelectorAll('#idiomas button').forEach((b) => b.addEventListener('
   await cambiar(b.dataset.idioma);
   pintarIdioma();
 }));
-document.getElementById('tema').addEventListener('click', cambiarTema);
+document.querySelectorAll('#temas [data-tema]').forEach((b) => b.addEventListener('click', () => elegirTema(b.dataset.tema)));
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { pintarTema(); document.dispatchEvent(new CustomEvent('ida:tema')); });
 window.addEventListener('hashchange', mostrar);
 mostrar();

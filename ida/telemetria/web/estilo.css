@@ -169,6 +169,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
   background: var(--superficie-2); border: 1px solid var(--linea); color: var(--tinta);
 }
 .boton-icono svg { width: 19px; height: 19px; }
+.temas button { display: inline-grid; place-items: center; padding: 5px 9px; }
+.temas svg { width: 17px; height: 17px; }
 
 /* --- contenido ----------------------------------------------------------------------------------------------------- */
 main { padding: clamp(20px, 3vw, 40px) clamp(16px, 3vw, 40px) 64px; }
@@ -369,9 +371,16 @@ input[type="range"] { width: 100%; accent-color: var(--musgo); }
 .columna-escena, .columna-tarjetas { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 .fila-tarjetas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; margin-top: 18px; align-items: stretch; }
 .escenario { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-.lienzo-marco { border-radius: 14px; overflow: hidden; background: var(--vacio); display: grid; place-items: center; min-height: 320px; }
-.lienzo-marco canvas { display: block; max-width: 100%; max-height: 68vh; height: auto; image-rendering: pixelated; }
-.lienzo-marco pre { margin: 0; padding: 16px; color: #e8e4d8; font: 13px/1.35 var(--letra-mono); white-space: pre; overflow: auto; max-width: 100%; }
+/* Escena sin franjas: el lienzo conserva sus proporciones (ancho y alto automáticos con dos máximos) y el marco no
+   pinta fondo alrededor. El árbol (archivos), que crece hacia abajo, se desplaza en vez de encogerse. */
+.lienzo-marco { display: flex; justify-content: center; align-items: flex-start; }
+.lienzo-marco canvas { display: block; max-width: 100%; max-height: 68vh; width: auto; height: auto; border-radius: 14px;
+  image-rendering: pixelated; box-shadow: 0 0 0 1px var(--linea); }
+.lienzo-marco[data-tipo="arbol"] { max-height: 68vh; overflow: auto; border-radius: 14px; }
+.lienzo-marco[data-tipo="arbol"] canvas { max-height: none; image-rendering: auto; }
+.lienzo-marco[data-tipo="tablero"] canvas { image-rendering: auto; }
+.lienzo-marco pre { margin: 0; padding: 16px; border-radius: 14px; background: var(--vacio); color: #e8e4d8; font: 13px/1.35 var(--letra-mono);
+  white-space: pre; overflow: auto; max-width: 100%; }
 .mandos { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .mandos [data-parar] { margin-left: auto; }
 .ritmos button { white-space: nowrap; }

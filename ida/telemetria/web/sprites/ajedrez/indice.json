@@ -1,0 +1,5 @@
+{
+  "mundo": "ajedrez",
+  "claves": "sin sprites: el tablero se dibuja con las piezas Unicode (dibujo.js); el índice vacío evita un 404",
+  "mapa_sprites": {}
+}
