@@ -49,6 +49,7 @@ Este documento es la lista viva de lo que queda. Cuando un punto se resuelva, se
 | V1 | Semillas nuevas (41 y 42) para descartar el sobreajuste a 31 y 32 |
 | V2 | Batería de perturbaciones (receta cambiada, día más corto o más largo, mapas de 48 y 96, agua escasa, vista de radio 3) |
 | V3 | Un segundo mundo de cuadrícula (por ejemplo, MiniGrid) con cero cambios en lo general: la prueba de que la separación es real |
+| V4 | **Carácter de la antesala antigua en Crafter.** `CONFIG_OPTIMA` (0.55/0.70/0.45/0.30/0.65) se presentaba como «óptimo» sin medir. Medirlo frente al perfil Equilibrado con el criterio D17 (semillas 31 y 32, 100 000 pasos); si gana, pasa a ser el «Recomendado» de Crafter | O8 |
 | M1 | Reformulado (D14): la eficiencia de S1 con amenaza (23 piezas en lugar de 12), no una reserva de amplitud |
 | M2, M4–M7 | Como en el plan: cuándo merece la pena luchar, tener el refugio antes de la noche, el huerto, metas sin lista de logros y la evaluación final |
 
@@ -63,11 +64,15 @@ Puntos abiertos de [`docs/historico/DEUDA_TECNICA_CRAFTER.md`](historico/DEUDA_T
 
 ## T · Observabilidad y experiencia de usuario
 
-Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/11/2026). Fases: ~~T1 observador, registro del latido, hechos y grabación~~ (hecho el 26/11/2026, rama `vista/t1-registro`, fusionado en `main`: registro v1 en tres niveles, hechos deducidos, grabación `.jsonl.gz`, consola sobre el registro, `--plazo-logico`; equivalencia OK, invariancia OK con observador, coste cognitivo +4,6 % por latido en Crafter) · ~~T2a contratos de escena() y de opciones, con Crafter~~ (hecho el 26/11/2026, rama `vista/t2a-escena`, fusionado en `main`: escena v1 en rejilla, árbol y tablero, solo cuando cambia; opciones declaradas con el defecto de la medición oficial; Crafter con escena, siete opciones y sprites MIT; visor en `/escena`; equivalencia OK, invariancia OK con observador completo) · ~~T2b escena() y opciones en mínimo, archivos, Snake y ajedrez, con el patrón de Crafter~~ (hecho el 26/11/2026, rama `vista/t2b-mundos`: escena en los cuatro mundos, opciones declaradas con defecto = conducta de hoy, sprites SVG e índices por mundo, visor con árbol y tablero; equivalencia OK, invariancia OK) · T3 servidor v1 y antesala nueva · T4 Vivero · T5 Laboratorio · T6 cierre (OTel sobre el registro, README, retirar panel.html y antesala.html).
+Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/11/2026). Fases: ~~T1 observador, registro del latido, hechos y grabación~~ (hecho el 26/11/2026, rama `vista/t1-registro`, fusionado en `main`: registro v1 en tres niveles, hechos deducidos, grabación `.jsonl.gz`, consola sobre el registro, `--plazo-logico`; equivalencia OK, invariancia OK con observador, coste cognitivo +4,6 % por latido en Crafter) · ~~T2a contratos de escena() y de opciones, con Crafter~~ (hecho el 26/11/2026, rama `vista/t2a-escena`, fusionado en `main`: escena v1 en rejilla, árbol y tablero, solo cuando cambia; opciones declaradas con el defecto de la medición oficial; Crafter con escena, siete opciones y sprites MIT; visor en `/escena`; equivalencia OK, invariancia OK con observador completo) · ~~T2b escena() y opciones en mínimo, archivos, Snake y ajedrez, con el patrón de Crafter~~ (hecho el 26/11/2026, rama `vista/t2b-mundos`: escena en los cuatro mundos, opciones declaradas con defecto = conducta de hoy, sprites SVG e índices por mundo, visor con árbol y tablero; equivalencia OK, invariancia OK) · ~~T3 servidor v1 y antesala nueva~~ (hecho el 26/11/2026, rama `vista/t3-antesala`: API `/api/v1` con SSE y comprobación de Origin, mundos instalables desde la antesala con detección local de su estado, ritmo entre latidos (pausa, ×1, ×4, máximo), aplicación web con i18n es/en y tema claro/oscuro, antesala en tres pasos, esqueletos del Vivero y del Laboratorio, extra `[todos]`; lista de comprobación en [T3_COMPROBACION.md](T3_COMPROBACION.md)) · T4 Vivero · T5 Laboratorio · T6 cierre (OTel sobre el registro, README, retirar panel.html y antesala.html).
 
 T4 debe observar también lo aprendido de la muerte (`_aprender_de_la_muerte` corre después del último latido observado), para el diario del Vivero.
 
-T3: la antesala detecta si Stockfish está disponible (ajedrez) y lo indica; la ruta sigue siendo opción de la CLI, no del formulario.
+~~T3: la antesala detecta si Stockfish está disponible (ajedrez) y lo indica; la ruta sigue siendo opción de la CLI, no del formulario.~~ Hecho en T3: estado `sin_stockfish` (lanzable, con el rival local).
+
+Para T6: la línea de pip de «Pruébalo en 1 minuto» es ya `pip install -e ".[todos]"`, pero la siguiente (`python -m pytest -q`) necesita el extra `[dev]`; el resto del README sigue describiendo la antesala y el panel de antes.
+
+T4: traducir los valores de las opciones de tipo lista (opciones() con etiquetas por valor); acción en lenguaje natural en lugar de "MOVER celda_5_4"; selector sistema/claro/oscuro; navegación con flechas entre presets; la escena sin franjas negras cuando no ocupa todo el ancho.
 
 ## Orden propuesto (25/11/2026)
 

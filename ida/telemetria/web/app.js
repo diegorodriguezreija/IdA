@@ -1,0 +1,67 @@
+// Aplicación de IdA (O1, O12): cabecera con idioma y tema, y rutas #/antesala, #/vivero y #/lab.
+// Módulos ES y Web Components, sin compilación ni dependencias.
+
+import { cambiar, idioma, iniciar, t, traducir } from './i18n.js';
+import './vistas/antesala.js';
+import './vistas/vivero.js';
+import './vistas/lab.js';
+
+const RUTAS = { antesala: 'ida-antesala', vivero: 'ida-vivero', lab: 'ida-lab' };
+const CLAVE_TEMA = 'ida.tema';
+
+function temaActual() {
+  const fijado = document.documentElement.dataset.theme;
+  if (fijado === 'light' || fijado === 'dark') return fijado;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+function pintarTema() {
+  const oscuro = temaActual() === 'dark';
+  const boton = document.getElementById('tema');
+  boton.setAttribute('aria-pressed', String(oscuro));
+  boton.querySelector('.icono-sol').style.display = oscuro ? '' : 'none';
+  boton.querySelector('.icono-luna').style.display = oscuro ? 'none' : '';
+}
+
+function cambiarTema() {
+  const nuevo = temaActual() === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = nuevo;
+  try { localStorage.setItem(CLAVE_TEMA, nuevo); } catch { /* sin almacenamiento: no se recuerda */ }
+  pintarTema();
+  document.dispatchEvent(new CustomEvent('ida:tema', { detail: { tema: nuevo } }));
+}
+
+function pintarIdioma() {
+  document.querySelectorAll('#idiomas button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.idioma === idioma())));
+  document.title = t('app.titulo');
+}
+
+function ruta() {
+  const nombre = (location.hash.replace(/^#\/?/, '').split(/[/?]/)[0] || 'antesala');
+  return RUTAS[nombre] ? nombre : 'antesala';
+}
+
+function mostrar() {
+  const nombre = ruta();
+  if (!location.hash.startsWith(`#/${nombre}`)) history.replaceState(null, '', `#/${nombre}`);
+  document.querySelectorAll('.navegacion a').forEach((a) => {
+    if (a.dataset.ruta === nombre) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  });
+  const vista = document.getElementById('vista');
+  if (vista.firstElementChild && vista.firstElementChild.localName === RUTAS[nombre]) return;
+  vista.replaceChildren(document.createElement(RUTAS[nombre]));
+  window.scrollTo({ top: 0 });
+}
+
+await iniciar();
+traducir(document);
+pintarIdioma();
+pintarTema();
+document.querySelectorAll('#idiomas button').forEach((b) => b.addEventListener('click', async () => {
+  await cambiar(b.dataset.idioma);
+  pintarIdioma();
+}));
+document.getElementById('tema').addEventListener('click', cambiarTema);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { pintarTema(); document.dispatchEvent(new CustomEvent('ida:tema')); });
+window.addEventListener('hashchange', mostrar);
+mostrar();

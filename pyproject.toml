@@ -30,6 +30,10 @@ observabilidad = [
     "opentelemetry-sdk>=1.30",
     "opentelemetry-exporter-otlp-proto-http>=1.30",
 ]
+# Los tres mundos con dependencias, para probarlo todo (README). Debe ser la unión de crafter, snake y ajedrez
+# (lo comprueba tests/test_api_v1.py). Snake necesita además `python -m playwright install chromium`.
+# Sin [observabilidad]: OTel solo sirve con la pila de infra/ (Docker) y añade unos diez paquetes que el usuario casual no usa.
+todos = ["crafter>=1.8", "playwright>=1.40", "chess>=1.10"]
 dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
 
 [project.scripts]
