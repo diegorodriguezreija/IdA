@@ -24,6 +24,19 @@ from typing import Any, Dict, List, Optional
 from urllib.parse import parse_qs, urlparse
 
 from ida.historico import cargar_linaje, conmutar_fijado, exportar_individuo, exportar_linaje_completo
+from ida.telemetria.compat import a_panel
+from ida.telemetria.esquema import VERSION
+
+PLAZO_LOGICO_ANTESALA = 40.0   # O11: como D17
+NIVEL_ANTESALA = "completo"     # el panel de hoy enseña los tiempos por Componente (nivel completo); hasta T6
+
+
+def plazo_por_defecto(mundo: str) -> Optional[float]:
+    """O11: lo lanzado desde la antesala usa plazo lógico (40 operaciones por ms), salvo en los mundos de tiempo real,
+    que se detectan por el ``Perfil.tiempo_real`` de la clase del mundo (Snake): allí el ritmo lo marca el mundo."""
+    from ida.mundos import cargar
+
+    return None if cargar(mundo).perfil.tiempo_real else PLAZO_LOGICO_ANTESALA
 
 PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
 ANTESALA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "antesala.html")
@@ -156,7 +169,8 @@ class Telemetria:
         self.mundo = mundo
         self.activo = True
         self.simulacion_activa = bool(mundo and not modo_antesala)
-        self.ultimo: Optional[Dict[str, Any]] = None
+        self.ultimo: Optional[Dict[str, Any]] = None             # lo último enviado al panel (forma de antes)
+        self.ultimo_registro: Optional[Dict[str, Any]] = None    # el último registro del latido v1
         self._colas: List[queue.Queue] = []
         self.evento_parada = threading.Event()
         self.hilo_simulacion: Optional[threading.Thread] = None
@@ -187,12 +201,14 @@ class Telemetria:
         mundo = config.get("mundo", "minimo")
         self.mundo = mundo
         self.ultimo = None
+        self.ultimo_registro = None
         self.evento_parada.clear()
         self.simulacion_activa = True
 
         def _tarea():
             from ida.ejecutor import ejecutar
             try:
+                plazo = config["plazo_logico"] if "plazo_logico" in config else plazo_por_defecto(mundo)
                 ejecutar(
                     mundo=mundo,
                     latidos=int(config.get("latidos", 300)),
@@ -208,6 +224,8 @@ class Telemetria:
                     otel=bool(config.get("otel", False)),
                     arquetipo_inicial=config.get("arquetipo"),
                     legado_inicial=config.get("legado"),
+                    nivel=str(config.get("nivel", NIVEL_ANTESALA)),
+                    plazo_logico=None if plazo is None else float(plazo),
                 )
             except Exception as exc:
                 print(f"[telemetría] error en la simulación: {exc}")
@@ -215,7 +233,7 @@ class Telemetria:
                 self.simulacion_activa = False
                 if self.ultimo is not None:
                     fin = dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion")
-                    self.publicar(fin)
+                    self._difundir(fin)
 
         self.hilo_simulacion = threading.Thread(target=_tarea, daemon=True)
         self.hilo_simulacion.start()
@@ -228,7 +246,7 @@ class Telemetria:
         self.simulacion_activa = False
         if self.ultimo is not None:
             fin = dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion")
-            self.publicar(fin)
+            self._difundir(fin)
 
     def _suscribir(self) -> queue.Queue:
         cola: queue.Queue = queue.Queue(maxsize=200)
@@ -241,7 +259,16 @@ class Telemetria:
             if cola in self._colas:
                 self._colas.remove(cola)
 
-    def publicar(self, datos: Dict[str, Any]) -> None:
+    def publicar(self, registro: Dict[str, Any]) -> None:
+        """Publica un registro del latido v1 (O2). El panel y la antesala de hoy reciben la forma de antes
+        (``compat.a_panel``, hasta T6). Un diccionario sin ``v`` se difunde tal cual (forma de antes, hasta T6)."""
+        if registro.get("v") != VERSION:     # forma de antes (compatibilidad hasta T6): se difunde tal cual
+            self._difundir(registro)
+            return
+        self.ultimo_registro = registro
+        self._difundir(a_panel(registro))
+
+    def _difundir(self, datos: Dict[str, Any]) -> None:
         """No bloquea: si un cliente va lento, se descartan sus eventos más antiguos."""
         datos = dict(datos, mundo=self.mundo)
         if "simulacion_activa" not in datos:

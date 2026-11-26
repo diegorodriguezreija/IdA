@@ -25,6 +25,10 @@ def main(argv=None) -> int:
     p.add_argument("--cada", type=int, default=1, help="imprimir un latido de cada N (siempre se imprimen los aprendizajes)")
     p.add_argument("--opcion", action="append", default=[], metavar="CLAVE=VALOR", help="opción propia del mundo")
     p.add_argument("--biblioteca", default=None, choices=["nula", "fija", "erronea"], help="biblioteca externa de autoridad")
+    p.add_argument("--grabar", default=None, metavar="RUTA", help="graba la vida en RUTA (.jsonl.gz): cabecera y un registro por latido")
+    p.add_argument("--nivel", default="cognitivo", choices=["vital", "cognitivo", "completo"], help="nivel del registro del latido (por defecto, cognitivo)")
+    p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
+                   help="plazo lógico de la guillotina: OPS operaciones por ms (vidas reproducibles); por defecto, reloj")
     a = p.parse_args(argv)
 
     if a.mundo is None or a.web:
@@ -61,6 +65,9 @@ def main(argv=None) -> int:
         opciones_mundo=opciones,
         otel=a.otel,
         biblioteca=a.biblioteca,
+        nivel=a.nivel,
+        grabar=a.grabar,
+        plazo_logico=a.plazo_logico,
     )
     return 0
 
