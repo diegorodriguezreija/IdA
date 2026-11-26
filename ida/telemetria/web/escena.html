@@ -44,19 +44,19 @@
 </head>
 <body>
 <main>
-  <h1 data-t="titulo">Visor de escena</h1>
-  <p class="pista" data-t="pista">Comprobación de escena() (T2a), no es el Vivero. Carga una grabación .jsonl.gz o .jsonl, o un registro .json.</p>
+  <h1 data-i18n="escena.titulo">Visor de escena</h1>
+  <p class="pista" data-i18n="escena.pista">Comprobación de escena() (T2a), no es el Vivero. Carga una grabación .jsonl.gz o .jsonl, o un registro .json.</p>
   <div id="soltar">
     <input type="file" id="fichero" accept=".gz,.jsonl,.json">
-    <span data-t="soltar">o suelta aquí el fichero</span>
+    <span data-i18n="escena.soltar">o suelta aquí el fichero</span>
   </div>
   <p id="error" role="alert"></p>
   <div class="barra">
-    <button id="atras" disabled aria-label="◀">◀</button>
-    <button id="jugar" disabled data-t="jugar">▶ Reproducir</button>
-    <button id="adelante" disabled aria-label="▶">▶</button>
-    <input type="range" id="cursor" min="0" max="0" value="0" disabled aria-label="latido">
-    <select id="velocidad" aria-label="velocidad">
+    <button id="atras" disabled data-i18n-aria="escena.anterior">◀</button>
+    <button id="jugar" disabled data-i18n="escena.jugar">▶ Reproducir</button>
+    <button id="adelante" disabled data-i18n-aria="escena.siguiente">▶</button>
+    <input type="range" id="cursor" min="0" max="0" value="0" disabled data-i18n-aria="escena.latido">
+    <select id="velocidad" data-i18n-aria="escena.velocidad">
       <option value="1">×1</option><option value="4" selected>×4</option><option value="16">×16</option><option value="64">×64</option>
     </select>
     <span id="posicion">–</span>

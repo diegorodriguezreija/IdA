@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IdA</title>
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 4c9.5 0 16 7.4 16 16.2C36 29.4 28.9 36 20 36S4 29.4 4 20.2C4 11.4 10.5 4 20 4z' fill='%232f6a4c'/%3E%3Cpath d='M9 21h6l2.6-5.5 4.2 10 3.1-6.5H31' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<script>
+  // Tema antes de pintar (sin parpadeo): el guardado o, si no hay, el del sistema.
+  try { const tema = localStorage.getItem('ida.tema'); if (tema === 'light' || tema === 'dark') document.documentElement.dataset.theme = tema; } catch (e) { /* sin almacenamiento */ }
+</script>
+<link rel="stylesheet" href="/web/estilo.css">
+<script type="module" src="/web/app.js"></script>
+</head>
+<body>
+<a class="saltar" href="#contenido" data-i18n="app.saltar">Saltar al contenido</a>
+<header class="cabecera">
+  <a class="marca" href="#/antesala">
+    <svg viewBox="0 0 40 40" aria-hidden="true">
+      <g class="latido-logo">
+        <path d="M20 4c9.5 0 16 7.4 16 16.2C36 29.4 28.9 36 20 36S4 29.4 4 20.2C4 11.4 10.5 4 20 4z" fill="var(--musgo)"/>
+        <path d="M22.5 4.4c1.8-2.6 5-3.4 7.6-2.4-.6 3-3.4 5-6.6 4.8" fill="var(--sol)"/>
+        <path d="M9 21h6l2.6-5.5 4.2 10 3.1-6.5H31" fill="none" stroke="var(--sobre-musgo)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+    </svg>
+    <span><b>IdA</b><small data-i18n="app.marca_sub">Identidad Artificial</small></span>
+  </a>
+  <nav class="navegacion" data-i18n-aria="nav.principal">
+    <a href="#/antesala" data-ruta="antesala">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c-4-3-7-6.5-7-10.5A7 7 0 0 1 12 3a7 7 0 0 1 7 7.5c0 4-3 7.5-7 10.5z"/><path d="M12 8v6M9 11h6"/></svg>
+      <span data-i18n="nav.antesala">Antesala</span></a>
+    <a href="#/vivero" data-ruta="vivero">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V11"/><path d="M12 11C12 7 9 5 5 5c0 4 3 6 7 6z"/><path d="M12 14c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M7 21h10"/></svg>
+      <span data-i18n="nav.vivero">Vivero</span></a>
+    <a href="#/lab" data-ruta="lab">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6M10 3v6L4.5 18.5A1.7 1.7 0 0 0 6 21h12a1.7 1.7 0 0 0 1.5-2.5L14 9V3"/><path d="M7.5 15h9"/></svg>
+      <span data-i18n="nav.lab">Laboratorio</span></a>
+  </nav>
+  <div class="ajustes">
+    <div class="segmentos" role="group" data-i18n-aria="idioma.etiqueta" id="idiomas">
+      <button type="button" data-idioma="es" lang="es">ES</button>
+      <button type="button" data-idioma="en" lang="en">EN</button>
+    </div>
+    <button type="button" class="boton-icono" id="tema" data-i18n-aria="tema.cambiar" data-i18n-title="tema.cambiar">
+      <svg class="icono-sol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.2M12 19.8V22M4.2 4.2l1.6 1.6M18.2 18.2l1.6 1.6M2 12h2.2M19.8 12H22M4.2 19.8l1.6-1.6M18.2 5.8l1.6-1.6"/></svg>
+      <svg class="icono-luna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>
+    </button>
+  </div>
+</header>
+<main id="contenido" tabindex="-1">
+  <div class="contenedor" id="vista"><p class="suave" data-i18n="app.cargando">Cargando…</p></div>
+</main>
+<div class="notificaciones" id="notificaciones" role="status" aria-live="polite"></div>
+</body>
+</html>
