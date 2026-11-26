@@ -122,7 +122,7 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
             caracter = presets.validar_arquetipo(datos["arquetipo"])
         except ValueError as e:
             raise ErrorApi(400, "caracter_invalido", str(e), "arquetipo") from None
-    elif caracter is None:
+    elif "caracter" in datos or caracter is None:   # un preset explícito manda sobre el carácter de la ficha
         preset = datos.get("caracter", "optimo")
         if preset not in presets.PRESETS_POR_ID:
             raise ErrorApi(400, "caracter_invalido", f"carácter desconocido: {preset!r} (conocidos: {', '.join(presets.PRESETS_POR_ID)})", "caracter")
