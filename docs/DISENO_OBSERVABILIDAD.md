@@ -368,6 +368,7 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O3, O5, O8, O19, O20, O21, secciones 6.2, 11 y 12 | T4a: Vivero por tarjetas (Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter; Estirpe como hueco) con «Ver más» en panel lateral y «Abrir en el Laboratorio»; diario de hechos y acción en frase (plantillas es/en y etiquetas de clases por mundo en `web/i18n/clases/`); ritmo cómodo por mundo en el catálogo, ritmos pausa/lento/cómodo/×4/máximo y paso a paso (`POST vidas/actual/paso`); SSE al nivel cognitivo con el diario de la vida; opciones con `etiquetas_valores` y `destacada`; Snake con la web real a la vista; escena sin franjas, tema sistema/claro/oscuro, flechas entre presets. Equivalencia OK; invariancia OK con observador completo; 1305 tests | Rama `vista/t4a-vivero` |
 | 26/11/2026 | O3, O5, O9, O10, O19, secciones 4, 5, 11, 12 y 13 | T4b: compañero por mundo y colección (`<datos>/vivero/`: fichas v1, estirpes archivadas e índice), ficha de individuo v1 con conversión de las antiguas del panel, guardar, adoptar (archiva el compañero de antes), renombrar, exportar, importar y borrar en dos pasos con testigo; «Empezar de cero» desde la aplicación archiva en vez de borrar (la CLI no cambia); ranking por mundo; antesala con «Tu compañero»; tarjeta Estirpe con su «Ver más» (linaje y mutación de cada rasgo) y página Colección. Registro (sigue siendo v1): registro de cierre con lo aprendido al morir (`cierre: true`), `resumen_saber` (vital) y `requisitos` (cognitivo). Barras del cuerpo con nombre por mundo; reparto entre sistemas desde el inicio de la vida. Equivalencia OK; invariancia OK con observador completo; 1325 tests | Rama `vista/t4b-estirpe` |
 | 26/11/2026 | O1, O3, O7, O12, O13, O16, O19, secciones 11, 12 y 14 | T5a: base del Laboratorio (`#/lab`). Grabar desde la antesala y el Vivero en `<datos>/grabaciones/<mundo>-<fecha>.jsonl.gz` (nivel completo, desde el latido siguiente, cabecera con `origen` y `empieza_tras`), con un hilo propio que no alarga el latido; lista, descarga y borrado en dos pasos; el directo sin grabar (últimos 2000 latidos en memoria); reproductor con tres fuentes (directo, grabación, fichero), línea de tiempo con hechos, paso a paso, ir a un latido y velocidad; vista Latido (los 8 pasos de D1 con la Onda animada, piezas por autor, consumo, guillotina y tribunal); vista Ingeniería (mapa de Componentes desde `componentes.toml` con tiempos y medias); O13: `analogo` y `descripcion` en es/en en los 74 elementos (tres análogos vacíos a propósito) y ficha de Componente con su decisión. API nueva en la sección 11. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1345 tests | Rama `vista/t5a-laboratorio` |
+| 26/11/2026 | O1, O3, O5, O7, O13, O16, O19, secciones 11, 14 y 15 | T5b: vistas Epistemología (historia de cada proposición y requisito: estado, confianza, fuente y hechos; totales, aciertos, sorpresas y error de predicción; filtros), Biología (cuerpo con las etiquetas de cada mundo, química, afecto, indicadores y necesidades con hechos y sueño marcados; análogo de cada serie con su línea de código, tres sin análogo), Análisis y comparación (curvas de una vida; dos grabaciones alineadas por latido con la primera divergencia, `grabacion.divergencia` sobre `comparar`; estirpes generación a generación) y Cierre (la vida y lo aprendido al morir). `ida/telemetria/analisis.py` (series de una vida) y cuatro rutas de la API; ningún campo nuevo en el registro. Lo que sabe del Vivero lleva a Epistemología y Carácter y Estirpe a Análisis. Plurales `{n\|singular\|plural}` en 33 plantillas. Primera fila del Latido sin cortes. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1371 tests | Rama `vista/t5b-comprension` |
 | 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
 
 ## 11. API v1 del servidor (T3)
@@ -707,7 +708,7 @@ latido. Todo sale del registro del latido v1 que ya publica el servidor (secció
 esto cambia la conducta (O3). El código: `ida/telemetria/laboratorio.py` (directo, grabaciones, hilo de escritura),
 `ida/telemetria/componentes.py` (mapa de Componentes para la API), las rutas en `api_v1.py`, y en `web/`:
 `vistas/lab.js` (página, reproductor y grabaciones), `lab/fuentes.js`, `lab/linea.js`, `lab/latido.js`,
-`lab/ingenieria.js` y `lab/catalogo.js`. T5b añadirá Epistemología, Biología y química, Análisis y comparación.
+`lab/ingenieria.js` y `lab/catalogo.js`. T5b añade Epistemología, Biología, Análisis y comparación y Cierre (sección 15).
 
 ### 14.1 Grabar desde el Vivero y la antesala (O7)
 
@@ -754,8 +755,8 @@ principio, atrás, reproducir/pausa, adelante, al final (en directo, «seguir el
 
 **Desde el Vivero.** «Abrir en el Laboratorio» lleva a `#/lab?seccion=<tarjeta>&fuente=directo&vida=<v>&latido=<l>`: el
 latido que se estaba viendo (si sigue en la memoria del directo) y el paso que explica esa tarjeta: Cuerpo y ánimo →
-Core·Sentir; Ahora → Tribunal; Lo que sabe → Plasticidad; Logros → Cierre; Carácter y Estirpe → Onda, con el aviso de que
-su vista propia es de T5b.
+Core·Sentir; Ahora → Tribunal; Logros → Cierre. Desde T5b, Lo que sabe → Epistemología y Carácter y Estirpe → Análisis
+(estirpes), sección 15.6.
 
 ### 14.4 Vista «Latido»
 
@@ -828,3 +829,162 @@ completo); latido 57, con tres candidatos en el Tribunal; sin errores en la cons
 Otras: [la pieza bajo la ficha](img/t5a_latido_pieza_en_oscuro.png), [preatención y Saliencia](img/t5a_latido_saliencia_en_oscuro.png),
 [Latido en español con S3 abierto](img/t5a_latido_es.png), [Ingeniería en español](img/t5a_ingenieria_es.png),
 [desde «Ahora» del Vivero, en directo](img/t5a_desde_vivero_es.png) y [a 1024 px](img/t5a_latido_1024_en_oscuro.png).
+
+## 15. Laboratorio: Epistemología, Biología, Análisis y Cierre (T5b)
+
+Fijado en T5b (26/11/2026). Con T5a se ve **cómo** late IdA; con T5b, **qué sabe y cómo lo sabe**, **qué siente su
+cuerpo** y **cómo cambia** entre vidas. Todo sale del registro del latido v1 ya publicado o grabado: no se pide nada al
+motor, no hay campos nuevos en el registro y nada de esto cambia la conducta (O3; equivalencia e invariancia OK).
+
+### 15.1 Series de una vida (`ida/telemetria/analisis.py`)
+
+`Series` acumula, registro a registro, lo que dibujan las cuatro vistas, en columnas alineadas con `n` (la posición del
+registro en su fuente). Las columnas usan `/` (`cuerpo/vitalidad`, `saber/demostradas`, `necesidad/hambre`,
+`puntuacion/bayas`) para no confundirse con las claves de idioma.
+
+| Parte | Contenido | De dónde sale |
+|---|---|---|
+| `columnas` | `n`, `vida`, `generacion`, `latido`, `cierre`, `dormido`; `cuerpo/*`, `quimica/*`, `afecto/valencia`, `afecto/estado`, `indicadores/*`, `necesidad/*`; `saber/*` (el resumen del saber); `score` (la de la colección, `calcular_fitness`), `logros`, `puntuacion/*`; `ritmo/amplitud`, `ritmo/potencia` y sus máximos, `ritmo/guillotina`, `ritmo/ms`; `rpe` (suma de los rpe de las sorpresas del latido); `sistema` | campos del nivel vital (`cuerpo`, `quimica`, `afecto`, `necesidades`, `resumen_saber`, `score`, `ritmo`, `hechos`, `accion`) |
+| `hechos` | los hechos de la línea de tiempo con su `n`, y `dano` | hechos del registro; `dano` lo deduce esta vista: la vitalidad baja respecto al latido anterior de la misma vida. **No es un hecho del catálogo** (sección 5) |
+| `saber` | por proposición (`p|sujeto|relación`) y por requisito (`r|verbo|clase`): `historia` `[n, latido, estado, confianza, fuente, vida]` (un paso por cambio) y `eventos` (`aprende`, `duda`, `refuta`, con `cierre` si fue al morir) | campo `saber` (cognitivo: las 20 de más confianza; completo: entero), campo `requisitos` y los hechos |
+| `vidas` | por vida: individuo, generación, primer y último registro, `nace`, `muere`, `cierre` (hechos y notas de aprendizaje del registro de cierre), Score, logros, `resumen_saber` al empezar y al final, cosas aprendidas, sorpresas y daños | todos los anteriores |
+
+**Estados de un saber.** `hipotesis`, `demostrada`, `refutada` (proposiciones), `sin_confirmar` y `confirmado`
+(requisitos) y dos que pone la vista: **`fuera`** (nivel cognitivo: la proposición salió de las 20 de más confianza; no
+se ve su confianza hasta que vuelve, sus hechos sí) y **`olvidada`** (nivel completo: ya no está en el saber entero).
+Con nivel vital no hay campo `saber`: la historia sale solo de los hechos. La fuente de una proposición es la del
+observador (`herencia` si es heredada, `manual` si tiene autoridad, `experiencia` si no); la biblioteca solo se distingue
+en los requisitos (límite de la sección 12).
+
+**Dónde se calcula.** El directo acumula las series con cada registro y las poda con lo que olvida (cada saber entra en
+lo que queda con su último estado); una grabación las calcula al abrirse, con las mismas líneas que lee para su índice.
+Un fichero cargado en el navegador las calcula en JS (`web/lab/series.js`, la misma forma) salvo `score`, que es del
+servidor (`ida/historico.py`): con un fichero, Análisis enseña la puntuación del mundo. Tamaño: una grabación completa de
+mínimo de 400 latidos da 108 KB de series en JSON y se calculan en 32 ms (semilla 1, plazo lógico 40, 26/11/2026).
+
+**API** (añadida a la sección 11):
+
+| Método y ruta | Respuesta | Errores |
+|---|---|---|
+| `GET /api/v1/vidas/actual/series` | 200 `{lanzamiento, primero, siguiente, mundo, registros, niveles, columnas, hechos, saber, vidas}` | — |
+| `GET /api/v1/grabaciones/{id}/series` | 200 `{grabacion, cabecera, truncada, mundo, registros, niveles, columnas, hechos, saber, vidas}` | 400 `id_invalido`, `grabacion_invalida`; 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
+| `GET /api/v1/grabaciones/{a}/comparar/{b}` | 200 `{a, b, configuracion: {misma, distintas, otras}, divergencia: {comunes, iguales, primera}}` | los de abrir una grabación |
+| `GET /api/v1/estirpes/comparar?a=REF&b=REF` | 200 `{a, b, mismo_mundo, filas: [{generacion, a, b, diferencia, rasgos}], rasgos}`; `REF` = `companero:<mundo>`, el id de una estirpe archivada o el de una ficha | 400 `campo_invalido`, `id_invalido`; 404 `sin_companero`, `elemento_desconocido`, `mundo_desconocido` |
+
+### 15.2 Vista «Epistemología»
+
+- Cifras del resumen del saber (T4b) en el latido del reproductor y su gráfica en el tiempo: demostradas, hipótesis,
+  refutadas y heredadas, con los hechos `aprende`, `duda` y `refuta` marcados.
+- La expectativa: aciertos y sorpresas acumulados (`memoria`) y el error de predicción de cada sorpresa (`rpe` de los
+  hechos `sorpresa` de la expectativa).
+- Un **carril por saber**: el color de cada tramo es su estado, la línea su confianza y las marcas sus hechos (● aprende,
+  ◆ duda, ✕ refuta); el cursor, el latido del reproductor. Filtros por tipo (proposición o requisito), clase, fuente y
+  estado en el latido elegido.
+- Al pulsar un saber, su **historia completa** en el lateral: una frase («Nace en el latido 13 como hipótesis. Se
+  demuestra en el latido 67.») y una fila por cada cambio de estado, confianza o fuente y por cada hecho (con la frase
+  del diario; † si fue al morir). Cada latido lleva a ese latido.
+
+### 15.3 Vista «Biología» y sus análogos
+
+Gráficas del cuerpo (con las etiquetas de cada mundo, sección 13.6: solo las barras que declara), la química, el afecto
+(valencia y activación), el estado afectivo en franja, los indicadores viscerales y el déficit de cada necesidad. En
+todas: ★ logros, ▼ daños (baja la vitalidad), ✕ muerte, ▲ nacimiento y el sueño en bandas azules. Pulsar una gráfica
+lleva a ese latido.
+
+Cada serie lleva un análogo biológico breve **tomado de lo que hace el código**; las que no tienen uno honesto, ninguno.
+`tests/test_t5b.py` comprueba que cada línea citada existe y contiene lo que la tabla le atribuye, y que ningún módulo
+fuera del Soma y de la telemetría lee la dopamina. **Para revisión del arquitecto:**
+
+| Serie | Qué hace en IdA | Análogo | Código |
+|---|---|---|---|
+| Vitalidad | salud; en mínimo y archivos +1 dormida con alimentación ≥ 25, +0,5 despierta con alimentación ≥ 60 y descanso ≥ 50, −2 sin comida; en Crafter, la salud del juego | **ninguno** (es la salud misma) | `soma.py:63,69,71` |
+| Alimentación | −0,5 por latido despierta (−0,8 cargando); sube con lo que come | aproximado: reservas de energía y saciedad (glucemia, reservas hepáticas) | `soma.py:65,80` |
+| Energía | +0,3 alimentada, −1 si no; +3 dormida | **ninguno** | `soma.py:61,67` |
+| Descanso | −0,3 despierta, +4 dormida; despierta descansada por encima de 95 (energía ≥ 85) | presión homeostática de sueño (proceso S del modelo de dos procesos), invertida | `soma.py:60,66`; `core/latido.py:310` |
+| Sueño | dormida solo duerme o espera; despierta por alarma (peligro ≥ 0,6 o hambre crítica) o descansada | sueño con atonía motora y umbral de despertar | `core/latido.py:310` (`_dormir`) |
+| Dopamina | `+ rpe × 2` (entre −20 y 20) al aprender; vuelve un 15 % por latido a 35. **Ningún Componente la lee** | dopamina fásica del mesencéfalo como error de predicción de recompensa | `core/latido.py:256`; `soma.py:73,92` |
+| Placer | +2 × lo comido; −1 por latido; entra en la valencia y en las expectativas de S1 y S2 | placer hedónico («gustar»), distinto del «querer» dopaminérgico | `soma.py:72,80`; `nucleo/arquitectura.py:57` |
+| Estrés | media móvil 0,7/0,3 de la urgencia (peligro o hambre crítica); a la mitad con placer ≥ 60; en el Tribunal, `base = arousal × estrés + confianza × (1 − estrés)` | aproximado: respuesta aguda de estrés (noradrenalina, eje hipotálamo-hipófiso-adrenal); desplaza la decisión de lo deliberado a lo reactivo | `soma.py:81-82,97-98`; `core/actuar/tribunal.py:50` |
+| Valencia | placer / 100 − estrés, en [−1, 1] | valencia del afecto nuclear | `soma.py:43` |
+| Activación | no es serie aparte: la emoción de S2 lleva el estrés como arousal | activación del afecto nuclear (aquí, el estrés) | `s2/sentir/emocion.py:17` |
+| Estado afectivo | umbrales sobre peligro, estrés, hambre, cansancio y novedad | aproximado: emociones básicas como estados discretos | `soma.py:101-112` |
+| Peligro | máximo de peligro × proximidad de lo percibido, o la señal de supervivencia | detección de amenaza (amígdala) | `core/latido.py:320-323` |
+| Tensión | media del arousal de las piezas no sensoriales del latido | **ninguno** | `core/latido.py:325` |
+| Calma | 1 − máx(peligro, tensión, estrés) | **ninguno** | `soma.py:99` |
+| Déficit de una necesidad | `Necesidad.deficit` de cada necesidad declarada | señales interoceptivas de déficit homeostático (impulso) | `nucleo/mundo.py:189` |
+
+Las rutas son relativas a `ida/` (`soma.py` es `ida/nucleo/soma.py`). La tabla también está en la propia vista.
+
+### 15.4 Vista «Análisis y comparación»
+
+- **Esta vida**: puntuación (la de la colección, `calcular_fitness`, no la Score oficial de D17), logros, saber
+  (proposiciones, demostradas y requisitos confirmados), amplitud y potencia consumidas con su máximo y las guillotinas
+  en rojo.
+- **Dos grabaciones**: A (la abierta) y B (otra de la lista), **alineadas por latido** (vida, latido, cierre),
+  superpuestas o lado a lado, para una serie a elegir. La primera divergencia sale de `grabacion.divergencia`: recorre
+  las dos a la vez sin cargarlas enteras y compara cada posición común con `grabacion.diferencias` (la base de
+  `comparar`: sin campos de tiempo, y además sin `escena` ni `nivel`; con niveles distintos, los campos comunes y las 20
+  primeras proposiciones). `grabacion.configuracion` dice si las cabeceras son de la misma configuración (mundo, semilla,
+  opciones, carácter, plazo lógico, experiencia). Misma configuración y sin divergencia = la misma vida. El legado
+  heredado no va en la cabecera: dos grabaciones de la misma configuración pueden divergir por la herencia, y la
+  divergencia lo enseña.
+- **Estirpes**: dos de la colección del mundo (el compañero, las archivadas y las fichas), generación a generación:
+  Score por generación, los cinco rasgos y una tabla con latidos, causa de muerte, logros y la diferencia de Score
+  (`Vivero.estirpe`, `analisis.comparar_estirpes`). La retención del linaje deja huecos en estirpes largas (sección
+  13.2): ese lado va vacío.
+
+### 15.5 Vista «Cierre»
+
+El resumen de una vida (la del latido del reproductor, o la elegida): cómo murió, latidos, Score, logros, cosas
+aprendidas, sorpresas y daños; el resumen del saber al empezar y al final con su cambio; y **lo aprendido al morir**:
+los hechos del registro de cierre en frase y las notas de aprendizaje del motor (en español, las de la consola), con un
+botón al registro de cierre. Sin registro de cierre (la vida no murió, o se grabó antes de T4b) lo dice.
+
+### 15.6 Enlaces, plurales y pulido
+
+- «Abrir en el Laboratorio» del Vivero lleva ahora también el mundo (`&mundo=`): **Lo que sabe → Epistemología**;
+  **Carácter y Estirpe → Análisis, modo estirpes** (sin directo, con la colección de ese mundo). Cuerpo, Ahora y Logros
+  siguen en su paso del Latido (sección 14.3).
+- **Plurales**: `t()` entiende `{n|singular|plural}` dentro de la plantilla; 33 plantillas lo usan y el apaño
+  `companero.continuar_ayuda_1` desaparece. `tests/test_t5b.py` forma cada plantilla con todos sus números a 1 y
+  comprueba que no sale ningún «1 cosas», en los dos idiomas.
+- **Latido**: la primera fila es más alta (112 en vez de 92) y sus textos van en renglones por palabras, con el texto
+  entero al pasar el ratón; ya no se cortan con «…» salvo si no caben.
+
+### 15.7 Capturas
+
+26/11/2026, Chromium de Playwright a 1280 px; servidor con datos en `F:\tmp\t5b\datos`; sin errores en la consola del
+navegador. Grabaciones de Crafter de nivel completo con plazo lógico 40: semillas 31 (242 registros) y 32 (194),
+lanzadas por la API (carácter «Recomendado», opciones declaradas); semilla 35 (569 registros, 59 latidos dormida) con
+`python -m ida --mundo crafter --latidos 1500 --semilla 35 --plazo-logico 40 --opcion vista=oficial --opcion
+longitud=10000 --opcion manual=estricto --nivel completo --grabar …` (por la API esa semilla vive 233 latidos sin
+dormir: otro carácter). Estirpes: dos de Crafter de 4 generaciones de 300 latidos (semillas 5 y 6, «Empezar de cero»
+entre ellas).
+
+![Epistemología: «La madera es útil» pasa de hipótesis (latido 13) a demostrada (latido 67)](img/t5b_epistemologia_crafter.png)
+
+![Biología de Crafter, semilla 35: daños, el sueño y el cursor en un latido dormida](img/t5b_biologia_crafter.png)
+
+![Análisis: dos grabaciones de Crafter con semillas 31 y 32, divergen en el latido 1](img/t5b_analisis_comparar.png)
+
+![Estirpes de Crafter generación a generación, desde «Estirpe» del Vivero](img/t5b_estirpes.png)
+
+![El registro de cierre: murió por el zombi y aprendió a temerlo](img/t5b_cierre.png)
+
+![Epistemología en inglés y oscuro](img/t5b_epistemologia_en_oscuro.png)
+
+Otras: [lado a lado, vitalidad](img/t5b_analisis_lado_a_lado.png), [curvas de una vida](img/t5b_analisis_vida.png) y
+[la primera fila del Latido](img/t5b_latido_primera_fila.png).
+
+### 15.8 Lo que no se pudo enseñar por falta de datos
+
+- **Confianza de lo que sale de las 20** (nivel cognitivo): se enseña como «fuera». Con nivel completo (el de la
+  aplicación) no falta. No hace falta campo nuevo.
+- **Biblioteca en las proposiciones**: el registro da `autoridad`, no su origen. Haría falta `saber[].fuente` en el
+  registro (cognitivo), con `fuente(p)` de `hechos.py` extendida a la biblioteca.
+- **Olvido al dormir**: una proposición olvidada se ve desaparecer (completo), pero no por qué. Haría falta el hecho
+  `olvida` (sección 5, fuera de v1).
+- **Causa del sueño** (elegido o forzado): sigue sin estar en la Onda de forma estructurada (sección 5).
+- **Daño con su causa**: «daño» es la vitalidad que baja; quién lo hizo solo sale en la muerte. Haría falta un campo
+  `cuerpo.dano` con la causa del `Efecto` del latido.
+- **Tiempo y lecturas de cada Componente plástico**: lo mismo que en T5a (sección 14.4).
