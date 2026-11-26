@@ -1,15 +1,45 @@
-// Vivero (O1, O3, O9): esqueleto de T3. Escena en directo desde la SSE (dibujo.js, el mismo del visor), barra de
-// ritmo (pausa, ×1, ×4, máximo; fija en los mundos de tiempo real), cuerpo básico del nivel vital y botón Parar.
-// El Vivero completo (diario de hechos, logros, compañero, colección) es T4.
+// Vivero (O1, O3, O9, O19, O20, O21): IdA de un vistazo.
+// - La escena en grande (dibujo.js, el mismo del visor), con el ritmo (pausa, lento, cómodo, ×4, máximo y, en pausa,
+//   paso a paso) y un diario vivo de los hechos de la vida, en frases (frases.js).
+// - Tarjetas: Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter y Estirpe (hueco hasta T4b). Cada una
+//   con «Ver más», que abre un panel lateral con su detalle y, al pie, «Abrir en el Laboratorio».
+// - Datos: la SSE de la vida al nivel cognitivo (?nivel=cognitivo) y su evento «diario» (lo de antes de conectarse).
+//   Nada se pide al motor: todo sale del registro del latido (secciones 4 y 5 de DISENO_OBSERVABILIDAD).
 
 import { api, escuchar } from '../api.js';
 import { t } from '../i18n.js';
-import { cargarSprites, dibujarEscena } from '../dibujo.js';
+import { cargarSprites, dibujarEscena, urlSprite } from '../dibujo.js';
 import { avisar, esc } from '../componentes/util.js';
+import { radar } from '../componentes/radar.js';
+import {
+  ICONOS_HECHO, ahoraFrase, accionFrase, cargarFrases, capital, clase, claseDeHecho, etiquetaPuntos, fuenteDe, hechoFrase,
+  logro, logrosDelMundo, planDeAccion, planNombre, requisitoFrase, saberFrase, spriteDe, totalLogros, valorPuntos,
+} from '../frases.js';
 
-const RITMOS = ['pausa', 'x1', 'x4', 'max'];
-const ICONOS_RITMO = { pausa: '❚❚', x1: '▶', x4: '▶▶', max: '⏭' };
+const RITMOS = ['pausa', 'lento', 'comodo', 'x4', 'max'];
+const ICONOS_RITMO = { pausa: '❚❚', lento: '◀▶', comodo: '▶', x4: '▶▶', max: '⏭' };
 const MEDIDORES = ['vitalidad', 'alimentacion', 'energia', 'descanso'];
+const QUIMICA = { dopamina: 100, placer: 100, estres: 1 };   // escala de cada sustancia en el registro
+const RASGOS = ['apertura', 'responsabilidad', 'neuroticismo', 'extraversion', 'umbral_miedo'];
+const DIARIO_VISIBLE = 7;          // hechos en el diario de un vistazo
+const DIARIO_MAX = 400;            // hechos que se guardan de la vida en curso
+const NUEVO_MS = 2600;             // cuánto se resalta lo recién aprendido
+const SISTEMAS = ['S1', 'S2', 'S3'];
+// Hechos que el diario de un vistazo no enseña (son muchos y técnicos): van al detalle de «Ahora».
+const FUERA_DEL_DIARIO = new Set(['estrategia']);
+const TARJETAS = ['cuerpo', 'ahora', 'sabe', 'logros', 'caracter', 'estirpe'];
+const ICONOS_TARJETA = { cuerpo: '💗', ahora: '🎯', sabe: '💡', logros: '🏅', caracter: '🧬', estirpe: '🌳' };
+const URL_SNAKE = 'https://playsnake.org/';
+
+function barra(valor, nombre, { max = 100, nivel = true } = {}) {
+  const pct = Math.max(0, Math.min(100, (Number(valor) / max) * 100));
+  const n = !nivel ? '' : pct < 30 ? 'bajo' : pct < 60 ? 'medio' : 'alto';
+  return `<div class="pista-barra" role="meter" aria-label="${esc(nombre)}" aria-valuemin="0" aria-valuemax="100"
+    aria-valuenow="${pct.toFixed(0)}" data-nivel="${n}"><i style="width:${pct.toFixed(1)}%"></i></div>`;
+}
+
+function claveSaber(p) { return `p:${p.sujeto ?? p.clase}|${p.relacion}`; }
+function claveReq(h) { return `r:${h.verbo}|${h.clase}`; }
 
 class IdaVivero extends HTMLElement {
   constructor() {
@@ -19,13 +49,22 @@ class IdaVivero extends HTMLElement {
     this.escena = null;
     this.pendiente = false;
     this.cerrar = null;
+    this.diario = [];              // hechos de la vida en curso, del más antiguo al más reciente
+    this.requisitos = new Map();   // clave -> último «aprende requisito»
+    this.nuevos = new Map();       // clave de lo aprendido -> momento (ms) en que se aprendió
+    this.reparto = [];             // sistema de las últimas 100 acciones
+    this.generaciones = new Map(); // generación -> arquetipo visto (para la mutación entre generaciones)
+    this.detalle = null;           // tarjeta abierta en el panel lateral
+    this.foco = null;              // a quién devolver el foco al cerrar el panel
     this._alIdioma = () => this.pintar();
     this._alTema = () => this.dibujar();
+    this._alTecla = (ev) => { if (ev.key === 'Escape' && this.detalle) this.cerrarDetalle(); };
   }
 
   connectedCallback() {
     document.addEventListener('ida:idioma', this._alIdioma);
     document.addEventListener('ida:tema', this._alTema);
+    document.addEventListener('keydown', this._alTecla);
     this.innerHTML = `<p class="suave">${esc(t('vivero.conectando'))}</p>`;
     this.iniciar();
   }
@@ -33,7 +72,22 @@ class IdaVivero extends HTMLElement {
   disconnectedCallback() {
     document.removeEventListener('ida:idioma', this._alIdioma);
     document.removeEventListener('ida:tema', this._alTema);
+    document.removeEventListener('keydown', this._alTecla);
     if (this.cerrar) this.cerrar();
+  }
+
+  async prepararMundo(mundo) {
+    await Promise.all([cargarSprites(mundo), cargarFrases(mundo)]);
+  }
+
+  reiniciarVida() {
+    this.registro = null;
+    this.escena = null;
+    this.diario = [];
+    this.requisitos = new Map();
+    this.nuevos = new Map();
+    this.reparto = [];
+    this.generaciones = new Map();
   }
 
   async iniciar() {
@@ -43,24 +97,50 @@ class IdaVivero extends HTMLElement {
       this.innerHTML = `<div class="aviso-caja" role="alert">${esc(t(`error.${err.codigo || 'red'}`))}</div>`;
       return;
     }
-    if (this.vida) await cargarSprites(this.vida.mundo);
+    if (this.vida) await this.prepararMundo(this.vida.mundo);
     this.pintar();
-    this.cerrar = escuchar('vidas/actual/registro?nivel=vital', {
+    this.cerrar = escuchar('vidas/actual/registro?nivel=cognitivo', {
       vida: async (v) => {
         const nueva = !this.vida || v.id !== this.vida.id;
         this.vida = v;
-        if (nueva) { this.registro = null; this.escena = null; await cargarSprites(v.mundo); }
+        if (nueva) { this.reiniciarVida(); await this.prepararMundo(v.mundo); }
         this.pintar();
       },
-      registro: (r) => {
-        if (this.registro && r.vida !== this.registro.vida) this.escena = null;
-        this.registro = r;
-        if (r.escena) this.escena = r.escena;
+      diario: (d) => {
+        this.diario = (d.hechos || []).slice(-DIARIO_MAX);
+        this.requisitos = new Map((d.requisitos || []).map((h) => [claveReq(h), h]));
         this.programar();
       },
+      registro: (r) => this.recibir(r),
       ritmo: (d) => { if (this.vida) { this.vida.ritmo = d.ritmo; this.pintarRitmo(); } },
       fin: (v) => { this.vida = v; this.pintar(); },
     });
+  }
+
+  /** Un registro nuevo: el estado de la vida, el diario, lo recién aprendido y el reparto entre sistemas. */
+  recibir(r) {
+    if (this.registro && r.vida !== this.registro.vida) this.escena = null;
+    const repetido = this.registro && this.registro.vida === r.vida && this.registro.latido === r.latido;
+    this.registro = r;
+    if (r.escena) this.escena = r.escena;
+    if (r.arquetipo) this.generaciones.set(r.generacion, r.arquetipo);
+    if (!repetido) {
+      const ahora = performance.now();
+      for (const h of r.hechos || []) {
+        const marcado = { ...h, latido: r.latido, vida: r.vida, generacion: r.generacion };
+        this.diario.push(marcado);
+        if (h.tipo === 'aprende') {
+          if (h.saber === 'requisito') { this.requisitos.set(claveReq(h), marcado); this.nuevos.set(claveReq(h), ahora); }
+          else this.nuevos.set(claveSaber(h), ahora);
+        }
+      }
+      if (this.diario.length > DIARIO_MAX) this.diario.splice(0, this.diario.length - DIARIO_MAX);
+      if (r.accion && r.accion.sistema) {
+        this.reparto.push(r.accion.sistema);
+        if (this.reparto.length > 100) this.reparto.shift();
+      }
+    }
+    this.programar();
   }
 
   /** Un dibujo por fotograma como mucho: a ritmo máximo llegan muchos registros por segundo. */
@@ -70,10 +150,11 @@ class IdaVivero extends HTMLElement {
     requestAnimationFrame(() => {
       this.pendiente = false;
       this.dibujar();
-      this.pintarCuerpo();
+      this.pintarTarjetas();
     });
   }
 
+  // --- estructura ------------------------------------------------------------------------------------------------
   pintar() {
     if (!this.vida) {
       this.innerHTML = `<div class="tarjeta vacio-estado">
@@ -91,60 +172,75 @@ class IdaVivero extends HTMLElement {
     const nombreMundo = t(`mundo.${v.mundo}.nombre`);
     const fin = !v.activa ? `<div class="franja" role="status"><span>${esc(v.error ? t('vivero.terminada_error', { error: v.error }) : t('vivero.terminada'))}</span>
         <a class="boton pequeno primario" href="#/antesala">${esc(t('vivero.nueva'))}</a></div>` : '';
+    const snake = v.mundo === 'snake' ? `<div class="franja web-real" role="note"><span>🌐 ${esc(t('vivero.snake_jugando'))}
+        <a href="${URL_SNAKE}" target="_blank" rel="noopener noreferrer">playsnake.org ↗</a></span>
+        <span class="suave pequeno">${esc(v.opciones && v.opciones.ventana ? t('vivero.snake_ventana') : t('vivero.snake_sin_ventana'))}</span></div>` : '';
+    const tarjeta = (id, extra = '') => `<section class="tarjeta ficha-vivero ${extra}" data-tarjeta="${id}" aria-labelledby="t-${id}">
+        <header><h3 id="t-${id}"><span aria-hidden="true">${ICONOS_TARJETA[id]}</span> ${esc(t(`tarjeta.${id}`))}</h3>
+          <button type="button" class="boton pequeno discreto ver-mas" data-ver="${id}" aria-haspopup="dialog">${esc(t('vivero.ver_mas'))} →</button></header>
+        <div data-cuerpo="${id}"></div></section>`;
     this.innerHTML = `
-      <div class="paso-titulo"><h1>${esc(t('vivero.titulo'))}</h1><p class="suave pequeno">${esc(t('vivero.esqueleto'))}</p></div>
-      ${fin}
-      <div class="vivero" style="margin-top:${fin ? '16px' : '0'}">
-        <section class="tarjeta escenario" aria-labelledby="vivero-quien">
-          <div class="escenario-cabeza">
-            <div class="quien"><h2 id="vivero-quien" data-individuo>${esc(v.individuo || nombreMundo)}</h2>
-              <span class="chip sin-punto">${esc(nombreMundo)}</span>
-              <span class="chip sin-punto" data-generacion></span></div>
-            <span class="chip listo" data-latido>${esc(t('vivero.latido', { n: v.latido ?? 0 }))}</span>
-          </div>
-          <div class="lienzo-marco"><canvas id="vivero-lienzo" width="432" height="336" role="img" aria-label="${esc(nombreMundo)}"></canvas><pre hidden></pre></div>
-          <div class="bloque-titulo">
-            <div class="segmentos" role="group" aria-label="${esc(t('vivero.ritmo'))}" data-ritmos></div>
-            <div style="display:flex; gap:10px; align-items:center">
-              <a class="boton pequeno discreto" href="/panel">${esc(t('vivero.panel_clasico'))} ↗</a>
+      <div class="vivero-cabeza">
+        <div class="quien"><h1 data-individuo>${esc(v.individuo || nombreMundo)}</h1>
+          <span class="chip sin-punto">${esc(nombreMundo)}</span>
+          <span class="chip sin-punto" data-generacion></span>
+          <span class="chip listo" data-latido>${esc(t('vivero.latido', { n: v.latido ?? 0 }))}</span></div>
+        <a class="boton pequeno discreto" href="/panel">${esc(t('vivero.panel_clasico'))} ↗</a>
+      </div>
+      ${fin}${snake}
+      <div class="vivero">
+        <div class="columna-escena">
+          <section class="tarjeta escenario" aria-label="${esc(nombreMundo)}">
+            <div class="lienzo-marco"><canvas id="vivero-lienzo" width="432" height="336" role="img" aria-label="${esc(nombreMundo)}"></canvas><pre hidden></pre></div>
+            <div class="mandos">
+              <div class="segmentos ritmos" role="group" aria-label="${esc(t('vivero.ritmo'))}" data-ritmos></div>
+              <button type="button" class="boton pequeno" data-paso hidden>⏯ ${esc(t('vivero.paso'))}</button>
+              <span class="suave pequeno" data-ritmo-ms></span>
               <button type="button" class="boton pequeno peligro" data-parar ${v.activa ? '' : 'disabled'}>■ ${esc(t('vivero.parar'))}</button>
             </div>
-          </div>
-          <p class="suave pequeno" data-ritmo-nota ${v.ritmo_ajustable ? 'hidden' : ''}>⏱ ${esc(t('vivero.ritmo_fijo'))}</p>
-        </section>
-        <div class="panel-lateral">
-          <section class="tarjeta" aria-labelledby="vivero-cuerpo">
-            <h3 id="vivero-cuerpo">${esc(t('vivero.cuerpo'))}</h3>
-            ${MEDIDORES.map((m) => `<div class="medidor ${m}"><span>${esc(t(`cuerpo.${m}`))}</span>
-              <div class="pista-barra" role="meter" aria-label="${esc(t(`cuerpo.${m}`))}" aria-valuemin="0" aria-valuemax="100" data-barra="${m}"><i style="width:0"></i></div>
-              <output data-valor="${m}">–</output></div>`).join('')}
-            <div class="animo"><span class="suave">${esc(t('vivero.animo'))}</span><span class="chip" data-animo>–</span></div>
+            <p class="suave pequeno" ${v.ritmo_ajustable ? 'hidden' : ''}>⏱ ${esc(t('vivero.ritmo_fijo'))}</p>
           </section>
-          <section class="tarjeta">
-            <h3>${esc(t('vivero.accion'))}</h3>
-            <div class="accion" data-accion>${esc(t('vivero.sin_accion'))}</div>
-          </section>
-          <section class="tarjeta">
-            <h3>${esc(t('vivero.puntuacion'))}</h3>
-            <div class="puntos" data-puntos></div>
-            <p class="suave pequeno" data-logros></p>
+          <section class="tarjeta diario" aria-labelledby="t-diario">
+            <h3 id="t-diario"><span aria-hidden="true">📖</span> ${esc(t('vivero.diario'))}</h3>
+            <ol class="lista-diario" data-diario aria-live="polite"></ol>
           </section>
         </div>
-      </div>`;
+        <div class="columna-tarjetas">${tarjeta('cuerpo')}${tarjeta('ahora')}${tarjeta('sabe')}</div>
+      </div>
+      <div class="fila-tarjetas">${tarjeta('logros')}${tarjeta('caracter')}${tarjeta('estirpe', 'hueco')}</div>
+      <div class="velo" data-velo hidden></div>
+      <aside class="cajon tarjeta" role="dialog" aria-modal="true" aria-labelledby="cajon-titulo" data-cajon hidden>
+        <header><h2 id="cajon-titulo" tabindex="-1"></h2>
+          <button type="button" class="boton-icono" data-cerrar aria-label="${esc(t('vivero.cerrar'))}" title="${esc(t('vivero.cerrar'))}">✕</button></header>
+        <div class="cajon-cuerpo" data-cajon-cuerpo></div>
+        <footer><a class="boton pequeno" data-lab href="#/lab">🔬 ${esc(t('vivero.abrir_lab'))}</a></footer>
+      </aside>`;
     this.querySelector('[data-parar]').addEventListener('click', () => this.parar());
+    this.querySelector('[data-paso]').addEventListener('click', () => this.paso());
+    this.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => this.abrirDetalle(b.dataset.ver, b)));
+    this.querySelector('[data-cerrar]').addEventListener('click', () => this.cerrarDetalle());
+    this.querySelector('[data-velo]').addEventListener('click', () => this.cerrarDetalle());
     this.pintarRitmo();
     this.dibujar();
-    this.pintarCuerpo();
+    this.pintarTarjetas();
+    if (this.detalle) this.abrirDetalle(this.detalle, null);
   }
 
+  // --- ritmo -----------------------------------------------------------------------------------------------------
   pintarRitmo() {
     const caja = this.querySelector('[data-ritmos]');
     if (!caja || !this.vida) return;
     const v = this.vida;
     const fijo = !v.ritmo_ajustable || !v.activa;
     caja.innerHTML = RITMOS.map((r) => `<button type="button" data-ritmo="${r}" aria-pressed="${v.ritmo === r}" ${fijo ? 'disabled' : ''}
-      title="${esc(t(`ritmo.${r}`))}"><span aria-hidden="true">${ICONOS_RITMO[r]}</span> ${esc(t(`ritmo.${r}`))}</button>`).join('');
+      title="${esc(t(`ritmo.ayuda.${r}`))}"><span aria-hidden="true">${ICONOS_RITMO[r]}</span> ${esc(t(`ritmo.${r}`))}</button>`).join('');
     caja.querySelectorAll('[data-ritmo]').forEach((b) => b.addEventListener('click', () => this.cambiarRitmo(b.dataset.ritmo)));
+    const paso = this.querySelector('[data-paso]');
+    paso.hidden = fijo || v.ritmo !== 'pausa';
+    const ms = this.querySelector('[data-ritmo-ms]');
+    const comodo = Number(v.ritmo_comodo_ms);
+    const factor = { lento: 2, comodo: 1, x4: 0.25 }[v.ritmo];
+    ms.textContent = !fijo && factor && comodo ? t('vivero.ms_latido', { ms: Math.round(comodo * factor) }) : '';
   }
 
   async cambiarRitmo(ritmo) {
@@ -158,6 +254,10 @@ class IdaVivero extends HTMLElement {
     }
   }
 
+  async paso() {
+    try { await api.paso(); } catch (err) { avisar(t(`error.${err.codigo || 'red'}`)); }
+  }
+
   async parar() {
     const boton = this.querySelector('[data-parar]');
     if (boton) boton.disabled = true;
@@ -169,6 +269,7 @@ class IdaVivero extends HTMLElement {
     this.pintar();
   }
 
+  // --- escena ----------------------------------------------------------------------------------------------------
   dibujar() {
     const lienzo = this.querySelector('#vivero-lienzo');
     if (!lienzo || !this.vida) return;
@@ -179,34 +280,297 @@ class IdaVivero extends HTMLElement {
     if (!ok && this.registro) pre.textContent = this.registro.vista || t('vivero.sin_escena');
   }
 
-  pintarCuerpo() {
-    const r = this.registro;
-    if (!r || !this.querySelector('[data-latido]')) return;
-    this.querySelector('[data-latido]').textContent = t('vivero.latido', { n: r.latido });
-    this.querySelector('[data-individuo]').textContent = r.individuo;
-    this.querySelector('[data-generacion]').textContent = t('vivero.generacion', { n: r.generacion });
-    for (const m of MEDIDORES) {
-      const valor = Number((r.cuerpo || {})[m]);
-      if (!Number.isFinite(valor)) continue;
-      const pct = Math.max(0, Math.min(100, valor));
-      const barra = this.querySelector(`[data-barra="${m}"]`);
-      barra.firstElementChild.style.width = `${pct}%`;
-      barra.setAttribute('aria-valuenow', pct.toFixed(0));
-      barra.dataset.nivel = pct < 30 ? 'bajo' : pct < 60 ? 'medio' : 'alto';
-      this.querySelector(`[data-valor="${m}"]`).textContent = pct.toFixed(0);
+  // --- piezas comunes --------------------------------------------------------------------------------------------
+  /** El sprite de una clase (o su icono de texto, o su inicial). estricto: nada si no hay sprite ni icono. */
+  icono(c, estricto = false) {
+    if (!c || !this.vida) return estricto ? '' : '<span class="icono-clase vacio" aria-hidden="true"></span>';
+    const { clave, icono } = spriteDe(this.vida.mundo, c);
+    const url = urlSprite(this.vida.mundo, clave);
+    if (url) return `<span class="icono-clase" aria-hidden="true"><img src="${esc(url)}" alt=""></span>`;
+    if (estricto && !icono) return '';
+    const letra = icono || String(clase(this.vida.mundo, c, 'nombre'))[0] || '?';
+    return `<span class="icono-clase texto" aria-hidden="true">${esc(letra)}</span>`;
+  }
+
+  esNuevo(clave) {
+    const t0 = this.nuevos.get(clave);
+    return t0 !== undefined && performance.now() - t0 < NUEVO_MS;
+  }
+
+  /** Lo que sabe, ordenado: lo aprendido en esta vida (lo más reciente primero) y después lo de más confianza. */
+  loQueSabe() {
+    const mundo = this.vida.mundo;
+    const r = this.registro || {};
+    const items = [];
+    const vistos = new Set();
+    const saber = (r.saber || []).filter((p) => p.estado !== 'refutada');
+    const porClave = new Map(saber.map((p) => [claveSaber(p), p]));
+    const aprendidos = this.diario.filter((h) => h.tipo === 'aprende' && h.vida === r.vida).reverse();
+    const añadir = (clave, item) => { if (!vistos.has(clave)) { vistos.add(clave); items.push(item); } };
+    for (const h of aprendidos) {
+      if (h.saber === 'requisito') {
+        const req = this.requisitos.get(claveReq(h)) || h;
+        añadir(claveReq(h), { clave: claveReq(h), frase: requisitoFrase(mundo, req), clase: req.clase,
+          hipotesis: !req.confirmado, fuente: fuenteDe(req), confianza: req.confianza, req });
+      } else {
+        const p = porClave.get(claveSaber(h));
+        if (!p) continue;
+        añadir(claveSaber(h), { clave: claveSaber(h), frase: saberFrase(mundo, p), clase: p.sujeto,
+          hipotesis: p.estado === 'hipotesis', fuente: fuenteDe(p), confianza: p.confianza });
+      }
     }
+    for (const p of saber) {
+      añadir(claveSaber(p), { clave: claveSaber(p), frase: saberFrase(mundo, p), clase: p.sujeto,
+        hipotesis: p.estado === 'hipotesis', fuente: fuenteDe(p), confianza: p.confianza });
+    }
+    for (const req of this.requisitos.values()) {
+      if (req.vida !== r.vida) continue;
+      añadir(claveReq(req), { clave: claveReq(req), frase: requisitoFrase(mundo, req), clase: req.clase,
+        hipotesis: !req.confirmado, fuente: fuenteDe(req), confianza: req.confianza, req });
+    }
+    return items;
+  }
+
+  itemSaber(it, detalle = false) {
+    const nuevo = this.esNuevo(it.clave);
+    const estado = it.hipotesis ? 'hipotesis' : 'demostrada';
+    const extra = detalle ? `<span class="meta">
+        <span class="chip sin-punto fuente-${esc(it.fuente)}">${esc(t(`fuente.${it.fuente}`))}</span>
+        <span class="confianza" title="${esc(t('sabe.confianza'))}">${barra(Number(it.confianza) * 100, t('sabe.confianza'), { nivel: false })}
+        <b>${Math.round(Number(it.confianza) * 100)} %</b></span>
+        ${it.req ? `<span class="suave pequeno">${esc(this.cantidades(it.req))}</span>` : ''}</span>` : '';
+    return `<li class="saber ${estado}${nuevo ? ' nuevo' : ''}">${this.icono(it.clase)}
+      <span class="texto"><span>${esc(it.frase)}</span>
+      ${it.hipotesis ? `<span class="marca-hipotesis">${esc(t('sabe.hipotesis'))}</span>` : ''}
+      ${nuevo ? `<span class="marca-nuevo">${esc(t('sabe.nuevo'))}</span>` : ''}${extra}</span></li>`;
+  }
+
+  cantidades(req) {
+    const mundo = this.vida.mundo;
+    const partes = [];
+    const req2 = Object.entries(req.requiere || {});
+    if (req2.length) partes.push(`${t('sabe.necesita')}: ${req2.map(([c, n]) => `${n ?? '?'} × ${clase(mundo, c)}`).join(', ')}`);
+    const ef = Object.entries(req.efecto || {});
+    if (ef.length) partes.push(`${t('sabe.efecto')}: ${ef.map(([c, n]) => `${Number(n) > 0 ? '+' : ''}${n} ${clase(mundo, c)}`).join(', ')}`);
+    return partes.join(' · ');
+  }
+
+  itemHecho(h) {
+    const frase = hechoFrase(this.vida.mundo, h);
+    if (!frase) return '';
+    const c = claseDeHecho(h);
+    return `<li class="hecho hecho-${esc(h.tipo)}"><span class="icono-hecho" aria-hidden="true">${ICONOS_HECHO[h.tipo] || '•'}</span>
+      ${c && h.tipo !== 'muere' ? this.icono(c) : ''}<span class="texto">${esc(frase)}</span>
+      <span class="latido-hecho">${esc(t('vivero.latido_corto', { n: h.latido ?? '' }))}</span></li>`;
+  }
+
+  // --- tarjetas --------------------------------------------------------------------------------------------------
+  pintarTarjetas() {
+    const r = this.registro;
+    if (!this.querySelector('[data-latido]')) return;
+    if (r) {
+      this.querySelector('[data-latido]').textContent = t('vivero.latido', { n: r.latido });
+      this.querySelector('[data-individuo]').textContent = r.individuo;
+      this.querySelector('[data-generacion]').textContent = t('vivero.generacion', { n: r.generacion });
+    }
+    const pintar = (id, html) => { const el = this.querySelector(`[data-cuerpo="${id}"]`); if (el) el.innerHTML = html; };
+    pintar('cuerpo', this.htmlCuerpo(false));
+    pintar('ahora', this.htmlAhora(false));
+    pintar('sabe', this.htmlSabe(false));
+    pintar('logros', this.htmlLogros(false));
+    pintar('caracter', this.htmlCaracter(false));
+    pintar('estirpe', this.htmlEstirpe());
+    const diario = this.querySelector('[data-diario]');
+    if (diario) {
+      const visibles = this.diario.filter((h) => !FUERA_DEL_DIARIO.has(h.tipo)).slice(-DIARIO_VISIBLE).reverse();
+      diario.innerHTML = visibles.length ? visibles.map((h) => this.itemHecho(h)).join('') : `<li class="suave">${esc(t('vivero.diario_vacio'))}</li>`;
+    }
+    if (this.detalle) this.pintarDetalle();
+  }
+
+  htmlCuerpo(detalle) {
+    const r = this.registro;
+    if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
+    const cuerpo = r.cuerpo || {};
+    const medidores = MEDIDORES.map((m) => `<div class="medidor ${m}"><span>${esc(t(`cuerpo.${m}`))}</span>
+      ${barra(cuerpo[m], t(`cuerpo.${m}`))}<output>${Number.isFinite(Number(cuerpo[m])) ? Number(cuerpo[m]).toFixed(0) : '–'}</output></div>`).join('');
     const afecto = (r.afecto || {}).estado;
-    const animo = this.querySelector('[data-animo]');
-    animo.textContent = afecto ? t(`afecto.${afecto}`) : '–';
-    animo.className = `chip ${['MIEDO', 'PANICO', 'ALERTA'].includes(afecto) ? 'falta' : ['CALMA', 'CURIOSIDAD'].includes(afecto) ? 'listo' : 'aviso'}`;
+    const tono = ['MIEDO', 'PANICO', 'ALERTA'].includes(afecto) ? 'falta' : ['CALMA', 'CURIOSIDAD'].includes(afecto) ? 'listo' : 'aviso';
+    const estados = [cuerpo.dormido ? t('cuerpo.dormida') : '', cuerpo.cargando ? t('cuerpo.cargando', { que: clase(this.vida.mundo, cuerpo.cargando) }) : '']
+      .filter(Boolean).map((s) => `<span class="chip sin-punto">${esc(s)}</span>`).join('');
+    const animo = `<div class="animo"><span class="suave">${esc(t('vivero.animo'))}</span>
+      <span class="chip ${tono}">${esc(afecto ? t(`afecto.${afecto}`) : '–')}</span>${estados}</div>`;
+    if (!detalle) return medidores + animo;
+    const quimica = Object.entries(QUIMICA).map(([q, max]) => {
+      const v = Number((r.quimica || {})[q] ?? 0);
+      return `<div class="medidor"><span>${esc(t(`quimica.${q}`))}</span>${barra(v, t(`quimica.${q}`), { max, nivel: false })}
+        <output>${max > 1 ? v.toFixed(0) : v.toFixed(2)}</output></div>`;
+    }).join('');
+    const ind = Object.entries((r.afecto || {}).indicadores || {}).map(([k, v]) => `<div class="medidor"><span>${esc(t(`indicador.${k}`) === `indicador.${k}` ? k : t(`indicador.${k}`))}</span>
+      ${barra(Number(v) * 100, k, { nivel: false })}<output>${Number(v).toFixed(2)}</output></div>`).join('');
+    const nec = (r.necesidades || []).map((n) => `<div class="medidor"><span>${esc(t(`necesidad.${n.nombre}`) === `necesidad.${n.nombre}` ? n.nombre : t(`necesidad.${n.nombre}`))}</span>
+      ${barra(Number(n.deficit) * 100, n.nombre, { nivel: false })}<output>${Math.round(Number(n.deficit) * 100)} %</output></div>`).join('');
+    const valencia = Number((r.afecto || {}).valencia ?? 0);
+    return `${medidores}${animo}
+      <h4>${esc(t('detalle.quimica'))}</h4>${quimica}
+      <p class="suave pequeno">${esc(t('detalle.valencia', { v: valencia.toFixed(2) }))}</p>
+      <h4>${esc(t('detalle.indicadores'))}</h4>${ind || `<p class="suave pequeno">–</p>`}
+      <h4>${esc(t('detalle.necesidades'))}</h4><p class="suave pequeno">${esc(t('detalle.necesidades_ayuda'))}</p>${nec || '<p class="suave pequeno">–</p>'}`;
+  }
+
+  htmlAhora(detalle) {
+    const r = this.registro;
+    if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
+    const mundo = this.vida.mundo;
     const a = r.accion;
-    this.querySelector('[data-accion]').textContent = a ? `${a.verbo} ${a.objetivo || ''}${a.motivo ? ` · «${a.motivo}»` : ''}` : t('vivero.sin_accion');
-    const puntos = (r.score && r.score.puntuacion) || {};
-    this.querySelector('[data-puntos]').innerHTML = Object.entries(puntos)
-      .filter(([, v]) => typeof v === 'number' || typeof v === 'string')
-      .map(([k, v]) => `<span class="chip sin-punto">${esc(k)}: <b>${esc(typeof v === 'number' ? Math.round(v * 100) / 100 : v)}</b></span>`).join('');
+    const plan = planDeAccion(a);
+    const principal = `<p class="frase-ahora">${a ? this.icono(a.clase, true) : ''}<span>${esc(ahoraFrase(mundo, a))}</span></p>
+      ${plan ? `<p class="suave pequeno">🧭 ${esc(t('ahora.plan', { plan }))} · ${esc(t(`sistema.${a.sistema}`) === `sistema.${a.sistema}` ? a.sistema : t(`sistema.${a.sistema}`))}</p>` : ''}`;
+    if (!detalle) return principal;
+    const trib = r.tribunal || {};
+    const candidatos = (trib.candidatos || []).map((c) => {
+      const gana = trib.ganador && trib.ganador.id === c.id;
+      return `<tr class="${gana ? 'gana' : ''}"><td>${esc(c.sistema)}</td>
+        <td>${esc(capital(accionFrase(mundo, c.verbo, '', c.objetivo, 'inf')))} <code>${esc(c.objetivo || '')}</code>
+          ${c.motivo ? `<br><span class="suave pequeno">${esc(c.motivo)}</span>` : ''}</td>
+        <td class="num">${Number(c.total).toFixed(2)}</td></tr>`;
+    }).join('');
+    const activas = ((r.estrategias || {}).activas || []).map((e) => `<li>🧭 ${esc(planNombre(e.nombre))} <span class="suave">· ${esc(e.sistema)}</span></li>`).join('');
+    const cuenta = Object.fromEntries(SISTEMAS.map((s) => [s, 0]));
+    for (const s of this.reparto) cuenta[s] = (cuenta[s] || 0) + 1;
+    const total = Math.max(1, this.reparto.length);
+    const reparto = Object.entries(cuenta).filter(([, n]) => n || true).map(([s, n]) => `<div class="medidor"><span>${esc(t(`sistema.${s}`) === `sistema.${s}` ? s : t(`sistema.${s}`))}</span>
+      ${barra((n / total) * 100, s, { nivel: false })}<output>${Math.round((n / total) * 100)} %</output></div>`).join('');
+    const planes = this.diario.filter((h) => h.tipo === 'estrategia').slice(-8).reverse().map((h) => this.itemHecho(h)).join('');
+    const motivo = a && a.motivo ? `<p class="suave pequeno">${esc(t('detalle.motivo_motor'))}: <q>${esc(a.motivo)}</q></p>` : '';
+    return `${principal}${motivo}
+      ${a ? `<p class="suave pequeno">${esc(t('detalle.accion_cruda'))}: <code>${esc(`${a.verbo} ${a.objetivo || ''}`.trim())}</code>${a.clase ? ` · <code>${esc(a.clase)}</code>` : ''}</p>` : ''}
+      <h4>${esc(t('detalle.tribunal'))}</h4>
+      ${candidatos ? `<table class="tabla"><thead><tr><th>${esc(t('detalle.sistema'))}</th><th>${esc(t('detalle.candidato'))}</th><th class="num">${esc(t('detalle.total'))}</th></tr></thead><tbody>${candidatos}</tbody></table>` : `<p class="suave pequeno">–</p>`}
+      ${trib.plus_decide ? `<p class="suave pequeno">${esc(t('detalle.plus_decide'))}</p>` : ''}
+      <h4>${esc(t('detalle.estrategias'))}</h4>${activas ? `<ul class="lista-simple">${activas}</ul>` : `<p class="suave pequeno">–</p>`}
+      <h4>${esc(t('detalle.reparto', { n: this.reparto.length }))}</h4>${reparto}
+      <h4>${esc(t('detalle.planes'))}</h4>${planes ? `<ol class="lista-diario">${planes}</ol>` : `<p class="suave pequeno">–</p>`}`;
+  }
+
+  htmlSabe(detalle) {
+    const r = this.registro;
+    if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
+    const items = this.loQueSabe();
+    if (!detalle) {
+      return items.length ? `<ul class="lista-saber">${items.slice(0, 5).map((it) => this.itemSaber(it)).join('')}</ul>
+        ${items.length > 5 ? `<p class="suave pequeno">${esc(t('sabe.y_mas', { n: items.length - 5 }))}</p>` : ''}`
+        : `<p class="suave">${esc(t('sabe.nada'))}</p>`;
+    }
+    const m = r.memoria || {};
+    const cifras = [['demostradas', m.demostradas], ['hipotesis', m.hipotesis], ['refutadas', m.refutadas],
+      ['aciertos', m.aciertos], ['sorpresas', m.sorpresas], ['heredados', m.heredados]]
+      .map(([k, v]) => `<div class="cifra"><b>${esc(v ?? 0)}</b><span>${esc(t(`sabe.cifra.${k}`))}</span></div>`).join('');
+    const mundo = this.vida.mundo;
+    const refutadas = (r.saber || []).filter((p) => p.estado === 'refutada')
+      .map((p) => `<li class="saber refutada">${this.icono(p.sujeto)}<span class="texto"><span>${esc(saberFrase(mundo, p))}</span>
+        <span class="meta"><span class="chip sin-punto">${esc(t(`fuente.${fuenteDe(p)}`))}</span><b>${Math.round(p.confianza * 100)} %</b></span></span></li>`).join('');
+    const sorpresas = this.diario.filter((h) => h.tipo === 'sorpresa' || h.tipo === 'duda' || h.tipo === 'refuta').slice(-8).reverse()
+      .map((h) => this.itemHecho(h)).join('');
+    return `<div class="cifras">${cifras}</div>
+      <p class="suave pequeno">${esc(t('sabe.leyenda'))}</p>
+      <ul class="lista-saber detalle">${items.map((it) => this.itemSaber(it, true)).join('') || `<li class="suave">${esc(t('sabe.nada'))}</li>`}</ul>
+      <h4>${esc(t('sabe.refutadas'))}</h4>${refutadas ? `<ul class="lista-saber detalle">${refutadas}</ul>` : `<p class="suave pequeno">${esc(t('sabe.refutadas_vacio', { n: m.refutadas ?? 0 }))}</p>`}
+      <h4>${esc(t('sabe.sorpresas'))}</h4>${sorpresas ? `<ol class="lista-diario">${sorpresas}</ol>` : `<p class="suave pequeno">–</p>`}
+      <p class="suave pequeno">${esc(t('sabe.nota_nivel'))}</p>`;
+  }
+
+  htmlLogros(detalle) {
+    const r = this.registro;
+    if (!r) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
+    const mundo = this.vida.mundo;
     const logros = (r.score && r.score.logros) || [];
-    this.querySelector('[data-logros]').textContent = logros.length ? `${t('vivero.logros')} (${logros.length}): ${logros.join(', ')}` : '';
+    const total = totalLogros(mundo);
+    const punt = (r.score && r.score.puntuacion) || {};
+    const valor = (v) => (typeof v === 'number' ? String(Math.round(v * 100) / 100)
+      : Array.isArray(v) ? v.map((x) => (typeof x === 'number' ? Math.round(x * 10) / 10 : x)).join(' / ')
+        : typeof v === 'object' && v ? Object.entries(v).map(([k, n]) => `${clase(mundo, k)} ${n}`).join(', ') : valorPuntos(mundo, String(v)));
+    const filas = Object.entries(punt).filter(([k]) => k !== 'logros' && !(total && k === 'n_logros'))
+      .map(([k, v]) => `<div class="punto"><span>${esc(etiquetaPuntos(mundo, k))}</span><b>${esc(valor(v))}</b></div>`).join('');
+    const ultimos = logros.length ? `<ul class="chips-logros">${(detalle ? logros : logros.slice(-4)).map((l) => `<li class="chip listo">🏅 ${esc(logro(mundo, l))}</li>`).join('')}</ul>` : '';
+    const cabeza = total ? `<p class="logros-cuenta"><b>${logros.length}</b> / ${total} ${esc(t('vivero.logros').toLowerCase())}</p>` : '';
+    if (!detalle) return `${cabeza}<div class="puntos-lista">${filas}</div>${ultimos}`;
+    const todos = logrosDelMundo(mundo);
+    const rejilla = todos.length ? `<h4>${esc(t('detalle.todos_logros'))}</h4><ul class="rejilla-logros">${todos.map((l) => {
+      const si = logros.includes(l);
+      return `<li class="${si ? 'si' : 'no'}"><span aria-hidden="true">${si ? '🏅' : '○'}</span> ${esc(logro(mundo, l))}
+        <span class="oculto">${esc(si ? t('detalle.conseguido') : t('detalle.pendiente'))}</span></li>`;
+    }).join('')}</ul>` : '';
+    const historia = this.diario.filter((h) => !FUERA_DEL_DIARIO.has(h.tipo)).slice().reverse().map((h) => this.itemHecho(h)).join('');
+    return `${cabeza}<div class="puntos-lista">${filas}</div>${rejilla}
+      <h4>${esc(t('detalle.historia'))}</h4><p class="suave pequeno">${esc(t('detalle.historia_ayuda', { n: DIARIO_MAX }))}</p>
+      ${historia ? `<ol class="lista-diario">${historia}</ol>` : `<p class="suave pequeno">–</p>`}`;
+  }
+
+  htmlCaracter(detalle) {
+    const r = this.registro;
+    const arq = (r && r.arquetipo) || (this.vida && this.vida.arquetipo);
+    if (!arq) return `<p class="suave">${esc(t('vivero.esperando'))}</p>`;
+    const etiquetas = RASGOS.map((x) => t(`rasgo.${x}.nombre`).slice(0, 5));
+    const grafico = radar(arq, RASGOS, { etiquetas: detalle ? etiquetas : null, titulo: t('tarjeta.caracter') });
+    const gen = r ? r.generacion : null;
+    const previo = gen != null ? this.generaciones.get(gen - 1) : null;
+    const filas = RASGOS.map((x) => {
+      const d = previo ? Number(arq[x]) - Number(previo[x]) : null;
+      const cambio = d == null ? '' : `<span class="cambio ${d > 0.004 ? 'sube' : d < -0.004 ? 'baja' : ''}">${d > 0 ? '+' : ''}${d.toFixed(2)}</span>`;
+      return `<div class="rasgo-fila"><span>${esc(t(`rasgo.${x}.nombre`))}</span>${barra(Number(arq[x]) * 100, x, { nivel: false })}
+        <output>${Number(arq[x]).toFixed(2)}</output>${detalle ? cambio : ''}</div>`;
+    }).join('');
+    if (!detalle) return `<div class="caracter-mini">${grafico}<div>${filas}</div></div>`;
+    const nota = previo ? t('caracter.mutacion', { g: gen - 1 }) : t('caracter.sin_previa');
+    return `<div class="caracter-grande">${grafico}</div>${filas}
+      <p class="suave pequeno">${esc(nota)}</p>
+      <ul class="lista-simple">${RASGOS.map((x) => `<li><b>${esc(t(`rasgo.${x}.nombre`))}</b>: ${esc(t(`rasgo.${x}.desc`))}</li>`).join('')}</ul>`;
+  }
+
+  htmlEstirpe() {
+    const r = this.registro;
+    const gen = r ? r.generacion : (this.vida && this.vida.generacion) || 1;
+    return `<p class="generacion-grande"><b>${esc(t('vivero.generacion', { n: gen }))}</b></p>
+      <p class="suave pequeno">${esc(t('estirpe.pronto'))}</p>`;
+  }
+
+  // --- panel lateral ----------------------------------------------------------------------------------------------
+  abrirDetalle(id, origen) {
+    if (!TARJETAS.includes(id)) return;
+    this.detalle = id;
+    if (origen) this.foco = origen;
+    const cajon = this.querySelector('[data-cajon]');
+    const velo = this.querySelector('[data-velo]');
+    if (!cajon) return;
+    cajon.hidden = false;
+    velo.hidden = false;
+    this.querySelector('#cajon-titulo').innerHTML = `<span aria-hidden="true">${ICONOS_TARJETA[id]}</span> ${esc(t(`tarjeta.${id}`))}`;
+    this.querySelector('[data-lab]').href = `#/lab?seccion=${id}`;
+    this.pintarDetalle();
+    if (origen) this.querySelector('#cajon-titulo').focus();
+  }
+
+  pintarDetalle() {
+    const caja = this.querySelector('[data-cajon-cuerpo]');
+    if (!caja) return;
+    const id = this.detalle;
+    const html = id === 'cuerpo' ? this.htmlCuerpo(true) : id === 'ahora' ? this.htmlAhora(true) : id === 'sabe' ? this.htmlSabe(true)
+      : id === 'logros' ? this.htmlLogros(true) : id === 'caracter' ? this.htmlCaracter(true) : this.htmlEstirpe();
+    if (html === this._ultimoDetalle) return;
+    this._ultimoDetalle = html;
+    const scroll = caja.scrollTop;
+    caja.innerHTML = html;
+    caja.scrollTop = scroll;
+  }
+
+  cerrarDetalle() {
+    this.detalle = null;
+    this._ultimoDetalle = null;
+    const cajon = this.querySelector('[data-cajon]');
+    if (cajon) { cajon.hidden = true; this.querySelector('[data-velo]').hidden = true; }
+    if (this.foco && this.foco.isConnected) this.foco.focus();
+    else this.querySelector('[data-ver]')?.focus();
   }
 }
 
