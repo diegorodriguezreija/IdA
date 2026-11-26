@@ -1,0 +1,16 @@
+{
+  "mapa_sprites": {
+    "fondo": "fondo.svg",
+    "cuerpo": "cuerpo.svg",
+    "cuerpo.cabeza": "cabeza.svg",
+    "cuerpo.cuerpo": "cuerpo.svg",
+    "comida": "comida.svg",
+    "yo.norte": "yo_norte.svg",
+    "yo.sur": "yo_sur.svg",
+    "yo.este": "yo_este.svg",
+    "yo.oeste": "yo_oeste.svg",
+    "yo.muerta": "yo_muerta.svg",
+    "yo": "yo_sur.svg",
+    "?": "desconocido.svg"
+  }
+}

@@ -18,16 +18,19 @@ Opciones: ``--opcion dificultad=0|1|2`` (babosa, gusano, pitón), ``--opcion ven
 """
 
 from collections import deque
+import copy
 from dataclasses import replace
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from ida.nucleo.mundo import Efecto, Entidad, Mundo, Observacion, Perfil
 from ida.nucleo.vocabulario import Verbo
+from ida.mundos.opciones import opcion
 
 URL = "https://playsnake.org/"
 ANCHO, ALTO = 21, 15
 DIRECCIONES = {"N": (0, -1, "ArrowUp"), "S": (0, 1, "ArrowDown"), "E": (1, 0, "ArrowRight"), "O": (-1, 0, "ArrowLeft")}
 DIFICULTADES = {"0": 0, "babosa": 0, "slug": 0, "1": 1, "gusano": 1, "worm": 1, "2": 2, "piton": 2, "pitón": 2, "python": 2}
+ORIENTACIONES_MAP = {"N": "norte", "S": "sur", "E": "este", "O": "oeste"}
 
 JS_ESTADO = """() => {
   const game = document.querySelector('.game');
@@ -41,6 +44,28 @@ JS_ESTADO = """() => {
 }"""
 
 Celda = Tuple[int, int]
+
+
+def _t(es: str, en: str) -> Dict[str, str]:
+    return {"es": es, "en": en}
+
+
+OPCIONES = [
+    opcion("dificultad", "entero", 0,
+           _t("Dificultad", "Difficulty"),
+           _t("Dificultad en playsnake.org: 0 (babosa), 1 (gusano) o 2 (pitón).",
+              "Difficulty on playsnake.org: 0 (slug), 1 (worm) or 2 (python)."),
+           min=0, max=2),
+    opcion("ventana", "booleano", False,
+           _t("Ventana del navegador", "Browser window"),
+           _t("Abre la ventana visible de Chromium en vez de correr en segundo plano.",
+              "Opens the visible Chromium window instead of running headless.")),
+    opcion("ritmo", "entero", 60,
+           _t("Ritmo del juego", "Game pace"),
+           _t("Periodo del latido en milisegundos (60 por defecto).",
+              "Beat period in milliseconds (60 by default)."),
+           min=20, max=200),
+]
 
 
 def espacio_libre(inicio: Celda, ocupadas: Set[Celda], limite: int = 80) -> int:
@@ -71,14 +96,19 @@ class MundoSnake(Mundo):
         rasgos_declarados=("peligro", "nutritivo"),
     )
 
-    def __init__(self, dificultad: Any = 0, ventana: Any = 0, ritmo: Any = 60, **_):
-        self.dificultad = DIFICULTADES.get(str(dificultad).lower(), 0)
-        self.perfil = replace(MundoSnake.perfil, frecuencia_ms=float(ritmo))
-        self.ventana = str(ventana) in ("1", "si", "sí", "true")
+    def __init__(self, dificultad: Any = 0, ventana: Any = False, ritmo: Any = 60, **kwargs):
+        ritmo_val = kwargs.get("velocidad", ritmo)
+        self.dificultad = DIFICULTADES.get(str(dificultad).lower(), 0) if not isinstance(dificultad, int) else dificultad
+        self.perfil = replace(MundoSnake.perfil, frecuencia_ms=float(ritmo_val))
+        self.ventana = bool(ventana) if isinstance(ventana, bool) else str(ventana) in ("1", "si", "sí", "true")
         self._pw: Any = None
         self._navegador: Any = None
         self._pagina: Any = None
         self._reset_estado()
+
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        return copy.deepcopy(OPCIONES)
 
     def _reset_estado(self) -> None:
         self.cuerpo: List[Celda] = [(10, 2), (10, 1), (10, 0)]
@@ -247,3 +277,45 @@ class MundoSnake(Mundo):
                 fila += "@" if (x, y) == self.cabeza else ("o" if (x, y) in cuerpo else ("*" if (x, y) == self.comida else "."))
             filas.append(fila)
         return "\n".join(filas) + f"\npuntos: {self.puntos}"
+
+    def escena(self) -> Dict[str, Any]:
+        celdas = [["fondo"] * ANCHO for _ in range(ALTO)]
+        entidades: List[Dict[str, Any]] = []
+        for i, (x, y) in enumerate(self.cuerpo):
+            estado = "cabeza" if (x, y) == self.cabeza else "cuerpo"
+            entidades.append({
+                "clase": "cuerpo",
+                "x": x,
+                "y": y,
+                "estado": estado,
+                "id": f"cuerpo_{i}",
+            })
+        if self.comida:
+            entidades.append({
+                "clase": "comida",
+                "x": self.comida[0],
+                "y": self.comida[1],
+                "id": "comida",
+            })
+        orientacion = ORIENTACIONES_MAP.get(self.direccion, "sur")
+        yo: Dict[str, Any] = {
+            "x": self.cabeza[0],
+            "y": self.cabeza[1],
+            "orientacion": orientacion,
+        }
+        if self.muerta:
+            yo["estado"] = "muerta"
+        return {
+            "tipo": "rejilla",
+            "ancho": ANCHO,
+            "alto": ALTO,
+            "celdas": celdas,
+            "entidades": entidades,
+            "yo": yo,
+            "inventario": {},
+            "extra": {
+                "puntos": self.puntos,
+                "max_puntos": self.max_puntos,
+                "longitud": len(self.cuerpo),
+            },
+        }

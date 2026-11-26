@@ -1,0 +1,11 @@
+{
+  "mapa_sprites": {
+    "pradera": "pradera.svg",
+    "baya": "baya.svg",
+    "seta": "seta.svg",
+    "piedra": "piedra.svg",
+    "lobo": "lobo.svg",
+    "yo": "yo.svg",
+    "?": "desconocido.svg"
+  }
+}

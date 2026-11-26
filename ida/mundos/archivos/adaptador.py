@@ -13,6 +13,7 @@ este mundo**. La mente no sabe qué es un archivo: recibe entidades con rasgos.
 directorio propio dentro de ``datos/archivos``. Nada fuera de ella se lee, escribe ni borra.
 """
 
+import copy
 import math
 import os
 import shutil
@@ -22,6 +23,7 @@ from typing import Any, Dict, List, Optional, Set
 from ida.nucleo.azar import Azar
 from ida.nucleo.mundo import Alta, Efecto, Entidad, Mundo, Observacion, Perfil, Registro
 from ida.nucleo.vocabulario import Verbo
+from ida.mundos.opciones import opcion
 from ida.mundos.archivos.s1.reaccionar.estrategias.defensa import Defensa
 from ida.mundos.archivos.s1.reaccionar.estrategias.alimentarse_con_prudencia import AlimentarseConPrudencia
 from ida.mundos.archivos.s3.reaccionar.prudencia import Prudencia
@@ -69,6 +71,29 @@ def clase_de(nombre: str) -> str:
     return "_".join(partes) or base
 
 
+def _t(es: str, en: str) -> Dict[str, str]:
+    return {"es": es, "en": en}
+
+
+OPCIONES = [
+    opcion("biomas", "entero", 5,
+           _t("Número de biomas", "Number of biomes"),
+           _t("Número de biomas iniciales en el árbol de carpetas (5 por defecto).",
+              "Number of initial biomes in the folder tree (5 by default)."),
+           min=1, max=5),
+    opcion("frecuencia_brotes", "entero", 25,
+           _t("Frecuencia de brotes", "Sprout frequency"),
+           _t("Cada cuántos latidos brota nueva biomasa en una carpeta al azar (25 por defecto).",
+              "Every how many beats new biomass sprouts in a random folder (25 by default)."),
+           min=5, max=100),
+    opcion("agresividad", "real", 0.35,
+           _t("Agresividad del depredador", "Predator aggressiveness"),
+           _t("Probabilidad de que un depredador en la misma carpeta muerda en cada latido (0,35 por defecto).",
+              "Probability that a predator in the same folder bites each beat (0.35 by default)."),
+           min=0.0, max=1.0),
+]
+
+
 class MundoArchivos(Mundo):
     nombre = "archivos"
     perfil = Perfil(
@@ -81,8 +106,11 @@ class MundoArchivos(Mundo):
         rasgos_declarados=("peligro", "nutritivo", "recurso", "novedad"),
     )
 
-    def __init__(self, datos: str = "datos/archivos", **_):
+    def __init__(self, datos: str = "datos/archivos", biomas: Any = 5, frecuencia_brotes: Any = 25, agresividad: Any = 0.35, **kwargs):
         self.raiz = os.path.abspath(os.path.join(datos, "bioma"))
+        self.biomas = int(biomas)
+        self.frecuencia_brotes = int(kwargs.get("brotes", frecuencia_brotes))
+        self.agresividad = float(kwargs.get("agresividad_depredador", agresividad))
         self.azar = Azar(0)
         self.actual = self.raiz
         self.visitas: Dict[str, int] = {}
@@ -92,6 +120,10 @@ class MundoArchivos(Mundo):
         self.comido: Dict[str, int] = {}
         self.nutritivos = 0
         self.toxicos = 0
+
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        return copy.deepcopy(OPCIONES)
 
     # --- seguridad -----------------------------------------------------------
     def _seguro(self, ruta: str) -> str:
@@ -117,7 +149,8 @@ class MundoArchivos(Mundo):
         if os.path.isdir(self.raiz):
             shutil.rmtree(self._seguro(self.raiz))
         os.makedirs(self.raiz)
-        for bioma, hijos in BIOMAS.items():
+        items_biomas = list(BIOMAS.items())[:self.biomas]
+        for bioma, hijos in items_biomas:
             ruta = os.path.join(self.raiz, bioma)
             os.makedirs(ruta)
             self._poblar(ruta, bioma)
@@ -146,7 +179,8 @@ class MundoArchivos(Mundo):
             nombre = az.eleccion(list(AMBIENTE))
             self._escribir(carpeta, nombre, AMBIENTE[nombre])
         if az.probabilidad(0.3):
-            self._escribir(carpeta, f"mensaje_{az.eleccion(range(100))}.txt", az.eleccion(MENSAJES).format(b=az.eleccion(list(BIOMAS))))
+            biomas_disponibles = list(BIOMAS)[:self.biomas] or list(BIOMAS)
+            self._escribir(carpeta, f"mensaje_{az.eleccion(range(100))}.txt", az.eleccion(MENSAJES).format(b=az.eleccion(biomas_disponibles)))
 
     # --- percepción ----------------------------------------------------------
     def _archivos(self, carpeta: str) -> List[str]:
@@ -277,7 +311,7 @@ class MundoArchivos(Mundo):
     def _dinamica(self, ef: Efecto) -> None:
         """El mundo sigue: los depredadores muerden y se mueven, y la biomasa rebrota."""
         for nombre in self._archivos(self.actual):
-            if nombre.endswith(".exe") and self.azar.probabilidad(0.35):
+            if nombre.endswith(".exe") and self.azar.probabilidad(self.agresividad):
                 ef.delta["vitalidad"] = ef.delta.get("vitalidad", 0.0) - 6.0
                 ef.causa = clase_de(nombre)
         if self.azar.probabilidad(0.08):
@@ -287,7 +321,7 @@ class MundoArchivos(Mundo):
             if presas:
                 n = self.azar.eleccion(presas)
                 shutil.move(self._seguro(os.path.join(origen, n)), self._seguro(os.path.join(self.azar.eleccion(carpetas), n)))
-        if self.t % 25 == 0:
+        if self.frecuencia_brotes > 0 and self.t % self.frecuencia_brotes == 0:
             carpeta = self.azar.eleccion(self._carpetas())
             self._escribir(carpeta, f"brote_{self.t}.txt", "0101" * 64)
 
@@ -319,5 +353,41 @@ class MundoArchivos(Mundo):
             lineas.append(f"mochila: {self.mochila['nombre']}")
         return "\n".join(lineas)
 
-
-
+    def escena(self) -> Dict[str, Any]:
+        nodos: List[Dict[str, Any]] = []
+        entidades: List[Dict[str, Any]] = []
+        for carpeta in self._carpetas():
+            rel = "" if carpeta == self.raiz else os.path.relpath(carpeta, self.raiz).replace("\\", "/")
+            if carpeta == self.raiz:
+                padre = None
+            elif os.path.dirname(carpeta) == self.raiz:
+                padre = ""
+            else:
+                padre = os.path.relpath(os.path.dirname(carpeta), self.raiz).replace("\\", "/")
+            clase = "raiz" if carpeta == self.raiz else "carpeta"
+            nodos.append({"ruta": rel, "clase": clase, "padre": padre})
+            for nombre in self._archivos(carpeta):
+                clase_archivo = clase_de(nombre)
+                entidades.append({
+                    "clase": clase_archivo,
+                    "ruta": rel,
+                    "nombre": nombre,
+                    "id": f"{rel}/{nombre}" if rel else nombre,
+                })
+        yo_ruta = "" if self.actual == self.raiz else os.path.relpath(self.actual, self.raiz).replace("\\", "/")
+        inventario = {clase_de(self.mochila["nombre"]): 1} if self.mochila else {}
+        extra = {
+            "comido": dict(self.comido),
+            "nutritivos": self.nutritivos,
+            "toxicos": self.toxicos,
+        }
+        if self.mochila:
+            extra["mochila"] = self.mochila["nombre"]
+        return {
+            "tipo": "arbol",
+            "nodos": nodos,
+            "entidades": entidades,
+            "yo": {"ruta": yo_ruta},
+            "inventario": inventario,
+            "extra": extra,
+        }

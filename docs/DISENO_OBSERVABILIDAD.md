@@ -300,6 +300,47 @@ equivalencia):
 defecto da las mismas acciones que sin ellas (`tests/test_escena_crafter.py`, 40 latidos, semilla 31, plazo lógico 40).
 No quedó fuera ninguna de las aprobadas.
 
+**Mínimo (T2b).** Escena tipo «rejilla» (la pradera entera, entidades por clase y yo). Opciones nuevas declaradas:
+
+| Opción | Tipo y rango | Declarado (O8) | Constructor | De dónde sale el declarado |
+|---|---|---|---|---|
+| `tamano` | entero, 5–25 | 9 | 9 | la constante `TAM = 9` de hoy |
+| `depredadores` | entero, 0–5 | 1 | 1 | el lobo único de hoy (`self.lobo`) |
+| `comida` | entero, 1–20 | 4 | 4 | las 4 bayas sembradas de hoy |
+
+No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto dan exactamente las mismas acciones en 100 latidos (`tests/test_escena_minimo.py`, semilla 1, plazo lógico 40).
+
+**Archivos (T2b).** Escena tipo «arbol» (carpetas como nodos con padre, contenido como entidades con ruta y nombre, yo.ruta = carpeta actual, mochila en el inventario; solo lee dentro del bioma en el orden de `_carpetas()`). Opciones nuevas declaradas:
+
+| Opción | Tipo y rango | Declarado (O8) | Constructor | De dónde sale el declarado |
+|---|---|---|---|---|
+| `biomas` | entero, 1–5 | 5 | 5 | los 5 biomas de `BIOMAS` de hoy |
+| `frecuencia_brotes` | entero, 5–100 | 25 | 25 | el periodo de 25 latidos de `_dinamica` |
+| `agresividad` | real, 0.0–1.0 | 0.35 | 0.35 | probabilidad de mordisco (0,35) en `_dinamica` |
+
+No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto dan exactamente las mismas acciones en 100 latidos (`tests/test_escena_archivos.py`, semilla 1, plazo lógico 40).
+
+**Snake (T2b).** Escena tipo «rejilla» (cuerpo como entidades con estado cabeza o cuerpo, comida, yo = cabeza con orientación; solo lee el estado del adaptador sin peticiones a la web). Opciones declaradas:
+
+| Opción | Tipo y rango | Declarado (O8) | Constructor | De dónde sale el declarado |
+|---|---|---|---|---|
+| `dificultad` | entero, 0–2 | 0 | 0 | babosa (0), gusano (1), pitón (2) |
+| `ventana` | booleano | no | no (`False`) | navegador en segundo plano por defecto |
+| `ritmo` | entero, 20–200 | 60 | 60 | periodo del latido en ms (velocidad) |
+
+*Opción que queda fuera:* el tamaño del tablero queda fuera porque la web real `playsnake.org` tiene un tablero fijo de 21×15 casillas codificado en el DOM/canvas del juego y no admite configuración ni escalado de dimensiones desde el exterior.
+
+**Ajedrez (T2b).** Escena tipo «tablero» (extra.fen, última jugada en marcas, yo.color, turno; importación de `chess` restringida al módulo). Opciones declaradas:
+
+| Opción | Tipo y rango | Declarado (O8) | Constructor | De dónde sale el declarado |
+|---|---|---|---|---|
+| `color` | opción: `blancas`, `negras` | `blancas` | `blancas` | bando de IdA (blancas mueven primero) |
+| `dificultad` | entero, 0–3 | 2 | 2 | bot rival local (0 azar, 1 material, 2 posicional, 3 profundo) |
+| `elo` | entero, 500–3000 | 1350 | 1350 | fuerza UCI de Stockfish si se usa |
+| `apertura` | entero, 0–20 | 0 | 0 | nueva: medias jugadas al azar al inicio; 0 = posición estándar |
+
+*Opción que queda fuera:* la ruta al binario de Stockfish (`stockfish`) queda fuera de la declaración porque es una ruta libre en el sistema de archivos (cadena de texto) y el esquema de opciones declaradas (O8) solo contempla tipos estructurados (`entero`, `real`, `opcion`, `booleano`); la opción sigue admitiéndose por constructor y CLI tal cual.
+
 ## 9. Qué no entra (por ahora)
 
 - **Intervenir en la vida.** El usuario solo observa. La intervención podrá llegar como modo aparte, con las vidas
@@ -315,3 +356,4 @@ No quedó fuera ninguna de las aprobadas.
 | 26/11/2026 | O1–O18, sección 8 | Aprobadas por el autor. O8: el valor por defecto de cada opción es el que da más Score de base | Aprobación del autor |
 | 26/11/2026 | O2–O5, O7, O11, secciones 4 y 5 | T1: el registro del latido pasa de esbozo a v1 (esquema y catálogo de hechos finales, con lo que queda fuera); grabación `.jsonl.gz`; consola sobre el registro; plazo lógico 40 desde la antesala salvo en tiempo real. Excepción de lectura de `vista()` en Crafter (caché de ids), aprobada por el autor. Equivalencia OK; invariancia OK con el observador en los tres niveles; coste con nivel cognitivo, +4,6 % por latido (Crafter, 3000 latidos, plazo lógico 40, semilla 31, 2 repeticiones) | Rama `vista/t1-registro` |
 | 26/11/2026 | O6, O8, O18, secciones 4, 6 y 8 | T2a: contratos `escena()` v1 (rejilla, árbol, tablero) y opciones declaradas (formato, validación, defecto = el de la medición oficial; los del constructor no cambian), con su implementación completa en Crafter (escena, siete opciones con `mapa` y `semilla_mapa`, sprites MIT) y un visor de comprobación en `/escena`. La escena va en el registro solo cuando cambia (sigue siendo v1). Único cambio en la base: los dos métodos de `Mundo`. Equivalencia OK; invariancia OK con el observador completo en los cuatro mundos; 1208 tests | Rama `vista/t2a-escena` |
+| 26/11/2026 | O6, O8, O18, sección 8 | T2b: `escena()` y opciones declaradas en mínimo (rejilla, tamano/depredadores/comida), archivos (árbol, biomas/frecuencia_brotes/agresividad), Snake (rejilla, dificultad/ventana/ritmo; tablero fijo de la web fuera) y ajedrez (tablero, color/dificultad/elo/apertura; stockfish libre fuera). Sprites SVG e índices para los tres mundos y piezas Unicode para ajedrez; visor ampliado con dibujo de árbol y tablero. Opción CLI `--datos`. Equivalencia OK; invariancia OK con observador completo; 1239 tests | Rama `vista/t2b-mundos` |

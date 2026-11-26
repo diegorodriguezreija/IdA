@@ -1,24 +1,29 @@
-// Visor de comprobación de escena() (T2a, O6, O12): módulo ES sin compilación ni dependencias.
+// Visor de comprobación de escena() (T2a/T2b, O6, O12): módulo ES sin compilación ni dependencias.
 // Lee una grabación (.jsonl.gz con DecompressionStream, o .jsonl) o un registro suelto (.json), reconstruye la escena
 // de cada latido (el registro solo la lleva cuando cambia: la de un latido es la última que llegó en su vida) y dibuja
-// en Canvas las de tipo «rejilla» con los sprites de web/sprites/<mundo>/indice.json. Los otros tipos se enseñan en JSON.
+// en Canvas las de tipo «rejilla», «arbol» y «tablero».
 
 const BASE = new URL('.', import.meta.url);          // .../web/
 const CELDA = 48;                                    // píxeles por casilla (sprites de 16 × 3)
 const FILA_INVENTARIO = 28;
 
+const UNICODE_PIEZAS = {
+  blanco: { rey: '♔', dama: '♕', torre: '♖', alfil: '♗', caballo: '♘', peon: '♙' },
+  negro: { rey: '♚', dama: '♛', torre: '♜', alfil: '♝', caballo: '♞', peon: '♟' },
+};
+
 const TEXTOS = {
-  es: { titulo: 'Visor de escena', pista: 'Comprobación de escena() (T2a), no es el Vivero. Carga una grabación .jsonl.gz o .jsonl, o un registro .json.',
+  es: { titulo: 'Visor de escena', pista: 'Comprobación de escena() (T2a/T2b), no es el Vivero. Carga una grabación .jsonl.gz o .jsonl, o un registro .json.',
         soltar: 'o suelta aquí el fichero', jugar: '▶ Reproducir', pausa: '❚❚ Pausa', latido: 'latido', vida: 'vida', mundo: 'mundo',
         accion: 'acción', luz: 'luz', logros: 'logros', inventario: 'inventario', sinEscena: 'Este registro no trae escena: vista de texto.',
         sinGzip: 'Este navegador no tiene DecompressionStream: descomprime la grabación y carga el .jsonl.',
-        noRejilla: 'Escena de tipo «{t}»: este visor solo dibuja rejillas; se enseña en JSON.', vacio: 'El fichero no tiene registros.',
+        noRejilla: 'Escena de tipo «{t}»: formato no reconocido.', vacio: 'El fichero no tiene registros.',
         opciones: 'opciones', semilla: 'semilla' },
-  en: { titulo: 'Scene viewer', pista: 'scene() check (T2a), not the Nursery. Load a .jsonl.gz or .jsonl recording, or a .json record.',
+  en: { titulo: 'Scene viewer', pista: 'scene() check (T2a/T2b), not the Nursery. Load a .jsonl.gz or .jsonl recording, or a .json record.',
         soltar: 'or drop the file here', jugar: '▶ Play', pausa: '❚❚ Pause', latido: 'beat', vida: 'life', mundo: 'world',
         accion: 'action', luz: 'light', logros: 'achievements', inventario: 'inventory', sinEscena: 'This record has no scene: text view.',
         sinGzip: 'This browser lacks DecompressionStream: decompress the recording and load the .jsonl.',
-        noRejilla: 'Scene of type “{t}”: this viewer only draws grids; shown as JSON.', vacio: 'The file has no records.',
+        noRejilla: 'Scene of type “{t}”: unrecognized format.', vacio: 'The file has no records.',
         opciones: 'options', semilla: 'seed' },
 };
 const idioma = (navigator.language || 'en').toLowerCase().startsWith('es') ? 'es' : 'en';
@@ -174,6 +179,161 @@ function dibujarRejilla(escena, mundo) {
   });
 }
 
+function dibujarArbol(escena, mundo) {
+  const filaAlt = 32;
+  const inv = Object.entries(escena.inventario || {}).filter(([, n]) => n);
+  const items = [];
+
+  for (const nodo of escena.nodos || []) {
+    items.push({ tipo: 'nodo', nodo });
+    for (const ent of escena.entidades || []) {
+      if (ent.ruta === nodo.ruta) {
+        items.push({ tipo: 'entidad', ent, ruta: nodo.ruta });
+      }
+    }
+  }
+
+  const margen = 16;
+  const ancho = 480;
+  const alto = margen * 2 + items.length * filaAlt + (inv.length ? 50 : 0);
+  lienzo.width = ancho;
+  lienzo.height = Math.max(200, alto);
+  ctx.imageSmoothingEnabled = true;
+
+  const fondo = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim() || '#ffffff';
+  const textoColor = getComputedStyle(document.documentElement).getPropertyValue('--texto').trim() || '#1d1d1b';
+  const suaveColor = getComputedStyle(document.documentElement).getPropertyValue('--suave').trim() || '#6b6a65';
+  const bordeColor = getComputedStyle(document.documentElement).getPropertyValue('--borde').trim() || '#dddcd6';
+  const acentoColor = getComputedStyle(document.documentElement).getPropertyValue('--acento').trim() || '#2f6f4f';
+
+  ctx.fillStyle = fondo;
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+
+  let y = margen;
+  for (const it of items) {
+    if (it.tipo === 'nodo') {
+      const n = it.nodo;
+      const nivel = n.ruta ? n.ruta.split('/').length : 0;
+      const x = margen + nivel * 24;
+      const esYo = escena.yo && escena.yo.ruta === n.ruta;
+
+      if (esYo) {
+        ctx.fillStyle = 'rgba(47, 111, 79, 0.15)';
+        ctx.fillRect(x - 4, y, ancho - x - margen + 4, filaAlt);
+        ctx.fillStyle = acentoColor;
+        ctx.fillRect(x - 4, y, 3, filaAlt);
+      }
+
+      pintar(mundo, [n.clase, 'carpeta', '?'], x, y + 4, 24, n.clase === 'raiz' ? 'R' : 'C');
+
+      const nombre = n.ruta ? n.ruta.split('/').pop() : 'bioma';
+      ctx.fillStyle = textoColor;
+      ctx.font = esYo ? 'bold 14px system-ui' : '14px system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(nombre + '/', x + 30, y + filaAlt / 2);
+
+      if (esYo) {
+        ctx.fillStyle = acentoColor;
+        ctx.font = 'bold 12px system-ui';
+        ctx.fillText('◀ IdA', x + 30 + ctx.measureText(nombre + '/ ').width + 6, y + filaAlt / 2);
+      }
+    } else {
+      const e = it.ent;
+      const nivel = (it.ruta ? it.ruta.split('/').length : 0) + 1;
+      const x = margen + nivel * 24;
+
+      pintar(mundo, [e.clase, '?'], x, y + 6, 20, String(e.clase)[0]);
+
+      ctx.fillStyle = suaveColor;
+      ctx.font = '13px monospace, system-ui';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(e.nombre || e.clase, x + 26, y + filaAlt / 2);
+    }
+    y += filaAlt;
+  }
+
+  if (inv.length) {
+    y += 10;
+    ctx.strokeStyle = bordeColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(margen, y);
+    ctx.lineTo(ancho - margen, y);
+    ctx.stroke();
+    y += 10;
+    ctx.fillStyle = suaveColor;
+    ctx.font = '12px system-ui';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(t('inventario') + ':', margen, y + 10);
+    inv.forEach(([clase, n], k) => {
+      const ix = margen + 80 + k * 80;
+      pintar(mundo, [clase, '?'], ix, y, 20, String(clase)[0]);
+      ctx.fillStyle = textoColor;
+      ctx.font = '13px system-ui';
+      ctx.fillText(clase, ix + 26, y + 10);
+    });
+  }
+}
+
+function dibujarTablero(escena, mundo) {
+  const lado = 48;
+  const margen = 24;
+  lienzo.width = 8 * lado + margen * 2;
+  lienzo.height = 8 * lado + margen * 2;
+  ctx.imageSmoothingEnabled = true;
+
+  const fondo = getComputedStyle(document.documentElement).getPropertyValue('--panel').trim() || '#ffffff';
+  ctx.fillStyle = fondo;
+  ctx.fillRect(0, 0, lienzo.width, lienzo.height);
+
+  const colorClara = '#f0d9b5';
+  const colorOscura = '#b58863';
+  for (let y = 0; y < 8; y++) {
+    for (let x = 0; x < 8; x++) {
+      ctx.fillStyle = (x + y) % 2 === 0 ? colorClara : colorOscura;
+      ctx.fillRect(margen + x * lado, margen + y * lado, lado, lado);
+    }
+  }
+
+  for (const m of escena.marcas || []) {
+    if (m.clase === 'ultima') {
+      ctx.fillStyle = 'rgba(205, 210, 106, 0.65)';
+      ctx.fillRect(margen + m.x * lado, margen + m.y * lado, lado, lado);
+    }
+  }
+
+  ctx.fillStyle = '#6b6a65';
+  ctx.font = '11px system-ui';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const letras = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  for (let x = 0; x < 8; x++) {
+    ctx.fillText(letras[x], margen + x * lado + lado / 2, margen + 8 * lado + 12);
+    ctx.fillText(letras[x], margen + x * lado + lado / 2, margen - 10);
+  }
+  for (let y = 0; y < 8; y++) {
+    ctx.fillText(String(8 - y), margen - 12, margen + y * lado + lado / 2);
+    ctx.fillText(String(8 - y), margen + 8 * lado + 12, margen + y * lado + lado / 2);
+  }
+
+  for (const p of escena.piezas || []) {
+    const simbolo = (UNICODE_PIEZAS[p.color] && UNICODE_PIEZAS[p.color][p.clase]) || '?';
+    const px = margen + p.x * lado + lado / 2;
+    const py = margen + p.y * lado + lado / 2;
+    ctx.font = '36px system-ui, "Segoe UI Symbol", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = p.color === 'blanco' ? '#ffffff' : '#111111';
+    ctx.strokeStyle = p.color === 'blanco' ? '#222222' : '#ffffff';
+    ctx.lineWidth = 1;
+    ctx.strokeText(simbolo, px, py);
+    ctx.fillText(simbolo, px, py);
+  }
+}
+
 function fila(dt, dd) {
   const a = document.createElement('dt');
   a.textContent = dt;
@@ -195,6 +355,10 @@ function ir(i) {
   crudo.hidden = true;
   if (escena && escena.tipo === 'rejilla') {
     dibujarRejilla(escena, mundo);
+  } else if (escena && escena.tipo === 'arbol') {
+    dibujarArbol(escena, mundo);
+  } else if (escena && escena.tipo === 'tablero') {
+    dibujarTablero(escena, mundo);
   } else {
     lienzo.width = 1;
     lienzo.height = 1;
