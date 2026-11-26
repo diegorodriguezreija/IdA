@@ -14,5 +14,11 @@
  "puntos": {
   "bayas": {"es": "Bayas comidas", "en": "Berries eaten"},
   "setas": {"es": "Setas comidas", "en": "Mushrooms eaten"}
+ },
+ "cuerpo": {
+  "vitalidad": {"etiqueta": {"es": "Salud", "en": "Health"}, "ayuda": {"es": "Baja con el mordisco del lobo, las setas y el hambre.", "en": "Drops with wolf bites, mushrooms and hunger."}},
+  "alimentacion": {"etiqueta": {"es": "Alimentación", "en": "Nourishment"}, "ayuda": {"es": "Baja con cada latido; cada baya da 20.", "en": "Drops every heartbeat; each berry gives 20."}},
+  "energia": {"etiqueta": {"es": "Energía", "en": "Energy"}, "ayuda": {"es": "Se recupera bien alimentada o durmiendo.", "en": "Recovers when well fed or asleep."}},
+  "descanso": {"etiqueta": {"es": "Descanso", "en": "Rest"}, "ayuda": {"es": "Baja despierta y sube durmiendo.", "en": "Drops while awake and recovers while asleep."}}
  }
 }

@@ -60,6 +60,22 @@ def _requisitos(org: Any) -> Dict[Tuple[str, str], Any]:
     return {(str(getattr(v, "value", v)), str(o)): r for (v, o), r in reqs.items()}
 
 
+def requisito(clave: Tuple[str, str], r: Any) -> Dict[str, Any]:
+    """Un requisito de acción en la forma del hecho ``aprende`` de requisito (sin ``tipo`` ni ``saber``)."""
+    return {"verbo": clave[0], "clase": clave[1], "requiere": dict(r.requiere_inventario), "cerca": sorted(r.requiere_cerca),
+            "efecto": dict(r.efecto), "confirmado": r.exitos >= 1, "fuente": str(r.fuente), "confianza": round(float(r.confianza), 3)}
+
+
+def requisitos(org: Any) -> List[Dict[str, Any]]:
+    """Todos los requisitos de acción de la memoria (del manual y de la experiencia), en un orden estable."""
+    return [requisito(k, r) for k, r in sorted(_requisitos(org).items())]
+
+
+def fuente(p: Any) -> str:
+    """La fuente de una proposición: ``herencia``, ``manual`` (autoridad) o ``experiencia``."""
+    return _fuente(p)
+
+
 def _firma(r: Any) -> Firma:
     return (tuple(sorted(r.requiere_inventario.items())), tuple(sorted(r.requiere_cerca)), tuple(sorted(r.efecto.items())),
             r.exitos >= 1)
@@ -155,10 +171,20 @@ class Deductor:
             return
         reqs = _requisitos(org)
         for clave in cambiados:
-            r = reqs[clave]
-            hechos.append({"tipo": "aprende", "saber": "requisito", "verbo": clave[0], "clase": clave[1],
-                           "requiere": dict(r.requiere_inventario), "cerca": sorted(r.requiere_cerca), "efecto": dict(r.efecto),
-                           "confirmado": r.exitos >= 1, "fuente": str(r.fuente), "confianza": round(float(r.confianza), 3)})
+            hechos.append({"tipo": "aprende", "saber": "requisito", **requisito(clave, reqs[clave])})
+
+    def cierre(self, org: Any, onda: Onda, registro: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Los hechos de lo aprendido al morir (``Organismo._aprender_de_la_muerte``, después del último latido): solo lo
+        que cambió en la memoria (``aprende``, ``peligro``, ``duda``, ``refuta``). Nada de ``muere``, sorpresas, logros ni
+        estrategias: eso ya salió en el último latido."""
+        ahora = self._instantanea(org, onda, registro["score"]["logros"])
+        previo, self._previo = self._previo, ahora
+        if previo is None:
+            return []
+        hechos: List[Dict[str, Any]] = []
+        self._saber(org, onda, previo, ahora, hechos)
+        self._requisitos(org, previo, ahora, hechos)
+        return hechos
 
     @staticmethod
     def _sorpresas(onda: Onda, previo: _Instantanea, hechos: List[Dict[str, Any]]) -> None:

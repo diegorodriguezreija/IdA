@@ -25,5 +25,11 @@
   "comido": {"es": "Comido", "en": "Eaten"},
   "nutritivos": {"es": "Nutritivos", "en": "Nourishing"},
   "toxicos": {"es": "Tóxicos", "en": "Toxic"}
+ },
+ "cuerpo": {
+  "vitalidad": {"etiqueta": {"es": "Salud", "en": "Health"}, "ayuda": {"es": "Baja con el depredador, lo tóxico y el hambre.", "en": "Drops with the predator, toxic food and hunger."}},
+  "alimentacion": {"etiqueta": {"es": "Alimentación", "en": "Nourishment"}, "ayuda": {"es": "Baja con cada latido; la comida da 8.", "en": "Drops every heartbeat; food gives 8."}},
+  "energia": {"etiqueta": {"es": "Energía", "en": "Energy"}, "ayuda": {"es": "Moverse cuesta 0,5 y atacar 2; se recupera bien alimentada o durmiendo.", "en": "Moving costs 0.5 and attacking 2; recovers when well fed or asleep."}},
+  "descanso": {"etiqueta": {"es": "Descanso", "en": "Rest"}, "ayuda": {"es": "Baja despierta y sube durmiendo.", "en": "Drops while awake and recovers while asleep."}}
  }
 }

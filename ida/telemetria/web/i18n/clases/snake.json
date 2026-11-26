@@ -15,5 +15,10 @@
   "puntos": {"es": "Puntos", "en": "Points"},
   "longitud": {"es": "Longitud", "en": "Length"},
   "causa_muerte": {"es": "Causa", "en": "Cause"}
+ },
+ "cuerpo": {
+  "vitalidad": {"etiqueta": {"es": "Vida", "en": "Life"}, "ayuda": {"es": "Llena hasta que choca: entonces muere.", "en": "Full until it crashes: then it dies."}},
+  "alimentacion": {"etiqueta": {"es": "Saciedad", "en": "Satiety"}, "ayuda": {"es": "Baja con cada latido; cada comida da 25.", "en": "Drops every heartbeat; each food gives 25."}},
+  "energia": {"etiqueta": {"es": "Energía", "en": "Energy"}, "ayuda": {"es": "Solo baja si pasa hambre.", "en": "Only drops when hungry."}}
  }
 }

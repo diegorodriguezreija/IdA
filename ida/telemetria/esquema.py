@@ -33,6 +33,7 @@ ESQUEMA: Dict[str, Dict[str, Any]] = {
     "base": {
         "v": "int", "nivel": "str", "latido": "int", "vida": "int", "generacion": "int", "individuo": "str",
         "mundo": "str", "con_experiencia": "bool",
+        "?cierre": "bool",    # T4b: solo en el registro de cierre (lo aprendido al morir)
     },
     "vital": {
         "ritmo": {"ms": "num", "ms_total": "num", "plazo_ms": "num", "amplitud": ("list", "int"), "potencia": ("list", "num"),
@@ -53,6 +54,9 @@ ESQUEMA: Dict[str, Dict[str, Any]] = {
         "arquetipo": ("map", "num"),
         "vista": "str",
         "?escena": "any",      # solo cuando cambia (O6); se valida aparte con ``validar_escena``
+        "?resumen_saber": {"proposiciones": "int", "demostradas": "int", "hipotesis": "int", "refutadas": "int",
+                           "heredadas": "int", "aciertos": "int", "sorpresas": "int", "requisitos": "int",
+                           "requisitos_confirmados": "int", "fuentes": ("map", "int")},   # T4b: totales de la memoria
     },
     "cognitivo": {
         "onda": {
@@ -78,6 +82,8 @@ ESQUEMA: Dict[str, Dict[str, Any]] = {
         },
         "saber": ("list", {"sujeto": "str", "relacion": "str", "estado": "str", "confianza": "num", "heredada": "bool",
                            "autoridad": "bool"}),
+        "?requisitos": ("list", {"verbo": "str", "clase": "str", "requiere": ("map", "any"), "cerca": ("list", "str"),
+                                   "efecto": ("map", "any"), "confirmado": "bool", "fuente": "str", "confianza": "num"}),   # T4b
     },
     "completo": {
         "tiempos_ms": ("map", "num"),

@@ -38,6 +38,24 @@ export const api = {
   ritmo: (ritmo) => pedir('POST', 'vidas/actual/ritmo', { ritmo }),
   paso: () => pedir('POST', 'vidas/actual/paso', {}),
   parar: () => pedir('POST', 'vidas/actual/parar', {}),
+  // T4b: compañero y colección (sección 13)
+  companeros: () => pedir('GET', 'companeros'),
+  companero: (mundo) => pedir('GET', `companeros/${encodeURIComponent(mundo)}`),
+  guardar: (mundo, nombre) => pedir('POST', `companeros/${encodeURIComponent(mundo)}/guardar`, nombre ? { nombre } : {}),
+  archivar: (mundo) => pedir('POST', `companeros/${encodeURIComponent(mundo)}/archivar`, {}),
+  coleccion: (mundo) => pedir('GET', mundo ? `coleccion?mundo=${encodeURIComponent(mundo)}` : 'coleccion'),
+  elemento: (id) => pedir('GET', `coleccion/${encodeURIComponent(id)}`),
+  importar: (ficha) => pedir('POST', 'coleccion/importar', { ficha }),
+  renombrar: (id, nombre) => pedir('POST', `coleccion/${encodeURIComponent(id)}/renombrar`, { nombre }),
+  adoptar: (id) => pedir('POST', `coleccion/${encodeURIComponent(id)}/adoptar`, {}),
+  pedirBorrado: (id) => pedir('POST', `coleccion/${encodeURIComponent(id)}/borrar`, {}),
+  confirmarBorrado: (id, testigo) => pedir('POST', `coleccion/${encodeURIComponent(id)}/borrar/confirmar`, { testigo }),
+};
+
+/** Enlaces de descarga de fichas v1 (GET con Content-Disposition). */
+export const descargas = {
+  elemento: (id) => `/api/v1/coleccion/${encodeURIComponent(id)}/exportar`,
+  companero: (mundo) => `/api/v1/companeros/${encodeURIComponent(mundo)}/exportar`,
 };
 
 /** EventSource con oyentes por evento; devuelve una función para cerrarlo. */

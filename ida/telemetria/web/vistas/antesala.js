@@ -1,4 +1,6 @@
 // Antesala (O1, O8, O16, O17): elegir mundo (e instalarlo si falta), carácter y los detalles de la vida, y lanzarla.
+// T4b (O9, sección 13): en el paso 3, «Tu compañero»: continuar con él, adoptar de la colección o empezar de cero (la
+// estirpe se archiva, no se borra). Cargar una ficha pasa a ser «Importar a la colección».
 // Web Component <ida-antesala> con DOM normal (comparte la hoja de estilo de la aplicación).
 
 import { api, escuchar } from '../api.js';
@@ -40,8 +42,8 @@ class IdaAntesala extends HTMLElement {
     this.e = {
       paso: 1, mundos: null, presets: null, rasgos: [], rangos: {}, error: '',
       mundo: previo.mundo || 'crafter', caracter: previo.caracter || 'optimo', arquetipo: null,
-      ficha: null, fichaNombre: '', fichaError: '',
-      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false, tabula_rasa: false,
+      companeros: {}, coleccion: {}, origen: null, adoptarId: '', fichaError: '',
+      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false,
       instalaciones: {}, lanzando: false, errorLanzar: '',
     };
     this._alIdioma = () => this.pintar();
@@ -62,8 +64,9 @@ class IdaAntesala extends HTMLElement {
   async cargar() {
     this.e.error = '';
     try {
-      const [m, p] = await Promise.all([api.mundos(), this.e.presets ? null : api.presets()]);
+      const [m, p, c] = await Promise.all([api.mundos(), this.e.presets ? null : api.presets(), api.companeros()]);
       this.e.mundos = m.mundos;
+      this.e.companeros = Object.fromEntries(c.companeros.map((x) => [x.mundo, x]));
       if (p) { this.e.presets = p.presets; this.e.rasgos = p.rasgos; this.e.rangos = p.rangos; }
       for (const mundo of this.e.mundos) {             // una instalación que siguió mientras no se veía la página
         const inst = mundo.instalacion;
@@ -71,10 +74,32 @@ class IdaAntesala extends HTMLElement {
       }
       if (!this.mundo()) this.e.mundo = 'crafter';
       this.elegirMundo(this.e.mundo, false);
+      await this.cargarColeccion();
     } catch (err) {
       this.e.error = t(`error.${err.codigo || 'red'}`);
     }
     this.pintar();
+  }
+
+  /** Lo que se puede adoptar en el mundo elegido: sus fichas y estirpes archivadas, por mejor Score. */
+  async cargarColeccion(mundo = this.e.mundo) {
+    try {
+      const r = await api.coleccion(mundo);
+      this.e.coleccion[mundo] = (r.ranking[mundo] || []).filter((x) => x.tipo !== 'companero');
+    } catch { this.e.coleccion[mundo] = []; }
+    if (this.e.adoptarId && !this.e.coleccion[mundo].some((x) => x.id === this.e.adoptarId)) this.e.adoptarId = '';
+  }
+
+  companero(mundo = this.e.mundo) {
+    const c = this.e.companeros[mundo];
+    return c && c.existe ? c : null;
+  }
+
+  /** De dónde sale la estirpe de esta vida: «continuar» (por defecto si hay compañero), «adoptar» o «cero». */
+  origen() {
+    const e = this.e;
+    if (e.origen === 'continuar' && !this.companero()) return 'cero';
+    return e.origen || (this.companero() ? 'continuar' : 'cero');
   }
 
   mundo(nombre = this.e.mundo) {
@@ -92,19 +117,22 @@ class IdaAntesala extends HTMLElement {
       const s = SUGERIDOS[nombre] || { latidos: 300, generaciones: 1 };
       this.e.latidos = s.latidos;
       this.e.generaciones = s.generaciones;
-      if (this.e.ficha && this.e.ficha.mundo && String(this.e.ficha.mundo).toLowerCase() !== nombre) this.quitarFicha(false);
+      this.e.origen = null;
+      this.e.adoptarId = '';
+      this.e.fichaError = '';
+      if (this.e.coleccion[nombre] === undefined && this.e.mundos) this.cargarColeccion(nombre).then(() => { if (this.e.paso === 3) this.pintar(); });
     }
     this.guardar();
     if (pintar) this.pintar();
   }
 
   guardar() {
-    almacen.guardar(GUARDADO, { mundo: this.e.mundo, caracter: this.e.caracter === 'ficha' ? 'optimo' : this.e.caracter });
+    almacen.guardar(GUARDADO, { mundo: this.e.mundo, caracter: this.e.caracter });
   }
 
   arquetipoActual() {
     const e = this.e;
-    if (e.caracter === 'personalizado' || e.caracter === 'ficha') return e.arquetipo;
+    if (e.caracter === 'personalizado') return e.arquetipo;
     const p = (e.presets || []).find((x) => x.id === e.caracter);
     if (!p) return null;
     if (p.por_mundo) return p.por_mundo[e.mundo] || null;
@@ -114,7 +142,6 @@ class IdaAntesala extends HTMLElement {
   nombreCaracter() {
     const e = this.e;
     if (e.caracter === 'personalizado') return t('caracter.personalizado');
-    if (e.caracter === 'ficha') return t('caracter.de_ficha');
     const p = (e.presets || []).find((x) => x.id === e.caracter);
     return p ? `${p.icono} ${texto(p.nombre)}` : '';
   }
@@ -256,7 +283,6 @@ class IdaAntesala extends HTMLElement {
     let tarjetas = e.presets.map((p) => tarjeta(p.id, p.icono, texto(p.nombre), texto(p.descripcion),
       p.por_mundo ? p.por_mundo[e.mundo] : p.arquetipo)).join('');
     if (e.caracter === 'personalizado') tarjetas += tarjeta('personalizado', '🎛️', t('caracter.personalizado'), t('caracter.personalizado_desc'), e.arquetipo);
-    if (e.ficha && e.arquetipo && e.caracter === 'ficha') tarjetas += tarjeta('ficha', '🧬', t('caracter.de_ficha'), t('caracter.de_ficha_desc'), e.arquetipo);
     const arq = this.arquetipoActual();
     const valores = arq || Object.fromEntries(rasgos.map((r) => [r, (e.rangos[r].min + e.rangos[r].max) / 2]));
     const deslizadores = rasgos.map((r) => {
@@ -290,14 +316,12 @@ class IdaAntesala extends HTMLElement {
     const opciones = decl.length
       ? `<div class="opciones-mundo">${htmlOpciones(basicas, e.opciones)}</div>`
       : `<p class="suave">${esc(t('empezar.sin_opciones'))}</p>`;
-    const fichaHtml = e.ficha
-      ? `<span class="chip listo">${esc(t('empezar.ficha_cargada', { nombre: e.fichaNombre }))}</span>
-         <button type="button" class="boton pequeno discreto" data-accion="quitar-ficha">${esc(t('empezar.ficha_quitar'))}</button>`
-      : `<label class="boton pequeno" for="ficha">📂 ${esc(t('empezar.ficha'))}</label>`;
-    const arq = this.arquetipoActual();
+    const comp = this.companero();
+    const arq = this.origen() === 'continuar' && comp && comp.arquetipo ? comp.arquetipo : this.arquetipoActual();
     return `<div class="paso-titulo"><h2 tabindex="-1">${esc(t('empezar.titulo'))}</h2><p>${esc(t('empezar.pista'))}</p></div>
       <div class="empezar">
         <form id="form-vida" novalidate>
+          ${this.htmlCompanero()}
           <section class="tarjeta bloque">
             <h3>${esc(t('empezar.vida'))}</h3>
             <div class="campos">
@@ -324,22 +348,16 @@ class IdaAntesala extends HTMLElement {
               ${htmlOpciones(avanzadas, e.opciones)}
               <div class="campo"><label class="interruptor"><input type="checkbox" id="sin_experiencia" ${e.sin_experiencia ? 'checked' : ''}>
                 <span>${esc(t('empezar.sin_experiencia'))}</span></label><small>${esc(t('empezar.sin_experiencia_ayuda'))}</small></div>
-              <div class="campo"><label class="interruptor"><input type="checkbox" id="tabula_rasa" ${e.tabula_rasa ? 'checked' : ''}>
-                <span>${esc(t('empezar.tabula_rasa'))}</span></label><small>${esc(t('empezar.tabula_rasa_ayuda'))}</small></div>
             </div>
           </details>
-          <section class="tarjeta bloque">
-            <div class="ficha-fila">${fichaHtml}<input type="file" id="ficha" accept=".json,application/json" class="oculto">
-              <small class="suave">${esc(t('empezar.ficha_ayuda'))}</small></div>
-            ${e.fichaError ? `<p class="error-texto" role="alert">${esc(e.fichaError)}</p>` : ''}
-          </section>
         </form>
         <aside class="tarjeta resumen" aria-labelledby="resumen-titulo">
           <h3 id="resumen-titulo">${esc(t('resumen.titulo'))}</h3>
           ${radar(arq, e.rasgos, { titulo: this.nombreCaracter() })}
           <dl>
             <dt>${esc(t('resumen.mundo'))}</dt><dd>${spriteHtml(m.nombre)}<span>${esc(nombreMundo)}</span></dd>
-            <dt>${esc(t('resumen.caracter'))}</dt><dd>${esc(this.nombreCaracter())}</dd>
+            <dt>${esc(t('resumen.companero'))}</dt><dd>${esc(this.resumenCompanero())}</dd>
+            <dt>${esc(t('resumen.caracter'))}</dt><dd>${esc(this.origen() === 'cero' ? this.nombreCaracter() : t('companero.caracter_heredado_corto'))}</dd>
             <dt>${esc(t('resumen.semilla'))}</dt><dd data-resumen-semilla>${e.semilla}</dd>
           </dl>
           <p class="nota"><span aria-hidden="true">${m.tiempo_real ? '⏱' : '🔁'}</span>${esc(t(m.tiempo_real ? 'resumen.tiempo_real' : 'resumen.reproducible'))}</p>
@@ -349,6 +367,50 @@ class IdaAntesala extends HTMLElement {
           <button type="button" class="boton discreto pequeno" data-ir="2">← ${esc(t('antesala.atras'))}</button>
         </aside>
       </div>`;
+  }
+
+  /** «Tu compañero» (O9): continuar, adoptar de la colección o empezar de cero (la estirpe se archiva). */
+  htmlCompanero() {
+    const e = this.e;
+    const c = this.companero();
+    const origen = this.origen();
+    const lista = e.coleccion[e.mundo] || [];
+    const puntos = (v) => (v == null ? '–' : String(Math.round(Number(v))));
+    const opcion = (valor, titulo, ayuda, deshabilitada = false) => `<label class="opcion-companero ${origen === valor ? 'elegida' : ''}">
+        <input type="radio" name="origen" value="${valor}" ${origen === valor ? 'checked' : ''} ${deshabilitada ? 'disabled' : ''}>
+        <span><b>${esc(titulo)}</b><small>${esc(ayuda)}</small></span></label>`;
+    const continuar = c ? opcion('continuar', t('companero.continuar'),
+      t(c.generaciones === 1 ? 'companero.continuar_ayuda_1' : 'companero.continuar_ayuda',
+        { nombre: c.nombre || c.individuo, g: c.generacion + 1, n: c.generaciones, score: puntos(c.mejor_score) })) : '';
+    const elegir = origen !== 'adoptar' ? '' : lista.length ? `<div class="campo"><label for="adoptar-id">${esc(t('companero.cual'))}</label>
+        <select class="entrada" id="adoptar-id">
+          <option value="">${esc(t('companero.elige'))}</option>
+          ${lista.map((x) => `<option value="${esc(x.id)}" ${x.id === e.adoptarId ? 'selected' : ''}>${esc(`${x.tipo === 'estirpe' ? '🌳' : '🧬'} ${x.nombre} · ${t('vivero.generacion', { n: x.generacion ?? '?' })} · ${t('companero.score', { score: puntos(x.mejor_score) })}`)}</option>`).join('')}
+        </select></div>` : `<p class="suave pequeno">${esc(t('companero.coleccion_vacia'))}</p>`;
+    const adoptar = opcion('adoptar', t('companero.adoptar'), c ? t('companero.adoptar_ayuda') : t('companero.adoptar_ayuda_sin'), !lista.length);
+    const cero = opcion('cero', c ? t('companero.cero') : t('companero.nueva'), c ? t('companero.cero_ayuda') : t('companero.nueva_ayuda'));
+    const nota = origen === 'cero' ? '' : `<p class="suave pequeno">🧬 ${esc(t('companero.caracter_heredado'))}</p>`;
+    return `<section class="tarjeta bloque companero-bloque" aria-labelledby="titulo-companero">
+        <div class="bloque-titulo"><h3 id="titulo-companero">${esc(t('companero.titulo'))}</h3>
+          <a class="boton pequeno discreto" href="#/vivero/coleccion">🗂️ ${esc(t('estirpe.coleccion'))}</a></div>
+        <div class="opciones-companero" role="radiogroup" aria-labelledby="titulo-companero">${continuar}${adoptar}${cero}</div>
+        ${elegir}${nota}
+        <div class="ficha-fila"><label class="boton pequeno" for="ficha">📂 ${esc(t('companero.importar'))}</label>
+          <input type="file" id="ficha" accept=".json,application/json" class="oculto">
+          <small class="suave">${esc(t('companero.importar_ayuda'))}</small></div>
+        ${e.fichaError ? `<p class="error-texto" role="alert">${esc(e.fichaError)}</p>` : ''}
+      </section>`;
+  }
+
+  resumenCompanero() {
+    const c = this.companero();
+    const origen = this.origen();
+    if (origen === 'continuar' && c) return t('companero.resumen_continuar', { nombre: c.nombre || c.individuo, g: c.generacion + 1 });
+    if (origen === 'adoptar') {
+      const x = (this.e.coleccion[this.e.mundo] || []).find((y) => y.id === this.e.adoptarId);
+      return x ? t('companero.resumen_adoptar', { nombre: x.nombre }) : t('companero.elige');
+    }
+    return c ? t('companero.resumen_cero') : t('companero.resumen_nueva');
   }
 
   // --- eventos -------------------------------------------------------------------------------------------------------
@@ -372,7 +434,7 @@ class IdaAntesala extends HTMLElement {
     // paso 2
     this.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => {
       e.caracter = b.dataset.preset;
-      if (e.caracter !== 'personalizado' && e.caracter !== 'ficha') e.arquetipo = null;
+      if (e.caracter !== 'personalizado') e.arquetipo = null;
       this.guardar();
       this.pintar();
       this.querySelector(`[data-preset="${CSS.escape(e.caracter)}"]`)?.focus();
@@ -425,63 +487,67 @@ class IdaAntesala extends HTMLElement {
       this.querySelector('[data-resumen-semilla]').textContent = e.semilla;
     });
     this.querySelector('#sin_experiencia').addEventListener('change', (ev) => { e.sin_experiencia = ev.target.checked; });
-    this.querySelector('#tabula_rasa').addEventListener('change', (ev) => { e.tabula_rasa = ev.target.checked; });
+    this.querySelectorAll('input[name="origen"]').forEach((r) => r.addEventListener('change', () => {
+      e.origen = r.value;
+      if (r.value === 'adoptar' && !e.adoptarId) e.adoptarId = ((e.coleccion[e.mundo] || [])[0] || {}).id || '';
+      this.pintar();
+      this.querySelector(`input[name="origen"][value="${r.value}"]`)?.focus();
+    }));
+    this.querySelector('#adoptar-id')?.addEventListener('change', (ev) => {
+      e.adoptarId = ev.target.value;
+      const dd = this.querySelectorAll('.resumen dd')[1];
+      if (dd) dd.textContent = this.resumenCompanero();
+    });
     conectarOpciones(form, this.mundo().opciones || [], (nombre, valor) => { e.opciones[nombre] = valor; });
     this.querySelector('[data-accion="recomendados"]')?.addEventListener('click', () => {
       e.opciones = Object.fromEntries((this.mundo().opciones || []).map((d) => [d.nombre, d.defecto]));
       this.pintar();
     });
     this.querySelector('#ficha').addEventListener('change', (ev) => this.leerFicha(ev.target.files[0]));
-    this.querySelector('[data-accion="quitar-ficha"]')?.addEventListener('click', () => this.quitarFicha());
     form.addEventListener('submit', (ev) => { ev.preventDefault(); this.lanzar(); });
   }
 
+  /** «Importar a la colección» (T4b): la ficha (v1 o antigua del panel) pasa a la colección y queda elegida para adoptar. */
   async leerFicha(fichero) {
     const e = this.e;
     if (!fichero) return;
     e.fichaError = '';
+    let doc;
     try {
-      const doc = JSON.parse(await fichero.text());
+      doc = JSON.parse(await fichero.text());
       if (!doc || typeof doc !== 'object' || Array.isArray(doc)) throw new Error('forma');
-      const de = String(doc.mundo || '').toLowerCase();
-      if (de && de !== e.mundo) {
-        e.fichaError = t('empezar.ficha_otro_mundo', { mundo: t(`mundo.${de}.nombre`) });
-        this.pintar();
-        return;
-      }
-      let arq = doc.arquetipo || doc.arquetipo_actual;
-      if (!arq && Array.isArray(doc.generaciones) && doc.generaciones.length) arq = doc.generaciones[doc.generaciones.length - 1].arquetipo;
-      if (!arq && !doc.legado) throw new Error('vacía');
-      e.ficha = doc;
-      e.fichaNombre = doc.individuo || fichero.name;
-      if (arq) {
-        e.arquetipo = Object.fromEntries(e.rasgos.map((r) => [r, Number(arq[r] ?? 0.5)]));
-        e.caracter = 'ficha';
-      }
     } catch {
       e.fichaError = t('empezar.ficha_error');
+      this.pintar();
+      return;
+    }
+    const de = String(doc.mundo || '').toLowerCase();
+    if (de && de !== e.mundo) {
+      e.fichaError = t('empezar.ficha_otro_mundo', { mundo: t(`mundo.${de}.nombre`) });
+      this.pintar();
+      return;
+    }
+    try {
+      const r = await api.importar(doc);
+      avisar(r.avisos && r.avisos.length ? t('coleccion.importada_avisos', { nombre: r.ficha.nombre, n: r.avisos.length })
+        : t('coleccion.importada', { nombre: r.ficha.nombre }));
+      await this.cargarColeccion();
+      e.origen = 'adoptar';
+      e.adoptarId = r.ficha.id;
+    } catch (err) {
+      e.fichaError = `${t(`error.${err.codigo || 'red'}`)}${err.message && err.codigo !== 'red' ? ` ${err.message}` : ''}`;
     }
     this.pintar();
-  }
-
-  quitarFicha(pintar = true) {
-    const e = this.e;
-    e.ficha = null;
-    e.fichaNombre = '';
-    e.fichaError = '';
-    if (e.caracter === 'ficha') { e.caracter = 'optimo'; e.arquetipo = null; }
-    if (pintar) this.pintar();
   }
 
   cuerpoVida(reemplazar) {
     const e = this.e;
     const cuerpo = {
       mundo: e.mundo, opciones: e.opciones, semilla: e.semilla, latidos: e.latidos, generaciones: e.generaciones,
-      sin_experiencia: e.sin_experiencia, tabula_rasa: e.tabula_rasa,
+      sin_experiencia: e.sin_experiencia, tabula_rasa: this.origen() === 'cero' && Boolean(this.companero()),   // archiva, no borra
     };
-    if (e.ficha) cuerpo.ficha = e.ficha;
     if (e.caracter === 'personalizado') cuerpo.arquetipo = e.arquetipo;
-    else if (e.caracter !== 'ficha') cuerpo.caracter = e.caracter;
+    else cuerpo.caracter = e.caracter;
     if (reemplazar) cuerpo.reemplazar = true;
     return cuerpo;
   }
@@ -497,10 +563,28 @@ class IdaAntesala extends HTMLElement {
       this.pintarError();
       return;
     }
+    if (this.origen() === 'adoptar' && !e.adoptarId) {
+      e.errorLanzar = t('companero.elige');
+      this.pintarError();
+      return;
+    }
     e.lanzando = true;
     e.errorLanzar = '';
     this.pintar();
     try {
+      if (this.origen() === 'adoptar') {
+        // Adoptar archiva el compañero de antes (nunca lo borra). Con una vida de este mundo en marcha, primero se para.
+        try {
+          await api.adoptar(e.adoptarId);
+        } catch (err) {
+          if (err.codigo !== 'vida_en_curso' || !window.confirm(t('empezar.reemplazar'))) throw err;
+          await api.parar();
+          await api.adoptar(e.adoptarId);
+        }
+        reemplazar = true;
+        e.origen = 'continuar';
+        e.adoptarId = '';
+      }
       await api.lanzar(this.cuerpoVida(reemplazar));
       e.lanzando = false;
       location.hash = '#/vivero';

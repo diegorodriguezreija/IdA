@@ -102,5 +102,10 @@
   "n_logros": {"es": "Logros", "en": "Achievements"},
   "pasos": {"es": "Pasos", "en": "Steps"}
  },
- "total_logros": 22
+ "total_logros": 22,
+ "cuerpo": {
+  "vitalidad": {"etiqueta": {"es": "Salud", "en": "Health"}, "ayuda": {"es": "La salud del juego (9 corazones).", "en": "The game's health (9 hearts)."}},
+  "alimentacion": {"etiqueta": {"es": "Comida y bebida", "en": "Food and drink"}, "ayuda": {"es": "La menor de la comida y la bebida del juego.", "en": "The lower of the game's food and drink."}},
+  "energia": {"etiqueta": {"es": "Energía", "en": "Energy"}, "ayuda": {"es": "La energía del juego: sube durmiendo.", "en": "The game's energy: it recovers while sleeping."}}
+ }
 }
