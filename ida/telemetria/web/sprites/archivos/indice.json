@@ -1,0 +1,21 @@
+{
+  "mapa_sprites": {
+    "raiz": "raiz.svg",
+    "carpeta": "carpeta.svg",
+    "Boletus_edulis": "Boletus_edulis.svg",
+    "Taraxacum_officinale": "Taraxacum_officinale.svg",
+    "Vaccinium_myrtillus": "Vaccinium_myrtillus.svg",
+    "Amanita_phalloides": "Amanita_phalloides.svg",
+    "Atropa_belladonna": "Atropa_belladonna.svg",
+    "Conium_maculatum": "Conium_maculatum.svg",
+    "brote": "brote.svg",
+    "depredador": "depredador.svg",
+    "arroyo_cristalino": "arroyo_cristalino.svg",
+    "musgo_suave": "musgo_suave.svg",
+    "cristal_resonante": "cristal_resonante.svg",
+    "fango_putrefacto": "fango_putrefacto.svg",
+    "mensaje": "mensaje.svg",
+    "yo": "yo.svg",
+    "?": "desconocido.svg"
+  }
+}
