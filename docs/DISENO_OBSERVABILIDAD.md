@@ -76,7 +76,8 @@ validador de v1 acepta campos que no conoce); quitar o renombrar exige `v: 2` y 
 | `memoria` | `aciertos`, `sorpresas`, `episodios`, `demostradas`, `hipotesis`, `refutadas`, `recuerdos`, `heredados` | `Memoria` |
 | `contadores` | los del organismo (miedo, calma, hambre, guillotinas, dormido...) | `Organismo.contadores` |
 | `arquetipo` | los cinco rasgos | `Arquetipo` |
-| `vista` | la vista de texto del mundo (la escena estructurada llega en T2) | `Mundo.vista()` |
+| `vista` | la vista de texto del mundo | `Mundo.vista()` |
+| `escena` | la escena estructurada (sección 6), **solo cuando cambia** respecto a la del latido anterior de la misma vida; falta si el mundo no la da o no ha cambiado | `Mundo.escena()` |
 
 **Nivel cognitivo.**
 
@@ -145,22 +146,115 @@ motor. Lo que el individuo ya trae al nacer (manual, herencia) es la línea de p
 - `duerme` no lleva la causa (sueño elegido o forzado por agotamiento): el Core no la deja en la Onda de forma
   estructurada.
 
-## 6. Contrato de `escena()` (esbozo)
+## 6. Contratos de `escena()` y de las opciones (v1)
+
+Fijados en T2a (26/11/2026). El código de cada contrato: `Mundo.escena()` y `Mundo.opciones()` en
+`ida/nucleo/mundo.py`; el esquema y el validador de la escena en `ida/telemetria/esquema.py` (`ESCENAS`,
+`validar_escena`); el formato y la validación de las opciones en `ida/mundos/opciones.py`.
+
+### 6.1 `escena()` (O6)
+
+`Mundo.escena()` devuelve un diccionario o `None` (por defecto, `None`: la interfaz enseña `vista()`). Solo lee (O3):
+no cambia el estado del mundo ni el del azar. Lo describe el mundo tal como lo percibe el individuo (la misma ventana
+que `vista()`); no añade valoraciones (regla 3 de `AGENTS.md`).
+
+**Campos comunes a los tres tipos:** `tipo`, `inventario` (`{clase: número}`, vacío si no hay) y `extra` (objeto libre
+con lo propio del mundo). **Coordenadas:** enteras desde 0, `x` hacia la derecha e `y` hacia abajo (la fila 0 es la
+de arriba). Las clases son las del mundo (las mismas que entrega en la `Observacion`). Un campo con `?` es opcional.
 
 ```jsonc
+// rejilla (Crafter, mínimo, Snake)
 {
-  "tipo": "rejilla",                  // rejilla | arbol (archivos) | tablero (ajedrez)
-  "ancho": 9, "alto": 7,               // la parte visible
-  "celdas": [["hierba", "arbol", "..."]],   // clase del fondo por celda
-  "entidades": [{"clase": "zombi", "x": 3, "y": 1}],
-  "yo": {"x": 4, "y": 3, "orientacion": "norte"},
-  "inventario": {"madera": 2, "piedra": 0},
-  "extra": {}                          // lo propio del mundo (FEN en ajedrez, carpeta actual en archivos)
+  "tipo": "rejilla",
+  "ancho": 9, "alto": 7,                       // la parte visible, en casillas
+  "celdas": [["hierba", "arbol", null]],       // alto filas de ancho clases del fondo; null: nada que dibujar (fuera del mapa)
+  "entidades": [{"clase": "zombi", "x": 3, "y": 1, "?id": "zombi_2", "?estado": "madura"}],
+  "yo": {"x": 4, "y": 3, "?orientacion": "norte", "?estado": "dormido"},   // o null; orientacion: norte, sur, este, oeste o null
+  "?origen": [27, 30],                         // [x, y] en el mundo de la celda (0, 0), si el mundo tiene coordenadas
+  "inventario": {"madera": 2},
+  "extra": {"luz": 0.8}
+}
+
+// arbol (archivos)
+{
+  "tipo": "arbol",
+  "nodos": [{"ruta": "", "clase": "raiz", "padre": null},              // los padres van antes que los hijos
+            {"ruta": "pradera", "clase": "carpeta", "padre": "", "?id": "...", "?estado": "..."}],
+  "entidades": [{"clase": "comida", "ruta": "pradera", "?id": "...", "?nombre": "a.brote", "?estado": "..."}],   // ruta: un nodo
+  "yo": {"ruta": "pradera"},                   // o null
+  "inventario": {}, "extra": {}
+}
+
+// tablero (ajedrez)
+{
+  "tipo": "tablero",
+  "ancho": 8, "alto": 8,                       // x = columna (0 = a), y = fila desde arriba (0 = la 8.ª vista por las blancas)
+  "piezas": [{"clase": "rey", "color": "blanco", "x": 4, "y": 7}],
+  "yo": {"color": "blanco"},                   // o null
+  "turno": "negro",                            // o null
+  "?marcas": [{"clase": "ultima", "x": 4, "y": 6}],   // última jugada, jaque...
+  "inventario": {}, "extra": {"fen": "..."}
 }
 ```
 
-Sprites por mundo en `web/sprites/<mundo>/`. En Crafter se usan sus texturas (licencia MIT). En el resto, sprites
-propios sencillos. La escena viaja en el registro solo cuando cambia.
+`validar_escena` comprueba los campos y sus tipos y la coherencia: dimensiones de `celdas`, coordenadas dentro de la
+rejilla o del tablero, orientación conocida, padres y rutas que existen en el árbol.
+
+**En el registro.** La escena va en el nivel vital (campo `escena`, sección 4) solo cuando cambia: la primera completa
+y después completa cada vez que cambia (comparación de igualdad con la anterior de la misma vida). Para reproducir, la
+escena de un latido es la última que llegó en su vida (`ida.telemetria.grabacion.escenas`). Es un campo añadido: el
+registro sigue siendo v1 y el validador la valida cuando está.
+
+**Sprites.** En `ida/telemetria/web/sprites/<mundo>/`, con un `indice.json` cuyo `mapa_sprites` da el fichero de cada
+clave: la clase del fondo o de la entidad; `clase.estado` si la entidad lleva estado; `yo.<orientacion>` o
+`yo.<estado>`; las clases del inventario; y `?` para lo que no tiene sprite. Crafter usa sus texturas (crafter 1.8.3,
+licencia MIT, en `NOTICE`); el resto, sprites propios sencillos. Sin índice, el visor dibuja colores y letras.
+
+**Crafter (T2a).** Rejilla con la ventana que se ve (9×7 con la vista oficial; de noche, 5×5; con la cuadrada,
+(2·radio+1)²), el fondo de cada casilla (`hierba`, `arena`, `camino`, `agua`, `piedra`, `arbol`, `carbon`, `hierro`,
+`diamante`, `mesa`, `horno`, `lava`), las criaturas y plantas con su id (`vaca`, `zombi`, `esqueleto`, `planta` con
+estado `madura`, `flecha` con estado su dirección), `yo` en el centro con su orientación y `estado: "dormido"`, el
+inventario completo (con `salud`, `comida`, `bebida` y `energia`) y, en `extra`, `luz` (la del día, con dos decimales)
+y `logros`. Las criaturas se leen con `_cosas()`, la misma vía que `observar()` y `vista()`: asigna un id a la criatura
+vista por primera vez, pero el observador llama a `vista()` y `escena()` al final del latido y el entorno no avanza
+antes del `observar()` siguiente, así que los ids y su orden son los mismos (la excepción de lectura de la sección 4).
+
+**Visor de comprobación** (no es el Vivero). `ida/telemetria/web/escena.html` y `escena.js`, servidos en `/escena`:
+cargan una grabación `.jsonl.gz` (con `DecompressionStream`) o `.jsonl`, o un registro `.json`, y dibujan en Canvas
+las escenas de rejilla; las de árbol y tablero se enseñan en JSON. El servidor sirve `web/` en `/web/` (solo esa
+carpeta y tipos conocidos).
+
+![Visor de escena con una grabación de Crafter](img/t2a_escena_crafter.png)
+
+*Grabación `python -m ida --mundo crafter --latidos 300 --semilla 31 --plazo-logico 40 --opcion vista=oficial --opcion
+longitud=10000 --opcion manual=estricto --grabar F:\tmp\t2a\crafter.jsonl.gz` (commit `2041fd0`, 26/11/2026; 208
+latidos, todos válidos, escena en 190), latido 137.*
+
+### 6.2 Opciones declaradas (O8)
+
+`Mundo.opciones()` es un método de clase (se lee sin crear el mundo ni cargar sus dependencias) que devuelve una lista
+de declaraciones; por defecto, vacía. Cada declaración:
+
+| Campo | Contenido |
+|---|---|
+| `nombre` | clave de `--opcion nombre=valor` y argumento del constructor del mundo (identificador) |
+| `tipo` | `entero`, `real`, `opcion` o `booleano` |
+| `min`, `max` | entero y real: el rango, ambos obligatorios |
+| `valores` | opción: lista no vacía de textos |
+| `defecto` | el valor que da más Score de base (O8); pasa su propia validación |
+| `etiqueta`, `ayuda` | `{"es": ..., "en": ...}` |
+| `vacia` | opcional: la opción admite no tener valor (`None`, el campo vacío); solo entonces `defecto` puede ser `None` |
+
+`ida/mundos/opciones.py` da `opcion(...)` (crea una declaración y la valida), `validar_declaracion`, `convertir`
+(comprueba y convierte los valores de `--opcion`, que llegan como texto, y los de la antesala, que llegan como JSON;
+un nombre no declarado es un error; un mundo sin declaraciones recibe los valores tal cual), `con_defectos` y
+`defectos`. Los errores son `OpcionInvalida` con el mundo, la opción y el motivo, p. ej. «crafter: opción 'mapa': 500
+fuera del rango [32, 128]».
+
+**Dónde se aplican.** El ejecutor convierte siempre las opciones que recibe; la CLI da el error antes de crear nada.
+Lo que no se da toma el valor por defecto **del constructor**, que no cambia: la invariancia y las herramientas de
+medición lo usan. La antesala lanza con los **declarados** (`servidor.opciones_por_defecto`, con `con_defectos`), y el
+Vivero hará lo mismo. Así, lo que se lanza desde la interfaz sin tocar nada coincide con la medición oficial.
 
 ## 7. Fases
 
@@ -182,11 +276,29 @@ El orden pone el Vivero antes que el Laboratorio, como pidió el autor. T1 y T2 
 
 | Mundo | Opciones que se proponen |
 |---|---|
-| Crafter | Tamaño del mapa; semilla del mapa independiente de la del organismo; vista oficial o ampliada |
+| Crafter | Tamaño del mapa; semilla del mapa independiente de la del organismo; vista oficial o ampliada (**hecho en T2a**, abajo) |
 | Snake | Velocidad del juego; tamaño del tablero (si la web lo permite) |
 | Mínimo | Tamaño de la rejilla; número de depredadores; abundancia de comida |
 | Archivos | Número de biomas; frecuencia de brotes; agresividad del depredador |
 | Ajedrez | Ya tiene color, Stockfish y Elo; añadir «apertura aleatoria» |
+
+**Crafter (T2a).** Defecto declarado frente al del constructor (el que usan la CLI sin `--opcion`, la invariancia y la
+equivalencia):
+
+| Opción | Tipo y rango | Declarado (O8) | Constructor | De dónde sale el declarado |
+|---|---|---|---|---|
+| `vista` | opción: `oficial`, `cuadrada` | `oficial` | `cuadrada` | `evaluar_crafter.py` (D17) |
+| `radio` | entero, 2–8 | 4 | 4 | la evaluación no lo toca |
+| `manual` | opción: `estricto`, `ampliado` | `estricto` | `estricto` | `evaluar_crafter.py` |
+| `longitud` | entero, 100–1 000 000 | 10 000 | 100 000 | `evaluar_crafter.py` (longitud oficial del episodio) |
+| `mapa` | entero, 32–128 (lado en casillas) | 64 | 64 | nueva; reproduce lo de hoy (`crafter.Env(area=(64, 64))`) |
+| `semilla_mapa` | entero, 0–2 147 483 646, admite vacía | vacía | vacía | nueva; vacía = la semilla del organismo, como hoy |
+| `ventana` | booleano | no | no (`0`) | la evaluación no la abre |
+
+`mapa` y `semilla_mapa` existen en el paquete: `crafter.Env(area=(64, 64), ..., seed=None)` (crafter 1.8.3); con lados
+16, 32, 48, 96 y 128 el mapa se genera y avanza 50 pasos sin error (prueba del 26/11/2026). Pasarlas con su valor por
+defecto da las mismas acciones que sin ellas (`tests/test_escena_crafter.py`, 40 latidos, semilla 31, plazo lógico 40).
+No quedó fuera ninguna de las aprobadas.
 
 ## 9. Qué no entra (por ahora)
 
@@ -202,3 +314,4 @@ El orden pone el Vivero antes que el Laboratorio, como pidió el autor. T1 y T2 
 | 25/11/2026 | O1–O18 | Propuesta inicial | Conversación con el autor sobre la evolución de la telemetría y la experiencia de usuario |
 | 26/11/2026 | O1–O18, sección 8 | Aprobadas por el autor. O8: el valor por defecto de cada opción es el que da más Score de base | Aprobación del autor |
 | 26/11/2026 | O2–O5, O7, O11, secciones 4 y 5 | T1: el registro del latido pasa de esbozo a v1 (esquema y catálogo de hechos finales, con lo que queda fuera); grabación `.jsonl.gz`; consola sobre el registro; plazo lógico 40 desde la antesala salvo en tiempo real. Excepción de lectura de `vista()` en Crafter (caché de ids), aprobada por el autor. Equivalencia OK; invariancia OK con el observador en los tres niveles; coste con nivel cognitivo, +4,6 % por latido (Crafter, 3000 latidos, plazo lógico 40, semilla 31, 2 repeticiones) | Rama `vista/t1-registro` |
+| 26/11/2026 | O6, O8, O18, secciones 4, 6 y 8 | T2a: contratos `escena()` v1 (rejilla, árbol, tablero) y opciones declaradas (formato, validación, defecto = el de la medición oficial; los del constructor no cambian), con su implementación completa en Crafter (escena, siete opciones con `mapa` y `semilla_mapa`, sprites MIT) y un visor de comprobación en `/escena`. La escena va en el registro solo cuando cambia (sigue siendo v1). Único cambio en la base: los dos métodos de `Mundo`. Equivalencia OK; invariancia OK con el observador completo en los cuatro mundos; 1208 tests | Rama `vista/t2a-escena` |
