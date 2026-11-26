@@ -134,14 +134,14 @@ def convertir_valor(d: Dict[str, Any], valor: Any) -> Any:
     return numero
 
 
-def convertir(declaraciones: List[Dict[str, Any]], valores: Mapping[str, Any], mundo: str = "") -> Dict[str, Any]:
+def convertir(declaraciones: List[Dict[str, Any]], valores: Mapping[str, Any], etiqueta: str = "") -> Dict[str, Any]:
     """Los ``valores`` dados, comprobados y convertidos según las ``declaraciones``. Solo los dados: no añade los
     defectos (para eso, ``con_defectos``). Un nombre que el mundo no declara es un error; un mundo sin declaraciones
-    recibe los valores tal cual."""
+    recibe los valores tal cual. ``etiqueta``: el nombre del mundo, para los mensajes."""
     if not declaraciones:
         return dict(valores)
     por_nombre = {d["nombre"]: d for d in declaraciones}
-    de = f" de {mundo}" if mundo else ""
+    de = f" de {etiqueta}" if etiqueta else ""
     salida: Dict[str, Any] = {}
     for nombre, valor in valores.items():
         if nombre not in por_nombre:
@@ -149,15 +149,15 @@ def convertir(declaraciones: List[Dict[str, Any]], valores: Mapping[str, Any], m
         try:
             salida[nombre] = convertir_valor(por_nombre[nombre], valor)
         except OpcionInvalida as e:
-            raise OpcionInvalida(f"{mundo}: {e}" if mundo else str(e)) from None
+            raise OpcionInvalida(f"{etiqueta}: {e}" if etiqueta else str(e)) from None
     return salida
 
 
-def con_defectos(declaraciones: List[Dict[str, Any]], valores: Mapping[str, Any], mundo: str = "") -> Dict[str, Any]:
+def con_defectos(declaraciones: List[Dict[str, Any]], valores: Mapping[str, Any], etiqueta: str = "") -> Dict[str, Any]:
     """Los defectos declarados, sustituidos por los ``valores`` dados (convertidos). Es lo que lanzan la antesala y el
     Vivero (O8): sin tocar nada, la configuración de la medición oficial."""
     salida = {d["nombre"]: d["defecto"] for d in declaraciones}
-    salida.update(convertir(declaraciones, valores, mundo))
+    salida.update(convertir(declaraciones, valores, etiqueta))
     return salida
 
 
