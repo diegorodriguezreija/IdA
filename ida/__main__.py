@@ -13,7 +13,8 @@ def main(argv=None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(prog="python -m ida", description="IdA – Identidad Artificial")
-    p.add_argument("--mundo", required=False, default=None, choices=sorted(MUNDOS), help="mundo a ejecutar (si se omite, abre la aplicación web en la antesala)")
+    p.add_argument("--mundo", required=False, default=None, choices=sorted(MUNDOS),
+                   help="mundo a ejecutar (si se omite, abre la aplicación web en la antesala)")
     p.add_argument("--web", action="store_true", help="abre la aplicación web (antesala) en el navegador")
     p.add_argument("--latidos", type=int, default=300, help="latidos máximos por vida")
     p.add_argument("--semilla", type=int, default=1)
@@ -26,7 +27,8 @@ def main(argv=None) -> int:
     p.add_argument("--opcion", action="append", default=[], metavar="CLAVE=VALOR", help="opción propia del mundo")
     p.add_argument("--biblioteca", default=None, choices=["nula", "fija", "erronea"], help="biblioteca externa de autoridad")
     p.add_argument("--grabar", default=None, metavar="RUTA", help="graba la vida en RUTA (.jsonl.gz): cabecera y un registro por latido")
-    p.add_argument("--datos", default=None, metavar="RUTA", help="directorio de datos del mundo (por defecto, datos/<mundo>); sin --mundo, raíz de los datos de las vidas "
+    p.add_argument("--datos", default=None, metavar="RUTA",
+                   help="directorio de datos del mundo (por defecto, datos/<mundo>); sin --mundo, raíz de los datos de las vidas "
                         "lanzadas desde la aplicación (RUTA/<mundo>)")
     p.add_argument("--nivel", default="cognitivo", choices=["vital", "cognitivo", "completo"], help="nivel del registro del latido (por defecto, cognitivo)")
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
