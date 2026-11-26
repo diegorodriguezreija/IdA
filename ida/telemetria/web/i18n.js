@@ -52,10 +52,18 @@ export async function cambiar(idiomaNuevo) {
   document.dispatchEvent(new CustomEvent('ida:idioma', { detail: { idioma: actual } }));
 }
 
+// Plurales (T5b): «{n|latido|latidos}» da «latido» si params.n es 1 y «latidos» si no. Así cada plantilla tiene sus dos
+// formas en su idioma («{n} {n|latido|latidos}», «{n} {n|heartbeat|heartbeats}») y nunca sale «1 cosas».
+const PLURAL = /\{(\w+)\|([^|{}]*)\|([^|{}]*)\}/g;
+
+export function plural(plantilla, params = {}) {
+  return String(plantilla).replace(PLURAL, (_, n, uno, varios) => (Number(params[n]) === 1 ? uno : varios));
+}
+
 export function t(clave, params = {}) {
   const dic = diccionarios[actual] || {};
   const plantilla = dic[clave] ?? (diccionarios.es || {})[clave] ?? clave;
-  return String(plantilla).replace(/\{(\w+)\}/g, (_, n) => (params[n] ?? `{${n}}`));
+  return plural(plantilla, params).replace(/\{(\w+)\}/g, (_, n) => (params[n] ?? `{${n}}`));
 }
 
 /** El texto de un objeto {es, en} en el idioma actual (o el primero que haya). */

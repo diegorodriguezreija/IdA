@@ -382,7 +382,7 @@ class IdaAntesala extends HTMLElement {
         <input type="radio" name="origen" value="${valor}" ${origen === valor ? 'checked' : ''} ${deshabilitada ? 'disabled' : ''}>
         <span><b>${esc(titulo)}</b><small>${esc(ayuda)}</small></span></label>`;
     const continuar = c ? opcion('continuar', t('companero.continuar'),
-      t(c.generaciones === 1 ? 'companero.continuar_ayuda_1' : 'companero.continuar_ayuda',
+      t('companero.continuar_ayuda',
         { nombre: c.nombre || c.individuo, g: c.generacion + 1, n: c.generaciones, score: puntos(c.mejor_score) })) : '';
     const elegir = origen !== 'adoptar' ? '' : lista.length ? `<div class="campo"><label for="adoptar-id">${esc(t('companero.cual'))}</label>
         <select class="entrada" id="adoptar-id">
