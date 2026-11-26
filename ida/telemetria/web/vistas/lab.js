@@ -3,10 +3,13 @@
 //   fichero cargado (lab/fuentes.js).
 // - Reproductor: línea de tiempo con los hechos marcados (logros, lo aprendido, la muerte), reproducir, pausa, paso a
 //   paso adelante y atrás, ir a un latido y velocidad. La escena pequeña, siempre a la vista.
-// - Vistas: «Latido» (los 8 pasos de D1 con la Onda, lab/latido.js), «Ingeniería» (el mapa de Componentes con sus
-//   tiempos, lab/ingenieria.js) y «Grabaciones» (listar, abrir, descargar y borrar en dos pasos).
+// - Vistas: «Latido» (los 8 pasos de D1 con la Onda, lab/latido.js), «Epistemología» (qué sabe y cómo lo sabe,
+//   lab/epistemologia.js), «Biología» (el cuerpo, la química y el afecto en series, lab/biologia.js), «Análisis» (curvas
+//   de una vida, dos grabaciones y dos estirpes, lab/analisis.js), «Cierre» (la vida y lo aprendido al morir,
+//   lab/cierre.js), «Ingeniería» (el mapa de Componentes con sus tiempos, lab/ingenieria.js) y «Grabaciones» (listar,
+//   abrir, descargar y borrar en dos pasos). Las vistas de T5b dibujan las series de la fuente (fuente.series()).
 // - Al pulsar una pieza, su registro; al pulsar un Componente, su ficha (análogo y descripción de componentes.toml, O13).
-// - «Abrir en el Laboratorio» del Vivero llega con #/lab?seccion=<tarjeta>&fuente=directo&vida=<v>&latido=<l>.
+// - «Abrir en el Laboratorio» del Vivero llega con #/lab?seccion=<tarjeta>&fuente=directo&vida=<v>&latido=<l>&mundo=<m>.
 
 import { api, descargas } from '../api.js';
 import { t } from '../i18n.js';
@@ -18,13 +21,19 @@ import { cargarCatalogo, fichaComponente, mediasAgrupadas, tiemposAgrupados } fr
 import { analizar, animar, detallePaso, detallePieza, sinMovimiento, svgLatido } from '../lab/latido.js';
 import { htmlIngenieria } from '../lab/ingenieria.js';
 import { posicionDeClic, svgLinea } from '../lab/linea.js';
+import { detalleSaber, htmlEpistemologia } from '../lab/epistemologia.js';
+import { htmlBiologia } from '../lab/biologia.js';
+import { MODOS, SERIES_COMPARABLES, htmlAnalisis } from '../lab/analisis.js';
+import { htmlCierre } from '../lab/cierre.js';
+import { xDeClic } from '../lab/graficas.js';
 
-const VISTAS = ['latido', 'ingenieria', 'grabaciones'];
+const VISTAS = ['latido', 'epistemologia', 'biologia', 'analisis', 'cierre', 'ingenieria', 'grabaciones'];
+const VISTAS_SERIES = new Set(['epistemologia', 'biologia', 'analisis', 'cierre']);
 const VELOCIDADES = [0.5, 1, 2, 4, 8];        // latidos por segundo al reproducir
 const SONDEO_MS = 1000;                        // cada cuánto se pregunta al directo por latidos nuevos
-// De la tarjeta del Vivero (O19) al paso del latido que la explica; Carácter y Estirpe tendrán su vista en T5b.
-const SECCION_PASO = { cuerpo: 'sentir', ahora: 'tribunal', sabe: 'plasticidad', logros: 'cierre', caracter: 'onda', estirpe: 'onda' };
-const SECCIONES_T5B = new Set(['caracter', 'estirpe']);
+// De la tarjeta del Vivero (O19) a lo que la explica: un paso del latido (T5a) o, desde T5b, una vista propia.
+const SECCION_PASO = { cuerpo: 'sentir', ahora: 'tribunal', logros: 'cierre' };
+const SECCION_VISTA = { sabe: { vista: 'epistemologia' }, caracter: { vista: 'analisis', modo: 'estirpes' }, estirpe: { vista: 'analisis', modo: 'estirpes' } };
 const PREFERENCIAS = 'ida.lab';
 
 function parametros() { return new URLSearchParams(location.hash.split('?')[1] || ''); }
@@ -53,6 +62,12 @@ class IdaLab extends HTMLElement {
     this.grabando = null;
     this.borrando = null;            // {id, testigo, grabacion}: primer paso del borrado hecho
     this.aviso = '';
+    this.series = null;              // T5b: las series de la fuente (para las vistas de series)
+    this.filtros = { tipo: '', clase: '', fuente: '', estado: '' };
+    this.anaModo = MODOS.includes(pref.anaModo) ? pref.anaModo : 'vida';
+    this.comparacion = { a: '', b: '', serie: 'score', modo: 'superpuestas', datos: null, cargando: false };
+    this.estirpes = { a: '', b: '', opciones: null, datos: null, cargando: false, mundo: null };
+    this.cierreVida = null;
     this._token = 0;
     this._cancelarAnimacion = () => {};
     this._alIdioma = () => this.pintar();
@@ -64,6 +79,7 @@ class IdaLab extends HTMLElement {
     document.addEventListener('ida:tema', this._alTema);
     this.addEventListener('click', (ev) => this.alClic(ev));
     this.addEventListener('keydown', (ev) => this.alTecla(ev));
+    this.addEventListener('change', (ev) => this.alCambio(ev));
     this.innerHTML = `<p class="suave">${esc(t('app.cargando'))}</p>`;
     this.iniciar();
   }
@@ -76,21 +92,28 @@ class IdaLab extends HTMLElement {
     this._cancelarAnimacion();
   }
 
-  guardarPreferencias() { almacen.guardar(PREFERENCIAS, { vista: this.vista, velocidad: this.velocidad }); }
+  guardarPreferencias() { almacen.guardar(PREFERENCIAS, { vista: this.vista, velocidad: this.velocidad, anaModo: this.anaModo }); }
 
   // --- arranque ------------------------------------------------------------------------------------------------------
   async iniciar() {
     const p = parametros();
     const seccion = p.get('seccion');
     if (VISTAS.includes(p.get('vista'))) this.vista = p.get('vista');
+    this.estirpes.mundo = p.get('mundo') || null;
     if (seccion && SECCION_PASO[seccion]) {
       this.vista = 'latido';
       this.sel = { tipo: 'paso', id: SECCION_PASO[seccion] };
-      this.aviso = t(SECCIONES_T5B.has(seccion) ? 'lab.desde_t5b' : 'lab.desde', { seccion: t(`tarjeta.${seccion}`) });
+      this.aviso = t('lab.desde', { seccion: t(`tarjeta.${seccion}`) });
+    } else if (seccion && SECCION_VISTA[seccion]) {
+      const destino = SECCION_VISTA[seccion];
+      this.vista = destino.vista;
+      if (destino.modo) this.anaModo = destino.modo;
+      this.aviso = t(`lab.desde_vista.${destino.vista}`, { seccion: t(`tarjeta.${seccion}`) });
     }
     this.cat = await cargarCatalogo();
     this.pintar();
     this.cargarGrabaciones();
+    if (this.vista === 'analisis' && this.anaModo === 'estirpes') this.cargarEstirpes();
     const fuente = p.get('fuente');
     if (fuente === 'grabacion' && p.get('id')) {
       await this.abrirGrabacion(p.get('id'), Number(p.get('latido')) || null);
@@ -105,10 +128,16 @@ class IdaLab extends HTMLElement {
     clearInterval(this._sondeo);
     this.fuente = fuente;
     this.siguiendo = false;
+    this.series = null;
+    this.cierreVida = null;
+    if (this.sel && this.sel.tipo === 'saber') this.sel = null;
+    if (fuente.tipo === 'grabacion') this.comparacion = { ...this.comparacion, a: fuente.id, datos: null };
+    if (this.estirpes.mundo !== fuente.mundo) this.estirpes = { a: '', b: '', opciones: null, datos: null, cargando: false, mundo: fuente.mundo };
     await Promise.all([cargarSprites(fuente.mundo), cargarFrases(fuente.mundo)]);
     this.pintar();
     await this.ir(Math.max(0, Math.min(fuente.indice.length - 1, posInicial ?? fuente.indice.length - 1)));
     if (fuente.tipo === 'directo') this._sondeo = setInterval(() => this.sondear(), SONDEO_MS);
+    this.prepararVista();
   }
 
   /** El directo; ``destino`` = {vida, latido} para ir a ese latido (desde el Vivero). ``avisar``: decir si no hay. */
@@ -163,6 +192,7 @@ class IdaLab extends HTMLElement {
       if (nueva) { await this.usarFuente(f, null); this.siguiendo = true; return; }
       this.pintarFuenteActual();
       this.pos = Math.max(0, this.pos - perdidas);
+      if (VISTAS_SERIES.has(this.vista)) await this.cargarSeries();
       if (this.siguiendo && !this.reproduciendo && this.pos < f.indice.length - 1) await this.ir(f.indice.length - 1, { animar: false });
       else this.pintarLinea();
     } catch { /* el servidor puede estar ocupado: se reintenta */ }
@@ -176,7 +206,125 @@ class IdaLab extends HTMLElement {
     } catch (err) {
       this.grabaciones = [];
     }
-    if (this.vista === 'grabaciones') this.pintarVista();
+    if (this.vista === 'grabaciones' || (this.vista === 'analisis' && this.anaModo === 'grabaciones')) this.pintarVista();
+  }
+
+  // --- series (T5b) -----------------------------------------------------------------------------------------------------
+  /** Lo que necesita la vista elegida: las series de la fuente, la colección para las estirpes... */
+  prepararVista() {
+    if (VISTAS_SERIES.has(this.vista)) this.cargarSeries();
+    if (this.vista === 'analisis' && this.anaModo === 'estirpes' && !this.estirpes.opciones) this.cargarEstirpes();
+    if (this.vista === 'analisis' && this.anaModo === 'grabaciones' && this.grabaciones == null) this.cargarGrabaciones();
+  }
+
+  async cargarSeries() {
+    const f = this.fuente;
+    if (!f) return;
+    try {
+      const s = await f.series();
+      if (f !== this.fuente) return;
+      const nueva = s !== this.series;
+      this.series = s;
+      if (nueva && VISTAS_SERIES.has(this.vista)) { this.pintarVista({ animar: false }); this.pintarDetalle(); }
+    } catch (err) {
+      avisar(t(`error.${err.codigo || 'red'}`));
+    }
+  }
+
+  /** La posición (en la serie) del registro n de la fuente: la del último registro con número ≤ n. */
+  iDeN(n) {
+    const col = this.series && this.series.columnas.n;
+    if (!col || !col.length) return -1;
+    let lo = 0; let hi = col.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (col[m] <= n) lo = m; else hi = m - 1; }
+    return col[lo] <= n ? lo : 0;
+  }
+
+  /** La posición en el reproductor del registro n de la fuente. */
+  posDeN(n) {
+    const ind = this.fuente ? this.fuente.indice : [];
+    let lo = 0; let hi = ind.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (ind[m].n < n) lo = m + 1; else hi = m; }
+    return lo;
+  }
+
+  ctxSeries() {
+    const s = this.series;
+    const col = s.columnas;
+    const e = this.fuente.indice[this.pos];
+    const iCursor = e ? Math.max(0, this.iDeN(e.n)) : 0;
+    const cortes = [];
+    for (let i = 1; i < s.registros; i++) if (col.vida[i] !== col.vida[i - 1]) cortes.push(i);
+    const variasVidas = cortes.length > 0;
+    const ejeX = (x) => {
+      const i = Math.max(0, Math.min(s.registros - 1, Math.round(x)));
+      return variasVidas ? `v${col.vida[i]}·${col.latido[i]}` : String(col.latido[i] ?? '');
+    };
+    const mundo = this.fuente.mundo;
+    const marcasDe = (tipos) => s.hechos.filter((h) => tipos.includes(h.tipo)).map((h) => ({
+      x: this.iDeN(h.n),
+      tipo: h.tipo,
+      titulo: `${t('lab.latido')} ${h.latido}: ${h.tipo === 'dano' ? t('bio.dano_titulo', { perdida: h.perdida, vitalidad: h.vitalidad }) : (hechoFrase(mundo, h) || t(`lab.hecho.${h.tipo}`))}`,
+    }));
+    return {
+      series: s, mundo, iCursor, cortes, ejeX, marcasDe, iDeN: (n) => this.iDeN(n), filtros: this.filtros, sel: this.sel,
+      fuente: this.fuente, modo: this.anaModo, grabaciones: this.grabaciones, comparacion: this.comparacion, estirpes: this.estirpes,
+      vida: this.cierreVida, nCursor: e ? e.n : 0,
+    };
+  }
+
+  async cargarComparacion() {
+    const c = this.comparacion;
+    if (!c.a || !c.b || c.a === c.b) { c.datos = null; this.pintarVista({ animar: false }); return; }
+    c.cargando = true;
+    c.datos = null;
+    this.pintarVista({ animar: false });
+    const pedido = `${c.a}|${c.b}`;
+    this._comparando = pedido;
+    try {
+      const [a, b, comp] = await Promise.all([api.seriesGrabacion(c.a), api.seriesGrabacion(c.b), api.compararGrabaciones(c.a, c.b)]);
+      if (this._comparando !== pedido) return;
+      c.datos = { a, b, comp };
+    } catch (err) {
+      avisar(t(`error.${err.codigo || 'red'}`));
+    }
+    c.cargando = false;
+    if (this.vista === 'analisis') this.pintarVista({ animar: false });
+  }
+
+  mundoEstirpes() { return (this.fuente && this.fuente.mundo) || this.estirpes.mundo; }
+
+  async cargarEstirpes() {
+    const mundo = this.mundoEstirpes();
+    const e = this.estirpes;
+    if (!mundo) { e.opciones = []; this.pintarVista({ animar: false }); return; }
+    e.mundo = mundo;
+    e.cargando = true;
+    this.pintarVista({ animar: false });
+    try {
+      const d = await api.coleccion(mundo);
+      e.opciones = ((d.ranking || {})[mundo] || []).map((o) => ({ ...o, ref: o.tipo === 'companero' ? `companero:${o.mundo}` : o.id }));
+      if (!e.a && e.opciones.length) e.a = (e.opciones.find((o) => o.tipo === 'companero') || e.opciones[0]).ref;
+      if (!e.b) e.b = (e.opciones.find((o) => o.ref !== e.a) || {}).ref || '';
+    } catch (err) {
+      e.opciones = [];
+      avisar(t(`error.${err.codigo || 'red'}`));
+    }
+    e.cargando = false;
+    await this.compararEstirpes();
+  }
+
+  async compararEstirpes() {
+    const e = this.estirpes;
+    e.datos = null;
+    if (e.a && e.b && e.a !== e.b) {
+      try {
+        e.datos = await api.compararEstirpes(e.a, e.b);
+      } catch (err) {
+        avisar(t(`error.${err.codigo || 'red'}`));
+      }
+    }
+    if (this.vista === 'analisis') this.pintarVista({ animar: false });
   }
 
   // --- navegación ----------------------------------------------------------------------------------------------------
@@ -235,7 +383,7 @@ class IdaLab extends HTMLElement {
     const pestanas = VISTAS.map((v) => `<button type="button" role="tab" data-vista="${v}" aria-selected="${this.vista === v}">${esc(t(`lab.vista.${v}`))}</button>`).join('');
     this.innerHTML = `
       <div class="lab-cabeza">
-        <div><h1>${esc(t('lab.titulo'))}</h1><p class="suave">${esc(t('lab.subtitulo_t5a'))}</p></div>
+        <div><h1>${esc(t('lab.titulo'))}</h1><p class="suave">${esc(t('lab.subtitulo'))}</p></div>
         <div class="fuentes" role="group" aria-label="${esc(t('lab.fuente'))}">
           <span class="suave pequeno">${esc(t('lab.fuente'))}</span>
           <button type="button" class="boton pequeno ${f && f.tipo === 'directo' ? 'primario' : ''}" data-accion="directo">● ${esc(t('lab.fuente_directo'))}</button>
@@ -382,7 +530,22 @@ class IdaLab extends HTMLElement {
     const detalle = this.querySelector('[data-detalle]');
     if (detalle) detalle.hidden = this.vista === 'grabaciones';
     if (this.vista === 'grabaciones') { caja.innerHTML = this.htmlGrabaciones(); return; }
+    if (this.vista === 'analisis' && this.anaModo === 'estirpes' && !this.fuente) {
+      caja.innerHTML = htmlAnalisis({ modo: 'estirpes', fuente: { mundo: this.estirpes.mundo }, estirpes: this.estirpes });
+      return;
+    }
     if (!this.fuente) { caja.innerHTML = this.htmlSinFuente(); return; }
+    if (VISTAS_SERIES.has(this.vista)) {
+      const necesita = !(this.vista === 'analisis' && this.anaModo !== 'vida');
+      if (necesita && !this.series) { caja.innerHTML = `<p class="suave">${esc(t('lab.cargando_series'))}</p>`; return; }
+      const ctx = this.series ? this.ctxSeries()
+        : { fuente: this.fuente, modo: this.anaModo, grabaciones: this.grabaciones, comparacion: this.comparacion, estirpes: this.estirpes };
+      if (this.vista === 'epistemologia') caja.innerHTML = htmlEpistemologia(ctx);
+      else if (this.vista === 'biologia') caja.innerHTML = htmlBiologia(ctx);
+      else if (this.vista === 'analisis') caja.innerHTML = htmlAnalisis(ctx);
+      else caja.innerHTML = htmlCierre(ctx);
+      return;
+    }
     const r = this.registro;
     if (!r) { caja.innerHTML = `<p class="suave">${esc(t('app.cargando'))}</p>`; return; }
     if (this.vista === 'latido') {
@@ -439,7 +602,10 @@ class IdaLab extends HTMLElement {
     if (!r || !this.analisis) { caja.innerHTML = ''; return; }
     const s = this.sel;
     let html;
-    if (!s) html = `<p class="suave">${esc(t(this.vista === 'ingenieria' ? 'lab.detalle_vacio_ing' : 'lab.detalle_vacio'))}</p>`;
+    if (!s || (s.tipo === 'saber' && this.vista !== 'epistemologia')) {
+      const vacio = this.vista === 'ingenieria' ? 'lab.detalle_vacio_ing' : VISTAS_SERIES.has(this.vista) ? `lab.detalle_vacio_${this.vista}` : 'lab.detalle_vacio';
+      html = `<p class="suave">${esc(t(vacio))}</p>`;
+    } else if (s.tipo === 'saber') html = this.series ? detalleSaber(this.series, s.clave, this.fuente.mundo) : '';
     else if (s.tipo === 'paso') html = detallePaso(s.id, r, this.analisis, this.cat, this.fuente.medias);
     else if (s.tipo === 'pieza') html = detallePieza(s.clave, this.analisis);
     else if (s.tipo === 'componente') {
@@ -466,11 +632,11 @@ class IdaLab extends HTMLElement {
 
   elegir(sel) {
     const anterior = this.sel && this.sel.tipo !== sel.tipo ? this.sel : (this.sel && this.sel.anterior) || null;
-    this.sel = { ...sel, anterior: sel.tipo === 'paso' ? null : anterior };
+    this.sel = { ...sel, anterior: sel.tipo === 'paso' || sel.tipo === 'saber' ? null : anterior };
     if (this.vista === 'latido' && sel.tipo === 'paso') {
       this.querySelectorAll('.latido-svg .nodo').forEach((n) => n.querySelector('.caja')?.classList.toggle('elegido', n.dataset.paso === sel.id));
     }
-    if (this.vista === 'ingenieria') this.pintarVista({ animar: false });
+    if (this.vista === 'ingenieria' || sel.tipo === 'saber') this.pintarVista({ animar: false });
     this.pintarDetalle();
     const detalle = this.querySelector('[data-detalle]');
     if (detalle && window.matchMedia('(max-width: 1100px)').matches) detalle.scrollIntoView({ behavior: sinMovimiento() ? 'auto' : 'smooth', block: 'start' });
@@ -478,8 +644,8 @@ class IdaLab extends HTMLElement {
 
   // --- eventos ---------------------------------------------------------------------------------------------------------
   alClic(ev) {
-    const el = ev.target.closest('[data-accion],[data-vista],[data-paso],[data-pieza],[data-comp],[data-comp-nombre],[data-abrir],[data-borrar],[data-borrar-confirmar],[data-borrar-cancelar],[data-volver],[data-no-montados]');
-    if (!el || !this.contains(el)) return;
+    const el = ev.target.closest('[data-accion],[data-vista],[data-paso],[data-pieza],[data-comp],[data-comp-nombre],[data-abrir],[data-borrar],[data-borrar-confirmar],[data-borrar-cancelar],[data-volver],[data-no-montados],[data-saber],[data-ir-n],[data-ana-modo],[data-comp-modo],[data-grafica]');
+    if (!el || !this.contains(el) || el.tagName === 'SELECT') return;
     const d = el.dataset;
     if (d.accion) return this.accion(d.accion);
     if (el.matches('[role="tab"], [data-vista]') && d.vista) {
@@ -488,6 +654,25 @@ class IdaLab extends HTMLElement {
       if (d.vista === 'grabaciones') this.cargarGrabaciones();
       this.pintarVista({ animar: d.vista === 'latido' });
       this.pintarDetalle();
+      this.prepararVista();
+      return;
+    }
+    if (d.saber) return this.elegir({ tipo: 'saber', clave: d.saber });
+    if (d.irN != null) { this.parar(); this.siguiendo = false; this.ir(this.posDeN(Number(d.irN))); return; }
+    if (d.anaModo) {
+      this.anaModo = d.anaModo;
+      this.guardarPreferencias();
+      this.pintarVista({ animar: false });
+      this.prepararVista();
+      return;
+    }
+    if (d.compModo) { this.comparacion.modo = d.compModo; this.pintarVista({ animar: false }); return; }
+    if ('grafica' in d) {
+      if (!this.series || (this.vista === 'analisis' && this.anaModo !== 'vida')) return;
+      const i = Math.max(0, Math.min(this.series.registros - 1, Math.round(xDeClic(el, ev))));
+      this.parar();
+      this.siguiendo = false;
+      this.ir(this.posDeN(this.series.columnas.n[i]), { animar: false });
       return;
     }
     if (d.paso) return this.elegir({ tipo: 'paso', id: d.paso });
@@ -500,6 +685,25 @@ class IdaLab extends HTMLElement {
     if ('borrarCancelar' in d) { this.borrando = null; this.pintarVista(); return; }
     if ('volver' in d && this.sel && this.sel.anterior) { this.sel = this.sel.anterior; this.pintarDetalle(); return; }
     if ('noMontados' in d) { this.verNoMontados = el.checked; this.pintarVista({ animar: false }); }
+  }
+
+  alCambio(ev) {
+    const el = ev.target;
+    if (!el || !el.dataset) return;
+    const d = el.dataset;
+    if (d.filtro) { this.filtros[d.filtro] = el.value; this.pintarVista({ animar: false }); return; }
+    if (d.comp) {
+      if (d.comp === 'serie') {
+        this.comparacion.serie = SERIES_COMPARABLES.includes(el.value) ? el.value : 'score';
+        this.pintarVista({ animar: false });
+        return;
+      }
+      this.comparacion[d.comp] = el.value;
+      this.cargarComparacion();
+      return;
+    }
+    if (d.est) { this.estirpes[d.est] = el.value; this.compararEstirpes(); return; }
+    if ('cierreVida' in d) { this.cierreVida = Number(el.value); this.pintarVista({ animar: false }); }
   }
 
   alTecla(ev) {
