@@ -33,9 +33,9 @@ Se abre el navegador en `http://127.0.0.1:<puerto>/#/antesala` (el puerto sale e
 
 ## Paso 2 · Carácter
 
-- [ ] Cinco tarjetas: Óptimo, Cauto, Audaz, Equilibrado y Al azar, cada una con su icono, un radar de los cinco
+- [ ] Cinco tarjetas: Recomendado, Cauto, Audaz, Equilibrado y Al azar, cada una con su icono, un radar de los cinco
       rasgos y una frase. «Al azar» enseña un pentágono discontinuo con «?».
-- [ ] «Óptimo» cambia de forma según el mundo elegido en el paso 1.
+- [ ] «Recomendado» cambia de forma según el mundo elegido en el paso 1.
 - [ ] «Avanzado» despliega los cinco deslizadores (apertura, responsabilidad, neuroticismo, extraversión: 0,15–0,85;
       umbral de miedo: 0,45–0,75) con su valor y un radar grande. Mover uno crea la tarjeta «Personalizado» y la elige.
 

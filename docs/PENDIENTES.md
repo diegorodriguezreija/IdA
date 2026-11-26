@@ -49,6 +49,7 @@ Este documento es la lista viva de lo que queda. Cuando un punto se resuelva, se
 | V1 | Semillas nuevas (41 y 42) para descartar el sobreajuste a 31 y 32 |
 | V2 | Batería de perturbaciones (receta cambiada, día más corto o más largo, mapas de 48 y 96, agua escasa, vista de radio 3) |
 | V3 | Un segundo mundo de cuadrícula (por ejemplo, MiniGrid) con cero cambios en lo general: la prueba de que la separación es real |
+| V4 | **Carácter de la antesala antigua en Crafter.** `CONFIG_OPTIMA` (0.55/0.70/0.45/0.30/0.65) se presentaba como «óptimo» sin medir. Medirlo frente al perfil Equilibrado con el criterio D17 (semillas 31 y 32, 100 000 pasos); si gana, pasa a ser el «Recomendado» de Crafter | O8 |
 | M1 | Reformulado (D14): la eficiencia de S1 con amenaza (23 piezas en lugar de 12), no una reserva de amplitud |
 | M2, M4–M7 | Como en el plan: cuándo merece la pena luchar, tener el refugio antes de la noche, el huerto, metas sin lista de logros y la evaluación final |
 
@@ -70,6 +71,8 @@ T4 debe observar también lo aprendido de la muerte (`_aprender_de_la_muerte` co
 ~~T3: la antesala detecta si Stockfish está disponible (ajedrez) y lo indica; la ruta sigue siendo opción de la CLI, no del formulario.~~ Hecho en T3: estado `sin_stockfish` (lanzable, con el rival local).
 
 Para T6: la línea de pip de «Pruébalo en 1 minuto» es ya `pip install -e ".[todos]"`, pero la siguiente (`python -m pytest -q`) necesita el extra `[dev]`; el resto del README sigue describiendo la antesala y el panel de antes.
+
+T4: traducir los valores de las opciones de tipo lista (opciones() con etiquetas por valor); acción en lenguaje natural en lugar de "MOVER celda_5_4"; selector sistema/claro/oscuro; navegación con flechas entre presets; la escena sin franjas negras cuando no ocupa todo el ancho.
 
 ## Orden propuesto (25/11/2026)
 

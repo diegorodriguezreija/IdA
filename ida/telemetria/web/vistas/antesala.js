@@ -19,7 +19,8 @@ const COLLAGE_CRAFTER = ['tree', 'grass', 'cow', 'water', 'player-down', 'stone'
 const SUGERIDOS = {
   minimo: { latidos: 400, generaciones: 3 },
   archivos: { latidos: 400, generaciones: 3 },
-  crafter: { latidos: 600, generaciones: 3 },
+  // O8: 10 000 = un episodio de la medición oficial; la vida termina antes si IdA muere.
+  crafter: { latidos: 10000, generaciones: 3 },
   ajedrez: { latidos: 150, generaciones: 2 },
   snake: { latidos: 1000, generaciones: 3 },
 };

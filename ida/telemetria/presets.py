@@ -1,6 +1,6 @@
 """Presets de carácter de la antesala (``GET /api/v1/presets``).
 
-Son los de ``antesala.html`` (``CONFIG_OPTIMA`` y ``PRESETS_ARQUETIPO``), con nombre y descripción en es/en. «Óptimo»
+Son los de ``antesala.html`` (``CONFIG_OPTIMA`` y ``PRESETS_ARQUETIPO``), con nombre y descripción en es/en. «Recomendado»
 depende del mundo (``por_mundo``); «Azar» no fija rasgos (``arquetipo: None``): los deriva la semilla, como
 ``Arquetipo.nuevo``. Los rangos de los deslizadores son los de la antesala de siempre.
 """
@@ -20,7 +20,9 @@ RANGOS: Dict[str, Dict[str, float]] = {
 OPTIMO_POR_MUNDO: Dict[str, Dict[str, float]] = {
     "minimo": {"apertura": 0.50, "responsabilidad": 0.65, "neuroticismo": 0.60, "extraversion": 0.40, "umbral_miedo": 0.50},
     "archivos": {"apertura": 0.45, "responsabilidad": 0.70, "neuroticismo": 0.55, "extraversion": 0.35, "umbral_miedo": 0.55},
-    "crafter": {"apertura": 0.55, "responsabilidad": 0.70, "neuroticismo": 0.45, "extraversion": 0.30, "umbral_miedo": 0.65},
+    # Crafter: el arquetipo de la medición oficial (perfil Equilibrado de herramientas/evaluar_crafter.py), O8.
+    # El de la antesala antigua (0.55/0.70/0.45/0.30/0.65) está sin medir: PENDIENTES V4.
+    "crafter": {"apertura": 0.50, "responsabilidad": 0.50, "neuroticismo": 0.50, "extraversion": 0.50, "umbral_miedo": 0.60},
     "ajedrez": {"apertura": 0.40, "responsabilidad": 0.75, "neuroticismo": 0.35, "extraversion": 0.30, "umbral_miedo": 0.70},
     "snake": {"apertura": 0.45, "responsabilidad": 0.65, "neuroticismo": 0.60, "extraversion": 0.30, "umbral_miedo": 0.50},
 }
@@ -29,9 +31,9 @@ PRESETS: List[Dict[str, Any]] = [
     {
         "id": "optimo",
         "icono": "⭐",
-        "nombre": {"es": "Óptimo", "en": "Optimal"},
-        "descripcion": {"es": "El carácter con mejor rendimiento probado en este mundo.",
-                        "en": "The character with the best tested performance in this world."},
+        "nombre": {"es": "Recomendado", "en": "Recommended"},
+        "descripcion": {"es": "El carácter con el que se mide IdA en este mundo (en Crafter, el de la medición oficial).",
+                        "en": "The character IdA is measured with in this world (in Crafter, the official benchmark one)."},
         "arquetipo": None,
         "por_mundo": OPTIMO_POR_MUNDO,
     },
