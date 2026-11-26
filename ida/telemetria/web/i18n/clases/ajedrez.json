@@ -46,5 +46,9 @@
   "DERROTA": {"es": "Derrota", "en": "Loss"},
   "TABLAS": {"es": "Tablas", "en": "Draw"},
   "SIN TERMINAR": {"es": "Sin terminar", "en": "Ongoing"}
+ },
+ "cuerpo": {
+  "vitalidad": {"etiqueta": {"es": "Material propio", "en": "Own material"}, "ayuda": {"es": "El valor de sus piezas sobre el de salida (39 puntos).", "en": "Its pieces' value against the starting 39 points."}},
+  "alimentacion": {"etiqueta": {"es": "Balance de material", "en": "Material balance"}, "ayuda": {"es": "60 con material igualado; 5 más o menos por cada punto de ventaja.", "en": "60 with equal material; 5 more or less per point of advantage."}}
  }
 }

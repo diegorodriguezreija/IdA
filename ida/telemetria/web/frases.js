@@ -179,7 +179,8 @@ export function fuenteDe(p) {
   return 'experiencia';
 }
 
-function causaMuerte(mundo, causa) {
+/** «de hambre», «por el zombi»…: la causa de muerte en frase. */
+export function causaMuerte(mundo, causa) {
   const nec = `muerte.${causa}`;
   if (t(nec) !== nec) return t(nec);
   if (tieneEtiqueta(mundo, causa)) return contraer(t('muerte.por', { el: clase(mundo, causa, 'el') }));
@@ -221,6 +222,26 @@ export function hechoFrase(mundo, h) {
     case 'muere': return t('hecho.muere', { causa: causaMuerte(mundo, h.causa), latidos: h.latidos });
     default: return '';
   }
+}
+
+/** Un hecho del cierre de la vida (lo aprendido al morir, T4b): «Al morir, ha aprendido que…». */
+export function hechoFraseConCierre(mundo, h) {
+  const frase = hechoFrase(mundo, h);
+  return frase && h.cierre ? t('hecho.al_morir', { frase: minuscula(frase) }) : frase;
+}
+
+const BARRAS = ['vitalidad', 'alimentacion', 'energia', 'descanso'];
+
+/**
+ * Las barras del cuerpo que se enseñan en un mundo (T4b, sección 13.6): las que declara su fichero de clases en
+ * «cuerpo», con su etiqueta y su ayuda; sin declaración, las cuatro con los nombres generales.
+ */
+export function barrasDelCuerpo(mundo) {
+  const decl = datos(mundo).cuerpo;
+  if (!decl) return BARRAS.map((clave) => ({ clave, etiqueta: t(`cuerpo.${clave}`), ayuda: '' }));
+  return BARRAS.filter((clave) => decl[clave]).map((clave) => ({
+    clave, etiqueta: texto(decl[clave].etiqueta), ayuda: decl[clave].ayuda ? texto(decl[clave].ayuda) : '',
+  }));
 }
 
 /** Las clases que aparecen en un hecho (para su sprite). */
