@@ -34,6 +34,10 @@ Rutas (detalle de cuerpos y errores en ``docs/DISENO_OBSERVABILIDAD.md``, secci�
 - ``GET  /api/v1/grabaciones/{id}/latidos/{n}``  el registro ``n`` de una grabación, con su escena vigente
 - ``POST /api/v1/grabaciones/{id}/borrar``     primer paso: un testigo; no borra nada
 - ``POST /api/v1/grabaciones/{id}/borrar/confirmar``  ``{"testigo": ...}``: borra
+- ``GET  /api/v1/vidas/actual/series``        T5b: series de lo que guarda el directo (Epistemología, Biología, Análisis)
+- ``GET  /api/v1/grabaciones/{id}/series``     T5b: series de una grabación
+- ``GET  /api/v1/grabaciones/{a}/comparar/{b}``  T5b: misma configuración y primera divergencia, alineadas por latido
+- ``GET  /api/v1/estirpes/comparar?a=..&b=..``  T5b: dos estirpes generación a generación (``companero:<m>`` o un id)
 - ``GET  /api/v1/componentes``                 mapa de Componentes (``componentes.toml``) con análogo, descripción y
                                                decisiones de diseño
 
@@ -47,7 +51,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ida.mundos import MUNDOS
 from ida.mundos.opciones import OpcionInvalida, con_defectos
-from ida.telemetria import catalogo, componentes, presets
+from ida.telemetria import analisis, catalogo, componentes, presets
 from ida.telemetria.esquema import ESQUEMA, NIVELES
 from ida.telemetria.instalador import ErrorInstalacion
 from ida.telemetria.laboratorio import ErrorLab
@@ -257,9 +261,9 @@ def _get(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list
         h._json(200, {"vida": tel.vida_actual()})
     elif partes == ["vidas", "actual", "registro"]:
         _sse_registro(h, tel, RECORTES.get(query.get("nivel", [""])[0]))
-    elif partes and partes[0] in ("companeros", "coleccion"):
+    elif partes and partes[0] in ("companeros", "coleccion", "estirpes"):
         _get_vivero(h, tel, partes, query)
-    elif partes[:3] == ["vidas", "actual", "latidos"] or (partes and partes[0] in ("grabaciones", "componentes")):
+    elif partes[:3] in (["vidas", "actual", "latidos"], ["vidas", "actual", "series"]) or (partes and partes[0] in ("grabaciones", "componentes")):
         _get_lab(h, tel, partes, query)
     elif len(partes) == 2 and partes[0] == "instalaciones":
         inst = tel.instalador.instalaciones.get(partes[1])
@@ -353,6 +357,12 @@ def _get_vivero(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[st
         h._json(200, viv.coleccion(_mundo(mundo) if mundo is not None else None))
     elif len(partes) == 2 and partes[0] == "coleccion":
         h._json(200, {"elemento": viv.elemento(partes[1])})
+    elif partes == ["estirpes", "comparar"]:
+        refs = [query.get(k, [""])[0] for k in ("a", "b")]
+        for k, ref in zip("ab", refs, strict=True):
+            if not ref:
+                raise ErrorApi(400, "campo_invalido", f"falta la estirpe {k} (companero:<mundo> o un id de la colección)", k)
+        h._json(200, analisis.comparar_estirpes(viv.estirpe(refs[0]), viv.estirpe(refs[1])))
     elif len(partes) == 3 and partes[0] == "coleccion" and partes[2] == "exportar":
         el = viv.elemento(partes[1])
         if el["tipo_elemento"] == "ficha":
@@ -404,6 +414,8 @@ def _get_lab(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, 
     lab = tel.lab
     if partes == ["vidas", "actual", "latidos"]:
         h._json(200, lab.directo.indice(_n(query.get("desde", ["0"])[0])))
+    elif partes == ["vidas", "actual", "series"]:
+        h._json(200, lab.directo.series())
     elif len(partes) == 4 and partes[:3] == ["vidas", "actual", "latidos"]:
         h._json(200, {"registro": lab.directo.registro(_n(partes[3]))})
     elif partes == ["grabaciones"]:
@@ -422,6 +434,10 @@ def _get_lab(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, 
         h.wfile.write(cuerpo)
     elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "indice":
         h._json(200, lab.grabaciones.indice(partes[1]))
+    elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "series":
+        h._json(200, lab.grabaciones.series(partes[1]))
+    elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2] == "comparar":
+        h._json(200, lab.grabaciones.comparar(partes[1], partes[3]))
     elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2] == "latidos":
         h._json(200, {"registro": lab.grabaciones.abrir(partes[1]).registro(_n(partes[3]))})
     elif partes == ["componentes"]:
