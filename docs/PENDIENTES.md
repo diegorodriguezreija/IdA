@@ -78,6 +78,8 @@ Para T6, de la prueba de usuario del autor (26/11/2026, copia limpia en Windows)
 
 Para T4b, de T4a: los requisitos del manual que no cambian durante la vida no salen en «Lo que sabe» (haría falta un campo nuevo del registro, p. ej. los requisitos en el nivel cognitivo); lo aprendido de la muerte sigue sin observarse; la mutación de carácter entre generaciones solo se ve dentro de una misma ejecución (la de toda la estirpe necesita el linaje).
 
+T4b, de la revisión de T4a: (1) las cifras de "Lo que sabe" (demostradas, hipótesis, "y N cosas más") se calculan sobre las 20 proposiciones del nivel cognitivo y no cuadran: añadir al registro un resumen con los totales de toda la memoria y los requisitos del manual; (2) el cuerpo usa etiquetas de Crafter en todos los mundos (en ajedrez sale "Alimentación"): etiquetas del cuerpo por mundo; (3) el reparto entre sistemas y la mutación del carácter, desde el inicio de la vida y de la estirpe, no desde que se abre la página.
+
 ## Orden propuesto (25/11/2026)
 
 Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
