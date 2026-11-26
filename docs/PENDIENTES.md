@@ -59,10 +59,15 @@ Puntos abiertos de [`docs/historico/DEUDA_TECNICA_CRAFTER.md`](historico/DEUDA_T
 - **12. Afinar cuándo merece la pena luchar (defeat_zombie 40 % frente a 54 % de DefensaArmada).** `Afrontar` es más prudente que `DefensaArmada` (requiere margen > 3/9 y usa previo pesimista). Pendiente diagnosticar encuentros donde `Afrontar` huye y la lucha habría salido bien (reserva, previo de golpes, tasa de daño por latido) y corregirlo en la base sin umbrales de mundo (enlaza con M2).
 - **14. Cadena de herramientas (cumplida en parte).** El planificador reúne material en lote (14.2, activo). Queda abierta la brecha frente a la línea procedimental: pico de madera 64–72 % y espada 43–47 % frente a 92–96 %.
 
+## T · Observabilidad y experiencia de usuario
+
+Diseño en [DISENO_OBSERVABILIDAD.md](DISENO_OBSERVABILIDAD.md) (aprobado el 26/11/2026). Fases: T1 observador, registro del latido, hechos y grabación · T2 escena() y opciones declaradas por mundo · T3 servidor v1 y antesala nueva · T4 Vivero · T5 Laboratorio · T6 cierre (OTel sobre el registro, README, retirar panel.html y antesala.html).
+
 ## Orden propuesto (25/11/2026)
 
 Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
 
+0. Línea T (observabilidad), de T1 a T6, antes de la fase B.
 1. Limpieza cerrada (25/11/2026, etiqueta crafter-general-v5.1): C1, C1b, C2, C3, C4, C5, C6 y C7a. Conducta idéntica a crafter-general-v5, que sigue siendo la referencia de D17.
 2. Fase B, primero la deuda de diseño (donde el mundo aún piensa por el organismo): B6, B7, B5 y B8 con C7b. Cada uno con D17.
 3. Fase B, fidelidad del latido: B1, B2, B3 y B4.

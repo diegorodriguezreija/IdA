@@ -7,6 +7,7 @@ Gran parte del código de IdA se escribió con agentes de IA bajo la dirección 
 Antes de cualquier cambio, lee:
 
 - [`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md): la referencia de diseño (decisiones D1 a D17 y cómo se cambian). Manda sobre cualquier otro documento.
+- [`docs/DISENO_OBSERVABILIDAD.md`](docs/DISENO_OBSERVABILIDAD.md) manda sobre la telemetría, la antesala, el Vivero, el Laboratorio y la grabación (decisiones O1–O18). Nada de esa línea puede cambiar la conducta de IdA.
 - [`doc-repositorio/07_DISENO_VISUAL.md`](doc-repositorio/07_DISENO_VISUAL.md): el latido y los Componentes del núcleo y de cada mundo, en diagramas.
 - [`docs/PENDIENTES.md`](docs/PENDIENTES.md): qué queda por hacer y en qué orden (limpieza C, conducta B, validación V y M).
 
