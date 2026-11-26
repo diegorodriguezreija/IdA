@@ -5,12 +5,13 @@ import shutil
 import time
 from typing import Any, Callable, Dict, List, Optional
 
-from ida.consola import linea, resumen_latido
+from ida.consola import imprimir_latido, linea
 from ida.nucleo.azar import Azar
 from ida.core.latido import Organismo
 from ida.nucleo.linaje import Arquetipo, Linaje
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.persistencia import Persistencia
+from ida.telemetria.compat import a_panel
 from ida.telemetria.grabacion import Grabacion, cabecera, commit_actual
 from ida.telemetria.observador import Observador
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
@@ -53,7 +54,7 @@ def ejecutar(
 
     - ``nivel``: nivel del registro del latido (``vital``, ``cognitivo`` o ``completo``, O4). Con un nivel, el observador
       corre siempre; sin él (``None``), corre al nivel cognitivo solo si alguien consume el registro (consola,
-      telemetría, OTel o grabación).
+      telemetría, OTel o grabación). ``al_latir(org, onda, registro)`` recibe el registro, o ``None`` si no corre.
     - ``grabar``: ruta de la grabación ``.jsonl.gz`` de la vida (O7).
     - ``plazo_logico``: operaciones por ms de plazo de la guillotina (``Onda.ops_por_ms``, O11). ``None``: plazo de reloj,
       como siempre.
@@ -79,8 +80,8 @@ def ejecutar(
         from ida.telemetria.otel import Observabilidad   # requiere el extra [observabilidad]
         observabilidad = Observabilidad(mundo)
     observador: Optional[Observador] = None
-    if nivel is not None or grabar:
-        observador = Observador(nivel or "cognitivo")
+    if nivel is not None or grabar or consola or telemetria is not None or observabilidad is not None:
+        observador = Observador(nivel or "cognitivo")   # O2: la consola, el directo, la grabación y OTel leen el registro
     grabacion: Optional[Grabacion] = None
     if grabar and observador is not None:
         grabacion = Grabacion(grabar, cabecera(mundo, observador.nivel, semilla, latidos, generaciones, opciones_mundo,
@@ -136,31 +137,16 @@ def ejecutar(
                 registro = observador.registrar(o, onda) if observador is not None else None
                 if grabacion is not None and registro is not None:
                     grabacion.escribir(registro)
-                r = resumen_latido(o, onda)
-                if consola and (onda.ciclo % cada == 0 or r["experiencia"]["aprendizaje"] or r["guillotina"]):
-                    print(linea(r))
-                if telemetria is not None or observabilidad is not None:
-                    mem = o.memoria
-                    estados = [p.estado(onda.ciclo).value for p in mem.saber.values()]
-                    r["vista"] = o.mundo.vista()
-                    r["conocimiento"] = mem.conocimiento(onda.ciclo)[:20]
-                    r["individuo"] = o.arquetipo.id
-                    r["generacion"] = o.arquetipo.generacion
-                    r["arquetipo"] = {k: getattr(o.arquetipo, k) for k in ("apertura", "responsabilidad", "neuroticismo", "extraversion", "umbral_miedo")}
-                    r["memoria"] = {"aciertos": mem.aciertos, "sorpresas": mem.fallos, "episodios": len(mem.episodios),
-                                    "demostradas": estados.count("demostrada"), "hipotesis": estados.count("hipótesis"),
-                                    "refutadas": estados.count("refutada"), "recuerdos": len(mem.registros), "heredados": heredados}  # noqa: B023 (se usa en la misma iteración)
-                    r["contadores"] = dict(o.contadores)
-                    r["puntuacion"] = o.mundo.puntuacion()
-                    r["sin_experiencia"] = sin_experiencia
-                if observabilidad is not None:
-                    observabilidad.latido(onda, r)
-                if telemetria is not None:
-                    telemetria.publicar(r)
+                if consola and registro is not None and imprimir_latido(registro, cada):
+                    print(linea(registro))
+                if observabilidad is not None and registro is not None:
+                    observabilidad.latido(onda, a_panel(registro))   # compatibilidad hasta T6 (O15)
+                if telemetria is not None and registro is not None:
+                    telemetria.publicar(registro)
                     if not o.perfil.tiempo_real:      # a ritmo visible: cada latido dura al menos su plazo
                         time.sleep(o.perfil.frecuencia_ms / 1000.0)
                 if al_latir:
-                    al_latir(o, onda, r)
+                    al_latir(o, onda, registro)
                 if evento_parada is not None and evento_parada.is_set():
                     raise InterrupcionSimulacion()
 

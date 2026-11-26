@@ -154,7 +154,7 @@ class Observador:
         motivo = c.get("motivo", "")
         accion = {
             "verbo": str(a_json(c["verbo"])), "objetivo": str(c.get("objetivo", "")), "clase": str(c.get("clase", "") or ""),
-            "sistema": str(c.get("sistema", "") or ""), "exito": exito if isinstance(exito, bool) else None,
+            "sistema": str(c.get("sistema", "")), "exito": exito if isinstance(exito, bool) else None,
             "mensaje": str(c.get("mensaje", "") or ""), "motivo": str(motivo) if motivo else "",
         }
         origen = c.get("origen")
@@ -201,7 +201,7 @@ class Observador:
         mem = org.memoria
         orden = sorted(mem.saber.values(), key=lambda p: (-p.confianza, p.sujeto))
         r["saber"] = [{"sujeto": p.sujeto, "relacion": p.relacion.name, "estado": _estado(p, onda.ciclo),
-                       "confianza": round(p.confianza, 4), "heredada": bool(p.heredada),
+                       "confianza": float(p.confianza), "heredada": bool(p.heredada),
                        "autoridad": p.c_aut is not None and p.w_aut > 0.0}
                       for p in (orden if self._n >= 2 else orden[:SABER_COGNITIVO])]
 
