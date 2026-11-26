@@ -48,7 +48,30 @@ TITULOS = {
 }
 MUNDOS = ("minimo", "archivos", "snake", "ajedrez", "crafter")
 NOMBRES_MUNDO = {"minimo": "Mínimo", "archivos": "Archivos", "snake": "Snake", "ajedrez": "Ajedrez", "crafter": "Crafter"}
-CAMPOS = ("nombre", "tipo", "clase", "dueno", "destino", "hoy", "hoy_en", "registran", "sustituye", "paso", "decision", "preatentivo", "aprende", "nota")
+CAMPOS = ("nombre", "tipo", "clase", "dueno", "destino", "hoy", "hoy_en", "registran", "sustituye", "paso", "decision", "preatentivo", "aprende", "nota",
+          "analogo", "descripcion")
+# O13 (docs/DISENO_OBSERVABILIDAD.md): campos para el Laboratorio, en los dos idiomas de la interfaz. No salen en 06 ni en 07.
+IDIOMAS = ("es", "en")
+
+
+def validar_textos(c: Dict[str, Any]) -> List[str]:
+    """``analogo`` y ``descripcion`` (O13): tablas ``{es, en}`` de texto. ``descripcion`` no puede estar vacía en ningún
+    idioma; ``analogo`` puede estar vacío (sin análogo biológico honesto), pero en los dos idiomas a la vez."""
+    errores: List[str] = []
+    n = c.get("nombre", "?")
+    for campo in ("analogo", "descripcion"):
+        if campo not in c:
+            continue
+        v = c[campo]
+        if not isinstance(v, dict) or set(v) != set(IDIOMAS) or not all(isinstance(v[i], str) for i in IDIOMAS):
+            errores.append(f"{n}: «{campo}» debe ser una tabla {{es = ..., en = ...}} de texto")
+            continue
+        vacios = [i for i in IDIOMAS if not v[i].strip()]
+        if campo == "descripcion" and vacios:
+            errores.append(f"{n}: «descripcion» vacía en {', '.join(vacios)}")
+        if campo == "analogo" and len(vacios) == 1:
+            errores.append(f"{n}: «analogo» vacío solo en {vacios[0]} (vacío en los dos idiomas o en ninguno)")
+    return errores
 
 
 def cargar(ruta: str = ESPEC) -> List[Dict[str, Any]]:
@@ -96,6 +119,7 @@ def validar(espec: List[Dict[str, Any]], decisiones: Set[str]) -> List[str]:
                 errores.append(f"{n}: falta «{k}»")
         if errores:
             continue
+        errores += validar_textos(c)
         if c["tipo"] not in TIPOS:
             errores.append(f"{n}: tipo «{c['tipo']}» no válido")
         if c["clase"] not in CLASES:

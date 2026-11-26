@@ -24,6 +24,18 @@ Rutas (detalle de cuerpos y errores en ``docs/DISENO_OBSERVABILIDAD.md``, secci�
 - ``POST /api/v1/coleccion/{id}/adoptar``      la hace compañero (el de antes se archiva)
 - ``POST /api/v1/coleccion/{id}/borrar``       primer paso: un testigo; no borra nada
 - ``POST /api/v1/coleccion/{id}/borrar/confirmar``  ``{"testigo": ...}``: borra
+- ``POST /api/v1/vidas/actual/grabar``         T5a: graba la vida en curso desde el latido siguiente
+- ``POST /api/v1/vidas/actual/grabar/terminar``  termina la grabación en curso
+- ``GET  /api/v1/vidas/actual/latidos[?desde=n]``  índice del directo (los últimos latidos en memoria) y medias
+- ``GET  /api/v1/vidas/actual/latidos/{n}``    el registro ``n`` del directo, con su escena vigente
+- ``GET  /api/v1/grabaciones``                 las grabaciones de ``<datos>/grabaciones``
+- ``GET  /api/v1/grabaciones/{id}``            descarga la grabación (``.jsonl.gz``)
+- ``GET  /api/v1/grabaciones/{id}/indice``     cabecera, índice y medias de una grabación
+- ``GET  /api/v1/grabaciones/{id}/latidos/{n}``  el registro ``n`` de una grabación, con su escena vigente
+- ``POST /api/v1/grabaciones/{id}/borrar``     primer paso: un testigo; no borra nada
+- ``POST /api/v1/grabaciones/{id}/borrar/confirmar``  ``{"testigo": ...}``: borra
+- ``GET  /api/v1/componentes``                 mapa de Componentes (``componentes.toml``) con análogo, descripción y
+                                               decisiones de diseño
 
 Errores: ``{"error": {"codigo": ..., "mensaje": ..., "campo"?: ...}}`` con 400, 403, 404, 409 o 500.
 """
@@ -35,9 +47,10 @@ from urllib.parse import parse_qs, urlparse
 
 from ida.mundos import MUNDOS
 from ida.mundos.opciones import OpcionInvalida, con_defectos
-from ida.telemetria import catalogo, presets
+from ida.telemetria import catalogo, componentes, presets
 from ida.telemetria.esquema import ESQUEMA, NIVELES
 from ida.telemetria.instalador import ErrorInstalacion
+from ida.telemetria.laboratorio import ErrorLab
 from ida.telemetria.ritmo import RITMOS, SINONIMOS
 from ida.telemetria.vivero import ErrorVivero
 
@@ -59,7 +72,10 @@ CODIGOS = ("json_invalido", "origen_no_permitido", "ruta_desconocida", "mundo_de
            "vida_en_curso", "sin_vida", "ritmo_invalido", "ritmo_fijo", "sin_pausa", "sin_extra", "extra_desconocido",
            "instalacion_en_curso", "instalacion_desconocida", "error_interno",
            # T4b: compañero y colección
-           "sin_companero", "id_invalido", "elemento_desconocido", "elemento_incompleto", "nombre_invalido", "testigo_invalido")
+           "sin_companero", "id_invalido", "elemento_desconocido", "elemento_incompleto", "nombre_invalido", "testigo_invalido",
+           # T5a: Laboratorio y grabaciones
+           "grabacion_en_curso", "sin_grabacion", "grabacion_desconocida", "grabacion_invalida", "latido_fuera",
+           "componentes_no_disponibles")
 
 
 class ErrorApi(Exception):
@@ -148,6 +164,11 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
     nivel = datos.get("nivel", NIVEL_DEFECTO)
     if nivel not in NIVELES:
         raise ErrorApi(400, "campo_invalido", f"nivel: uno de {', '.join(NIVELES)}", "nivel")
+    grabar = datos.get("grabar", False)
+    if not isinstance(grabar, bool):
+        raise ErrorApi(400, "campo_invalido", "grabar: debe ser booleano", "grabar")
+    if grabar and "nivel" not in datos:
+        nivel = "completo"                       # T5a: una grabación desde el Vivero va con el nivel completo
     for campo in ("sin_experiencia", "tabula_rasa"):
         if not isinstance(datos.get(campo, False), bool):
             raise ErrorApi(400, "campo_invalido", f"{campo}: debe ser booleano", campo)
@@ -166,6 +187,7 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
         "plazo_logico": None if tiempo_real else PLAZO_LOGICO,   # O11
         "tiempo_real": tiempo_real,
         "ritmo_comodo_ms": catalogo.ritmo_comodo(mundo),         # O20
+        "grabar": grabar,                                        # T5a
     }
 
 
@@ -210,7 +232,7 @@ def atender(h: "_Manejador", metodo: str, cuerpo: bytes = b"") -> None:
             _get(h, tel, partes, query)
     except ErrorApi as e:
         h._json(e.http, e.cuerpo())
-    except ErrorVivero as e:
+    except (ErrorVivero, ErrorLab) as e:
         h._json(e.http, ErrorApi(e.http, e.codigo, e.mensaje).cuerpo())
     except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
         pass
@@ -237,6 +259,8 @@ def _get(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list
         _sse_registro(h, tel, RECORTES.get(query.get("nivel", [""])[0]))
     elif partes and partes[0] in ("companeros", "coleccion"):
         _get_vivero(h, tel, partes, query)
+    elif partes[:3] == ["vidas", "actual", "latidos"] or (partes and partes[0] in ("grabaciones", "componentes")):
+        _get_lab(h, tel, partes, query)
     elif len(partes) == 2 and partes[0] == "instalaciones":
         inst = tel.instalador.instalaciones.get(partes[1])
         if inst is None:
@@ -280,6 +304,8 @@ def _post(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
             raise ErrorApi(409, "sin_pausa", "«paso a paso» solo con la vida en pausa") from None
     elif partes and partes[0] in ("companeros", "coleccion"):
         _post_vivero(h, tel, partes, datos)
+    elif partes[:3] == ["vidas", "actual", "grabar"] or (partes and partes[0] == "grabaciones"):
+        _post_lab(h, tel, partes, datos)
     elif partes == ["vidas", "actual", "parar"]:
         vida = tel.vida_actual()
         if vida is None or not vida["activa"]:
@@ -363,6 +389,68 @@ def _post_vivero(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -
         h._json(200, viv.pedir_borrado(partes[1]))
     elif len(partes) == 4 and partes[0] == "coleccion" and partes[2:] == ["borrar", "confirmar"]:
         h._json(200, viv.confirmar_borrado(partes[1], cuerpo.get("testigo")))
+    else:
+        raise _desconocida()
+
+
+# --- Laboratorio (T5a): directo, grabaciones y mapa de Componentes ------------------------------------------------------
+def _n(texto: str) -> int:
+    if not texto.isdigit():
+        raise ErrorApi(400, "campo_invalido", f"latido: se esperaba un número de registro, hay {texto!r}", "n")
+    return int(texto)
+
+
+def _get_lab(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list]) -> None:
+    lab = tel.lab
+    if partes == ["vidas", "actual", "latidos"]:
+        h._json(200, lab.directo.indice(_n(query.get("desde", ["0"])[0])))
+    elif len(partes) == 4 and partes[:3] == ["vidas", "actual", "latidos"]:
+        h._json(200, {"registro": lab.directo.registro(_n(partes[3]))})
+    elif partes == ["grabaciones"]:
+        h._json(200, {"grabaciones": lab.grabaciones.listar(), "grabando": lab.grabando()})
+    elif len(partes) == 2 and partes[0] == "grabaciones":
+        ruta = lab.grabaciones.existente(partes[1])
+        if partes[1] == lab.grabaciones.en_curso:
+            raise ErrorApi(409, "grabacion_en_curso", "esta grabación aún se está escribiendo: termínala para descargarla")
+        with open(ruta, "rb") as f:
+            cuerpo = f.read()
+        h.send_response(200)
+        h.send_header("Content-Type", "application/gzip")
+        h.send_header("Content-Disposition", f'attachment; filename="{partes[1]}.jsonl.gz"')
+        h.send_header("Content-Length", str(len(cuerpo)))
+        h.end_headers()
+        h.wfile.write(cuerpo)
+    elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "indice":
+        h._json(200, lab.grabaciones.indice(partes[1]))
+    elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2] == "latidos":
+        h._json(200, {"registro": lab.grabaciones.abrir(partes[1]).registro(_n(partes[3]))})
+    elif partes == ["componentes"]:
+        try:
+            h._json(200, componentes.catalogo())
+        except componentes.SinCatalogo:
+            raise ErrorApi(404, "componentes_no_disponibles",
+                           "esta instalación no trae doc-repositorio/componentes.toml (instala IdA en modo editable)") from None
+    else:
+        raise _desconocida()
+
+
+def _post_lab(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
+    lab = tel.lab
+    cuerpo = datos if isinstance(datos, dict) else {}
+    if partes == ["vidas", "actual", "grabar"]:
+        vida = tel.vida_actual()
+        if vida is None or not vida["activa"]:
+            raise ErrorApi(404, "sin_vida", "no hay ninguna vida en curso")
+        h._json(201, {"grabacion": tel.grabar()})
+    elif partes == ["vidas", "actual", "grabar", "terminar"]:
+        g = lab.terminar(esperar=True)
+        if g is None:
+            raise ErrorApi(409, "sin_grabacion", "no se está grabando")
+        h._json(200, {"grabacion": lab.grabaciones.resumen(g["id"])})
+    elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "borrar":
+        h._json(200, lab.grabaciones.pedir_borrado(partes[1]))
+    elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2:] == ["borrar", "confirmar"]:
+        h._json(200, lab.grabaciones.confirmar_borrado(partes[1], cuerpo.get("testigo")))
     else:
         raise _desconocida()
 

@@ -43,7 +43,7 @@ class IdaAntesala extends HTMLElement {
       paso: 1, mundos: null, presets: null, rasgos: [], rangos: {}, error: '',
       mundo: previo.mundo || 'crafter', caracter: previo.caracter || 'optimo', arquetipo: null,
       companeros: {}, coleccion: {}, origen: null, adoptarId: '', fichaError: '',
-      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false,
+      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false, grabar: false,
       instalaciones: {}, lanzando: false, errorLanzar: '',
     };
     this._alIdioma = () => this.pintar();
@@ -348,6 +348,8 @@ class IdaAntesala extends HTMLElement {
               ${htmlOpciones(avanzadas, e.opciones)}
               <div class="campo"><label class="interruptor"><input type="checkbox" id="sin_experiencia" ${e.sin_experiencia ? 'checked' : ''}>
                 <span>${esc(t('empezar.sin_experiencia'))}</span></label><small>${esc(t('empezar.sin_experiencia_ayuda'))}</small></div>
+              <div class="campo"><label class="interruptor"><input type="checkbox" id="grabar" ${e.grabar ? 'checked' : ''}>
+                <span>⏺ ${esc(t('empezar.grabar'))}</span></label><small>${esc(t('empezar.grabar_ayuda'))}</small></div>
             </div>
           </details>
         </form>
@@ -487,6 +489,7 @@ class IdaAntesala extends HTMLElement {
       this.querySelector('[data-resumen-semilla]').textContent = e.semilla;
     });
     this.querySelector('#sin_experiencia').addEventListener('change', (ev) => { e.sin_experiencia = ev.target.checked; });
+    this.querySelector('#grabar').addEventListener('change', (ev) => { e.grabar = ev.target.checked; });   // T5a (O7)
     this.querySelectorAll('input[name="origen"]').forEach((r) => r.addEventListener('change', () => {
       e.origen = r.value;
       if (r.value === 'adoptar' && !e.adoptarId) e.adoptarId = ((e.coleccion[e.mundo] || [])[0] || {}).id || '';
@@ -549,6 +552,7 @@ class IdaAntesala extends HTMLElement {
     if (e.caracter === 'personalizado') cuerpo.arquetipo = e.arquetipo;
     else cuerpo.caracter = e.caracter;
     if (reemplazar) cuerpo.reemplazar = true;
+    if (e.grabar) cuerpo.grabar = true;   // T5a: graba desde el primer latido, con el nivel completo
     return cuerpo;
   }
 

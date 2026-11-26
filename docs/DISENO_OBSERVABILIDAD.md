@@ -367,6 +367,7 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O9, O19, O20, O21, fase T4 | Tras la prueba de usuario del autor: O9 confirmado (compañero por mundo); O19 (profundidad por capas), O20 (el visionado no es el plazo del latido) y O21 (Snake en la web real, a la vista), aprobadas por el autor. T4 se parte en T4a y T4b | Prueba de usuario del autor de T3 |
 | 26/11/2026 | O3, O5, O8, O19, O20, O21, secciones 6.2, 11 y 12 | T4a: Vivero por tarjetas (Cuerpo y ánimo, Ahora, Lo que sabe, Logros y puntuación, Carácter; Estirpe como hueco) con «Ver más» en panel lateral y «Abrir en el Laboratorio»; diario de hechos y acción en frase (plantillas es/en y etiquetas de clases por mundo en `web/i18n/clases/`); ritmo cómodo por mundo en el catálogo, ritmos pausa/lento/cómodo/×4/máximo y paso a paso (`POST vidas/actual/paso`); SSE al nivel cognitivo con el diario de la vida; opciones con `etiquetas_valores` y `destacada`; Snake con la web real a la vista; escena sin franjas, tema sistema/claro/oscuro, flechas entre presets. Equivalencia OK; invariancia OK con observador completo; 1305 tests | Rama `vista/t4a-vivero` |
 | 26/11/2026 | O3, O5, O9, O10, O19, secciones 4, 5, 11, 12 y 13 | T4b: compañero por mundo y colección (`<datos>/vivero/`: fichas v1, estirpes archivadas e índice), ficha de individuo v1 con conversión de las antiguas del panel, guardar, adoptar (archiva el compañero de antes), renombrar, exportar, importar y borrar en dos pasos con testigo; «Empezar de cero» desde la aplicación archiva en vez de borrar (la CLI no cambia); ranking por mundo; antesala con «Tu compañero»; tarjeta Estirpe con su «Ver más» (linaje y mutación de cada rasgo) y página Colección. Registro (sigue siendo v1): registro de cierre con lo aprendido al morir (`cierre: true`), `resumen_saber` (vital) y `requisitos` (cognitivo). Barras del cuerpo con nombre por mundo; reparto entre sistemas desde el inicio de la vida. Equivalencia OK; invariancia OK con observador completo; 1325 tests | Rama `vista/t4b-estirpe` |
+| 26/11/2026 | O1, O3, O7, O12, O13, O16, O19, secciones 11, 12 y 14 | T5a: base del Laboratorio (`#/lab`). Grabar desde la antesala y el Vivero en `<datos>/grabaciones/<mundo>-<fecha>.jsonl.gz` (nivel completo, desde el latido siguiente, cabecera con `origen` y `empieza_tras`), con un hilo propio que no alarga el latido; lista, descarga y borrado en dos pasos; el directo sin grabar (últimos 2000 latidos en memoria); reproductor con tres fuentes (directo, grabación, fichero), línea de tiempo con hechos, paso a paso, ir a un latido y velocidad; vista Latido (los 8 pasos de D1 con la Onda animada, piezas por autor, consumo, guillotina y tribunal); vista Ingeniería (mapa de Componentes desde `componentes.toml` con tiempos y medias); O13: `analogo` y `descripcion` en es/en en los 74 elementos (tres análogos vacíos a propósito) y ficha de Componente con su decisión. API nueva en la sección 11. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1345 tests | Rama `vista/t5a-laboratorio` |
 | 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
 
 ## 11. API v1 del servidor (T3)
@@ -387,7 +388,8 @@ clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_n
 `mundo_desconocido`, `mundo_no_instalado`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`,
 `ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_pausa`, `sin_extra`, `extra_desconocido`,
 `instalacion_en_curso`, `instalacion_desconocida`, `error_interno` y, desde T4b, `sin_companero`, `id_invalido`,
-`elemento_desconocido`, `nombre_invalido`, `testigo_invalido`.
+`elemento_desconocido`, `nombre_invalido`, `testigo_invalido` y, desde T5a, `grabacion_en_curso`, `sin_grabacion`,
+`grabacion_desconocida`, `grabacion_invalida`, `latido_fuera`, `componentes_no_disponibles`.
 
 | Método y ruta | Cuerpo | Respuesta | Errores |
 |---|---|---|---|
@@ -413,8 +415,20 @@ clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_n
 | `POST /api/v1/coleccion/{id}/adoptar` | — | 200 `{companero, archivada}` | 400 `id_invalido`; 404 `elemento_desconocido`; 409 `vida_en_curso` |
 | `POST /api/v1/coleccion/{id}/borrar` | — | 200 `{testigo, caduca_s, elemento}`: **no borra**; dice qué se borraría | 400 `id_invalido`; 404 `elemento_desconocido` |
 | `POST /api/v1/coleccion/{id}/borrar/confirmar` | `{testigo}` | 200 `{borrado: id}` | 400 `id_invalido`, `testigo_invalido` (falta, caducado, usado o de otro elemento); 404 `elemento_desconocido` |
+| `POST /api/v1/vidas/actual/grabar` | — | 201 `{grabacion: {id, registros, nivel, empieza_tras, primero}}`: graba desde el latido siguiente (T5a, sección 14.1) | 404 `sin_vida`; 409 `grabacion_en_curso` |
+| `POST /api/v1/vidas/actual/grabar/terminar` | — | 200 `{grabacion}` (resumen de la lista) | 409 `sin_grabacion` |
+| `GET /api/v1/vidas/actual/latidos[?desde=n]` | — | 200 `{lanzamiento, mundo, maximo, primero, siguiente, indice, tiempos_medios, fases_medias, registros, guillotinas}`: el directo en memoria (14.2) | 400 `campo_invalido` |
+| `GET /api/v1/vidas/actual/latidos/{n}` | — | 200 `{registro}` con su escena vigente | 400 `campo_invalido`; 404 `latido_fuera` |
+| `GET /api/v1/grabaciones` | — | 200 `{grabaciones: [{id, mundo, creada, nivel, semilla, commit, empieza_tras, bytes, registros, en_curso, valida}], grabando}` | — |
+| `GET /api/v1/grabaciones/{id}` | — | 200 el `.jsonl.gz` (`application/gzip`, `Content-Disposition: attachment`) | 400 `id_invalido`; 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
+| `GET /api/v1/grabaciones/{id}/indice` | — | 200 `{grabacion, cabecera, truncada, indice, tiempos_medios, fases_medias, registros, guillotinas}` | 400 `id_invalido`, `grabacion_invalida`; 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
+| `GET /api/v1/grabaciones/{id}/latidos/{n}` | — | 200 `{registro}` con su escena vigente | 400 `id_invalido`, `campo_invalido`; 404 `grabacion_desconocida`, `latido_fuera` |
+| `POST /api/v1/grabaciones/{id}/borrar` | — | 200 `{testigo, caduca_s, grabacion}`: **no borra** | 400 `id_invalido`; 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
+| `POST /api/v1/grabaciones/{id}/borrar/confirmar` | `{testigo}` | 200 `{borrada: id}` | 400 `id_invalido`, `testigo_invalido`; 404 `grabacion_desconocida` |
+| `GET /api/v1/componentes` | — | 200 `{componentes: [{nombre, tipo, clase, dueno, destino, hoy, sistema, modulo, preatentivo, aprende, decision, sustituye, nota, analogo, descripcion, clave_tiempo, mundos, nucleo}], decisiones: {D<n>: {titulo, texto}}, mundos}` (14.5, 14.6) | 404 `componentes_no_disponibles` |
 
-**Lanzar una vida.** `mundo` es obligatorio. Las opciones se completan con los defectos declarados y se validan con
+**Lanzar una vida.** `mundo` es obligatorio. Desde T5a, `grabar: true` la graba desde el primer latido (sección 14.1)
+y, si no se da `nivel`, con el completo. Las opciones se completan con los defectos declarados y se validan con
 `ida/mundos/opciones.py` (O8). El carácter, por orden: `arquetipo` (los cinco rasgos, en [0, 1]); un preset `caracter`
 (`optimo` por defecto, que depende del mundo; `azar` deja que lo derive la semilla); el de la `ficha`. La `ficha` es el
 JSON de individuo de hoy (`arquetipo`, `arquetipo_actual` o la última de `generaciones`, y `legado`); si dice otro
@@ -503,7 +517,7 @@ SSE al nivel cognitivo (`?nivel=cognitivo`): no necesita nada del completo.
 | Estirpe | desde T4b, la línea de tiempo de la estirpe, su mejor Score, *Guardar* y *Colección* (sección 13.4) | el linaje entero y la mutación de cada rasgo | `GET companeros/{m}`, `generacion` |
 
 Al pie de cada detalle, «Abrir en el Laboratorio» lleva a `#/lab?seccion=<tarjeta>` (el Laboratorio dice de dónde se
-viene; la vista es T5). Junto a la escena va el diario: los 7 hechos más recientes con icono y sprite (los cambios de
+viene). Desde T5a, también al latido que se estaba viendo (sección 14.3). Junto a la escena va el diario: los 7 hechos más recientes con icono y sprite (los cambios de
 plan, muchos y técnicos, van al detalle de «Ahora»).
 
 **Frases.** Ninguna sale del motor: la interfaz las forma con el tipo y los parámetros (O5). Las plantillas comunes
@@ -685,3 +699,132 @@ barra que no tiene sentido en un mundo no se declara y no se enseña.
 
 El servidor cuenta el sistema de cada acción de la vida en curso desde su primer latido (como el diario) y lo manda en
 el evento `diario`; el Vivero lo continúa con cada registro. «Ver más» de Ahora dice ya «desde el inicio de la vida».
+
+## 14. Laboratorio: grabar, reproducir, Latido e Ingeniería (T5a)
+
+Fijado en T5a (26/11/2026). La base del Laboratorio (O1): la vista experta que explica **cómo** funciona IdA latido a
+latido. Todo sale del registro del latido v1 que ya publica el servidor (sección 4): no se pide nada al motor y nada de
+esto cambia la conducta (O3). El código: `ida/telemetria/laboratorio.py` (directo, grabaciones, hilo de escritura),
+`ida/telemetria/componentes.py` (mapa de Componentes para la API), las rutas en `api_v1.py`, y en `web/`:
+`vistas/lab.js` (página, reproductor y grabaciones), `lab/fuentes.js`, `lab/linea.js`, `lab/latido.js`,
+`lab/ingenieria.js` y `lab/catalogo.js`. T5b añadirá Epistemología, Biología y química, Análisis y comparación.
+
+### 14.1 Grabar desde el Vivero y la antesala (O7)
+
+- **Al lanzar:** «Avanzado → Grabar esta vida» en la antesala (`POST vidas` con `grabar: true`). Sin `nivel` explícito,
+  la vida va con el nivel **completo** (el de la aplicación, sección 11).
+- **En marcha:** «⏺ Grabar» en el Vivero (`POST vidas/actual/grabar`): graba desde el latido siguiente al último
+  publicado. «■ Terminar grabación» (`POST vidas/actual/grabar/terminar`) la cierra; si no, se cierra sola al terminar o
+  pararse la vida, después del registro de cierre (13.5). Una grabación a la vez.
+- **Dónde:** `<datos>/grabaciones/<mundo>-<AAAAMMDD>-<HHMMSS>.jsonl.gz` (con `-2`, `-3`... si coincide el segundo). La
+  API solo acepta identificadores `^[a-z]+-\d{8}-\d{6}(-\d{1,3})?$`: ninguna ruta sale de esa carpeta.
+- **Formato:** el de siempre (`ida/telemetria/grabacion.py`, sección 4). La cabecera añade `origen: "vivero"` y
+  `empieza_tras` (`{vida, latido}` del último registro antes de empezar, o `null` desde el primero). El primer registro
+  de la grabación y el primero de cada vida llevan siempre su escena vigente, aunque no haya cambiado: el lector la
+  reconstruye desde ahí (`grabacion.escenas`).
+- **Sin coste para la vida:** `Telemetria.publicar` solo encola el registro; un hilo propio (`Laboratorio`) lo comprime
+  para el directo y lo escribe en la grabación, en el orden de publicación. `tests/test_laboratorio.py` comprueba que una
+  vida de mínimo hace las mismas acciones grabando y sin grabar.
+- **Lista y borrado:** como la colección (13.3): `pedir` da un testigo de un solo uso (120 s) y lo que se borraría;
+  `confirmar` con ese testigo borra. Mientras se escribe, una grabación no se abre, descarga ni borra
+  (`grabacion_en_curso`).
+
+### 14.2 El directo sin grabar
+
+El servidor guarda los **últimos 2000 registros** de la vida lanzada en curso (`laboratorio.LATIDOS_DIRECTO`),
+comprimidos con zlib de nivel 1 y con su escena vigente. **Por qué 2000:** un registro completo de Crafter ocupa de media
+62 KB en JSON y 10,3 KB comprimido (máximo 12,1 KB; 120 latidos, semilla 31, plazo lógico 40, 26/11/2026), así que 2000
+son unos 21 MB. Cubre la vida entera de lo que se lanza por defecto desde la antesala (300 latidos) y, a ritmo cómodo en
+Crafter (250 ms por latido), algo más de 8 minutos de lo visto; más se graba. El índice (latido, vida, hechos, guillotina,
+candidatos) y las medias de tiempo se mantienen al quitar los más antiguos.
+
+### 14.3 Reproductor (`#/lab`)
+
+| Fuente | De dónde salen el índice y cada latido |
+|---|---|
+| **En directo** | `GET vidas/actual/latidos[?desde=n]` (índice incremental, cada segundo) y `GET vidas/actual/latidos/{n}` |
+| **Grabación de la lista** | `GET grabaciones/{id}/indice` y `GET grabaciones/{id}/latidos/{n}`: el servidor la lee una vez (descompresión incremental: una grabación cortada vale hasta su última línea entera, y lo dice) y guarda cada línea comprimida; dos grabaciones abiertas a la vez como mucho |
+| **Fichero cargado** | en el navegador (`DecompressionStream` para `.gz`): `.jsonl.gz`, `.jsonl` o un registro `.json`; no se sube |
+
+Línea de tiempo (SVG) con los hechos del índice: ★ logro, ● lo aprendido (y peligro, sorpresa, duda, refuta), ✕
+muerte, ▲ nacimiento, raya roja en cada guillotina y raya discontinua entre vidas; al pasar, la frase del hecho
+(`frases.js`, la del Vivero); al pulsar, va a ese latido. Debajo, un deslizador accesible con el teclado. Mandos: al
+principio, atrás, reproducir/pausa, adelante, al final (en directo, «seguir el directo»), ir a un latido y velocidad
+(0,5 a 8 latidos por segundo). La escena pequeña y el resumen del latido van en la columna lateral, fija al bajar.
+
+**Desde el Vivero.** «Abrir en el Laboratorio» lleva a `#/lab?seccion=<tarjeta>&fuente=directo&vida=<v>&latido=<l>`: el
+latido que se estaba viendo (si sigue en la memoria del directo) y el paso que explica esa tarjeta: Cuerpo y ánimo →
+Core·Sentir; Ahora → Tribunal; Lo que sabe → Plasticidad; Logros → Cierre; Carácter y Estirpe → Onda, con el aviso de que
+su vista propia es de T5b.
+
+### 14.4 Vista «Latido»
+
+Los ocho pasos de D1 en un SVG, para el latido elegido. La Onda (un punto) los recorre y se detiene en cada uno en
+proporción a su tiempo medido; con `prefers-reduced-motion`, sin animación.
+
+| Paso (D1) | Qué enseña | Campos del registro |
+|---|---|---|
+| 1 Onda | latido, vida, si es el registro de cierre | `latido`, `vida`, `cierre` |
+| 2 Core·Sentir | piezas en bruto y tiempo (observar + sentir) | piezas de los sensores del Core, `fases` `percibir` y `sentir` |
+| 3 Preatención | piezas anotadas (modificadas) y tiempo; borde discontinuo: no paga atención | `piezas[].registro` (`modificar` por un preatentivo), `fases` `preatencion`, `tiempos_ms` `preatencion:*` |
+| 4 Plasticidad | Componentes plásticos montados, lo aprendido en el latido, tiempo del paso | `componentes.toml` (`aprende`), `hechos`, `experiencia.aprendizaje`, `fases` `aprender` |
+| 5 Regulación | plazo, amplitud y potencia del latido | `ritmo.plazo_ms`, `ritmo.amplitud[1]`, `ritmo.potencia[1]` |
+| 6 S1, S2, S3 | tiempo por módulo, amplitud y potencia consumidas, lo que quedaba al entrar, piezas creadas, candidatos, estrategia activa, guillotina | `tiempos_ms`, `onda.consumo`, `onda.restante`, `tribunal.candidatos`, `estrategias`, `ritmo.guillotina` |
+| 7 Tribunal | los candidatos con base, activa, proactiva, plus y total, y el ganador | `tribunal` |
+| 7 Actuar | acción, primitivas ejecutadas, éxito y tiempo | `accion`, pieza `Accion` de `ef` (`carga.primitivas`), `fases` `actuar` |
+| 8 Cierre | hechos de vida, episodio y expectativa | `hechos`, `experiencia` |
+
+**Piezas y autoría.** Cada pieza de `ef` va al paso de su autor (`Pieza.origen`): los sensores del Core a Sentir, `S1.*`
+a S1 (salvo los preatentivos, a Preatención), `CORE.Organismo` (la sorpresa al contrastar) a Plasticidad,
+`CORE.Tribunal` al Tribunal y `CORE` (la acción ejecutada) a Actuar. En el detalle de cada paso: **salen** (las que crea),
+**modifica** (las de otros que toca, del registro de la pieza en ese latido) y **le entran** (las de pasos anteriores de
+las que se formaron las suyas, por `entradas`). Al pulsar una pieza, su registro entero; al pulsar un autor o un
+Componente, su ficha.
+
+**Límites.** El registro mide la plasticidad entera, no cada Componente que aprende (salen sin tiempo propio). La
+regulación se calcula al crear la Onda en la fase A (D12): no tiene tiempo aparte. «Le entran» solo ve las `entradas`
+declaradas: no hay registro de lecturas. Con un registro cognitivo (sin `piezas` ni `tiempos_ms`), la vista lo dice y
+enseña lo que hay.
+
+### 14.5 Vista «Ingeniería»
+
+El mapa de Componentes de cada sistema (Core, S1, S2, S3 y cuerpo) sale de `GET componentes` (`componentes.toml`, la
+misma fuente que los diagramas 06 y 07, con la misma regla de montaje: lo comprueba `tests/test_laboratorio.py`). Por
+defecto enseña lo que monta el mundo de la vida; lo demás, a petición y en gris. Cada Componente lleva su tiempo en el
+latido (barra, escala logarítmica: el Actuador al mover tarda milisegundos y casi todos los demás, microsegundos) y la
+media de la fuente (raya); preatentivos (◐) y plásticos (✱) marcados; estrategias con la activa y la ejecutada; la
+guillotina en el sistema donde cortó y «sin turno» en los siguientes. El Actuador mide por verbo
+(`CORE.Actuador_<VERBO>`) y se suma.
+
+### 14.6 Análogo biológico y descripción (O13)
+
+`componentes.toml` gana dos campos en los 74 elementos: `analogo = {es, en}` (la correspondencia neurocientífica o
+biológica: estructura, circuito o proceso) y `descripcion = {es, en}` (qué hace en IdA, para alguien no técnico).
+`herramientas/mapa_componentes.py` los valida (tablas `{es, en}` de texto; descripción no vacía; análogo vacío en los dos
+idiomas o en ninguno) y no los saca en 06 ni en 07. Tres análogos están vacíos a propósito, porque no hay uno honesto:
+`SeguirEnMovimiento` (último recurso para mundos que no dejan esperar), `Sujeto` (paso de representación interno de S2)
+y `Geometria` (geometría de la rejilla, herramienta de ingeniería). Los que son aproximados lo dicen («análogo
+aproximado»: `Peticion`).
+
+**Ficha de Componente** (en el lateral, desde Latido e Ingeniería): nombre, sistema y módulo, clase (general, opcional,
+del cuerpo o del mundo, con su dueño), preatentivo o plástico, análogo, qué hace, su tiempo en el latido y su media,
+la decisión de diseño (`D<n>` con su título y su texto de `docs/DISENO_COMPONENTES.md`, en español) o «anterior a la
+reorganización», si el mundo lo monta y la nota técnica.
+
+### 14.7 Capturas
+
+26/11/2026, Chromium de Playwright a 1280 px (la del latido, 1280 × 1500; una, 1024 px); servidor con datos en
+`F:\tmp\t5a\datos`; grabación de Crafter lanzada por la API (semilla 31, plazo lógico 40, 242 registros, nivel
+completo); latido 57, con tres candidatos en el Tribunal; sin errores en la consola del navegador.
+
+![Latido en inglés y oscuro: tribunal disputado, la ficha del Tribunal y la pieza «decision» abiertas](img/t5a_latido_en_oscuro.png)
+
+![Ingeniería en inglés y oscuro: tiempos del latido y su media, con la ficha de Amenaza](img/t5a_ingenieria_en_oscuro.png)
+
+![Reproductor: línea de tiempo con logros, lo aprendido, el nacimiento y la muerte](img/t5a_reproductor_en_oscuro.png)
+
+![Grabaciones, con el primer paso del borrado](img/t5a_grabaciones_en_oscuro.png)
+
+Otras: [la pieza bajo la ficha](img/t5a_latido_pieza_en_oscuro.png), [preatención y Saliencia](img/t5a_latido_saliencia_en_oscuro.png),
+[Latido en español con S3 abierto](img/t5a_latido_es.png), [Ingeniería en español](img/t5a_ingenieria_es.png),
+[desde «Ahora» del Vivero, en directo](img/t5a_desde_vivero_es.png) y [a 1024 px](img/t5a_latido_1024_en_oscuro.png).

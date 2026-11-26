@@ -50,12 +50,24 @@ export const api = {
   adoptar: (id) => pedir('POST', `coleccion/${encodeURIComponent(id)}/adoptar`, {}),
   pedirBorrado: (id) => pedir('POST', `coleccion/${encodeURIComponent(id)}/borrar`, {}),
   confirmarBorrado: (id, testigo) => pedir('POST', `coleccion/${encodeURIComponent(id)}/borrar/confirmar`, { testigo }),
+  // T5a: Laboratorio (grabar, directo en memoria, grabaciones y mapa de Componentes)
+  grabar: () => pedir('POST', 'vidas/actual/grabar', {}),
+  terminarGrabacion: () => pedir('POST', 'vidas/actual/grabar/terminar', {}),
+  directo: (desde = 0) => pedir('GET', `vidas/actual/latidos?desde=${desde}`),
+  latidoDirecto: (n) => pedir('GET', `vidas/actual/latidos/${n}`),
+  grabaciones: () => pedir('GET', 'grabaciones'),
+  indiceGrabacion: (id) => pedir('GET', `grabaciones/${encodeURIComponent(id)}/indice`),
+  latidoGrabacion: (id, n) => pedir('GET', `grabaciones/${encodeURIComponent(id)}/latidos/${n}`),
+  pedirBorradoGrabacion: (id) => pedir('POST', `grabaciones/${encodeURIComponent(id)}/borrar`, {}),
+  confirmarBorradoGrabacion: (id, testigo) => pedir('POST', `grabaciones/${encodeURIComponent(id)}/borrar/confirmar`, { testigo }),
+  componentes: () => pedir('GET', 'componentes'),
 };
 
 /** Enlaces de descarga de fichas v1 (GET con Content-Disposition). */
 export const descargas = {
   elemento: (id) => `/api/v1/coleccion/${encodeURIComponent(id)}/exportar`,
   companero: (mundo) => `/api/v1/companeros/${encodeURIComponent(mundo)}/exportar`,
+  grabacion: (id) => `/api/v1/grabaciones/${encodeURIComponent(id)}`,
 };
 
 /** EventSource con oyentes por evento; devuelve una función para cerrarlo. */

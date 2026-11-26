@@ -34,7 +34,9 @@ from ida.historico import cargar_linaje, conmutar_fijado, exportar_individuo, ex
 from ida.telemetria import api_v1
 from ida.telemetria.compat import a_panel
 from ida.telemetria.esquema import VERSION
+from ida.telemetria.grabacion import cabecera, commit_actual
 from ida.telemetria.instalador import Instalador
+from ida.telemetria.laboratorio import Laboratorio
 from ida.telemetria.ritmo import RITMOS, Regulador
 from ida.telemetria.vivero import Vivero
 
@@ -275,6 +277,7 @@ class Telemetria:
         self.datos = datos
         from ida.ejecutor import DATOS
         self.vivero = Vivero(datos or DATOS)                      # T4b: compañeros y colección (sección 13)
+        self.lab = Laboratorio(datos or DATOS)                    # T5a: directo en memoria, grabar y grabaciones
         self.instalador = instalador or Instalador()
         self.ritmo = Regulador("comodo")                          # O3, O20: ritmo visible de la vida en curso
         self._diario: deque = deque(maxlen=DIARIO_MAX)            # hechos recientes de la vida en curso (con su latido)
@@ -370,7 +373,11 @@ class Telemetria:
             "ritmo_ajustable": not tiempo_real, "ritmos": [] if tiempo_real else list(RITMOS),
             "ritmo_comodo_ms": None if tiempo_real else (frecuencia if comodo is None else float(comodo)),
             "archivada": archivada["id"] if archivada else None,
+            "sin_experiencia": bool(config.get("sin_experiencia", False)),
         }
+        self.lab.nueva_vida(self._vidas, mundo)   # T5a: el directo del Laboratorio empieza con esta vida
+        if config.get("grabar"):
+            self.grabar()                          # T5a: grabar desde el primer latido
         self.simulacion_activa = True
         evento_parada, regulador = self.evento_parada, self.ritmo
         datos = os.path.join(self.datos, mundo) if self.datos else None
@@ -416,6 +423,7 @@ class Telemetria:
                 return
             self._vida["activa"] = False
         self.simulacion_activa = False
+        self.lab.terminar(esperar=False)   # T5a: la grabación se cierra tras escribir el último registro (el de cierre)
         if self.ultimo is not None:
             self._difundir(dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion"))
         self._difundir_registro("fin", self.vida_actual())
@@ -435,7 +443,21 @@ class Telemetria:
         r = self.ultimo_registro
         if r is not None:
             vida.update(latido=r["latido"], vida=r["vida"], generacion=r["generacion"], individuo=r["individuo"])
+        vida["grabacion"] = self.lab.grabando() if vida["activa"] else None
         return vida
+
+    def grabar(self) -> Dict[str, Any]:
+        """Empieza a grabar la vida en curso (T5a, O7): desde el latido siguiente al último publicado (o desde el primero,
+        si aún no ha latido), en ``<datos>/grabaciones/<mundo>-<fecha>.jsonl.gz``, al nivel de la vida."""
+        v = self._vida
+        if v is None:
+            raise ValueError("sin vida")
+        r = self.ultimo_registro
+        cab = cabecera(v["mundo"], v["nivel"], v["semilla"], v["latidos"], v["generaciones"], v["opciones"], v.get("arquetipo"),
+                       v["plazo_logico"], bool(v.get("sin_experiencia")), commit_actual())
+        cab["origen"] = "vivero"
+        cab["empieza_tras"] = None if r is None else {"vida": r.get("vida"), "latido": r.get("latido")}
+        return self.lab.empezar(v["mundo"], cab)
 
     def fijar_ritmo(self, ritmo: str) -> str:
         """Fija el ritmo (``x1`` se admite como ``comodo``) y lo difunde; devuelve el nombre canónico."""
@@ -510,6 +532,7 @@ class Telemetria:
             self._escena, self._vida_escena = None, registro.get("vida")
         if "escena" in registro:
             self._escena = registro["escena"]
+        self.lab.poner(registro)     # T5a: al directo del Laboratorio y, si se graba, a la grabación (otro hilo)
         hechos = registro.get("hechos") or []
         accion = registro.get("accion")
         marca = {"latido": registro.get("latido"), "vida": registro.get("vida"), "generacion": registro.get("generacion")}
@@ -560,6 +583,7 @@ class Telemetria:
 
     def detener(self) -> None:
         self.detener_simulacion()
+        self.lab.cerrar()
         self.activo = False
         self.servidor.shutdown()
         self.servidor.server_close()
