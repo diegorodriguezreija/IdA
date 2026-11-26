@@ -4,7 +4,8 @@ El registro lo produce ``ida.telemetria.observador.Observador`` al final de cada
 uno incluye al anterior:
 
 - ``vital``: ritmo, cuerpo, química, afecto, necesidades, acción, puntuación y logros, hechos, experiencia (las frases de
-  la consola de siempre), memoria (recuentos), contadores, arquetipo y vista de texto.
+  la consola de siempre), memoria (recuentos), contadores, arquetipo, vista de texto y, si el mundo la da y ha cambiado
+  desde el latido anterior, la escena (``escena``, O6; esquema en ``ESCENAS`` y ``validar_escena``).
 - ``cognitivo``: la Onda (canales, piezas de ``ev`` y ``acc`` con su autoría, flujo, consumo), el Tribunal con sus
   candidatos, las estrategias y lo que se sabe (las 20 proposiciones de más confianza).
 - ``completo``: tiempos por Componente, fases del latido y todas las piezas de ``ef`` con su registro.
@@ -51,6 +52,7 @@ ESQUEMA: Dict[str, Dict[str, Any]] = {
         "contadores": ("map", "int"),
         "arquetipo": ("map", "num"),
         "vista": "str",
+        "?escena": "any",      # solo cuando cambia (O6); se valida aparte con ``validar_escena``
     },
     "cognitivo": {
         "onda": {
@@ -107,6 +109,86 @@ APRENDE: Dict[str, Dict[str, Any]] = {
     "requisito": {"verbo": "str", "requiere": ("map", "any"), "cerca": ("list", "str"), "efecto": ("map", "any"),
                   "confirmado": "bool"},
 }
+
+
+# Escena v1 (O6, sección 6 de docs/DISENO_OBSERVABILIDAD.md): tipo -> campos. Comunes a todos: ``tipo``, ``inventario``
+# y ``extra``. Coordenadas enteras desde 0, con ``x`` hacia la derecha e ``y`` hacia abajo (la fila 0 es la de arriba).
+_COMUNES: Dict[str, Any] = {"tipo": "str", "inventario": ("map", "num"), "extra": ("map", "any")}
+ESCENAS: Dict[str, Dict[str, Any]] = {
+    "rejilla": {
+        **_COMUNES, "ancho": "int", "alto": "int",
+        "celdas": ("list", ("list", ("opt", "str"))),                 # alto filas de ancho clases (None: nada que dibujar)
+        "entidades": ("list", {"clase": "str", "x": "int", "y": "int", "?id": "str", "?estado": "str"}),
+        "yo": ("opt", {"x": "int", "y": "int", "?orientacion": ("opt", "str"), "?estado": "str"}),
+        "?origen": ("list", "int"),                                     # [x, y] del mundo de la celda (0, 0), si lo hay
+    },
+    "arbol": {
+        **_COMUNES,
+        "nodos": ("list", {"ruta": "str", "clase": "str", "padre": ("opt", "str"), "?id": "str", "?estado": "str"}),
+        "entidades": ("list", {"clase": "str", "ruta": "str", "?id": "str", "?nombre": "str", "?estado": "str"}),
+        "yo": ("opt", {"ruta": "str"}),
+    },
+    "tablero": {
+        **_COMUNES, "ancho": "int", "alto": "int",
+        "piezas": ("list", {"clase": "str", "color": "str", "x": "int", "y": "int"}),
+        "yo": ("opt", {"color": "str"}),
+        "turno": ("opt", "str"),
+        "?marcas": ("list", {"clase": "str", "x": "int", "y": "int"}),   # última jugada, jaque...
+    },
+}
+ORIENTACIONES = ("norte", "sur", "este", "oeste")
+
+
+def _dentro(p: Any, ancho: int, alto: int) -> bool:
+    x, y = p.get("x"), p.get("y")
+    return isinstance(x, int) and isinstance(y, int) and 0 <= x < ancho and 0 <= y < alto
+
+
+def validar_escena(escena: Any, ruta: str = "escena") -> List[str]:
+    """Errores de una escena frente al contrato v1 (lista vacía: válida): campos y tipos de ``ESCENAS`` y coherencia
+    (dimensiones de la rejilla, coordenadas dentro, nodos y rutas que existen)."""
+    if not isinstance(escena, dict):
+        return [f"{ruta}: se esperaba un objeto, hay {type(escena).__name__}"]
+    tipo = escena.get("tipo")
+    if tipo not in ESCENAS:
+        return [f"{ruta}.tipo: se esperaba uno de {tuple(ESCENAS)}, hay {tipo!r}"]
+    errores: List[str] = []
+    _objeto(escena, ESCENAS[tipo], ruta, errores)
+    if errores:
+        return errores
+    if tipo in ("rejilla", "tablero"):
+        ancho, alto = escena["ancho"], escena["alto"]
+        if ancho <= 0 or alto <= 0:
+            errores.append(f"{ruta}: ancho y alto deben ser positivos")
+        cosas = escena["entidades"] if tipo == "rejilla" else escena["piezas"] + escena.get("marcas", [])
+        for c in cosas:
+            if not _dentro(c, ancho, alto):
+                errores.append(f"{ruta}: {c.get('clase')!r} ({c.get('x')}, {c.get('y')}) fuera de {ancho}×{alto}")
+                break
+    if tipo == "rejilla":
+        celdas = escena["celdas"]
+        if len(celdas) != alto or any(len(f) != ancho for f in celdas):
+            errores.append(f"{ruta}.celdas: deben ser {alto} filas de {ancho}")
+        yo = escena["yo"]
+        if yo is not None:
+            if not _dentro(yo, ancho, alto):
+                errores.append(f"{ruta}.yo: ({yo['x']}, {yo['y']}) fuera de {ancho}×{alto}")
+            if yo.get("orientacion") not in (None,) + ORIENTACIONES:
+                errores.append(f"{ruta}.yo.orientacion: {yo['orientacion']!r} no es una de {ORIENTACIONES}")
+        if "origen" in escena and len(escena["origen"]) != 2:
+            errores.append(f"{ruta}.origen: debe ser [x, y]")
+    if tipo == "arbol":
+        rutas: set = set()
+        for i, n in enumerate(escena["nodos"]):
+            if n["padre"] is not None and n["padre"] not in rutas:
+                errores.append(f"{ruta}.nodos[{i}]: padre {n['padre']!r} desconocido (los padres van antes que los hijos)")
+            rutas.add(n["ruta"])
+        for i, e in enumerate(escena["entidades"]):
+            if e["ruta"] not in rutas:
+                errores.append(f"{ruta}.entidades[{i}]: ruta {e['ruta']!r} no es un nodo")
+        if escena["yo"] is not None and escena["yo"]["ruta"] not in rutas:
+            errores.append(f"{ruta}.yo: ruta {escena['yo']['ruta']!r} no es un nodo")
+    return errores
 
 
 def _tipo(valor: Any, spec: Any, ruta: str, errores: List[str]) -> None:
@@ -193,6 +275,8 @@ def validar(registro: Any) -> List[str]:
         _objeto(registro, ESQUEMA[parte], "", errores)
     for i, h in enumerate(registro.get("hechos") or []):
         _hecho(h, f"hechos[{i}]", errores)
+    if "escena" in registro:
+        errores.extend(validar_escena(registro["escena"]))
     return errores
 
 

@@ -13,6 +13,8 @@ Rutas:
 - ``GET /linaje/descargar`` descarga un individuo o el linaje completo en JSON
 - ``POST /linaje/fijar``   fija o desfija un individuo para la retención
 - ``POST /linaje/restaurar`` valida y extrae parámetros de un JSON restaurado
+- ``/escena``             visor de comprobación de ``escena()`` (T2a): dibuja una grabación cargada en el navegador
+- ``/web/<ruta>``         ficheros estáticos de ``ida/telemetria/web/`` (solo esa carpeta y tipos conocidos)
 """
 
 import json
@@ -21,7 +23,7 @@ import queue
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, unquote, urlparse
 
 from ida.historico import cargar_linaje, conmutar_fijado, exportar_individuo, exportar_linaje_completo
 from ida.telemetria.compat import a_panel
@@ -37,6 +39,30 @@ def plazo_por_defecto(mundo: str) -> Optional[float]:
     from ida.mundos import cargar
 
     return None if cargar(mundo).perfil.tiempo_real else PLAZO_LOGICO_ANTESALA
+
+
+def opciones_por_defecto(mundo: str, dadas: Dict[str, Any]) -> Dict[str, Any]:
+    """O8: lo lanzado desde la antesala usa los valores por defecto declarados por el mundo (``Mundo.opciones()``, los
+    de la medición oficial donde la hay), sustituidos por los que lleguen del formulario, ya comprobados."""
+    from ida.mundos import cargar
+    from ida.mundos.opciones import con_defectos
+
+    return con_defectos(cargar(mundo).opciones(), dadas, mundo)
+
+
+WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
+TIPOS_WEB = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+             ".json": "application/json; charset=utf-8", ".png": "image/png", ".svg": "image/svg+xml"}
+
+
+def fichero_web(ruta: str) -> Optional[str]:
+    """La ruta en disco de ``web/<ruta>`` si es un fichero de un tipo conocido dentro de ``web/``; si no, None."""
+    raiz = os.path.realpath(WEB)
+    destino = os.path.realpath(os.path.join(raiz, unquote(ruta).lstrip("/\\")))
+    if not destino.startswith(raiz + os.sep) or not os.path.isfile(destino):
+        return None
+    return destino if os.path.splitext(destino)[1].lower() in TIPOS_WEB else None
+
 
 PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
 ANTESALA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "antesala.html")
@@ -106,6 +132,13 @@ class _Manejador(BaseHTTPRequestHandler):
         elif ruta == "/panel":
             with open(PANEL, "rb") as f:
                 self._responder(f.read(), "text/html; charset=utf-8")
+        elif ruta == "/escena" or ruta.startswith("/web/"):
+            destino = fichero_web("escena.html" if ruta == "/escena" else ruta[len("/web/"):])
+            if destino is None:
+                self.send_error(404, "Fichero no encontrado")
+                return
+            with open(destino, "rb") as f:
+                self._responder(f.read(), TIPOS_WEB[os.path.splitext(destino)[1].lower()])
         else:
             # En la raíz (/), si hay simulación activa muestra el panel; si no, la antesala
             archivo = PANEL if tel.simulacion_activa else ANTESALA
@@ -199,6 +232,7 @@ class Telemetria:
         """Inicia una simulación en un hilo en segundo plano reutilizando este servidor de telemetría."""
         self.detener_simulacion()
         mundo = config.get("mundo", "minimo")
+        opciones = opciones_por_defecto(mundo, config.get("opciones") or {})   # antes del hilo: el error llega a /iniciar
         self.mundo = mundo
         self.ultimo = None
         self.ultimo_registro = None
@@ -218,7 +252,7 @@ class Telemetria:
                     sin_experiencia=bool(config.get("sin_experiencia", False)),
                     tabula_rasa=bool(config.get("tabula_rasa", False)),
                     cada=int(config.get("cada", 10)),
-                    opciones_mundo=config.get("opciones", {}),
+                    opciones_mundo=opciones,
                     telemetria_instancia=self,
                     evento_parada=self.evento_parada,
                     otel=bool(config.get("otel", False)),

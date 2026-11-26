@@ -2,12 +2,17 @@
 
 Solo lee. No llama a nada que cambie el estado del organismo, de la memoria, del mundo ni del azar: lee atributos,
 propiedades y métodos de consulta (``Soma.valores``, ``Proposicion.estado``, ``Necesidad.deficit``,
-``Mundo.puntuacion``, ``Mundo.vista``). El esquema está en ``ida/telemetria/esquema.py``.
+``Mundo.puntuacion``, ``Mundo.vista``, ``Mundo.escena``). El esquema está en ``ida/telemetria/esquema.py``.
+
+La escena (O6) viaja en el registro solo cuando cambia respecto a la del latido anterior de la misma vida: la primera
+completa y después completa cada vez que cambia. Para reconstruirla al reproducir, la de un latido es la última que
+llegó en esa vida (``ida.telemetria.grabacion.escenas``).
 
 Una excepción documentada (revisada con el autor en T1): en Crafter, ``vista()`` llama a ``_cosas()``, que asigna un id
 a cada criatura vista por primera vez. Entre el final del latido y el ``observar()`` siguiente (que también llama
 primero a ``_cosas()``) el entorno no avanza, así que asigna los mismos ids en el mismo orden: es una caché que no
-cambia la conducta. Lo comprueba ``herramientas/invariancia.py --observador completo``.
+cambia la conducta. Lo mismo vale para ``escena()`` en Crafter, que lee las criaturas por la misma vía (``_cosas()``)
+justo después de ``vista()``. Lo comprueba ``herramientas/invariancia.py --observador completo``.
 
 El núcleo no sabe nada de esto: la base no importa ``ida.telemetria`` (``tests/test_pureza.py``).
 """
@@ -64,12 +69,14 @@ class Observador:
         self.vida = 0
         self._org: Any = None
         self._hechos = Deductor()
+        self._escena: Optional[Dict[str, Any]] = None   # la última escena enviada en esta vida
 
     # --- vida ------------------------------------------------------------------------------------------------------
     def _nueva_vida(self, org: Any) -> None:
         self._org = org
         self.vida += 1
         self._hechos = Deductor()
+        self._escena = None
 
     # --- registro --------------------------------------------------------------------------------------------------
     def registrar(self, org: Any, onda: Onda) -> Dict[str, Any]:
@@ -126,6 +133,12 @@ class Observador:
         r["contadores"] = {str(k): int(v) for k, v in org.contadores.items()}
         r["arquetipo"] = {k: float(getattr(org.arquetipo, k)) for k in RASGOS_ARQUETIPO}
         r["vista"] = str(org.mundo.vista())
+        escena = org.mundo.escena()
+        if escena is not None:
+            escena = a_json(escena)
+            if escena != self._escena:      # solo cuando cambia (O6)
+                r["escena"] = escena
+                self._escena = escena
 
     @staticmethod
     def _necesidades(org: Any, onda: Onda) -> List[Dict[str, Any]]:

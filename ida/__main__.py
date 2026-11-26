@@ -49,10 +49,17 @@ def main(argv=None) -> int:
             tel.detener()
         return 0
 
+    from ida.mundos import cargar
+    from ida.mundos.opciones import OpcionInvalida, convertir
+
     opciones = {}
     for o in a.opcion:
         clave, _, valor = o.partition("=")
         opciones[clave] = int(valor) if valor.isdigit() else valor
+    try:
+        convertir(cargar(a.mundo).opciones(), opciones, a.mundo)   # O8: se comprueba antes de crear nada
+    except OpcionInvalida as e:
+        p.error(str(e))
     ejecutar(
         a.mundo,
         a.latidos,

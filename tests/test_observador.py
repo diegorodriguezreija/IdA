@@ -83,7 +83,7 @@ def test_registros_invalidos(registros, estropear, mensaje):
 def test_el_esquema_admite_campos_nuevos(registros):
     """Las versiones futuras solo añaden campos: un campo desconocido no invalida un registro v1."""
     r = _registro_valido(registros)
-    r["escena"] = {"tipo": "rejilla"}
+    r["campo_futuro"] = {"tipo": "rejilla"}   # «escena» ya es un campo conocido (T2a) y se valida
     r["cuerpo"]["temperatura"] = 36.5
     assert es_valido(r)
     assert validar("no es un registro")

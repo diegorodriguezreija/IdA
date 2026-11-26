@@ -55,7 +55,17 @@ Servicios externos que no se incluyen ni se redistribuyen:
   de terceros con sus propias condiciones de uso.
 
 ==============================================================================
-3. Fuentes
+3. Ficheros de terceros incluidos en el repositorio
+==============================================================================
+
+- ida/telemetria/web/sprites/crafter/*.png: 39 texturas de 16×16 píxeles copiadas sin modificar
+  de la carpeta assets/ del paquete crafter 1.8.3 (Copyright (c) 2021 Danijar Hafner), licencia
+  MIT. El texto de la licencia, tomado de crafter-1.8.3.dist-info/licenses/LICENSE del paquete
+  instalado, va en ida/telemetria/web/sprites/crafter/LICENSE. Solo se copian las que dibuja la
+  escena de Crafter (ida/telemetria/web/sprites/crafter/indice.json). Añadidas el 26/11/2026 (T2a).
+
+==============================================================================
+4. Fuentes
 ==============================================================================
 
 - python-chess: https://github.com/niklasf/python-chess (GPL 3 o posterior).
