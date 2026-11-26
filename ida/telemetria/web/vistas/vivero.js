@@ -223,6 +223,8 @@ class IdaVivero extends HTMLElement {
               <button type="button" class="boton pequeno" data-paso hidden>⏯ ${esc(t('vivero.paso'))}</button>
               <span class="suave pequeno" data-ritmo-ms></span>
               <button type="button" class="boton pequeno peligro" data-parar ${v.activa ? '' : 'disabled'}>■ ${esc(t('vivero.parar'))}</button>
+              <button type="button" class="boton pequeno" data-grabar ${v.activa ? '' : 'disabled'}></button>
+              <a class="chip falta grabando" data-grabando href="#/lab?vista=grabaciones" hidden></a>
             </div>
             <p class="suave pequeno" ${v.ritmo_ajustable ? 'hidden' : ''}>⏱ ${esc(t('vivero.ritmo_fijo'))}</p>
           </section>
@@ -243,10 +245,12 @@ class IdaVivero extends HTMLElement {
       </aside>`;
     this.querySelector('[data-parar]').addEventListener('click', () => this.parar());
     this.querySelector('[data-paso]').addEventListener('click', () => this.paso());
+    this.querySelector('[data-grabar]').addEventListener('click', () => this.grabar());
     this.querySelectorAll('[data-ver]').forEach((b) => b.addEventListener('click', () => this.abrirDetalle(b.dataset.ver, b)));
     this.querySelector('[data-cerrar]').addEventListener('click', () => this.cerrarDetalle());
     this.querySelector('[data-velo]').addEventListener('click', () => this.cerrarDetalle());
     this.pintarRitmo();
+    this.pintarGrabacion();
     this.dibujar();
     this.pintarTarjetas();
     if (this.detalle) this.abrirDetalle(this.detalle, null);
@@ -278,6 +282,37 @@ class IdaVivero extends HTMLElement {
     } catch (err) {
       avisar(t(`error.${err.codigo || 'red'}`));
     }
+  }
+
+  // --- grabar (T5a, O7) -------------------------------------------------------------------------------------------
+  pintarGrabacion() {
+    const boton = this.querySelector('[data-grabar]');
+    const chip = this.querySelector('[data-grabando]');
+    if (!boton || !this.vida) return;
+    const g = this.vida.activa ? this.vida.grabacion : null;
+    boton.textContent = g ? `■ ${t('grabar.terminar')}` : `⏺ ${t('grabar.empezar')}`;
+    boton.title = g ? t('grabar.terminar_ayuda') : t('grabar.empezar_ayuda');
+    boton.disabled = !this.vida.activa;
+    chip.hidden = !g;
+    if (g) chip.textContent = t('grabar.grabando');
+  }
+
+  async grabar() {
+    const boton = this.querySelector('[data-grabar]');
+    if (boton) boton.disabled = true;
+    try {
+      if (this.vida.grabacion) {
+        const { grabacion } = await api.terminarGrabacion();
+        this.vida.grabacion = null;
+        avisar(t('grabar.guardada', { id: grabacion.id, n: grabacion.registros ?? 0 }));
+      } else {
+        this.vida.grabacion = (await api.grabar()).grabacion;
+        avisar(t('grabar.empezada', { id: this.vida.grabacion.id }));
+      }
+    } catch (err) {
+      avisar(t(`error.${err.codigo || 'red'}`));
+    }
+    this.pintarGrabacion();
   }
 
   async paso() {
@@ -683,7 +718,6 @@ class IdaVivero extends HTMLElement {
     cajon.hidden = false;
     velo.hidden = false;
     this.querySelector('#cajon-titulo').innerHTML = `<span aria-hidden="true">${ICONOS_TARJETA[id]}</span> ${esc(t(`tarjeta.${id}`))}`;
-    this.querySelector('[data-lab]').href = `#/lab?seccion=${id}`;
     this.pintarDetalle();
     if (origen) this.querySelector('#cajon-titulo').focus();
   }
@@ -692,6 +726,10 @@ class IdaVivero extends HTMLElement {
     const caja = this.querySelector('[data-cajon-cuerpo]');
     if (!caja) return;
     const id = this.detalle;
+    // T5a: «Abrir en el Laboratorio» lleva a la sección y al latido que se está viendo (el directo en memoria)
+    const r = this.registro;
+    const latido = r ? `&vida=${encodeURIComponent(r.vida)}&latido=${encodeURIComponent(r.latido)}` : '';
+    this.querySelector('[data-lab]').href = `#/lab?seccion=${id}&fuente=directo${latido}`;
     const html = id === 'cuerpo' ? this.htmlCuerpo(true) : id === 'ahora' ? this.htmlAhora(true) : id === 'sabe' ? this.htmlSabe(true)
       : id === 'logros' ? this.htmlLogros(true) : id === 'caracter' ? this.htmlCaracter(true) : this.htmlEstirpe(true);
     if (html === this._ultimoDetalle) return;
