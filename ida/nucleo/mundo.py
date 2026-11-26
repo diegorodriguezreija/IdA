@@ -327,5 +327,19 @@ class Mundo(ABC):
         """Representación de texto del mundo para la consola y la telemetría."""
         return ""
 
+    def escena(self) -> Optional[Dict[str, Any]]:
+        """Descripción estructurada de lo que se ve, para que la interfaz la dibuje (O6), o None: entonces la interfaz
+        enseña ``vista()``. El esquema v1 (tipos, campos y coordenadas) está en ``docs/DISENO_OBSERVABILIDAD.md``,
+        sección 6, y su validador en la telemetría. Solo lee: no cambia el estado del mundo ni el del azar (O3)."""
+        return None
+
+    @classmethod
+    def opciones(cls) -> List[Dict[str, Any]]:
+        """Opciones que el mundo declara (O8): una declaración por opción, con ``nombre``, ``tipo`` y su ``defecto``,
+        su rango o sus valores y ``etiqueta`` y ``ayuda`` en es y en. El formato y su validación están fuera del núcleo
+        (``ida/mundos/opciones.py``). Es de clase: se lee sin crear el mundo ni cargar sus dependencias. Por defecto,
+        ninguna."""
+        return []
+
     def cerrar(self) -> None:
         """Libera recursos (navegador, conexiones...)."""

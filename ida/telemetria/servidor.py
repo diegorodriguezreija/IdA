@@ -38,6 +38,16 @@ def plazo_por_defecto(mundo: str) -> Optional[float]:
 
     return None if cargar(mundo).perfil.tiempo_real else PLAZO_LOGICO_ANTESALA
 
+
+def opciones_por_defecto(mundo: str, dadas: Dict[str, Any]) -> Dict[str, Any]:
+    """O8: lo lanzado desde la antesala usa los valores por defecto declarados por el mundo (``Mundo.opciones()``, los
+    de la medición oficial donde la hay), sustituidos por los que lleguen del formulario, ya comprobados."""
+    from ida.mundos import cargar
+    from ida.mundos.opciones import con_defectos
+
+    return con_defectos(cargar(mundo).opciones(), dadas, mundo)
+
+
 PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
 ANTESALA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "antesala.html")
 
@@ -199,6 +209,7 @@ class Telemetria:
         """Inicia una simulación en un hilo en segundo plano reutilizando este servidor de telemetría."""
         self.detener_simulacion()
         mundo = config.get("mundo", "minimo")
+        opciones = opciones_por_defecto(mundo, config.get("opciones") or {})   # antes del hilo: el error llega a /iniciar
         self.mundo = mundo
         self.ultimo = None
         self.ultimo_registro = None
@@ -218,7 +229,7 @@ class Telemetria:
                     sin_experiencia=bool(config.get("sin_experiencia", False)),
                     tabula_rasa=bool(config.get("tabula_rasa", False)),
                     cada=int(config.get("cada", 10)),
-                    opciones_mundo=config.get("opciones", {}),
+                    opciones_mundo=opciones,
                     telemetria_instancia=self,
                     evento_parada=self.evento_parada,
                     otel=bool(config.get("otel", False)),

@@ -15,7 +15,7 @@ import json
 import os
 import subprocess
 import time
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple
 
 from ida.telemetria.esquema import CAMPOS_TIEMPO, VERSION
 
@@ -96,6 +96,19 @@ def leer(ruta: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
     if not isinstance(cab, dict) or cab.get("tipo") != "cabecera" or cab.get("formato") != FORMATO:
         raise ValueError(f"{ruta}: no es una grabación de IdA (falta la cabecera)")
     return cab, list(lineas)
+
+
+def escenas(registros: Iterable[Dict[str, Any]]) -> Iterator[Optional[Dict[str, Any]]]:
+    """La escena de cada registro, reconstruida (O6): el registro solo la lleva cuando cambia, así que la de un latido es
+    la última que llegó en su vida (``None`` si el mundo no da escena)."""
+    actual: Optional[Dict[str, Any]] = None
+    vida = None
+    for r in registros:
+        if r.get("vida") != vida:
+            vida, actual = r.get("vida"), None
+        if "escena" in r:
+            actual = r["escena"]
+        yield actual
 
 
 def sin_tiempos(datos: Dict[str, Any]) -> Dict[str, Any]:

@@ -16,6 +16,7 @@ from ida.telemetria.grabacion import Grabacion, cabecera, commit_actual
 from ida.telemetria.observador import Observador
 from ida.historico import calcular_fitness, guardar_linaje_con_retencion
 from ida.mundos import cargar
+from ida.mundos.opciones import convertir
 from ida.sistemas import crear_sistemas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -56,6 +57,8 @@ def ejecutar(
       corre siempre; sin él (``None``), corre al nivel cognitivo solo si alguien consume el registro (consola,
       telemetría, OTel o grabación). ``al_latir(org, onda, registro)`` recibe el registro, o ``None`` si no corre.
     - ``grabar``: ruta de la grabación ``.jsonl.gz`` de la vida (O7).
+    - ``opciones_mundo``: opciones del mundo, comprobadas y convertidas con sus declaraciones (``Mundo.opciones()``,
+      O8). Las que no se dan toman el valor por defecto del constructor (la antesala añade antes los declarados).
     - ``plazo_logico``: operaciones por ms de plazo de la guillotina (``Onda.ops_por_ms``, O11). ``None``: plazo de reloj,
       como siempre.
     """
@@ -63,7 +66,9 @@ def ejecutar(
     if tabula_rasa and os.path.isdir(datos):
         shutil.rmtree(datos)
     os.makedirs(datos, exist_ok=True)
-    m = cargar(mundo)(datos=datos, **(opciones_mundo or {}))
+    clase_mundo = cargar(mundo)
+    opciones_mundo = convertir(clase_mundo.opciones(), opciones_mundo or {}, mundo)   # O8: error claro si no valen
+    m = clase_mundo(datos=datos, **opciones_mundo)
     azar = Azar(semilla)
     linaje = Linaje(os.path.join(datos, "linaje.json"))
     persistencia = Persistencia(os.path.join(datos, "memoria.db") if m.perfil.memoria != "apagada" else None)
