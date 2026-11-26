@@ -66,7 +66,7 @@ destino = "CORE.Sentir"
 hoy = "CORE.Sentir"
 decision = "previo"
 nota = "En bruto: emite con arousal 0; la saliencia la pone Saliencia en la preatención (D5)"
-analogo = { es = "Exterocepción: las vías sensoriales hasta las cortezas primarias, que transducen el estímulo sin valorarlo", en = "Exteroception: the sensory pathways to the primary cortices, which transduce the stimulus without appraising it" }
+analogo = { es = "Exterocepción: receptores sensoriales y vías por el tálamo hasta las cortezas sensoriales primarias, que codifican el estímulo sin valorarlo", en = "Exteroception: sensory receptors and pathways through the thalamus to the primary sensory cortices, which encode the stimulus without appraising it" }
 descripcion = { es = "Una pieza por cada cosa percibida fuera (qué clase es, a qué distancia está, si se mueve), en bruto: la saliencia se la pone después la preatención.", en = "One piece per thing perceived outside (what class it is, how far it is, whether it moves), raw: pre-attention adds its salience afterwards." }
 
 [[componente]]
@@ -77,7 +77,7 @@ destino = "CORE.Regulacion"
 hoy = "CORE.Regulacion"
 decision = "D12"
 nota = "Reglas instantáneas de la Onda (ida/core/regulacion.py), antes Marcapasos.ritmo; en la fase A se calcula al crear la Onda, tras la preatención es B2"
-analogo = { es = "Sistemas de activación ascendentes del tronco encefálico (locus coeruleus, formación reticular): ajustan la ganancia y el ritmo del procesamiento según el estado", en = "Ascending brainstem arousal systems (locus coeruleus, reticular formation): they set processing gain and pace from the body's state" }
+analogo = { es = "Sistemas de activación y de sueño-vigilia: locus coeruleus (ganancia adaptativa, Aston-Jones y Cohen), formación reticular e hipotálamo (orexina, núcleo preóptico ventrolateral) ajustan la ganancia y el ritmo del procesamiento según el cansancio, el sueño y el peligro", en = "Arousal and sleep-wake systems: locus coeruleus (adaptive gain, Aston-Jones and Cohen), reticular formation and hypothalamus (orexin, ventrolateral preoptic nucleus) set the gain and pace of processing according to fatigue, sleep and danger" }
 descripcion = { es = "Fija con reglas instantáneas el plazo de cada latido, cuántas piezas caben en la atención (amplitud) y cuánto arousal se puede repartir (potencia), según el cansancio, el sueño y el peligro.", en = "Uses instant rules to set each heartbeat's deadline, how many pieces fit in attention (amplitude) and how much arousal can be handed out (power), from tiredness, sleep and danger." }
 
 [[componente]]
@@ -125,7 +125,7 @@ hoy = "S1.Sentir"
 decision = "D5"
 preatentivo = true
 nota = "ida/s1/sentir/saliencia.py; antes dentro de Exterocepcion, que ahora emite con arousal 0"
-analogo = { es = "Mapa de saliencia ascendente (colículo superior y pulvinar) y red de saliencia (ínsula anterior y cíngulo anterior); aquí, antes del cuello de botella de la atención", en = "Bottom-up salience map (superior colliculus and pulvinar) and salience network (anterior insula and anterior cingulate); here, before the attention bottleneck" }
+analogo = { es = "Mapa de prioridad previo a la atención: colículo superior y pulvinar combinan lo llamativo con lo relevante (Fecteau y Munoz); la amígdala aporta el peligro y la dopamina, la novedad", en = "Pre-attentive priority map: superior colliculus and pulvinar combine the conspicuous with the relevant (Fecteau and Munoz); the amygdala contributes danger and dopamine, novelty" }
 descripcion = { es = "Pone a cada cosa percibida su saliencia: lo más fuerte entre su peligro según la cercanía, lo nutritiva que es según la cercanía y lo nueva que es. Así decide qué entra antes en la atención.", en = "Gives each perceived thing its salience: the strongest of its danger by closeness, how nourishing it is by closeness and how new it is. That decides what enters attention first." }
 
 [[componente]]
@@ -174,7 +174,7 @@ clase = "general"
 destino = "S1.Interpretar"
 hoy = "S1.Interpretar"
 decision = "previo"
-analogo = { es = "Individuación de objetos en la vía visual ventral, con capacidad limitada de la memoria de trabajo (el «7 ± 2» de Miller)", en = "Object individuation in the ventral visual stream, with limited working-memory capacity (Miller's «7 ± 2»)" }
+analogo = { es = "Individuación de objetos en la vía visual ventral (índices de Pylyshyn) con capacidad limitada; el diseño usa el «7 ± 2» de Miller, aunque hoy la capacidad se estima en unos 4 elementos (Cowan, 2001)", en = "Object individuation in the ventral visual stream (Pylyshyn's indexes) with limited capacity; the design uses Miller's '7 ± 2', although capacity is now estimated at about 4 items (Cowan, 2001)" }
 descripcion = { es = "Elige los cuerpos más salientes de la imagen (unos siete) y los pasa a la atención como objetos; cada uno cuesta una unidad de amplitud.", en = "Picks the most salient bodies in the picture (about seven) and passes them to attention as objects; each one costs one unit of amplitude." }
 
 [[componente]]
@@ -276,7 +276,7 @@ clase = "general"
 destino = "S1.Reaccionar"
 hoy = "S1.Reaccionar"
 decision = "D11"
-analogo = { es = "La motivación que recluta la planificación: bucles del estriado ventral hacia la corteza prefrontal (análogo aproximado)", en = "Motivation recruiting planning: ventral striatum loops to the prefrontal cortex (approximate analogue)" }
+analogo = { es = "La motivación recluta el control ejecutivo: el bucle límbico (estriado ventral) y la corteza cingulada anterior señalan a la prefrontal lateral qué meta necesita la supervivencia (valor esperado del control, Shenhav et al., 2013; análogo aproximado)", en = "Motivation recruits executive control: the limbic loop (ventral striatum) and the anterior cingulate cortex signal to the lateral prefrontal cortex which goal survival needs (expected value of control, Shenhav et al., 2013; approximate analogue)" }
 descripcion = { es = "Pide al planificador de S3 lo que necesitan las estrategias activas de S1 (lo que falta para el refugio, un arma para afrontar una amenaza), con la urgencia de su impulso.", en = "Asks S3's planner for what S1's active strategies need (what the shelter lacks, a weapon to face a threat), with the urgency of their drive." }
 
 [[componente]]
@@ -286,7 +286,7 @@ clase = "general"
 destino = "S1.Actuar"
 hoy = "S1.Actuar"
 decision = "previo"
-analogo = { es = "Preparación de la respuesta motora (corteza premotora) para los circuitos de supervivencia", en = "Preparation of the motor response (premotor cortex) for the survival circuits" }
+analogo = { es = "Salida de los circuitos de supervivencia: el canal límbico propone a los ganglios basales respuestas defensivas y apetitivas, que ejecutan la sustancia gris periacueductal y el tronco encefálico", en = "Output of the survival circuits: the limbic channel proposes defensive and appetitive responses to the basal ganglia, carried out by the periaqueductal grey and the brainstem" }
 descripcion = { es = "Convierte cada estrategia activa de S1 en una acción propuesta al Tribunal, con su origen (impulso y estrategia).", en = "Turns each active S1 strategy into an action proposed to the Tribunal, with its origin (drive and strategy)." }
 
 [[componente]]
@@ -451,7 +451,7 @@ clase = "general"
 destino = "S2.Sentir"
 hoy = "S2.Sentir"
 decision = "previo"
-analogo = { es = "Sentimiento del propio estado afectivo: ínsula anterior (marcadores somáticos de Damasio)", en = "Feeling one's own affective state: anterior insula (Damasio's somatic markers)" }
+analogo = { es = "Sentir el propio estado afectivo: ínsula anterior (conciencia interoceptiva, Craig); los marcadores somáticos de Damasio lo llevan a la decisión en la prefrontal ventromedial", en = "Feeling one's own affective state: anterior insula (interoceptive awareness, Craig); Damasio's somatic markers carry it into decision-making in the ventromedial prefrontal cortex" }
 descripcion = { es = "Registra el estado afectivo que se siente (calma, alerta, pánico...) tal como lo calcula el cuerpo, sin coste de atención.", en = "Records the affective state that is felt (calm, alert, panic...) as the body computes it, at no attention cost." }
 
 [[componente]]
@@ -471,7 +471,7 @@ clase = "general"
 destino = "S2.Interpretar"
 hoy = "S2.Interpretar"
 decision = "previo"
-analogo = { es = "", en = "" }
+analogo = { es = "El objeto como portador de valor: la identidad del objeto (corteza temporal inferior y perirrinal) llega a la corteza orbitofrontal, que es donde se le asigna valor (Rolls)", en = "The object as a bearer of value: object identity (inferior temporal and perirhinal cortex) reaches the orbitofrontal cortex, where value is assigned to it (Rolls)" }
 descripcion = { es = "Representa cada objeto atendido como un sujeto al que S2 puede dar valor, con la mitad de su saliencia.", en = "Represents each attended object as a subject that S2 can value, with half its salience." }
 
 [[componente]]
@@ -531,7 +531,7 @@ clase = "general"
 destino = "S2.Reaccionar"
 hoy = "S2.Reaccionar"
 decision = "D11"
-analogo = { es = "La motivación que recluta la planificación: bucles del estriado ventral hacia la corteza prefrontal (análogo aproximado)", en = "Motivation recruiting planning: ventral striatum loops to the prefrontal cortex (approximate analogue)" }
+analogo = { es = "La motivación recluta el control ejecutivo: la corteza orbitofrontal y la cingulada anterior señalan a la prefrontal lateral qué meta necesita el valor (valor esperado del control, Shenhav et al., 2013; análogo aproximado)", en = "Motivation recruits executive control: the orbitofrontal and anterior cingulate cortices signal to the lateral prefrontal cortex which goal valuation needs (expected value of control, Shenhav et al., 2013; approximate analogue)" }
 descripcion = { es = "Pide al planificador de S3 lo que necesitan las estrategias activas de S2, con la urgencia de su impulso.", en = "Asks S3's planner for what S2's active strategies need, with the urgency of their drive." }
 
 [[componente]]

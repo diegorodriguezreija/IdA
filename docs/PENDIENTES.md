@@ -87,6 +87,8 @@ Para T6, de la prueba de usuario del autor (26/11/2026, copia limpia en Windows)
 
 Para T5 y T6, de T4b: (1) el registro de cierre no sale en la consola (se dejó así para que la salida de siempre no cambie; se podría añadir una línea «al morir» con C9); (2) la retención del linaje (`historico.py`, 20 generaciones, las de más Score) deja huecos en la línea de tiempo de estirpes largas: decidir si se conservan también las más recientes, como decía su docstring; (3) T6: retirar las rutas `/linaje/*` del panel clásico, que siguen escribiendo en `datos/<mundo>` sin pasar por el Vivero (`/linaje/fijar`); (4) el Laboratorio (T5) puede reproducir el registro de cierre y comparar estirpes archivadas.
 
+T5a: análogos revisados por el arquitecto (9 corregidos: Exterocepción, Regulación, Saliencia, Objeto, Petición S1 y S2, Acción S1, Emoción y Sujeto). Objeto usa 7 (Miller) y la estimación actual es unos 4 (Cowan, 2001): si se quisiera acercar, es conducta (fase B, D17).
+
 ## Orden propuesto (25/11/2026)
 
 Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
