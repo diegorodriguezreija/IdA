@@ -115,7 +115,7 @@ def _errores_etiquetas_valores(d: Dict[str, Any]) -> List[str]:
         return ["etiquetas_valores: solo en las opciones de tipo «opcion»"]
     if not isinstance(ev, dict):
         return ["etiquetas_valores: debe ser un objeto {valor: {es, en}}"]
-    valores = d.get("valores") if isinstance(d.get("valores"), list) else []
+    valores: List[Any] = d["valores"] if isinstance(d.get("valores"), list) else []
     errores = []
     faltan = [v for v in valores if v not in ev]
     sobran = [k for k in ev if k not in valores]

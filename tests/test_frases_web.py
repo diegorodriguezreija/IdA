@@ -199,7 +199,8 @@ def _definiciones():
             vistas.add(c)
             pendientes.extend(c.__subclasses__())
     # solo las que fijan su propio nombre (las bases heredan el «estrategia» de Definicion)
-    return [c for c in vistas if isinstance(c.__dict__.get("nombre"), str) and c.__dict__["nombre"]]
+    # las del paquete ida (no las de prueba de otros tests) que fijan su propio nombre
+    return [c for c in vistas if c.__module__.startswith("ida.") and isinstance(c.__dict__.get("nombre"), str) and c.__dict__["nombre"]]
 
 
 def test_cada_plan_y_cada_motivo_tienen_texto():
