@@ -142,7 +142,10 @@ def ejecutar(
             if consola:
                 print(f"\n=== {arq.id} · {mundo} · generación {arq.generacion} · {arq.texto()} · heredados: {heredados}")
 
-            def latir(o: Organismo, onda) -> None:
+            ultima: Dict[str, Any] = {"onda": None}   # la Onda del último latido (para el registro de cierre)
+
+            def latir(o: Organismo, onda, ultima: Dict[str, Any] = ultima) -> None:
+                ultima["onda"] = onda
                 registro = observador.registrar(o, onda) if observador is not None else None
                 if grabacion is not None and registro is not None:
                     grabacion.escribir(registro)
@@ -166,6 +169,15 @@ def ejecutar(
                 if consola:
                     print(f"\n[simulación interrumpida por el usuario tras {vividos} latidos]")
                 break
+            if observador is not None and ultima["onda"] is not None and not org.soma.esta_vivo:
+                # T4b: lo aprendido al morir (``_aprender_de_la_muerte`` corre después del último latido observado). El
+                # observador solo lee; el registro de cierre va a la grabación y al directo, no a la consola ni a al_latir.
+                cierre = observador.cierre(org, ultima["onda"])
+                if cierre is not None:
+                    if grabacion is not None:
+                        grabacion.escribir(cierre)
+                    if telemetria is not None:
+                        telemetria.publicar(cierre)
             persistencia.volcar(memoria, arq.id, org.ciclo)
             total = max(1, vividos)
             vivencia = {

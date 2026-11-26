@@ -25,7 +25,7 @@ from ida.nucleo.onda import Onda
 from ida.nucleo.soma import VITALES
 from ida.nucleo.vocabulario import EstadoSaber
 from ida.telemetria.esquema import NIVELES, VERSION
-from ida.telemetria.hechos import Deductor
+from ida.telemetria.hechos import Deductor, fuente, requisitos
 
 RASGOS_ARQUETIPO = ("apertura", "responsabilidad", "neuroticismo", "extraversion", "umbral_miedo")
 SABER_COGNITIVO = 20      # proposiciones de más confianza en el nivel cognitivo (como el panel de hoy)
@@ -70,6 +70,7 @@ class Observador:
         self._org: Any = None
         self._hechos = Deductor()
         self._escena: Optional[Dict[str, Any]] = None   # la última escena enviada en esta vida
+        self._ultimo: Optional[Dict[str, Any]] = None   # el último registro de esta vida (para el de cierre)
 
     # --- vida ------------------------------------------------------------------------------------------------------
     def _nueva_vida(self, org: Any) -> None:
@@ -77,6 +78,7 @@ class Observador:
         self.vida += 1
         self._hechos = Deductor()
         self._escena = None
+        self._ultimo = None
 
     # --- registro --------------------------------------------------------------------------------------------------
     def registrar(self, org: Any, onda: Onda) -> Dict[str, Any]:
@@ -94,11 +96,34 @@ class Observador:
             self._cognitivo(org, onda, r)
         if self._n >= 2:
             self._completo(onda, r)
+        self._ultimo = r
+        return r
+
+    def cierre(self, org: Any, onda: Onda) -> Optional[Dict[str, Any]]:
+        """El registro de cierre (``cierre: true``, sección 13.5 del diseño): después de ``_aprender_de_la_muerte``, lo
+        que cambió en la memoria al morir. Es el último registro de la vida, con el mismo ``latido``: el del último
+        latido con la memoria, el resumen del saber (y, en cognitivo, el saber y los requisitos) al día, lo apuntado al
+        morir en ``experiencia.aprendizaje`` y sus hechos. Solo lee. ``None`` si no hubo registro antes en esta vida."""
+        if org is not self._org or self._ultimo is None:
+            return None
+        previo = self._ultimo
+        r: Dict[str, Any] = {k: v for k, v in previo.items() if k != "escena"}
+        r["cierre"] = True
+        textos = [str(t) for t in list(onda.notas.get("aprendizaje", []) or [])]   # type: ignore[call-overload]
+        antes = previo["experiencia"]["aprendizaje"]
+        r["experiencia"] = dict(previo["experiencia"], aprendizaje=textos[len(antes):] if textos[:len(antes)] == antes else textos,
+                                cambio_decision=False, expectativa="", episodio="")
+        r["memoria"], r["resumen_saber"] = self._memoria(org, onda)
+        if self._n >= 1:
+            r["saber"] = self._saber(org, onda)
+            r["requisitos"] = requisitos(org)
+        r["hechos"] = self._hechos.cierre(org, onda, r)
+        self._ultimo = r
         return r
 
     # --- nivel vital -----------------------------------------------------------------------------------------------
     def _vital(self, org: Any, onda: Onda, r: Dict[str, Any]) -> None:
-        soma, notas, mem = org.soma, onda.notas, org.memoria
+        soma, notas = org.soma, onda.notas
         valores = soma.valores()
         r["ritmo"] = {
             "ms": notas.get("ms_cognicion", 0.0), "ms_total": notas.get("ms_total", 0.0), "plazo_ms": round(onda.frecuencia_ms, 1),
@@ -124,12 +149,7 @@ class Observador:
             "cambio_decision": bool(notas.get("experiencia_cambio")),
             "episodio": str(notas.get("episodio", "") or ""),
         }
-        estados = [_estado(p, onda.ciclo) for p in mem.saber.values()]
-        r["memoria"] = {
-            "aciertos": int(mem.aciertos), "sorpresas": int(mem.fallos), "episodios": len(mem.episodios),
-            "demostradas": estados.count("demostrada"), "hipotesis": estados.count("hipotesis"),
-            "refutadas": estados.count("refutada"), "recuerdos": len(mem.registros), "heredados": int(mem.heredados),
-        }
+        r["memoria"], r["resumen_saber"] = self._memoria(org, onda)
         r["contadores"] = {str(k): int(v) for k, v in org.contadores.items()}
         r["arquetipo"] = {k: float(getattr(org.arquetipo, k)) for k in RASGOS_ARQUETIPO}
         r["vista"] = str(org.mundo.vista())
@@ -139,6 +159,33 @@ class Observador:
             if escena != self._escena:      # solo cuando cambia (O6)
                 r["escena"] = escena
                 self._escena = escena
+
+    @staticmethod
+    def _memoria(org: Any, onda: Onda) -> Tuple[Dict[str, int], Dict[str, Any]]:
+        """Los recuentos de la memoria (``memoria``) y el resumen de todo lo que sabe (``resumen_saber``, T4b): totales
+        de proposiciones por estado, las heredadas, aciertos, sorpresas, requisitos y de qué fuente es cada saber."""
+        mem = org.memoria
+        props = list(mem.saber.values())
+        estados = [_estado(p, onda.ciclo) for p in props]
+        memoria = {
+            "aciertos": int(mem.aciertos), "sorpresas": int(mem.fallos), "episodios": len(mem.episodios),
+            "demostradas": estados.count("demostrada"), "hipotesis": estados.count("hipotesis"),
+            "refutadas": estados.count("refutada"), "recuerdos": len(mem.registros), "heredados": int(mem.heredados),
+        }
+        reqs = requisitos(org)
+        fuentes = {"manual": 0, "experiencia": 0, "herencia": 0, "biblioteca": 0}
+        for p in props:
+            f = fuente(p)
+            fuentes[f] = fuentes.get(f, 0) + 1
+        for q in reqs:
+            fuentes[q["fuente"]] = fuentes.get(q["fuente"], 0) + 1
+        resumen = {
+            "proposiciones": len(props), "demostradas": memoria["demostradas"], "hipotesis": memoria["hipotesis"],
+            "refutadas": memoria["refutadas"], "heredadas": sum(1 for p in props if p.heredada),
+            "aciertos": memoria["aciertos"], "sorpresas": memoria["sorpresas"], "requisitos": len(reqs),
+            "requisitos_confirmados": sum(1 for q in reqs if q["confirmado"]), "fuentes": fuentes,
+        }
+        return memoria, resumen
 
     @staticmethod
     def _necesidades(org: Any, onda: Onda) -> List[Dict[str, Any]]:
@@ -211,12 +258,15 @@ class Observador:
                         for pid, p in onda.estrategias.items()],
             "por_sistema": {s: a_json(notas[f"estrategias_{s}"]) for s in ("S1", "S2", "S3") if f"estrategias_{s}" in notas},
         }
-        mem = org.memoria
-        orden = sorted(mem.saber.values(), key=lambda p: (-p.confianza, p.sujeto))
-        r["saber"] = [{"sujeto": p.sujeto, "relacion": p.relacion.name, "estado": _estado(p, onda.ciclo),
-                       "confianza": float(p.confianza), "heredada": bool(p.heredada),
-                       "autoridad": p.c_aut is not None and p.w_aut > 0.0}
-                      for p in (orden if self._n >= 2 else orden[:SABER_COGNITIVO])]
+        r["saber"] = self._saber(org, onda)
+        r["requisitos"] = requisitos(org)
+
+    def _saber(self, org: Any, onda: Onda) -> List[Dict[str, Any]]:
+        orden = sorted(org.memoria.saber.values(), key=lambda p: (-p.confianza, p.sujeto))
+        return [{"sujeto": p.sujeto, "relacion": p.relacion.name, "estado": _estado(p, onda.ciclo),
+                 "confianza": float(p.confianza), "heredada": bool(p.heredada),
+                 "autoridad": p.c_aut is not None and p.w_aut > 0.0}
+                for p in (orden if self._n >= 2 else orden[:SABER_COGNITIVO])]
 
     @staticmethod
     def _flujo(onda: Onda) -> List[Dict[str, str]]:
