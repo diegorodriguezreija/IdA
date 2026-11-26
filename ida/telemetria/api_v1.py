@@ -8,8 +8,10 @@ Rutas (detalle de cuerpos y errores en ``docs/DISENO_OBSERVABILIDAD.md``, secci�
 - ``GET  /api/v1/presets``                     presets de carácter (es/en) y rangos de los rasgos
 - ``POST /api/v1/vidas``                       lanza una vida (201)
 - ``GET  /api/v1/vidas/actual``                la vida en curso (o ``null``)
-- ``GET  /api/v1/vidas/actual/registro``       SSE de registros del latido v1 (``registro``, ``vida``, ``fin``)
-- ``POST /api/v1/vidas/actual/ritmo``          ``{"ritmo": "pausa" | "x1" | "x4" | "max"}``
+- ``GET  /api/v1/vidas/actual/registro``       SSE de registros del latido v1 (``vida``, ``diario``, ``registro``, ``ritmo``,
+                                               ``fin``); ``?nivel=vital`` o ``?nivel=cognitivo`` lo recorta a ese nivel
+- ``POST /api/v1/vidas/actual/ritmo``          ``{"ritmo": "pausa" | "lento" | "comodo" | "x4" | "max"}`` (``x1`` = ``comodo``)
+- ``POST /api/v1/vidas/actual/paso``           en pausa, deja pasar un latido (O20)
 - ``POST /api/v1/vidas/actual/parar``          para la vida en curso
 
 Errores: ``{"error": {"codigo": ..., "mensaje": ..., "campo"?: ...}}`` con 400, 403, 404, 409 o 500.
@@ -17,7 +19,7 @@ Errores: ``{"error": {"codigo": ..., "mensaje": ..., "campo"?: ...}}`` con 400, 
 
 import json
 import queue
-from typing import TYPE_CHECKING, Any, Dict, Mapping, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Dict, Mapping, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from ida.mundos import MUNDOS
@@ -25,7 +27,7 @@ from ida.mundos.opciones import OpcionInvalida, con_defectos
 from ida.telemetria import catalogo, presets
 from ida.telemetria.esquema import ESQUEMA, NIVELES
 from ida.telemetria.instalador import ErrorInstalacion
-from ida.telemetria.ritmo import RITMOS
+from ida.telemetria.ritmo import RITMOS, SINONIMOS
 
 if TYPE_CHECKING:   # pragma: no cover
     from ida.telemetria.servidor import Telemetria, _Manejador
@@ -36,11 +38,13 @@ LIMITES = {"latidos": (1, 1_000_000), "generaciones": (1, 100), "semilla": (0, 2
 DEFECTOS = {"latidos": 300, "generaciones": 1, "semilla": 1}
 NIVEL_DEFECTO = "completo"   # el panel clásico enseña los tiempos por Componente (hasta T6)
 CAMPOS_VITAL = set(ESQUEMA["base"]) | set(ESQUEMA["vital"]) | {"escena"}
+CAMPOS_COGNITIVO = CAMPOS_VITAL | set(ESQUEMA["cognitivo"])
+SABER_COGNITIVO = 20   # como el observador al nivel cognitivo
 
 # Códigos de error de la API (la interfaz los traduce con la clave i18n «error.<codigo>»).
 CODIGOS = ("json_invalido", "origen_no_permitido", "ruta_desconocida", "mundo_desconocido", "mundo_no_instalado",
            "opcion_invalida", "campo_invalido", "caracter_invalido", "ficha_invalida", "ficha_de_otro_mundo",
-           "vida_en_curso", "sin_vida", "ritmo_invalido", "ritmo_fijo", "sin_extra", "extra_desconocido",
+           "vida_en_curso", "sin_vida", "ritmo_invalido", "ritmo_fijo", "sin_pausa", "sin_extra", "extra_desconocido",
            "instalacion_en_curso", "instalacion_desconocida", "error_interno")
 
 
@@ -147,14 +151,30 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
         "nivel": nivel,
         "plazo_logico": None if tiempo_real else PLAZO_LOGICO,   # O11
         "tiempo_real": tiempo_real,
+        "ritmo_comodo_ms": catalogo.ritmo_comodo(mundo),         # O20
     }
 
 
 def recortar_vital(registro: Dict[str, Any]) -> Dict[str, Any]:
-    """El registro reducido al nivel vital (para el Vivero: menos datos por la SSE)."""
+    """El registro reducido al nivel vital (menos datos por la SSE)."""
     salida = {k: v for k, v in registro.items() if k in CAMPOS_VITAL}
     salida["nivel"] = "vital"
     return salida
+
+
+def recortar_cognitivo(registro: Dict[str, Any]) -> Dict[str, Any]:
+    """El registro reducido al nivel cognitivo (el del Vivero, O19): sin tiempos, fases ni piezas de ``ef``, y ``saber``
+    con las 20 proposiciones de más confianza. Un registro vital se queda como está."""
+    if registro.get("nivel") == "vital":
+        return registro
+    salida = {k: v for k, v in registro.items() if k in CAMPOS_COGNITIVO}
+    if isinstance(salida.get("saber"), list):
+        salida["saber"] = salida["saber"][:SABER_COGNITIVO]
+    salida["nivel"] = "cognitivo"
+    return salida
+
+
+RECORTES = {"vital": recortar_vital, "cognitivo": recortar_cognitivo}
 
 
 # --- atención de rutas ------------------------------------------------------------------------------------------------
@@ -198,7 +218,7 @@ def _get(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list
     elif partes == ["vidas", "actual"]:
         h._json(200, {"vida": tel.vida_actual()})
     elif partes == ["vidas", "actual", "registro"]:
-        _sse_registro(h, tel, vital=query.get("nivel", [""])[0] == "vital")
+        _sse_registro(h, tel, RECORTES.get(query.get("nivel", [""])[0]))
     elif len(partes) == 2 and partes[0] == "instalaciones":
         inst = tel.instalador.instalaciones.get(partes[1])
         if inst is None:
@@ -225,12 +245,21 @@ def _post(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
         if vida is None or not vida["activa"]:
             raise ErrorApi(404, "sin_vida", "no hay ninguna vida en curso")
         ritmo = datos.get("ritmo") if isinstance(datos, dict) else None
-        if ritmo not in RITMOS:
+        if ritmo not in RITMOS and ritmo not in SINONIMOS:
             raise ErrorApi(400, "ritmo_invalido", f"ritmo: uno de {', '.join(RITMOS)}", "ritmo")
         if vida["tiempo_real"]:
             raise ErrorApi(409, "ritmo_fijo", f"{vida['mundo']} es un mundo de tiempo real: el ritmo lo marca el mundo")
-        tel.fijar_ritmo(ritmo)
-        h._json(200, {"ritmo": ritmo})
+        h._json(200, {"ritmo": tel.fijar_ritmo(ritmo)})
+    elif partes == ["vidas", "actual", "paso"]:
+        vida = tel.vida_actual()
+        if vida is None or not vida["activa"]:
+            raise ErrorApi(404, "sin_vida", "no hay ninguna vida en curso")
+        if vida["tiempo_real"]:
+            raise ErrorApi(409, "ritmo_fijo", f"{vida['mundo']} es un mundo de tiempo real: el ritmo lo marca el mundo")
+        try:
+            h._json(200, tel.paso())
+        except ValueError:
+            raise ErrorApi(409, "sin_pausa", "«paso a paso» solo con la vida en pausa") from None
     elif partes == ["vidas", "actual", "parar"]:
         vida = tel.vida_actual()
         if vida is None or not vida["activa"]:
@@ -242,24 +271,25 @@ def _post(h: "_Manejador", tel: "Telemetria", partes: list, datos: Any) -> None:
 
 
 # --- SSE --------------------------------------------------------------------------------------------------------------
-def _sse_registro(h: "_Manejador", tel: "Telemetria", vital: bool) -> None:
+def _sse_registro(h: "_Manejador", tel: "Telemetria", recorte: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]]) -> None:
     h._sse_cabecera()
     cola = tel.suscribir_registro()
     try:
         vida = tel.vida_actual()
         if vida is not None:
             h._sse("vida", vida)
+            h._sse("diario", tel.diario())      # lo de antes de conectarse: el diario y «Lo que sabe» no empiezan vacíos
             ultimo = tel.ultimo_con_escena()
             if ultimo is not None:
-                h._sse("registro", recortar_vital(ultimo) if vital else ultimo)
+                h._sse("registro", recorte(ultimo) if recorte else ultimo)
         while tel.activo:
             try:
                 evento, dato = cola.get(timeout=1.0)
             except queue.Empty:
                 h._sse_comentario()
                 continue
-            if evento == "registro" and vital:
-                dato = recortar_vital(dato)
+            if evento == "registro" and recorte:
+                dato = recorte(dato)
             h._sse(evento, dato)
     finally:
         tel.desuscribir_registro(cola)

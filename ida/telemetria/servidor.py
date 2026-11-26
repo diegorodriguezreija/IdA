@@ -25,6 +25,7 @@ import json
 import os
 import queue
 import threading
+from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, unquote, urlparse
@@ -34,10 +35,11 @@ from ida.telemetria import api_v1
 from ida.telemetria.compat import a_panel
 from ida.telemetria.esquema import VERSION
 from ida.telemetria.instalador import Instalador
-from ida.telemetria.ritmo import Regulador
+from ida.telemetria.ritmo import RITMOS, Regulador
 
 PLAZO_LOGICO_ANTESALA = 40.0   # O11: como D17
 NIVEL_ANTESALA = "completo"     # el panel de hoy enseña los tiempos por Componente (nivel completo); hasta T6
+DIARIO_MAX = 400                # hechos recientes de la vida en curso que se reenvían a quien se conecta tarde
 
 
 def plazo_por_defecto(mundo: str) -> Optional[float]:
@@ -271,7 +273,9 @@ class Telemetria:
         self.simulacion_activa = bool(mundo and not modo_antesala)
         self.datos = datos
         self.instalador = instalador or Instalador()
-        self.ritmo = Regulador("x1")                              # O3: ritmo visible de la vida en curso
+        self.ritmo = Regulador("comodo")                          # O3, O20: ritmo visible de la vida en curso
+        self._diario: deque = deque(maxlen=DIARIO_MAX)            # hechos recientes de la vida en curso (con su latido)
+        self._requisitos: Dict[Tuple[Any, Any, Any], Dict[str, Any]] = {}   # el último «aprende requisito» de cada acción
         self.ultimo: Optional[Dict[str, Any]] = None             # lo último enviado al panel (forma de antes)
         self.ultimo_registro: Optional[Dict[str, Any]] = None    # el último registro del latido v1
         self._escena: Optional[Dict[str, Any]] = None             # la última escena de la vida (llega solo cuando cambia)
@@ -340,16 +344,21 @@ class Telemetria:
         self.ultimo_registro = None
         self._escena, self._vida_escena = None, None
         self.evento_parada = threading.Event()
-        self.ritmo = Regulador("x1")
+        comodo = config.get("ritmo_comodo_ms")   # O20; sin él (antesala antigua), el plazo del Perfil, como antes
+        self.ritmo = Regulador("comodo", comodo)
+        self._diario.clear()
+        self._requisitos.clear()
         self._vidas += 1
         tiempo_real = bool(config["tiempo_real"])
+        frecuencia = float(cargar(mundo).perfil.frecuencia_ms)
         self._vida = {
             "id": self._vidas, "mundo": mundo, "activa": True, "opciones": dict(config["opciones"]),
             "semilla": config["semilla"], "latidos": config["latidos"], "generaciones": config["generaciones"],
             "arquetipo": config.get("arquetipo"), "con_legado": bool(config.get("legado")),
             "plazo_logico": config["plazo_logico"], "nivel": config["nivel"], "tiempo_real": tiempo_real,
-            "frecuencia_ms": float(cargar(mundo).perfil.frecuencia_ms), "ritmo": None if tiempo_real else "x1",
-            "ritmo_ajustable": not tiempo_real,
+            "frecuencia_ms": frecuencia, "ritmo": None if tiempo_real else "comodo",
+            "ritmo_ajustable": not tiempo_real, "ritmos": [] if tiempo_real else list(RITMOS),
+            "ritmo_comodo_ms": None if tiempo_real else (frecuencia if comodo is None else float(comodo)),
         }
         self.simulacion_activa = True
         evento_parada, regulador = self.evento_parada, self.ritmo
@@ -412,9 +421,23 @@ class Telemetria:
             vida.update(latido=r["latido"], vida=r["vida"], generacion=r["generacion"], individuo=r["individuo"])
         return vida
 
-    def fijar_ritmo(self, ritmo: str) -> None:
-        self.ritmo.fijar(ritmo)
-        self._difundir_registro("ritmo", {"ritmo": ritmo})
+    def fijar_ritmo(self, ritmo: str) -> str:
+        """Fija el ritmo (``x1`` se admite como ``comodo``) y lo difunde; devuelve el nombre canónico."""
+        canonico = self.ritmo.fijar(ritmo)
+        self._difundir_registro("ritmo", {"ritmo": canonico})
+        return canonico
+
+    def paso(self) -> Dict[str, Any]:
+        """«Paso a paso» (O20): en pausa, deja pasar un latido. ``ValueError`` si la vida no está en pausa."""
+        pendientes = self.ritmo.paso()
+        r = self.ultimo_registro
+        return {"ritmo": self.ritmo.ritmo, "pendientes": pendientes, "latido": None if r is None else r["latido"]}
+
+    def diario(self) -> Dict[str, Any]:
+        """Los hechos recientes de la vida en curso (cada uno con ``latido``, ``vida`` y ``generacion``) y el último
+        «aprende requisito» de cada acción: lo que necesita quien se conecta tarde para el diario y «Lo que sabe»."""
+        with self._cerrojo:
+            return {"hechos": list(self._diario), "requisitos": list(self._requisitos.values())}
 
     def detener_simulacion(self) -> None:
         """Detiene de forma cooperativa la simulación en curso si la hubiera (también si está en pausa)."""
@@ -467,6 +490,15 @@ class Telemetria:
         if "escena" in registro:
             self._escena = registro["escena"]
         self.ultimo_registro = registro
+        hechos = registro.get("hechos") or []
+        if hechos:
+            marca = {"latido": registro.get("latido"), "vida": registro.get("vida"), "generacion": registro.get("generacion")}
+            with self._cerrojo:
+                for h in hechos:
+                    h2 = dict(h, **marca)
+                    self._diario.append(h2)
+                    if h.get("tipo") == "aprende" and h.get("saber") == "requisito":
+                        self._requisitos[(registro.get("vida"), h.get("verbo"), h.get("clase"))] = h2
         self._difundir_registro("registro", registro)
         self._difundir(a_panel(registro))
 

@@ -156,7 +156,8 @@ def test_lanzar_minimo_y_recibir_registros_por_sse(servidor, tmp_path):
     assert estado == 201, datos
     vida = datos["vida"]
     assert vida["mundo"] == "minimo" and vida["activa"]
-    assert vida["plazo_logico"] == 40.0 and vida["tiempo_real"] is False and vida["ritmo"] == "x1"   # O11 y O3
+    assert vida["plazo_logico"] == 40.0 and vida["tiempo_real"] is False and vida["ritmo"] == "comodo"   # O11 y O20
+    assert vida["ritmo_comodo_ms"] == catalogo.RITMO_COMODO_MS["minimo"] and vida["ritmos"] == ["pausa", "lento", "comodo", "x4", "max"]
     assert vida["opciones"] == {"tamano": 9, "depredadores": 1, "comida": 4}                         # O8: los declarados
     assert vida["arquetipo"]["apertura"] == 0.35
     _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "max"})
@@ -201,9 +202,52 @@ def test_ritmo_pausa_reanudar_y_parar(servidor):
     assert _pedir(servidor, "POST", "/api/v1/vidas/actual/parar", {})[0] == 404
 
 
+def test_ritmo_x1_es_comodo_y_el_catalogo_da_el_comodo(servidor):
+    mundos = {m["nombre"]: m for m in _pedir(servidor, "GET", "/api/v1/mundos")[1]["mundos"]}
+    assert mundos["minimo"]["ritmo_comodo_ms"] == 300.0 and mundos["archivos"]["ritmo_comodo_ms"] == 300.0
+    assert _pedir(servidor, "POST", "/api/v1/vidas", {"mundo": "minimo", "latidos": 5000})[0] == 201
+    assert _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "x1"})[1] == {"ritmo": "comodo"}   # T3
+    assert _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "lento"})[1] == {"ritmo": "lento"}
+    assert servidor.ritmo.ms_por_latido(100.0) == 600.0          # lento: el doble del cómodo (300 ms), no del Perfil
+    _pedir(servidor, "POST", "/api/v1/vidas/actual/parar", {})
+
+
+def test_paso_a_paso_avanza_un_latido_cada_vez(servidor):
+    assert _pedir(servidor, "POST", "/api/v1/vidas/actual/paso", {})[0] == 404          # sin vida
+    assert _pedir(servidor, "POST", "/api/v1/vidas", {"mundo": "minimo", "latidos": 5000})[0] == 201
+    estado, datos = _pedir(servidor, "POST", "/api/v1/vidas/actual/paso", {})
+    assert estado == 409 and datos["error"]["codigo"] == "sin_pausa"                    # solo en pausa
+    _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "pausa"})
+    time.sleep(0.8)                                        # termina la espera en curso
+    quieto = servidor.vida_actual()["latido"]
+    for k in range(1, 4):
+        estado, datos = _pedir(servidor, "POST", "/api/v1/vidas/actual/paso", {})
+        assert estado == 200 and datos["ritmo"] == "pausa"
+        assert _esperar(lambda k=k: servidor.vida_actual()["latido"] == quieto + k, limite=5)
+        time.sleep(0.4)
+        assert servidor.vida_actual()["latido"] == quieto + k                         # uno, y se queda quieto
+    _pedir(servidor, "POST", "/api/v1/vidas/actual/parar", {})
+
+
+def test_sse_cognitivo_y_diario(servidor):
+    _pedir(servidor, "POST", "/api/v1/vidas", {"mundo": "minimo", "latidos": 60})
+    _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "max"})
+    assert _esperar(lambda: not servidor.vida_actual()["activa"])
+    eventos = _eventos(servidor, "/api/v1/vidas/actual/registro?nivel=cognitivo", lambda ev: any(n == "registro" for n, _ in ev))
+    nombres = [n for n, _ in eventos]
+    assert nombres[:2] == ["vida", "diario"]
+    diario = eventos[1][1]
+    assert diario["hechos"][0]["tipo"] == "nace" and all("latido" in h and "vida" in h for h in diario["hechos"])
+    r = next(d for n, d in eventos if n == "registro")
+    assert r["nivel"] == "cognitivo" and "tribunal" in r and "saber" in r and "tiempos_ms" not in r and "piezas" not in r
+    assert len(r["saber"]) <= 20 and validar(r) == []
+
+
 def test_ritmo_fijo_en_tiempo_real(servidor):
     servidor._vida = {"id": 9, "mundo": "snake", "activa": True, "tiempo_real": True, "ritmo_ajustable": False, "ritmo": None}
     estado, datos = _pedir(servidor, "POST", "/api/v1/vidas/actual/ritmo", {"ritmo": "x4"})
+    assert estado == 409 and datos["error"]["codigo"] == "ritmo_fijo"
+    estado, datos = _pedir(servidor, "POST", "/api/v1/vidas/actual/paso", {})
     assert estado == 409 and datos["error"]["codigo"] == "ritmo_fijo"
     servidor._vida = None
 
