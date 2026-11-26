@@ -385,6 +385,7 @@ class Telemetria:
             finally:
                 self._fin_de_vida()
 
+        self._difundir_registro("vida", self.vida_actual())   # antes del primer registro: quien sigue la SSE la conoce
         self.hilo_simulacion = threading.Thread(target=_tarea, daemon=True)
         self.hilo_simulacion.start()
         return self.vida_actual() or {}
