@@ -14,7 +14,7 @@ cambiarlo.
 - ``max``: sin espera.
 - ``pausa``: espera hasta que el ritmo cambie, se pida un paso (``paso``: deja pasar un latido) o se pida parar.
 
-El cómodo es el ``comodo_ms`` del regulador; si no se da (la CLI con ``--ver``, el panel clásico), el ``frecuencia_ms``
+El cómodo es el ``comodo_ms`` del regulador; si no se da (la CLI con ``--ver``), el ``frecuencia_ms``
 que pasa el ejecutor, como antes de T4a. ``x1`` se admite como sinónimo de ``comodo`` (la API de T3).
 
 El periodo se mide entre dos salidas de la espera, no desde el final del latido: un latido que tarda 80 ms a ritmo

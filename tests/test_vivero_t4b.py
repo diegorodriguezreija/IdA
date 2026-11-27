@@ -60,7 +60,7 @@ def _ficheros(raiz: str) -> List[str]:
     return sorted(os.path.relpath(os.path.join(d, f), raiz) for d, _, fs in os.walk(raiz) for f in fs)
 
 
-FICHA_PANEL = {   # lo que guardaba «Restaurar en antesala» del panel (panel.html) y descarga /linaje/descargar
+FICHA_PANEL = {   # la ficha antigua: la que guardaba y descargaba el panel clásico (retirado en T6a)
     "tipo": "ida_individuo_v1", "mundo": "minimo", "individuo": "Minimo_G7", "generacion": 7,
     "arquetipo": {"nombre": "IdA", "linaje": "Minimo", "generacion": 7, "padre": "Minimo_G6", "apertura": 0.61,
                   "responsabilidad": 0.55, "neuroticismo": 0.4, "extraversion": 0.35, "umbral_miedo": 0.62},
@@ -284,8 +284,6 @@ def test_sin_muerte_no_hay_cierre(tmp_path):
 
 
 def test_el_servidor_marca_los_hechos_del_cierre_y_cuenta_el_reparto(servidor, monkeypatch):
-    import ida.telemetria.servidor as srv
-    monkeypatch.setattr(srv, "a_panel", lambda r: {})   # la forma del panel clásico no interesa aquí
     base = {"v": 1, "vida": 1, "latido": 5, "generacion": 1, "score": {"logros": []}}
     servidor.publicar(dict(base, accion={"sistema": "S1"}, hechos=[]))
     servidor.publicar(dict(base, latido=6, accion={"sistema": "S2"}, hechos=[]))

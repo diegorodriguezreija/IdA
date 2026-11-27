@@ -65,7 +65,7 @@ PREFIJO = "/api/v1/"
 PLAZO_LOGICO = 40.0          # O11: como D17
 LIMITES = {"latidos": (1, 1_000_000), "generaciones": (1, 100), "semilla": (0, 2_147_483_646)}
 DEFECTOS = {"latidos": 300, "generaciones": 1, "semilla": 1}
-NIVEL_DEFECTO = "completo"   # el panel clásico enseña los tiempos por Componente (hasta T6)
+NIVEL_DEFECTO = "completo"   # el Laboratorio (Latido e Ingeniería) enseña los tiempos por Componente
 CAMPOS_VITAL = {c.lstrip("?") for c in (*ESQUEMA["base"], *ESQUEMA["vital"])}
 CAMPOS_COGNITIVO = CAMPOS_VITAL | {c.lstrip("?") for c in ESQUEMA["cognitivo"]}
 SABER_COGNITIVO = 20   # como el observador al nivel cognitivo
@@ -79,7 +79,9 @@ CODIGOS = ("json_invalido", "origen_no_permitido", "ruta_desconocida", "mundo_de
            "sin_companero", "id_invalido", "elemento_desconocido", "elemento_incompleto", "nombre_invalido", "testigo_invalido",
            # T5a: Laboratorio y grabaciones
            "grabacion_en_curso", "sin_grabacion", "grabacion_desconocida", "grabacion_invalida", "latido_fuera",
-           "componentes_no_disponibles")
+           "componentes_no_disponibles",
+           # T6a: OpenTelemetry desde la antesala
+           "sin_observabilidad")
 
 
 class ErrorApi(Exception):
@@ -106,7 +108,7 @@ def _entero(datos: Mapping[str, Any], campo: str) -> int:
 
 
 def leer_ficha(ficha: Any, mundo: str) -> Tuple[Optional[Dict[str, float]], Dict[str, Any]]:
-    """Carácter y legado de una ficha de individuo (el JSON que descarga hoy el panel: ``arquetipo``,
+    """Carácter y legado de una ficha de individuo (la ficha v1 o la antigua del panel retirado en T6a: ``arquetipo``,
     ``arquetipo_actual`` o la última de ``generaciones``, y ``legado``). Lo aprendido es de cada mundo: una ficha de
     otro mundo es un error."""
     if not isinstance(ficha, dict):
@@ -173,9 +175,12 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
         raise ErrorApi(400, "campo_invalido", "grabar: debe ser booleano", "grabar")
     if grabar and "nivel" not in datos:
         nivel = "completo"                       # T5a: una grabación desde el Vivero va con el nivel completo
-    for campo in ("sin_experiencia", "tabula_rasa"):
+    for campo in ("sin_experiencia", "tabula_rasa", "otel"):
         if not isinstance(datos.get(campo, False), bool):
             raise ErrorApi(400, "campo_invalido", f"{campo}: debe ser booleano", campo)
+    otel = bool(datos.get("otel", False))
+    if otel and not catalogo.observabilidad():
+        raise ErrorApi(409, "sin_observabilidad", "OpenTelemetry necesita el extra [observabilidad] (y la pila de infra/ para verlo)", "otel")
     tiempo_real = bool(c.perfil.tiempo_real)
     return {
         "mundo": mundo,
@@ -192,6 +197,7 @@ def preparar_vida(datos: Any) -> Dict[str, Any]:
         "tiempo_real": tiempo_real,
         "ritmo_comodo_ms": catalogo.ritmo_comodo(mundo),         # O20
         "grabar": grabar,                                        # T5a
+        "otel": otel,                                            # T6a: trazas y métricas por OTLP (O15)
     }
 
 
@@ -254,7 +260,7 @@ def _get(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list
         for m in lista:
             inst = tel.instalador.ultima_de(m["nombre"])
             m["instalacion"] = inst.resumen() if inst is not None else None
-        h._json(200, {"mundos": lista})
+        h._json(200, {"mundos": lista, "observabilidad": catalogo.observabilidad()})
     elif partes == ["presets"]:
         h._json(200, presets.respuesta())
     elif partes == ["vidas", "actual"]:

@@ -10,7 +10,6 @@ from ida.core.latido import Organismo
 from ida.nucleo.linaje import Arquetipo, Linaje
 from ida.nucleo.memoria import Memoria
 from ida.nucleo.persistencia import Persistencia
-from ida.telemetria.compat import a_panel
 from ida.telemetria.grabacion import Grabacion, cabecera, commit_actual
 from ida.telemetria.observador import Observador
 from ida.telemetria.ritmo import Regulador
@@ -33,7 +32,6 @@ def ejecutar(
     latidos: int = 300,
     semilla: int = 1,
     generaciones: int = 1,
-    ver: bool = False,
     sin_experiencia: bool = False,
     tabula_rasa: bool = False,
     consola: bool = True,
@@ -75,13 +73,8 @@ def ejecutar(
     azar = Azar(semilla)
     linaje = Linaje(os.path.join(datos, "linaje.json"))
     persistencia = Persistencia(os.path.join(datos, "memoria.db") if m.perfil.memoria != "apagada" else None)
-    telemetria = telemetria_instancia
-    telemetria_propia = False
-    if ver and telemetria is None:
-        from ida.telemetria.servidor import Telemetria
-        telemetria = Telemetria(mundo=mundo)
-        telemetria_propia = True
-    elif telemetria is not None:
+    telemetria = telemetria_instancia   # el servidor de la aplicación (T6a: también el de ``python -m ida --ver``)
+    if telemetria is not None:
         telemetria.mundo = mundo
     observabilidad = None
     if otel:
@@ -90,7 +83,9 @@ def ejecutar(
     regulador = ritmo if ritmo is not None else (Regulador("x1") if telemetria is not None else None)
     observador: Optional[Observador] = None
     if nivel is not None or grabar or consola or telemetria is not None or observabilidad is not None:
-        observador = Observador(nivel or "cognitivo")   # O2: la consola, el directo, la grabación y OTel leen el registro
+        # O2: la consola, el directo, la grabación y OTel leen el registro. OTel (O15) saca sus tramos por fase de los
+        # campos del nivel completo (``fases``, ``tiempos_ms``): sin nivel pedido, con OTel se observa a ese nivel.
+        observador = Observador(nivel or ("completo" if observabilidad is not None else "cognitivo"))
     grabacion: Optional[Grabacion] = None
     if grabar and observador is not None:
         grabacion = Grabacion(grabar, cabecera(mundo, observador.nivel, semilla, latidos, generaciones, opciones_mundo,
@@ -152,7 +147,7 @@ def ejecutar(
                 if consola and registro is not None and imprimir_latido(registro, cada):
                     print(linea(registro))
                 if observabilidad is not None and registro is not None:
-                    observabilidad.latido(onda, a_panel(registro))   # compatibilidad hasta T6 (O15)
+                    observabilidad.latido(registro)   # O15: OTel se alimenta del registro
                 if telemetria is not None and registro is not None:
                     telemetria.publicar(registro)
                     if regulador is not None and not o.perfil.tiempo_real:   # O3: ritmo visible, entre latidos
@@ -212,8 +207,6 @@ def ejecutar(
             grabacion.cerrar()
         m.cerrar()
         persistencia.cerrar()
-        if telemetria is not None and telemetria_propia:
-            telemetria.detener()
         if observabilidad is not None:
             observabilidad.cerrar()
     return resumenes

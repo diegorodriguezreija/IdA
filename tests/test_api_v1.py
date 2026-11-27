@@ -296,7 +296,8 @@ def test_post_con_origen_ajeno_da_403(servidor):
                               (f"http://127.0.0.1:{servidor.puerto + 1}", {})):
         estado, datos = _pedir(servidor, "POST", "/api/v1/vidas", {"mundo": "minimo"}, origen=origen, cabeceras=cabeceras)
         assert estado == 403 and datos["error"]["codigo"] == "origen_no_permitido", (origen, cabeceras)
-    assert _pedir(servidor, "POST", "/detener", {}, origen="http://evil.example")[0] == 403        # también las rutas antiguas
+    assert _pedir(servidor, "POST", "/api/v1/vidas/actual/parar", {}, origen="http://evil.example")[0] == 403
+    assert _pedir(servidor, "POST", "/ruta-que-no-existe", {}, origen="http://evil.example")[0] == 403   # antes que la ruta
     assert _pedir(servidor, "POST", "/api/v1/mundos/crafter/instalar", {}, origen="http://evil.example")[0] == 403
     referer = {"Referer": f"http://localhost:{servidor.puerto}/#/antesala"}
     assert _pedir(servidor, "POST", "/api/v1/vidas/actual/parar", {}, origen=None, cabeceras=referer)[0] == 404   # pasa el filtro
@@ -353,17 +354,36 @@ def test_instalacion_fallida_y_una_a_la_vez(tmp_path):
         tel.detener()
 
 
-# --- rutas de la aplicación y antiguas --------------------------------------------------------------------------------
-def test_rutas_de_la_aplicacion_y_antiguas(servidor):
+# --- rutas de la aplicación; las antiguas, retiradas en T6a ----------------------------------------------------------
+# Las rutas del linaje se escriben por partes: el criterio de T6a es que ninguna referencia a ellas quede viva en ida/,
+# tests/ ni herramientas/ (lo comprueba un grep), y estas solo están para comprobar que ya no existen.
+_LINAJE = "/linaje"
+RUTAS_RETIRADAS_GET = ("/panel", "/antesala-antigua", "/antesala", "/eventos", "/estado", "/estado_simulacion", _LINAJE,
+                       _LINAJE + "/descargar", _LINAJE + "/descargar?mundo=minimo&individuo=Minimo_G1", "/web/../servidor.py")
+RUTAS_RETIRADAS_POST = ("/iniciar", "/detener", _LINAJE + "/fijar", _LINAJE + "/restaurar")
+
+
+def test_rutas_de_la_aplicacion(servidor):
     estado, cuerpo = _pedir(servidor, "GET", "/")
     assert estado == 200 and b"/web/app.js" in cuerpo
-    for ruta in ("/panel", "/antesala-antigua", "/antesala"):
-        estado, cuerpo = _pedir(servidor, "GET", ruta)
-        assert estado == 200 and b"<html" in cuerpo.lower(), ruta
-    assert b"/iniciar" in _pedir(servidor, "GET", "/antesala-antigua")[1]
     for estatico in ("/web/i18n/es.json", "/web/i18n/en.json", "/web/vistas/antesala.js", "/web/componentes/opciones.js", "/web/estilo.css"):
         assert _pedir(servidor, "GET", estatico)[0] == 200, estatico
-    assert _pedir(servidor, "GET", "/estado_simulacion")[0] == 200
+
+
+def test_las_rutas_retiradas_dan_404(servidor):
+    """T6a: el panel y la antesala de antes, su API sin versión y las rutas del linaje ya no existen (también con una vida en
+    marcha: ``/`` es siempre la aplicación)."""
+    for ruta in RUTAS_RETIRADAS_GET:
+        assert _pedir(servidor, "GET", ruta)[0] == 404, ruta
+    for ruta in RUTAS_RETIRADAS_POST:
+        assert _pedir(servidor, "POST", ruta, {"mundo": "minimo", "individuo": "Minimo_G1"})[0] == 404, ruta
+    assert _pedir(servidor, "POST", "/api/v1/vidas", {"mundo": "minimo", "latidos": 300})[0] == 201
+    try:
+        estado, cuerpo = _pedir(servidor, "GET", "/")
+        assert estado == 200 and b"/web/app.js" in cuerpo
+        assert _pedir(servidor, "GET", "/panel")[0] == 404
+    finally:
+        servidor.detener_simulacion()
 
 
 def test_extra_todos_es_la_union_de_los_mundos():

@@ -4,21 +4,14 @@ Escucha en ``127.0.0.1`` (en un contenedor, ``IDA_TELEMETRIA_HOST``). Los POST s
 ``Origin`` (o, si falta, ``Referer``) es la del propio servidor; si no, 403.
 
 Rutas:
-- ``/``                  aplicación (``web/index.html``: antesala, Vivero y Laboratorio); con ``--ver``, el panel
-- ``/api/v1/...``        API v1 (``ida/telemetria/api_v1.py``): mundos, instalación, presets, vidas, ritmo, SSE
-- ``/antesala-antigua``  antesala de antes (también en ``/antesala``), hasta T6
-- ``/panel``             panel HTML de telemetría (hasta T6)
-- ``/eventos``            flujo SSE con un resumen por latido
-- ``/estado``             último resumen en JSON
-- ``/estado_simulacion``  estado de ejecución del organismo
-- ``POST /iniciar``       inicia una simulación con parámetros
-- ``POST /detener``       detiene la simulación activa
-- ``GET /linaje``         consulta el historial y ranking de generaciones
-- ``GET /linaje/descargar`` descarga un individuo o el linaje completo en JSON
-- ``POST /linaje/fijar``   fija o desfija un individuo para la retención
-- ``POST /linaje/restaurar`` valida y extrae parámetros de un JSON restaurado
-- ``/escena``             visor de comprobación de ``escena()`` (T2a): dibuja una grabación cargada en el navegador
-- ``/web/<ruta>``         ficheros estáticos de ``ida/telemetria/web/`` (solo esa carpeta y tipos conocidos)
+- ``/``              aplicación (``web/index.html``: antesala, Vivero y Laboratorio)
+- ``/api/v1/...``    API v1 (``ida/telemetria/api_v1.py``): mundos, instalación, presets, vidas, ritmo, SSE, Vivero y
+                     Laboratorio
+- ``/escena``        visor de comprobación de ``escena()`` (T2a): dibuja una grabación cargada en el navegador
+- ``/web/<ruta>``    ficheros estáticos de ``ida/telemetria/web/`` (solo esa carpeta y tipos conocidos)
+
+El panel y la antesala de antes, su API sin versión (``/eventos``, ``/estado``, ``/iniciar``...) y las rutas del linaje
+del panel se retiraron en T6a: cualquier otra ruta da 404.
 """
 
 import json
@@ -28,11 +21,9 @@ import threading
 from collections import deque
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, List, Optional, Tuple
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import unquote, urlparse
 
-from ida.historico import cargar_linaje, conmutar_fijado, exportar_individuo, exportar_linaje_completo
 from ida.telemetria import api_v1
-from ida.telemetria.compat import a_panel
 from ida.telemetria.esquema import VERSION
 from ida.telemetria.grabacion import cabecera, commit_actual
 from ida.telemetria.instalador import Instalador
@@ -40,26 +31,7 @@ from ida.telemetria.laboratorio import Laboratorio
 from ida.telemetria.ritmo import RITMOS, Regulador
 from ida.telemetria.vivero import Vivero
 
-PLAZO_LOGICO_ANTESALA = 40.0   # O11: como D17
-NIVEL_ANTESALA = "completo"     # el panel de hoy enseña los tiempos por Componente (nivel completo); hasta T6
 DIARIO_MAX = 400                # hechos recientes de la vida en curso que se reenvían a quien se conecta tarde
-
-
-def plazo_por_defecto(mundo: str) -> Optional[float]:
-    """O11: lo lanzado desde la antesala usa plazo lógico (40 operaciones por ms), salvo en los mundos de tiempo real,
-    que se detectan por el ``Perfil.tiempo_real`` de la clase del mundo (Snake): allí el ritmo lo marca el mundo."""
-    from ida.mundos import cargar
-
-    return None if cargar(mundo).perfil.tiempo_real else PLAZO_LOGICO_ANTESALA
-
-
-def opciones_por_defecto(mundo: str, dadas: Dict[str, Any]) -> Dict[str, Any]:
-    """O8: lo lanzado desde la antesala usa los valores por defecto declarados por el mundo (``Mundo.opciones()``, los
-    de la medición oficial donde la hay), sustituidos por los que lleguen del formulario, ya comprobados."""
-    from ida.mundos import cargar
-    from ida.mundos.opciones import con_defectos
-
-    return con_defectos(cargar(mundo).opciones(), dadas, mundo)
 
 
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web")
@@ -77,8 +49,6 @@ def fichero_web(ruta: str) -> Optional[str]:
     return destino if os.path.splitext(destino)[1].lower() in TIPOS_WEB else None
 
 
-PANEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "panel.html")
-ANTESALA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "antesala.html")
 APLICACION = os.path.join(WEB, "index.html")
 
 
@@ -106,65 +76,9 @@ class _Manejador(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self) -> None:
-        tel = self.servidor_tel
-        url = urlparse(self.path)
-        ruta = url.path
-        params = parse_qs(url.query)
-        mundo_query = params.get("mundo", [tel.mundo or "minimo"])[0]
-
+        ruta = urlparse(self.path).path
         if ruta.startswith(api_v1.PREFIJO):
             api_v1.atender(self, "GET")
-        elif ruta == "/eventos":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-            self.send_header("Cache-Control", "no-cache")
-            self.end_headers()
-            cola = tel._suscribir()
-            try:
-                if tel.ultimo is not None:
-                    self._enviar(tel.ultimo)
-                while tel.activo:
-                    try:
-                        self._enviar(cola.get(timeout=1.0))
-                    except queue.Empty:
-                        self.wfile.write(b": latido\n\n")
-                        self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
-                pass
-            finally:
-                tel._desuscribir(cola)
-        elif ruta == "/estado":
-            self._responder(json.dumps(tel.ultimo or {}, ensure_ascii=False, default=str).encode("utf-8"), "application/json")
-        elif ruta == "/estado_simulacion":
-            resp = {"activa": tel.simulacion_activa, "mundo": tel.mundo}
-            self._responder(json.dumps(resp, ensure_ascii=False).encode("utf-8"), "application/json")
-        elif ruta == "/linaje":
-            datos = cargar_linaje(mundo_query)
-            self._responder(json.dumps(datos, ensure_ascii=False).encode("utf-8"), "application/json")
-        elif ruta == "/linaje/descargar":
-            ind_id = params.get("individuo", [None])[0]
-            if ind_id:
-                doc = exportar_individuo(mundo_query, ind_id)
-                nombre_archivo = f"ida-individuo-{ind_id}.json"
-            else:
-                doc = exportar_linaje_completo(mundo_query)
-                nombre_archivo = f"ida-linaje-{mundo_query}.json"
-            if doc is None:
-                self.send_error(404, "Individuo o linaje no encontrado")
-                return
-            cuerpo = json.dumps(doc, ensure_ascii=False, indent=2).encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.send_header("Content-Disposition", f'attachment; filename="{nombre_archivo}"')
-            self.send_header("Content-Length", str(len(cuerpo)))
-            self.end_headers()
-            self.wfile.write(cuerpo)
-        elif ruta in ("/antesala", "/antesala-antigua"):
-            with open(ANTESALA, "rb") as f:
-                self._responder(f.read(), "text/html; charset=utf-8")
-        elif ruta == "/panel":
-            with open(PANEL, "rb") as f:
-                self._responder(f.read(), "text/html; charset=utf-8")
         elif ruta == "/escena" or ruta.startswith("/web/"):
             destino = fichero_web("escena.html" if ruta == "/escena" else ruta[len("/web/"):])
             if destino is None:
@@ -173,15 +87,12 @@ class _Manejador(BaseHTTPRequestHandler):
             with open(destino, "rb") as f:
                 self._responder(f.read(), TIPOS_WEB[os.path.splitext(destino)[1].lower()])
         elif ruta in ("/", "/index.html"):
-            # La aplicación; con ``--ver`` (sin antesala) y una vida en marcha, el panel de siempre
-            archivo = PANEL if (tel.simulacion_activa and not tel.modo_antesala) else APLICACION
-            with open(archivo, "rb") as f:
+            with open(APLICACION, "rb") as f:
                 self._responder(f.read(), "text/html; charset=utf-8")
         else:
             self.send_error(404, "Ruta no encontrada")
 
     def do_POST(self) -> None:
-        tel = self.servidor_tel
         ruta = self.path.split("?")[0]
         try:
             longitud = int(self.headers.get("Content-Length", 0))
@@ -193,40 +104,6 @@ class _Manejador(BaseHTTPRequestHandler):
             return
         if ruta.startswith(api_v1.PREFIJO):
             api_v1.atender(self, "POST", bruto)
-            return
-        cuerpo = bruto.decode("utf-8", errors="replace") if bruto else "{}"
-        try:
-            datos = json.loads(cuerpo) if cuerpo else {}
-        except Exception:
-            datos = {}
-
-        if ruta == "/iniciar":
-            try:
-                tel.iniciar_simulacion(datos)
-                self._responder(json.dumps({"ok": True, "url": "/panel"}).encode("utf-8"), "application/json")
-            except Exception as e:
-                self._responder(json.dumps({"ok": False, "error": str(e)}).encode("utf-8"), "application/json", codigo=400)
-        elif ruta == "/detener":
-            tel.detener_simulacion()
-            self._responder(json.dumps({"ok": True}).encode("utf-8"), "application/json")
-        elif ruta == "/linaje/fijar":
-            mundo = datos.get("mundo") or tel.mundo or "minimo"
-            ind_id = datos.get("individuo")
-            if not ind_id:
-                self._responder(json.dumps({"ok": False, "error": "falta individuo"}).encode("utf-8"), "application/json", codigo=400)
-                return
-            fijado = datos.get("fijado")
-            nuevo = conmutar_fijado(mundo, ind_id, fijado)
-            self._responder(json.dumps({"ok": True, "fijado": nuevo}).encode("utf-8"), "application/json")
-        elif ruta == "/linaje/restaurar":
-            mundo = datos.get("mundo") or tel.mundo or "minimo"
-            arquetipo = datos.get("arquetipo")
-            legado = datos.get("legado", {})
-            if not arquetipo and "arquetipo_actual" in datos:
-                arquetipo = datos.get("arquetipo_actual")
-            elif not arquetipo and "generaciones" in datos and datos["generaciones"]:
-                arquetipo = datos["generaciones"][-1].get("arquetipo")
-            self._responder(json.dumps({"ok": True, "mundo": mundo, "arquetipo": arquetipo, "legado": legado}).encode("utf-8"), "application/json")
         else:
             self.send_error(404, "Ruta no encontrada")
 
@@ -272,8 +149,8 @@ class Telemetria:
         proceso simulado."""
         self.mundo = mundo
         self.activo = True
-        self.modo_antesala = modo_antesala
-        self.simulacion_activa = bool(mundo and not modo_antesala)
+        self.modo_antesala = modo_antesala   # solo cambia el texto de arranque: la ruta ``/`` es siempre la aplicación
+        self.simulacion_activa = False
         self.datos = datos
         from ida.ejecutor import DATOS
         self.vivero = Vivero(datos or DATOS)                      # T4b: compañeros y colección (sección 13)
@@ -283,13 +160,11 @@ class Telemetria:
         self._diario: deque = deque(maxlen=DIARIO_MAX)            # hechos recientes de la vida en curso (con su latido)
         self._requisitos: Dict[Tuple[Any, Any, Any], Dict[str, Any]] = {}   # el último «aprende requisito» de cada acción
         self._reparto: Dict[str, Any] = {"vida": None, "cuenta": {}}   # sistema de cada acción de la vida (desde su inicio)
-        self.ultimo: Optional[Dict[str, Any]] = None             # lo último enviado al panel (forma de antes)
         self.ultimo_registro: Optional[Dict[str, Any]] = None    # el último registro del latido v1
         self._escena: Optional[Dict[str, Any]] = None             # la última escena de la vida (llega solo cuando cambia)
         self._vida_escena: Any = None
-        self._vida: Optional[Dict[str, Any]] = None               # la vida lanzada por la API o por /iniciar
+        self._vida: Optional[Dict[str, Any]] = None               # la vida lanzada por la API o seguida desde la CLI
         self._vidas = 0
-        self._colas: List[queue.Queue] = []
         self._colas_registro: List[queue.Queue] = []
         self.evento_parada = threading.Event()
         self.hilo_simulacion: Optional[threading.Thread] = None
@@ -311,39 +186,12 @@ class Telemetria:
         self.puerto = self.servidor.server_address[1]
         self.hilo = threading.Thread(target=self.servidor.serve_forever, daemon=True)
         self.hilo.start()
-        etiqueta = "aplicación web" if not self.simulacion_activa else "panel"
-        print(f"[telemetría] {etiqueta} en http://{'127.0.0.1' if anfitrion == '0.0.0.0' else anfitrion}:{self.puerto}")
+        print(f"[telemetría] aplicación web en http://{'127.0.0.1' if anfitrion == '0.0.0.0' else anfitrion}:{self.puerto}")
 
     # --- vidas ---------------------------------------------------------------------------------------------------------
-    def iniciar_simulacion(self, config: Dict[str, Any]) -> None:
-        """``POST /iniciar`` de la antesala antigua (hasta T6): la configuración de antes, con sus valores por defecto."""
-        from ida.mundos import cargar
-
-        mundo = config.get("mundo", "minimo")
-        opciones = opciones_por_defecto(mundo, config.get("opciones") or {})   # antes del hilo: el error llega a /iniciar
-        plazo = config["plazo_logico"] if "plazo_logico" in config else plazo_por_defecto(mundo)
-        self.lanzar({
-            "mundo": mundo,
-            "opciones": opciones,
-            "latidos": int(config.get("latidos", 300)),
-            "semilla": int(config.get("semilla", 1)),
-            "generaciones": int(config.get("generaciones", 1)),
-            "sin_experiencia": bool(config.get("sin_experiencia", False)),
-            "tabula_rasa": bool(config.get("tabula_rasa", False)),
-            "cada": int(config.get("cada", 10)),
-            "otel": bool(config.get("otel", False)),
-            "arquetipo": config.get("arquetipo"),
-            "legado": config.get("legado"),
-            "nivel": str(config.get("nivel", NIVEL_ANTESALA)),
-            "plazo_logico": None if plazo is None else float(plazo),
-            "tiempo_real": bool(cargar(mundo).perfil.tiempo_real),
-        })
-
     def lanzar(self, config: Dict[str, Any]) -> Dict[str, Any]:
-        """Lanza una vida (para antes la que hubiera) con una configuración ya comprobada (``api_v1.preparar_vida`` o
-        ``iniciar_simulacion``). Devuelve la descripción de la vida (``vida_actual``)."""
-        from ida.mundos import cargar
-
+        """Lanza una vida (para antes la que hubiera) con una configuración ya comprobada (``api_v1.preparar_vida``).
+        Devuelve la descripción de la vida (``vida_actual``)."""
         self.detener_simulacion()
         mundo = config["mundo"]
         archivada = None
@@ -351,34 +199,7 @@ class Telemetria:
             # T4b: desde la aplicación, «Empezar de cero» archiva la estirpe en la colección; nunca la borra. Solo la CLI
             # (``--tabula-rasa``) conserva su conducta de siempre. La vida anterior ya está parada.
             archivada = self.vivero.archivar(mundo, motivo="empezar_de_cero")
-        self.mundo = mundo
-        self.ultimo = None
-        self.ultimo_registro = None
-        self._escena, self._vida_escena = None, None
-        self.evento_parada = threading.Event()
-        comodo = config.get("ritmo_comodo_ms")   # O20; sin él (antesala antigua), el plazo del Perfil, como antes
-        self.ritmo = Regulador("comodo", comodo)
-        self._diario.clear()
-        self._requisitos.clear()
-        self._reparto = {"vida": None, "cuenta": {}}
-        self._vidas += 1
-        tiempo_real = bool(config["tiempo_real"])
-        frecuencia = float(cargar(mundo).perfil.frecuencia_ms)
-        self._vida = {
-            "id": self._vidas, "mundo": mundo, "activa": True, "opciones": dict(config["opciones"]),
-            "semilla": config["semilla"], "latidos": config["latidos"], "generaciones": config["generaciones"],
-            "arquetipo": config.get("arquetipo"), "con_legado": bool(config.get("legado")),
-            "plazo_logico": config["plazo_logico"], "nivel": config["nivel"], "tiempo_real": tiempo_real,
-            "frecuencia_ms": frecuencia, "ritmo": None if tiempo_real else "comodo",
-            "ritmo_ajustable": not tiempo_real, "ritmos": [] if tiempo_real else list(RITMOS),
-            "ritmo_comodo_ms": None if tiempo_real else (frecuencia if comodo is None else float(comodo)),
-            "archivada": archivada["id"] if archivada else None,
-            "sin_experiencia": bool(config.get("sin_experiencia", False)),
-        }
-        self.lab.nueva_vida(self._vidas, mundo)   # T5a: el directo del Laboratorio empieza con esta vida
-        if config.get("grabar"):
-            self.grabar()                          # T5a: grabar desde el primer latido
-        self.simulacion_activa = True
+        self._preparar(config, archivada)
         evento_parada, regulador = self.evento_parada, self.ritmo
         datos = os.path.join(self.datos, mundo) if self.datos else None
 
@@ -390,7 +211,6 @@ class Telemetria:
                     latidos=config["latidos"],
                     semilla=config["semilla"],
                     generaciones=config["generaciones"],
-                    ver=False,
                     sin_experiencia=bool(config.get("sin_experiencia", False)),
                     tabula_rasa=False,   # ya archivada arriba (T4b): la aplicación nunca borra la estirpe
                     cada=int(config.get("cada", 10)),
@@ -417,6 +237,56 @@ class Telemetria:
         self.hilo_simulacion.start()
         return self.vida_actual() or {}
 
+    def acompanar(self, config: Dict[str, Any]) -> Dict[str, Any]:
+        """Describe una vida que corre fuera del servidor (``python -m ida --mundo M --ver``, T6a): el Vivero y el
+        Laboratorio la siguen como una lanzada desde la aplicación. Quien la corre pasa ``telemetria_instancia=self``,
+        ``ritmo=self.ritmo`` y ``evento_parada=self.evento_parada`` a ``ejecutar`` y llama a ``fin_acompanada`` al
+        acabar. ``config`` lleva lo mismo que ``lanzar`` (``tabula_rasa`` no se atiende aquí: la CLI la aplica a su
+        manera, antes de empezar)."""
+        self.detener_simulacion()
+        self._preparar(config, None)
+        if self._vida is not None:
+            self._vida["origen"] = "cli"
+        self._difundir_registro("vida", self.vida_actual())
+        return self.vida_actual() or {}
+
+    def fin_acompanada(self) -> None:
+        """La vida seguida con ``acompanar`` ha terminado (o se ha parado desde la aplicación)."""
+        self._fin_de_vida()
+
+    def _preparar(self, config: Dict[str, Any], archivada: Optional[Dict[str, Any]]) -> None:
+        """El estado de una vida nueva: ritmo, diario, directo del Laboratorio y su descripción (``vida_actual``)."""
+        from ida.mundos import cargar
+
+        mundo = config["mundo"]
+        self.mundo = mundo
+        self.ultimo_registro = None
+        self._escena, self._vida_escena = None, None
+        self.evento_parada = threading.Event()
+        comodo = config.get("ritmo_comodo_ms")   # O20; sin él (la CLI con --ver), el plazo del Perfil, como antes
+        self.ritmo = Regulador("comodo", comodo)
+        self._diario.clear()
+        self._requisitos.clear()
+        self._reparto = {"vida": None, "cuenta": {}}
+        self._vidas += 1
+        tiempo_real = bool(config["tiempo_real"])
+        frecuencia = float(cargar(mundo).perfil.frecuencia_ms)
+        self._vida = {
+            "id": self._vidas, "mundo": mundo, "activa": True, "opciones": dict(config["opciones"]),
+            "semilla": config["semilla"], "latidos": config["latidos"], "generaciones": config["generaciones"],
+            "arquetipo": config.get("arquetipo"), "con_legado": bool(config.get("legado")),
+            "plazo_logico": config["plazo_logico"], "nivel": config["nivel"], "tiempo_real": tiempo_real,
+            "frecuencia_ms": frecuencia, "ritmo": None if tiempo_real else "comodo",
+            "ritmo_ajustable": not tiempo_real, "ritmos": [] if tiempo_real else list(RITMOS),
+            "ritmo_comodo_ms": None if tiempo_real else (frecuencia if comodo is None else float(comodo)),
+            "archivada": archivada["id"] if archivada else None,
+            "sin_experiencia": bool(config.get("sin_experiencia", False)),
+        }
+        self.lab.nueva_vida(self._vidas, mundo)   # T5a: el directo del Laboratorio empieza con esta vida
+        if config.get("grabar"):
+            self.grabar()                          # T5a: grabar desde el primer latido
+        self.simulacion_activa = True
+
     def _fin_de_vida(self) -> None:
         with self._cerrojo:
             if self._vida is None or not self._vida["activa"]:
@@ -424,8 +294,6 @@ class Telemetria:
             self._vida["activa"] = False
         self.simulacion_activa = False
         self.lab.terminar(esperar=False)   # T5a: la grabación se cierra tras escribir el último registro (el de cierre)
-        if self.ultimo is not None:
-            self._difundir(dict(self.ultimo, simulacion_activa=False, evento="fin_simulacion"))
         self._difundir_registro("fin", self.vida_actual())
 
     def vida_de(self, mundo: str) -> bool:
@@ -492,17 +360,6 @@ class Telemetria:
         self._fin_de_vida()
 
     # --- difusión ------------------------------------------------------------------------------------------------------
-    def _suscribir(self) -> queue.Queue:
-        cola: queue.Queue = queue.Queue(maxsize=200)
-        with self._cerrojo:
-            self._colas.append(cola)
-        return cola
-
-    def _desuscribir(self, cola: queue.Queue) -> None:
-        with self._cerrojo:
-            if cola in self._colas:
-                self._colas.remove(cola)
-
     def suscribir_registro(self) -> queue.Queue:
         cola: queue.Queue = queue.Queue(maxsize=200)
         with self._cerrojo:
@@ -523,11 +380,11 @@ class Telemetria:
         return dict(r, escena=self._escena)
 
     def publicar(self, registro: Dict[str, Any]) -> None:
-        """Publica un registro del latido v1 (O2): tal cual por la SSE de la API v1 y, para el panel y la antesala de
-        antes, con la forma de antes (``compat.a_panel``, hasta T6). Un diccionario sin ``v`` se difunde tal cual."""
-        if registro.get("v") != VERSION:     # forma de antes (compatibilidad hasta T6): se difunde tal cual
-            self._difundir(registro)
-            return
+        """Publica un registro del latido v1 (O2) por la SSE de la API v1, el directo del Laboratorio y el diario. No
+        bloquea: el hilo de la vida sigue aunque no haya nadie conectado o un cliente vaya lento. ``ValueError`` si no es
+        un registro v1 (desde T6a no hay otra forma)."""
+        if registro.get("v") != VERSION:
+            raise ValueError(f"se esperaba un registro del latido v{VERSION}, hay v={registro.get('v')!r}")
         if registro.get("vida") != self._vida_escena:
             self._escena, self._vida_escena = None, registro.get("vida")
         if "escena" in registro:
@@ -551,7 +408,6 @@ class Telemetria:
                 if h.get("tipo") == "aprende" and h.get("saber") == "requisito":
                     self._requisitos[(registro.get("vida"), h.get("verbo"), h.get("clase"))] = h2
         self._difundir_registro("registro", registro)
-        self._difundir(a_panel(registro))
 
     @staticmethod
     def _poner(cola: queue.Queue, dato: Any) -> None:
@@ -570,16 +426,6 @@ class Telemetria:
             colas = list(self._colas_registro)
         for c in colas:
             self._poner(c, (evento, dato))
-
-    def _difundir(self, datos: Dict[str, Any]) -> None:
-        datos = dict(datos, mundo=self.mundo)
-        if "simulacion_activa" not in datos:
-            datos["simulacion_activa"] = self.simulacion_activa
-        self.ultimo = datos
-        with self._cerrojo:
-            colas = list(self._colas)
-        for c in colas:
-            self._poner(c, datos)
 
     def detener(self) -> None:
         self.detener_simulacion()

@@ -109,6 +109,15 @@ def stockfish_disponible() -> bool:
     return shutil.which("stockfish") is not None
 
 
+def observabilidad() -> bool:
+    """¿Está el extra ``[observabilidad]`` (el SDK de OpenTelemetry y su exportador OTLP)? Sin importarlo."""
+    try:
+        return all(importlib.util.find_spec(m) is not None
+                   for m in ("opentelemetry.sdk", "opentelemetry.exporter.otlp.proto.http"))
+    except (ImportError, ValueError):   # un paquete padre que falta
+        return False
+
+
 def estado(mundo: str) -> str:
     """``listo``, ``no_instalado``, ``falta_navegador`` (Snake sin Chromium) o ``sin_stockfish`` (ajedrez, lanzable)."""
     _, paquete = DEPENDENCIAS.get(mundo, (None, None))
