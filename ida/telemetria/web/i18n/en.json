@@ -857,7 +857,7 @@
   "bio.que.necesidad": "The deficit (0 to 1) of each need the world declares, from interoception and the body.",
   "bio.analogo.alimentacion": "Approximate analogue: energy reserves and satiety (blood glucose, liver stores), spent over time and activity and replenished by eating.",
   "bio.analogo.descanso": "Homeostatic sleep pressure (process S of the two-process model), inverted: it builds up awake and dissipates asleep.",
-  "bio.analogo.dormido": "Sleep with motor atonia and an arousal threshold: a threat stimulus or a critical need interrupts it.",
+  "bio.analogo.dormido": "Sleep: sensory and motor disconnection with a high arousal threshold; a threat or a critical need interrupts it.",
   "bio.analogo.dopamina": "Phasic midbrain dopamine as reward prediction error: it rises when things go better than expected, falls when worse, and returns to its tonic baseline.",
   "bio.analogo.placer": "Hedonic pleasure («liking»), distinct from dopaminergic «wanting»: the pleasurable response to consumption, which fades on its own.",
   "bio.analogo.estres": "Approximate analogue of the acute stress response (noradrenaline and the hypothalamic-pituitary-adrenal axis): it integrates threat over a few heartbeats and shifts decisions from deliberate to reactive.",

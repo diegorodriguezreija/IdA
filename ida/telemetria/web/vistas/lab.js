@@ -32,8 +32,8 @@ const VISTAS_SERIES = new Set(['epistemologia', 'biologia', 'analisis', 'cierre'
 const VELOCIDADES = [0.5, 1, 2, 4, 8];        // latidos por segundo al reproducir
 const SONDEO_MS = 1000;                        // cada cuánto se pregunta al directo por latidos nuevos
 // De la tarjeta del Vivero (O19) a lo que la explica: un paso del latido (T5a) o, desde T5b, una vista propia.
-const SECCION_PASO = { cuerpo: 'sentir', ahora: 'tribunal', logros: 'cierre' };
-const SECCION_VISTA = { sabe: { vista: 'epistemologia' }, caracter: { vista: 'analisis', modo: 'estirpes' }, estirpe: { vista: 'analisis', modo: 'estirpes' } };
+const SECCION_PASO = { ahora: 'tribunal', logros: 'cierre' };
+const SECCION_VISTA = { cuerpo: { vista: 'biologia' }, sabe: { vista: 'epistemologia' }, caracter: { vista: 'analisis', modo: 'estirpes' }, estirpe: { vista: 'analisis', modo: 'estirpes' } };
 const PREFERENCIAS = 'ida.lab';
 
 function parametros() { return new URLSearchParams(location.hash.split('?')[1] || ''); }

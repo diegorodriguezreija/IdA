@@ -41,6 +41,8 @@ Este documento es la lista viva de lo que queda. Cuando un punto se resuelva, se
 | B7 | **Nuevo.** El adaptador de Crafter atribuye la causa del daño (`_contacto`) usando lo que el manual declara peligroso: es interpretación. Pasa al organismo (`Amenaza`, que ya aprende quién daña), y el adaptador da solo el daño en bruto |
 | B8 | Los demás mundos (mínimo, archivos, snake y ajedrez) siguen entregando rasgos valorados (`Perfil.rasgos_declarados`). Pasarlos al organismo, mundo a mundo, con su benchmark pareado (era M3) |
 | B9 | **Retención del linaje.** `Linaje` conserva hasta 20 generaciones (las de más puntos): en estirpes largas, la línea de tiempo del Vivero tiene huecos. Conservar también las más recientes. Puede cambiar el legado heredado: criterio D17 | Hallado en T4b |
+| B10 | **Activación separada del estrés.** La activación de la emoción de S2 es hoy el propio estrés (`ida/s2/sentir/emocion.py:17`). En el afecto nuclear (Russell), activación y valencia son ejes independientes: hace falta activación agradable (la excitación de un logro). Cambia lo que atiende S2: criterio D17 | Hallado en T5b (Biología) |
+| B11 | **La dopamina no modula nada.** `soma.dopamina` se calcula como error de predicción, pero ningún Componente la lee; el aprendizaje usa el error directamente. En biología, la dopamina fásica dirige la plasticidad (Schultz) y modula el vigor y la exploración. Que module la plasticidad y la exploración: criterio D17 | Hallado en T5b (Biología) |
 
 ## Mediciones y validación
 

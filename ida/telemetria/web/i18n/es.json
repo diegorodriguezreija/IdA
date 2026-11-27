@@ -857,7 +857,7 @@
   "bio.que.necesidad": "El déficit (de 0 a 1) de cada necesidad que declara el mundo, de la interocepción y del cuerpo.",
   "bio.analogo.alimentacion": "Análogo aproximado: las reservas de energía y la saciedad (glucemia, reservas hepáticas), que se gastan con el tiempo y la actividad y se reponen comiendo.",
   "bio.analogo.descanso": "Presión homeostática de sueño (proceso S del modelo de dos procesos), invertida: crece despierta y se disipa durmiendo.",
-  "bio.analogo.dormido": "Sueño con atonía motora y umbral de despertar: un estímulo de amenaza o una necesidad crítica lo interrumpen.",
+  "bio.analogo.dormido": "Sueño: desconexión sensorial y motora con un umbral de despertar alto; una amenaza o una necesidad crítica lo interrumpen.",
   "bio.analogo.dopamina": "Dopamina fásica del mesencéfalo como error de predicción de recompensa: sube cuando sale mejor de lo esperado y baja cuando sale peor, y vuelve a su tono basal.",
   "bio.analogo.placer": "Placer hedónico («gustar»), distinto del «querer» dopaminérgico: la respuesta placentera al consumir, que se apaga sola.",
   "bio.analogo.estres": "Análogo aproximado de la respuesta aguda de estrés (noradrenalina y eje hipotálamo-hipófiso-adrenal): integra la amenaza en pocos latidos y desplaza la decisión de lo deliberado a lo reactivo.",
