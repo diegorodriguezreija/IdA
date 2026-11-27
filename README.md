@@ -43,22 +43,41 @@ Cada sistema pasa por **Sentir → Interpretar → Reaccionar → Actuar**. Las 
 La mente no sabe en qué mundo está. Cada mundo traduce su realidad a un vocabulario común de rasgos (`nutritivo`, `peligro`, `lugar`…) y verbos (`MOVER`, `COMER`…), y el mismo núcleo, sin cambios, vive en cinco: uno mínimo para tests, un **mundo de archivos** en disco, **Snake** en una web real, **Crafter** y **Ajedrez**. El mundo percibe; IdA piensa: ningún sensor calcula por el individuo.
 
 <p align="center">
-  <img src="docs/img/demo.gif" width="780" alt="Demostración de IdA: Antesala interactiva y Dashboard de telemetría en vivo con ficha modal de individuo">
+  <img src="docs/img/t4b_vivero_crafter.png" width="780" alt="El Vivero de IdA en Crafter: la escena en directo, el cuerpo y el ánimo, la acción en frase, lo que sabe, el diario, los logros, el carácter y la estirpe">
 </p>
 
 ## Pruébalo en 1 minuto
+
+Necesitas **Python 3.12 o posterior**. Comprueba la versión antes de nada:
+
+```bash
+python --version          # Windows: si no dice 3.12 o más, mira la nota de abajo
+```
 
 ```bash
 git clone https://github.com/diegorodriguezreija/IdA.git
 cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
-pip install -e ".[todos]"
-python -m pytest -q                       # 155 tests
-python -m ida                             # antesala interactiva en http://127.0.0.1:8000
+python -m pip install --upgrade pip
+pip install -e ".[todos]"                 # los cinco mundos; sin «[todos]», solo mínimo y archivos
+python -m ida                             # abre la aplicación en http://127.0.0.1:8000
 ```
 
-Al ejecutar `python -m ida` sin parámetros se abre en el navegador una **antesala interactiva** ([`docs/img/room.png`](docs/img/room.png)) para elegir el mundo, calibrar rasgos de personalidad iniciales, activar si se desea ventana gráfica (en Snake o Crafter) y configurar parámetros antes de pasar al **dashboard en vivo** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), que incluye historial del linaje, mini-gráfica evolutiva y una **ficha modal de individuo** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) con descarga y restauración en un clic.
+**Windows con varios Python.** Si `python --version` dice una versión antigua, el `python` del PATH no es el bueno. Con el gestor de instalación de Python para Windows: `py list` enseña los que tienes y `py install 3.12` instala uno. Crea el entorno con ese Python, por ejemplo `py -V:3.12 -m venv .venv`, o con su ruta completa (`& "C:\...\python.exe" -m venv .venv`). Con un Python antiguo, pip falla con un mensaje engañoso («File 'setup.py' not found»).
+
+`python -m ida` abre la aplicación, en español o en inglés según tu navegador:
+
+- **Antesala:** eliges el mundo (los que no estén instalados se instalan con un botón), el carácter de IdA y las opciones del mundo, en tres pasos. Por defecto, cada opción vale lo que da más puntuación.
+- **Vivero:** ves vivir a tu IdA: el mundo dibujado en directo, su cuerpo y su ánimo, qué hace y por qué, lo que va aprendiendo, su diario y sus logros. Cada mundo tiene un **compañero**, una estirpe que crece de generación en generación aunque cierres la aplicación, y una **colección** donde guardar, exportar e importar individuos. «Ver más» en cada tarjeta da el detalle.
+- **Laboratorio:** cómo funciona IdA por dentro, latido a latido: la Onda pasando por los ocho pasos del latido y los tres sistemas, cada Componente con su análogo biológico, lo que sabe y cómo lo llegó a saber, su cuerpo y su química en el tiempo, y la comparación de vidas y estirpes. Las vidas se pueden grabar y volver a ver.
+
+<p align="center">
+  <img src="docs/img/t3_antesala_1_mundo_es.png" width="380" alt="Antesala: elegir el mundo">
+  <img src="docs/img/t5a_latido_es.png" width="380" alt="Laboratorio: el latido paso a paso">
+</p>
+
+Para ejecutar los tests: `pip install -e ".[todos,dev]"` y `python -m pytest -q`.
 
 Con Docker no hace falta instalar nada: `docker compose up --build` levanta IdA viviendo en el mundo de archivos junto con la pila de observabilidad (abajo).
 
@@ -106,18 +125,18 @@ Cifras, método y límites: [`doc-repositorio/05_METRICAS_E_HITOS.md`](doc-repos
 
 ## Observabilidad
 
-Además del panel propio en vivo, IdA puede enviar trazas y métricas estándar por **OpenTelemetry** (`--otel`, extra `observabilidad`). La pila con **Jaeger**, **Prometheus** y **Grafana** (`docker compose up --build`) se encuentra todavía en una **fase inicial y preliminar**: aporta trazas básicas de latido y fases, pero el visor más informativo y completo para entender la cognición de IdA en tiempo real sigue siendo su **panel web nativo**.
+Todo lo que se ve de IdA sale de un único **registro del latido** versionado, que produce un observador que solo lee el organismo: la invariancia comprueba que IdA hace exactamente lo mismo con el observador encendido y apagado. Ese registro alimenta el Vivero, el Laboratorio, la consola, las grabaciones (`--grabar`) y **OpenTelemetry** (`--otel`, extra `observabilidad`), que envía trazas y métricas a la pila de **Jaeger**, **Prometheus** y **Grafana** (`docker compose up --build`), pensada para ingeniería y rendimiento:
 
-- **Jaeger** (http://localhost:16686): trazas básicas de latido con tramos por fase para ver cortes de guillotina.
-- **Grafana** (http://localhost:3000): panel inicial con duraciones de fase, reparto de decisiones y constantes vitales.
+- **Jaeger** (http://localhost:16686): cada latido con sus fases, para ver dónde corta la guillotina.
+- **Grafana** (http://localhost:3000): duraciones de fase, consumo de cada sistema, decisiones, hechos y constantes vitales.
 
-<p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="Un latido de IdA en Jaeger: el tramo latido con sus fases percibir, sentir, aprender, S1, S2, S3, actuar y cierre en cascada"></p>
+<p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="Un latido de IdA en Jaeger: el tramo latido con sus fases en cascada"></p>
 
-El núcleo no depende de esto: la Onda solo apunta cuándo empieza y acaba cada fase, y la traza se construye fuera del plazo del latido.
+El diseño de todo esto está en [`docs/DISENO_OBSERVABILIDAD.md`](docs/DISENO_OBSERVABILIDAD.md).
 
 ## Calidad
 
-`ruff` y `mypy` en verde, 155 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
+`ruff` y `mypy` en verde, más de 1 300 tests y GitHub Actions en Python 3.12 y 3.15, con y sin las dependencias de los mundos. La equivalencia y la invariancia comprueban que cada cambio que no debe tocar la conducta no la toca. Hay un [devcontainer](.devcontainer/devcontainer.json) para VS Code.
 
 ## Laboratorio IdA
 

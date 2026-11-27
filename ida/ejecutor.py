@@ -2,6 +2,7 @@
 
 import os
 import shutil
+import sys
 from typing import Any, Callable, Dict, List, Optional
 
 from ida.consola import imprimir_latido, linea
@@ -19,7 +20,22 @@ from ida.mundos.opciones import convertir
 from ida.sistemas import crear_sistemas
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DATOS = os.path.join(RAIZ, "datos")
+
+
+def _carpeta_datos(raiz: str) -> str:
+    """Devuelve la carpeta de datos: local en el repositorio o del usuario si está instalado."""
+    if os.path.isfile(os.path.join(raiz, "pyproject.toml")):
+        return os.path.join(raiz, "datos")
+    if sys.platform == "win32":
+        base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+        return os.path.join(base, "IdA", "datos")
+    if sys.platform == "darwin":
+        return os.path.join(os.path.expanduser("~"), "Library", "Application Support", "IdA", "datos")
+    base = os.environ.get("XDG_DATA_HOME") or os.path.expanduser("~/.local/share")
+    return os.path.join(base, "ida", "datos")
+
+
+DATOS = _carpeta_datos(RAIZ)
 
 
 class InterrupcionSimulacion(Exception):

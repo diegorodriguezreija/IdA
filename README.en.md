@@ -43,22 +43,41 @@ Each system goes through **Sense → Interpret → React → Act** (*Sentir → 
 The mind does not know which world it lives in. Each world translates its reality into a shared vocabulary of traits (`nutritivo` nourishing, `peligro` danger, `lugar` place…) and verbs (`MOVER` move, `COMER` eat…). The same core, unchanged, runs in five worlds: a minimal one for tests, a **file-system world** on disk, **Snake** on a real website, **Crafter** and **chess**. The world perceives; IdA thinks: no sensor computes on the individual's behalf.
 
 <p align="center">
-  <img src="docs/img/demo.gif" width="780" alt="IdA Demonstration: Interactive launcher room and live telemetry dashboard with expandable individual modal view">
+  <img src="docs/img/t4b_vivero_crafter.png" width="780" alt="IdA's Nursery in Crafter: the live scene, body and mood, the current action, what it knows, its diary, achievements, character and lineage">
 </p>
 
 ## Try it in 1 minute
+
+You need **Python 3.12 or later**. Check first:
+
+```bash
+python --version          # Windows: if it is not 3.12 or later, see the note below
+```
 
 ```bash
 git clone https://github.com/diegorodriguezreija/IdA.git
 cd IdA
 python -m venv .venv
 source .venv/bin/activate                 # Windows: .venv\Scripts\activate
-pip install -e ".[dev,crafter,ajedrez]"
-python -m pytest -q                       # 155 tests
-python -m ida                             # interactive launcher at http://127.0.0.1:8000
+python -m pip install --upgrade pip
+pip install -e ".[todos]"                 # all five worlds; without "[todos]", only minimal and files
+python -m ida                             # opens the app at http://127.0.0.1:8000
 ```
 
-Running `python -m ida` without arguments launches an **interactive web launcher room** ([`docs/img/room.png`](docs/img/room.png)) to choose a world, tune initial personality sliders, optionally enable graphical window displays (in Snake or Crafter), and adjust parameters before proceeding to the **live telemetry dashboard** ([`docs/img/dashboard.PNG`](docs/img/dashboard.PNG), [`docs/img/dashboard2.PNG`](docs/img/dashboard2.PNG)), which includes lineage tracking, an evolution chart, and an **expandable individual profile modal** ([`docs/img/dashboard3.PNG`](docs/img/dashboard3.PNG)) with one-click JSON download and restore capabilities.
+**Windows with several Pythons.** If `python --version` shows an old version, the `python` on your PATH is the wrong one. With the Python install manager for Windows, `py list` shows what you have and `py install 3.12` installs one. Create the environment with that Python, e.g. `py -V:3.12 -m venv .venv`, or with its full path (`& "C:\...\python.exe" -m venv .venv`). With an old Python, pip fails with a misleading message ("File 'setup.py' not found").
+
+`python -m ida` opens the app, in English or Spanish depending on your browser:
+
+- **Lobby:** pick the world (missing ones install with one click), IdA's character and the world's options, in three steps. By default every option takes the value that scores best.
+- **Nursery:** watch your IdA live: the world drawn live, its body and mood, what it does and why, what it is learning, its diary and achievements. Each world has a **companion**, a lineage that grows generation after generation even if you close the app, and a **collection** to save, export and import individuals. "See more" on each card gives the detail.
+- **Lab:** how IdA works inside, beat by beat: the Wave going through the eight steps of the beat and the three systems, each Component with its biological analogue, what it knows and how it came to know it, its body and chemistry over time, and comparisons of lives and lineages. Lives can be recorded and replayed.
+
+<p align="center">
+  <img src="docs/img/t3_antesala_1_mundo_en.png" width="380" alt="Lobby: choosing the world">
+  <img src="docs/img/t5a_latido_en_oscuro.png" width="380" alt="Lab: the beat step by step">
+</p>
+
+To run the tests: `pip install -e ".[todos,dev]"` and `python -m pytest -q`.
 
 Or, with nothing installed: `docker compose up --build`.
 
@@ -73,11 +92,16 @@ Crafter evaluation with the official protocol: `python herramientas/evaluar_craf
 - **Memory.** Expectations, episodes and propositions with a status (hypothesis, proven, refuted). Taste aversion and mortal trauma are learned fast; proven knowledge is inherited as a hypothesis the descendant must confirm.
 - **A core blind to the world.** Worlds plug in through one port (`ida/nucleo/mundo.py`). An AST test forbids world vocabulary and imports in the core; another keeps the GPL chess dependency inside its folder.
 
-## Observabilidad
+## Observability
 
-Besides its own panel, IdA can export traces and metrics with **OpenTelemetry** (`--otel`). The stack with **Jaeger**, **Prometheus** and **Grafana** (`docker compose up --build`) is currently in an **early, preliminary phase**: it provides basic heartbeat traces and phase waterfall breakdowns, but IdA's **native live web panel** remains the most informative tool for observing its cognition in real time.
+Everything seen of IdA comes from a single versioned **heartbeat record**, produced by an observer that only reads the organism: invariance checks that IdA behaves identically with the observer on and off. That record feeds the Nursery, the Lab, the console, recordings (`--grabar`) and **OpenTelemetry** (`--otel`, `observabilidad` extra), which sends traces and metrics to the **Jaeger**, **Prometheus** and **Grafana** stack (`docker compose up --build`), designed for engineering and performance:
 
-<p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="One IdA heartbeat in Jaeger: the latido span and its phases as a waterfall"></p>
+- **Jaeger** (http://localhost:16686): each heartbeat with its phases, to see where the guillotine cuts.
+- **Grafana** (http://localhost:3000): phase durations, consumption per system, decisions, facts and vital signs.
+
+<p align="center"><img src="docs/img/jaeger_latido.png" width="760" alt="One IdA heartbeat in Jaeger: the latido span with its phases as a waterfall"></p>
+
+The full design is in [`docs/DISENO_OBSERVABILIDAD.md`](docs/DISENO_OBSERVABILIDAD.md) (in Spanish).
 
 ## Milestones
 
@@ -107,7 +131,7 @@ Figures, method and limits (Spanish): [`doc-repositorio/05_METRICAS_E_HITOS.md`]
 
 ## Engineering
 
-Python 3.12+, standard library only in the core; worlds and observability are optional extras. `ruff`, `mypy`, 155 tests and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Multi-stage Dockerfile, devcontainer and a Docker Compose observability stack with Grafana dashboards as code.
+`ruff` and `mypy` green, over 1,300 tests, and GitHub Actions on Python 3.12 and 3.15, with and without world dependencies. Equivalence and invariance check that every change that should not touch behavior does not. There is a [devcontainer](.devcontainer/devcontainer.json) for VS Code.
 
 ## IdA Laboratory
 
