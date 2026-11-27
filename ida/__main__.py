@@ -1,16 +1,51 @@
-"""Punto de entrada: ``python -m ida`` (aplicación web, en la antesala) o ``python -m ida --mundo <nombre> [opciones]``."""
+"""Punto de entrada: ``python -m ida`` (aplicación web, en la antesala) o ``python -m ida --mundo <nombre> [opciones]``.
 
-import argparse
-import os
+Lo primero es comprobar la versión de Python (T6a): con una anterior a 3.12 se dice qué hace falta y cómo instalarlo, sin
+una traza. Por eso este módulo solo usa sintaxis que entiende cualquier Python 3 (sin f-strings ni anotaciones nuevas;
+lo comprueba ``tests/test_t6a.py``) e importa el resto de IdA después de la comprobación.
+"""
+
 import sys
-import time
-import webbrowser
 
-from ida.ejecutor import ejecutar
-from ida.mundos import MUNDOS
+VERSION_MINIMA = (3, 12)
 
 
-def main(argv=None) -> int:
+def aviso_python(version=None):
+    """El mensaje para un Python demasiado antiguo, o ``None`` si la versión vale."""
+    version = tuple(sys.version_info if version is None else version)
+    if version[:2] >= VERSION_MINIMA:
+        return None
+    actual = ".".join(str(x) for x in version[:3])
+    minima = "{}.{}".format(*VERSION_MINIMA)
+    return "\n".join([
+        "IdA necesita Python {} o posterior, y este es Python {} ({}).".format(minima, actual, sys.executable),
+        "",
+        "Cómo seguir:",
+        "  - Windows, con el gestor de instalación de Python: «py install {0}», y luego crea el entorno con ese Python:".format(minima),
+        "      py -{0} -m venv .venv    y    .venv\\Scripts\\activate".format(minima),
+        "  - macOS y Linux: instala Python {0} (python.org o el gestor de paquetes del sistema) y crea el entorno con él:".format(minima),
+        "      python{0} -m venv .venv    y    source .venv/bin/activate".format(minima),
+        "  - Comprueba con «python --version» que el entorno usa {0} o posterior, y vuelve a instalar IdA en él".format(minima),
+        "    (python -m pip install --upgrade pip; python -m pip install -e \".[todos]\").",
+    ])
+
+
+def main(argv=None):
+    aviso = aviso_python()
+    if aviso is not None:
+        sys.stderr.write(aviso + "\n")
+        return 1
+    return _main(argv)
+
+
+def _main(argv):
+    import argparse
+    import time
+    import webbrowser
+
+    from ida.ejecutor import ejecutar
+    from ida.mundos import MUNDOS
+
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     p = argparse.ArgumentParser(prog="python -m ida", description="IdA – Identidad Artificial")
@@ -42,13 +77,13 @@ def main(argv=None) -> int:
     if a.mundo is None or a.web:
         from ida.telemetria.servidor import Telemetria
         tel = Telemetria(modo_antesala=True, datos=a.datos)
-        url = f"http://127.0.0.1:{tel.puerto}/#/antesala"
+        url = "http://127.0.0.1:{}/#/antesala".format(tel.puerto)
         if not a.no_navegador:
             try:
                 webbrowser.open(url)
             except Exception:
                 pass
-        print(f"\n[antesala] Servidor interactivo listo en {url}")
+        print("\n[antesala] Servidor interactivo listo en {}".format(url))
         print("[antesala] Elige mundo y parámetros en el navegador. Pulsa Ctrl+C para salir.\n")
         try:
             while tel.activo:
@@ -78,12 +113,16 @@ def main(argv=None) -> int:
     if not a.ver:
         ejecutar(**argumentos)
         return 0
-    return _ver(a, opciones, argumentos)
+    return _ver(a, opciones, argumentos, ejecutar)
 
 
-def _ver(a: argparse.Namespace, opciones: dict, argumentos: dict) -> int:
+def _ver(a, opciones, argumentos, ejecutar):
     """``--ver``: la vida corre aquí y la aplicación web la sigue en el Vivero (T6a). Al terminar, el servidor sigue
     abierto para mirarla en el Laboratorio hasta Ctrl+C."""
+    import os
+    import time
+    import webbrowser
+
     from ida.mundos import cargar
     from ida.mundos.opciones import con_defectos
     from ida.telemetria.servidor import Telemetria
@@ -99,18 +138,18 @@ def _ver(a: argparse.Namespace, opciones: dict, argumentos: dict) -> int:
         "plazo_logico": a.plazo_logico, "nivel": argumentos["nivel"], "tiempo_real": bool(clase.perfil.tiempo_real),
         "sin_experiencia": a.sin_experiencia,
     })
-    url = f"http://127.0.0.1:{tel.puerto}/#/vivero"
-    print(f"[ver] La vida se sigue en {url}")
+    url = "http://127.0.0.1:{}/#/vivero".format(tel.puerto)
+    print("[ver] La vida se sigue en {}".format(url))
     if not a.no_navegador:
         try:
             webbrowser.open(url)
         except Exception:
             pass
     try:
-        ejecutar(**argumentos, telemetria_instancia=tel, ritmo=tel.ritmo, evento_parada=tel.evento_parada)
+        ejecutar(telemetria_instancia=tel, ritmo=tel.ritmo, evento_parada=tel.evento_parada, **argumentos)
     finally:
         tel.fin_acompanada()
-    print(f"[ver] La vida ha terminado; sigue en {url} (y en el Laboratorio). Pulsa Ctrl+C para salir.")
+    print("[ver] La vida ha terminado; sigue en {} (y en el Laboratorio). Pulsa Ctrl+C para salir.".format(url))
     try:
         while tel.activo:
             time.sleep(0.5)
