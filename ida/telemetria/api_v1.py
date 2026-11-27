@@ -35,7 +35,8 @@ Rutas (detalle de cuerpos y errores en ``docs/DISENO_OBSERVABILIDAD.md``, secci�
 - ``POST /api/v1/grabaciones/{id}/borrar``     primer paso: un testigo; no borra nada
 - ``POST /api/v1/grabaciones/{id}/borrar/confirmar``  ``{"testigo": ...}``: borra
 - ``GET  /api/v1/vidas/actual/series``        T5b: series de lo que guarda el directo (Epistemología, Biología, Análisis)
-- ``GET  /api/v1/grabaciones/{id}/series``     T5b: series de una grabación
+- ``GET  /api/v1/grabaciones/{id}/series``     T5b: series de una grabación. Las dos admiten ``?cada=k`` (una fila de cada
+                                               k; sin él, como mucho ``analisis.MAX_PUNTOS``), sin perder los hechos (T6a)
 - ``GET  /api/v1/grabaciones/{a}/comparar/{b}``  T5b: misma configuración y primera divergencia, alineadas por latido
 - ``GET  /api/v1/estirpes/comparar?a=..&b=..``  T5b: dos estirpes generación a generación (``companero:<m>`` o un id)
 - ``GET  /api/v1/componentes``                 mapa de Componentes (``componentes.toml``) con análogo, descripción y
@@ -416,12 +417,22 @@ def _n(texto: str) -> int:
     return int(texto)
 
 
+def _cada(query: Dict[str, list]) -> Optional[int]:
+    """``?cada=k`` de las series (T6a): un entero ≥ 1, o ``None`` si no se da."""
+    texto = query.get("cada", [""])[0]
+    if not texto:
+        return None
+    if not texto.isdigit() or int(texto) < 1:
+        raise ErrorApi(400, "campo_invalido", f"cada: se esperaba un entero ≥ 1, hay {texto!r}", "cada")
+    return int(texto)
+
+
 def _get_lab(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, list]) -> None:
     lab = tel.lab
     if partes == ["vidas", "actual", "latidos"]:
         h._json(200, lab.directo.indice(_n(query.get("desde", ["0"])[0])))
     elif partes == ["vidas", "actual", "series"]:
-        h._json(200, lab.directo.series())
+        h._json(200, analisis.reducir(lab.directo.series(), _cada(query)))
     elif len(partes) == 4 and partes[:3] == ["vidas", "actual", "latidos"]:
         h._json(200, {"registro": lab.directo.registro(_n(partes[3]))})
     elif partes == ["grabaciones"]:
@@ -441,7 +452,7 @@ def _get_lab(h: "_Manejador", tel: "Telemetria", partes: list, query: Dict[str, 
     elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "indice":
         h._json(200, lab.grabaciones.indice(partes[1]))
     elif len(partes) == 3 and partes[0] == "grabaciones" and partes[2] == "series":
-        h._json(200, lab.grabaciones.series(partes[1]))
+        h._json(200, analisis.reducir(lab.grabaciones.series(partes[1]), _cada(query)))
     elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2] == "comparar":
         h._json(200, lab.grabaciones.comparar(partes[1], partes[3]))
     elif len(partes) == 4 and partes[0] == "grabaciones" and partes[2] == "latidos":
