@@ -99,7 +99,7 @@ T5a: análogos revisados por el arquitecto (9 corregidos: Exterocepción, Regula
 
 Objetivo: dejar el sistema limpio antes de retos nuevos (un mundo nuevo o mejorar la Score).
 
-0. Línea T (observabilidad), de T1 a T6, antes de la fase B.
+0. Línea T cerrada (27/11/2026, etiqueta crafter-general-v5.2).
 1. Limpieza cerrada (25/11/2026, etiqueta crafter-general-v5.1): C1, C1b, C2, C3, C4, C5, C6 y C7a. Conducta idéntica a crafter-general-v5, que sigue siendo la referencia de D17.
 2. Fase B, primero la deuda de diseño (donde el mundo aún piensa por el organismo): B6, B7, B5 y B8 con C7b. Cada uno con D17.
 3. Fase B, fidelidad del latido: B1, B2, B3 y B4.
