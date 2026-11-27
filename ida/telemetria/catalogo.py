@@ -27,6 +27,7 @@ from ida.mundos import MUNDOS, cargar
 
 RAIZ = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 PYPROJECT = os.path.join(RAIZ, "pyproject.toml")
+DISTRIBUCION = "ida-identidad-artificial"   # el nombre del paquete en pyproject.toml ([project] name)
 
 # Mundo -> (extra de pyproject, paquete del que depende). Mínimo y archivos no tienen dependencias.
 DEPENDENCIAS: Dict[str, Tuple[Optional[str], Optional[str]]] = {
@@ -64,14 +65,49 @@ ESTADOS = ("listo", "no_instalado", "falta_navegador", "sin_stockfish")
 LANZABLES = ("listo", "sin_stockfish")
 
 
+def editable(raiz: str = RAIZ) -> bool:
+    """¿Corre IdA desde una copia del repositorio (con ``pyproject.toml``)? Si no, es un ``pip install .`` normal (T6a)."""
+    return os.path.isfile(os.path.join(raiz, "pyproject.toml"))
+
+
 def extras_conocidos(ruta: str = PYPROJECT) -> List[str]:
-    """Los extras de ``[project.optional-dependencies]`` de ``pyproject.toml`` (vacío si no hay fichero)."""
+    """Los extras de ``[project.optional-dependencies]`` de ``pyproject.toml``. En una instalación que no es editable no hay
+    ``pyproject.toml``: salen de los metadatos del paquete instalado (``Provides-Extra``). Vacío si no hay ninguno."""
+    if not os.path.isfile(ruta):
+        return sorted(_metadatos_extras())
     try:
         with open(ruta, "rb") as f:
             datos = tomllib.load(f)
     except (OSError, tomllib.TOMLDecodeError):
         return []
     return sorted(datos.get("project", {}).get("optional-dependencies", {}))
+
+
+def _metadatos_extras() -> List[str]:
+    from importlib import metadata
+
+    try:
+        return list(metadata.metadata(DISTRIBUCION).get_all("Provides-Extra") or [])
+    except metadata.PackageNotFoundError:
+        return []
+
+
+def requisitos_del_extra(extra: str) -> List[str]:
+    """Los requisitos de un extra según los metadatos del paquete instalado (``crafter>=1.8``...), sin el marcador. Para
+    instalar un mundo desde una instalación que no es editable: ``pip install`` de esos requisitos."""
+    from importlib import metadata
+
+    try:
+        requisitos = metadata.requires(DISTRIBUCION) or []
+    except metadata.PackageNotFoundError:
+        return []
+    salida = []
+    for req in requisitos:
+        texto, _, marcador = req.partition(";")
+        marcador = marcador.replace(" ", "").replace("'", '"')
+        if f'extra=="{extra}"' in marcador:
+            salida.append(texto.strip())
+    return salida
 
 
 def paquete_instalado(paquete: str) -> bool:
