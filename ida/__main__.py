@@ -66,8 +66,9 @@ def _main(argv):
     p.add_argument("--biblioteca", default=None, choices=["nula", "fija", "erronea"], help="biblioteca externa de autoridad")
     p.add_argument("--grabar", default=None, metavar="RUTA", help="graba la vida en RUTA (.jsonl.gz): cabecera y un registro por latido")
     p.add_argument("--datos", default=None, metavar="RUTA",
-                   help="directorio de datos del mundo (por defecto, datos/<mundo>); sin --mundo, raíz de los datos de las vidas "
-                        "lanzadas desde la aplicación (RUTA/<mundo>)")
+                   help="directorio de datos del mundo (por defecto, datos/<mundo> en una copia del repositorio, "
+                        "o la carpeta de datos del usuario en una instalación normal); sin --mundo, raíz de los datos "
+                        "de las vidas lanzadas desde la aplicación (RUTA/<mundo>)")
     p.add_argument("--nivel", default=None, choices=["vital", "cognitivo", "completo"],
                    help="nivel del registro del latido (por defecto, cognitivo; completo con --ver o --otel)")
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
