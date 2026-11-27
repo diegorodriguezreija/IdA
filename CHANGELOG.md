@@ -4,6 +4,17 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
 ## [Unreleased]
 
+### crafter-general-v5.2 (27/11/2026) — observabilidad y experiencia de usuario
+- **Conducta idéntica a crafter-general-v5** (`EQUIVALENCIA: OK` en cada paso; invariancia con el observador encendido).
+- **Registro del latido v1** ([`docs/DISENO_OBSERVABILIDAD.md`](docs/DISENO_OBSERVABILIDAD.md), O1–O21): un observador que solo lee el organismo, tres niveles de detalle, hechos estructurados en lugar de frases, grabación `.jsonl.gz` y vidas reproducibles con plazo lógico.
+- **`escena()` y opciones declaradas** en los cinco mundos, con el valor por defecto que más puntúa.
+- **Aplicación nueva, en español e inglés, sin dependencias ni compilación:** Antesala en tres pasos con mundos instalables; Vivero con compañero por mundo, colección, estirpe, diario, «Lo que sabe» y «Ver más»; Laboratorio con reproductor, Latido, Ingeniería, Epistemología, Biología, Análisis y cierre. Cada Componente con su análogo biológico (revisado).
+- **OpenTelemetry sobre el registro**, con las métricas de antes y cinco nuevas.
+- **Retirados** el panel clásico, la antesala antigua y su API. `pip install .` incluye los cinco mundos y la web; los datos de una instalación no editable van a la carpeta de datos del usuario.
+
+### crafter-general-v5.1 (25/11/2026) — limpieza
+- **Conducta idéntica a crafter-general-v5.** C1–C7a: geometría de rejilla fuera de lo general (el cuerpo define el espacio), test de conceptos, medición de rendimiento en reposo, montaje y memoria por responsabilidades, plasticidad con un solo mecanismo, invariancia igual en Windows y Linux, benchmark con plazo lógico y error al nacer si falta un cuerpo con espacio.
+
 ### crafter-general-v5 (24/11/2026)
 - **Reorganización modular por Componentes** ([`docs/DISENO_COMPONENTES.md`](docs/DISENO_COMPONENTES.md), decisiones D1 a D17) sin alteración de conducta (`EQUIVALENCIA: OK`).
 - **Estructura de paquetes limpia:** `ida/nucleo/` (mecánica y tipos base), `ida/core/` (sentidos en bruto, regulación, actuador y tribunal), `ida/s1/`, `ida/s2/`, `ida/s3/` (módulos cognitivos organizados en sentir, interpretar, reaccionar y actuar), `ida/cuerpos/` (familias de cuerpos e interfaces motoras) e `ida/mundos/` (mundos como paquetes autosuficientes con adaptadores, perfiles y componentes propios).
