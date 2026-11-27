@@ -61,6 +61,11 @@ export const api = {
   pedirBorradoGrabacion: (id) => pedir('POST', `grabaciones/${encodeURIComponent(id)}/borrar`, {}),
   confirmarBorradoGrabacion: (id, testigo) => pedir('POST', `grabaciones/${encodeURIComponent(id)}/borrar/confirmar`, { testigo }),
   componentes: () => pedir('GET', 'componentes'),
+  // T5b: series de una vida y comparaciones
+  seriesDirecto: () => pedir('GET', 'vidas/actual/series'),
+  seriesGrabacion: (id) => pedir('GET', `grabaciones/${encodeURIComponent(id)}/series`),
+  compararGrabaciones: (a, b) => pedir('GET', `grabaciones/${encodeURIComponent(a)}/comparar/${encodeURIComponent(b)}`),
+  compararEstirpes: (a, b) => pedir('GET', `estirpes/comparar?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`),
 };
 
 /** Enlaces de descarga de fichas v1 (GET con Content-Disposition). */

@@ -7,6 +7,8 @@ nada de esto cambia la conducta de IdA (O3). Tres piezas:
   abrir el directo en el Laboratorio sin grabar. Cada uno lleva su escena vigente (la escena solo viaja cuando cambia).
 - ``Grabaciones``: las grabaciones de ``<datos>/grabaciones/<mundo>-<AAAAMMDD>-<HHMMSS>.jsonl.gz`` (el formato de
   ``ida/telemetria/grabacion.py``): listar, abrir por índice y por latido, descargar y borrar en dos pasos con testigo.
+- Las series de cada fuente (T5b, ``ida/telemetria/analisis.py``): el directo las acumula con cada registro y una
+  grabación las calcula al abrirse, de las mismas líneas que ya lee para su índice.
 - ``Laboratorio``: un hilo propio que recibe los registros en orden, los guarda en el directo y, si se graba, los
   escribe en la grabación. Así el hilo de la vida solo encola: comprimir y escribir no alargan el latido.
 
@@ -29,7 +31,8 @@ from collections import OrderedDict, deque
 from datetime import datetime
 from typing import Any, Deque, Dict, Iterator, List, Optional, Tuple
 
-from ida.telemetria.grabacion import FORMATO, Grabacion
+from ida.telemetria.analisis import Series
+from ida.telemetria.grabacion import FORMATO, Grabacion, configuracion, divergencia
 
 LATIDOS_DIRECTO = 2000          # registros de la vida en curso en memoria del servidor (justificación arriba)
 TESTIGO_S = 120.0               # vida de un testigo de borrado, como en la colección (sección 13.3)
@@ -126,6 +129,7 @@ class Directo:
         self._medias = Medias()
         self._escena: Optional[Dict[str, Any]] = None
         self._vida_escena: Any = None
+        self._series = Series()
 
     def reiniciar(self, lanzamiento: Any, mundo: Optional[str]) -> None:
         with self._cerrojo:
@@ -144,11 +148,24 @@ class Directo:
             entrada = entrada_indice(registro, self._n)
             t, f, g = self._medias.sumar(registro)
             self._entradas.append((entrada, comprimido, {"_t": t, "_f": f, "_g": g}))
+            self._series.anadir(registro, self._n)
             self._n += 1
             while len(self._entradas) > self.maximo:
                 _, _, viejo = self._entradas.popleft()
                 self._medias.sumar(viejo, -1)
+            if self._series.longitud > 2 * self.maximo:     # se poda de vez en cuando, no con cada registro
+                self._series.podar(self._entradas[0][0]["n"])
         return registro
+
+    def series(self) -> Dict[str, Any]:
+        """Las series de lo que guarda el directo (T5b): desde el primer registro que sigue en memoria."""
+        with self._cerrojo:
+            if self._entradas:
+                self._series.podar(self._entradas[0][0]["n"])
+            datos = self._series.resultado()
+            primero = self._entradas[0][0]["n"] if self._entradas else self._n
+            return {"lanzamiento": self.lanzamiento, "primero": primero, "siguiente": self._n,
+                    **json.loads(_json(datos))}   # copia: el hilo sigue añadiendo
 
     def indice(self, desde: int = 0) -> Dict[str, Any]:
         with self._cerrojo:
@@ -174,6 +191,7 @@ class _Abierta:
         self.escena_de: List[int] = []        # índice de la línea con la escena vigente (-1 si no hay)
         self.indice: List[Dict[str, Any]] = []
         self.medias = Medias()
+        self.series = Series()
         self.truncada = False
         try:
             for texto in self._lineas(ruta):
@@ -224,6 +242,7 @@ class _Abierta:
         self.lineas.append(zlib.compress(texto.encode("utf-8"), 1))
         self.indice.append(entrada_indice(r, i))
         self.medias.sumar(r)
+        self.series.anadir(r, i)
 
     def registro(self, n: int) -> Dict[str, Any]:
         if not 0 <= n < len(self.lineas):
@@ -323,6 +342,20 @@ class Grabaciones:
         a = self.abrir(id_)
         return {"grabacion": self.resumen(id_), "cabecera": a.cabecera, "truncada": a.truncada, "indice": a.indice,
                 **a.medias.resumen()}
+
+    def series(self, id_: str) -> Dict[str, Any]:
+        """Las series de una grabación (T5b): Epistemología, Biología, Análisis y Cierre."""
+        a = self.abrir(id_)
+        return {"grabacion": self.resumen(id_), "cabecera": a.cabecera, "truncada": a.truncada, **a.series.resultado()}
+
+    def comparar(self, id_a: str, id_b: str) -> Dict[str, Any]:
+        """Dos grabaciones: si son de la misma configuración (cabecera) y dónde divergen, alineadas por latido
+        (``grabacion.divergencia``, sobre la base de ``grabacion.comparar``)."""
+        a, b = self.abrir(id_a), self.abrir(id_b)
+        regs_a = (a.registro(i) for i in range(len(a.lineas)))
+        regs_b = (b.registro(i) for i in range(len(b.lineas)))
+        return {"a": self.resumen(id_a), "b": self.resumen(id_b), "configuracion": configuracion(a.cabecera, b.cabecera),
+                "divergencia": divergencia(regs_a, regs_b)}
 
     def pedir_borrado(self, id_: str) -> Dict[str, Any]:
         """Primer paso: no borra nada. Un testigo de un solo uso (``TESTIGO_S`` s) y lo que se borraría."""

@@ -4,8 +4,13 @@
 //   indice   [{n, vida, generacion, latido, cierre?, hechos, guillotina, sistema, candidatos, dormido, nivel}]
 //   medias   {tiempos_medios, fases_medias, registros, guillotinas}: medias por Componente y por fase del latido
 //   registro(pos) → Promise<registro del latido v1>, con su escena vigente (la escena solo viaja cuando cambia)
+//   series()     → Promise<series de la vida> (T5b, lab/series.js): las del servidor (ida/telemetria/analisis.py) para el
+//                  directo y las grabaciones; las calculadas en el navegador para un fichero
 
 import { api } from '../api.js';
+import { Series } from './series.js';
+
+const SERIES_DIRECTO_MS = 2500;   // el directo vuelve a pedir sus series como mucho cada tanto
 
 const CACHE = 40;                 // registros enteros que se guardan en el navegador (los últimos vistos)
 const HECHOS_INDICE = new Set(['nace', 'primera_vez', 'aprende', 'logro', 'peligro', 'sorpresa', 'duda', 'refuta', 'muere', 'duerme', 'despierta']);
@@ -111,6 +116,18 @@ export class FuenteDirecto {
     return { nueva: false, perdidas: antes == null || ahora == null ? 0 : Math.max(0, ahora - antes) };
   }
 
+  /** Las series del directo; se vuelven a pedir si hay latidos nuevos y ha pasado un rato. */
+  async series() {
+    const ahora = Date.now();
+    if (this._series && (this._seriesHasta === this.siguiente || ahora - this._seriesEn < SERIES_DIRECTO_MS)) return this._series;
+    this._seriesEn = ahora;
+    const d = await api.seriesDirecto();
+    if (d.lanzamiento !== this.lanzamiento) return this._series || d;
+    this._series = d;
+    this._seriesHasta = d.siguiente;
+    return d;
+  }
+
   registro(pos) {
     const e = this.indice[pos];
     if (!e) return Promise.reject(new Error('fuera'));
@@ -144,6 +161,11 @@ export class FuenteGrabacion {
     const e = this.indice[pos];
     if (!e) return Promise.reject(new Error('fuera'));
     return this.cache.dar(e.n, async () => (await api.latidoGrabacion(this.id, e.n)).registro);
+  }
+
+  series() {
+    if (!this._series) this._series = api.seriesGrabacion(this.id).catch((err) => { this._series = null; throw err; });
+    return this._series;
   }
 }
 
@@ -199,6 +221,16 @@ export class FuenteFichero {
     this.mundo = this.cabecera.mundo || JSON.parse(this.lineas[0]).mundo;
     this.medias = medias.resumen();
     return this;
+  }
+
+  /** Las series, calculadas en el navegador la primera vez que se piden (lab/series.js). */
+  series() {
+    if (!this._series) {
+      const s = new Series();
+      this.lineas.forEach((linea, i) => s.anadir(JSON.parse(linea), i));
+      this._series = Promise.resolve(s.resultado());
+    }
+    return this._series;
   }
 
   registro(pos) {

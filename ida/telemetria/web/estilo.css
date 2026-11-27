@@ -755,3 +755,111 @@ pre.json { margin: 0; padding: 10px; border-radius: 10px; background: var(--supe
 }
 .grabaciones-tabla .confirmar-borrado { flex-basis: 100%; }
 .lab-detalle hr.separador { border: 0; border-top: 1px dashed var(--linea-fuerte); margin: 10px 0; width: 100%; }
+
+/* --- Laboratorio, T5b: Epistemología, Biología, Análisis y Cierre ---------------------------------------------------- */
+.vista-series { display: flex; flex-direction: column; gap: 12px; }
+.vista-series .bloque { background: var(--superficie); border: 1px solid var(--linea); border-radius: var(--radio-s); padding: 12px 14px; }
+.vista-series .bloque h2 { font-size: 1.25rem; margin: 0; }
+.vista-series .bloque h3 { font-size: 1rem; margin: 0 0 6px; font-family: var(--letra-titulo); }
+.vista-series .bloque h4 { font-size: 0.88rem; margin: 4px 0; }
+.dos-columnas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.cifras.cifras-7 { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); margin-top: 8px; }
+.grafica { width: 100%; height: auto; display: block; cursor: crosshair; font-family: var(--letra); }
+.grafica .fondo-grafica { fill: var(--superficie-2); }
+.grafica .rejilla { stroke: var(--linea); stroke-width: 1; }
+.grafica .cero { stroke: var(--linea-fuerte); stroke-width: 1.2; }
+.grafica .eje { fill: var(--tinta-2); font-size: 12px; }
+.grafica .serie { fill: none; stroke-width: 2.2; stroke-linejoin: round; stroke-linecap: round; }
+.grafica .serie.discontinua { stroke-dasharray: 7 5; }
+.grafica .punto-serie { stroke: var(--superficie); stroke-width: 1; }
+.grafica .banda.sueno { fill: color-mix(in srgb, var(--foco) 14%, transparent); }
+.grafica .banda.sueno-borde { fill: none; stroke: var(--foco); stroke-width: 1; stroke-dasharray: 3 3; }
+.grafica .banda.guillotina { fill: color-mix(in srgb, var(--peligro) 35%, transparent); }
+.grafica .corte-vida { stroke: var(--linea-fuerte); stroke-dasharray: 4 4; }
+.grafica .cursor { stroke: var(--foco); stroke-width: 2.2; }
+.grafica .divergencia { stroke: var(--peligro); stroke-width: 2.4; stroke-dasharray: 6 3; }
+.grafica .marca polygon, .grafica .marca circle { stroke: var(--superficie); stroke-width: 0.8; }
+.grafica .marca.logro polygon { fill: var(--sol); }
+.grafica .marca.dano polygon { fill: var(--peligro); }
+.grafica .marca.muere path, .grafica .marca.refuta path { stroke: var(--peligro); stroke-width: 2.2; }
+.grafica .marca.nace polygon { fill: var(--musgo); }
+.grafica .marca.aprende circle { fill: var(--musgo); }
+.grafica .marca.peligro circle { fill: var(--arcilla); }
+.grafica .marca.duda polygon, .grafica .marca.sorpresa polygon { fill: var(--foco); }
+/* Colores de las series: los del tema, para que se lean en claro y en oscuro. */
+.grafica .s-musgo { stroke: var(--musgo); fill: var(--musgo); }
+.grafica .s-sol { stroke: color-mix(in srgb, var(--sol) 80%, var(--tinta)); fill: color-mix(in srgb, var(--sol) 80%, var(--tinta)); }
+.grafica .s-foco { stroke: var(--foco); fill: var(--foco); }
+.grafica .s-arcilla { stroke: var(--arcilla); fill: var(--arcilla); }
+.grafica .s-tinta { stroke: var(--tinta-2); fill: var(--tinta-2); }
+.grafica .s-violeta { stroke: #8a5fb8; fill: #8a5fb8; }
+.grafica path.serie { fill: none; }
+.leyenda-grafica { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.8rem; }
+.leyenda-grafica li { display: inline-flex; align-items: baseline; gap: 6px; }
+.leyenda-grafica .muestra { display: inline-block; width: 18px; height: 0; border-top: 3px solid; align-self: center; }
+.leyenda-grafica .muestra.discontinua { border-top-style: dashed; }
+.leyenda-grafica .muestra.s-musgo { border-color: var(--musgo); }
+.leyenda-grafica .muestra.s-sol { border-color: color-mix(in srgb, var(--sol) 80%, var(--tinta)); }
+.leyenda-grafica .muestra.s-foco { border-color: var(--foco); }
+.leyenda-grafica .muestra.s-arcilla { border-color: var(--arcilla); }
+.leyenda-grafica .muestra.s-tinta { border-color: var(--tinta-2); }
+.leyenda-grafica .muestra.s-violeta { border-color: #8a5fb8; }
+.leyenda-carril { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0; }
+.leyenda-carril span { display: inline-flex; align-items: center; gap: 5px; }
+.tramo-muestra { display: inline-block; width: 16px; height: 10px; border-radius: 3px; }
+/* Estados de un saber: el mismo color en el carril, en la muestra y en la ficha. */
+.tramo.hipotesis, .tramo.sin_confirmar { fill: var(--sol-suave); stroke: color-mix(in srgb, var(--sol) 70%, transparent); stroke-dasharray: 4 3; }
+.tramo-muestra.hipotesis, .tramo-muestra.sin_confirmar { background: var(--sol-suave); border: 1px dashed color-mix(in srgb, var(--sol) 70%, transparent); }
+.tramo.demostrada, .tramo.confirmado { fill: var(--musgo-suave); }
+.tramo-muestra.demostrada, .tramo-muestra.confirmado { background: var(--musgo-suave); }
+.tramo.refutada { fill: var(--arcilla-suave); }
+.tramo-muestra.refutada { background: var(--arcilla-suave); }
+.tramo.fuera, .tramo.olvidada { fill: transparent; stroke: var(--linea-fuerte); stroke-dasharray: 2 3; }
+.tramo-muestra.fuera, .tramo-muestra.olvidada { border: 1px dashed var(--linea-fuerte); }
+.tramo-muestra.sueno { background: color-mix(in srgb, var(--foco) 18%, transparent); }
+.carril { width: 100%; height: 30px; display: block; }
+.carril .confianza { fill: none; stroke: var(--tinta); stroke-width: 1.6; vector-effect: non-scaling-stroke; }
+.carril .cursor { stroke: var(--foco); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.carril .evento circle, .carril .evento polygon { fill: var(--musgo); stroke: var(--superficie); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.carril .evento.duda polygon { fill: var(--foco); }
+.carril .evento.refuta path { stroke: var(--peligro); stroke-width: 2.2; vector-effect: non-scaling-stroke; }
+.carril .evento.hipotesis circle, .carril .evento.sin_confirmar circle { fill: color-mix(in srgb, var(--sol) 80%, var(--tinta)); }
+.saberes { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.saber-boton { width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; cursor: pointer; color: inherit; font: inherit; display: flex; flex-direction: column; gap: 4px; }
+.saber-boton:hover, .saber-boton:focus-visible { border-color: var(--linea-fuerte); background: var(--superficie-2); }
+.saber-fila.elegido .saber-boton { border-color: var(--foco); background: color-mix(in srgb, var(--foco) 7%, var(--superficie)); }
+.saber-texto { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 10px; font-size: 0.9rem; }
+.chips-saber { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.chip.estado-hipotesis, .chip.estado-sin_confirmar { background: var(--sol-suave); color: var(--tinta); border-style: dashed; }
+.chip.estado-demostrada, .chip.estado-confirmado { background: var(--musgo-suave); color: var(--musgo-hondo); border-color: transparent; }
+.chip.estado-refutada { background: var(--arcilla-suave); color: var(--tinta); }
+.chip.estado-fuera, .chip.estado-olvidada, .chip.estado-nada { color: var(--tinta-2); border-style: dashed; }
+.filtros { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: end; margin: 4px 0 8px; }
+.filtros label { display: flex; flex-direction: column; gap: 2px; }
+.filtros .entrada { padding: 4px 8px; min-width: 120px; }
+.submodos button { padding: 5px 12px; }
+.tabla-desliza { overflow-x: auto; }
+.tabla-analogos td:nth-child(2), .tabla-analogos td:nth-child(3) { min-width: 200px; }
+.tabla-analogos code { font-size: 0.74rem; white-space: normal; overflow-wrap: anywhere; }
+.historia-saber td:nth-child(3) { font-variant-numeric: tabular-nums; }
+button.enlace { background: none; border: 0; padding: 0; color: var(--foco); text-decoration: underline; cursor: pointer; font: inherit; }
+.comparacion-resumen p { margin: 4px 0; font-size: 0.88rem; }
+.divergencia-texto.hay { color: var(--peligro); font-weight: 600; }
+.divergencia-texto.no-hay { color: var(--musgo-hondo); font-weight: 600; }
+.rejilla-rasgos { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 8px 16px; }
+.tarjeta-mini { background: var(--superficie-2); border: 1px solid var(--linea); border-radius: var(--radio-s); padding: 10px 12px; }
+.cierre-vista .destino { font-size: 1.05rem; font-weight: 600; }
+.cierre-vista .destino.murio { color: var(--arcilla); }
+.notas-motor code { font-size: 0.78rem; white-space: pre-wrap; }
+/* Estados afectivos en la franja de Biología */
+.grafica .banda.afecto-CALMA, .tramo-muestra.afecto-CALMA { fill: color-mix(in srgb, var(--musgo) 22%, transparent); background: color-mix(in srgb, var(--musgo) 22%, transparent); }
+.grafica .banda.afecto-CURIOSIDAD, .tramo-muestra.afecto-CURIOSIDAD { fill: color-mix(in srgb, var(--foco) 26%, transparent); background: color-mix(in srgb, var(--foco) 26%, transparent); }
+.grafica .banda.afecto-ALERTA, .tramo-muestra.afecto-ALERTA { fill: color-mix(in srgb, var(--sol) 45%, transparent); background: color-mix(in srgb, var(--sol) 45%, transparent); }
+.grafica .banda.afecto-MIEDO, .tramo-muestra.afecto-MIEDO { fill: color-mix(in srgb, var(--arcilla) 45%, transparent); background: color-mix(in srgb, var(--arcilla) 45%, transparent); }
+.grafica .banda.afecto-PANICO, .tramo-muestra.afecto-PANICO { fill: color-mix(in srgb, var(--peligro) 60%, transparent); background: color-mix(in srgb, var(--peligro) 60%, transparent); }
+.grafica .banda.afecto-CANSANCIO, .tramo-muestra.afecto-CANSANCIO { fill: color-mix(in srgb, var(--tinta-2) 28%, transparent); background: color-mix(in srgb, var(--tinta-2) 28%, transparent); }
+.grafica .banda.afecto-DORMIDO, .tramo-muestra.afecto-DORMIDO { fill: color-mix(in srgb, var(--foco) 45%, transparent); background: color-mix(in srgb, var(--foco) 45%, transparent); }
+.pestanas { flex-wrap: wrap; }
+@media (max-width: 900px) {
+  .dos-columnas { grid-template-columns: minmax(0, 1fr); }
+}

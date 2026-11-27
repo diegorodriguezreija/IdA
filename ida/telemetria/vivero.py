@@ -341,6 +341,27 @@ class Vivero:
             return dict(meta, tipo_elemento="estirpe", linaje=r["linaje"], arquetipo=r["arquetipo"])
         raise ErrorVivero(404, "elemento_desconocido", f"no hay ninguna ficha ni estirpe {id_}")
 
+    def estirpe(self, ref: Any) -> Dict[str, Any]:
+        """Una estirpe para compararla con otra (T5b): ``companero:<mundo>`` (la viva de ese mundo), el id de una estirpe
+        archivada o el de una ficha (sus vidas). Devuelve ``{ref, tipo, nombre, mundo, vidas, arquetipo}``, con las vidas
+        en orden de generación (``vida_de_generacion``). Solo lee."""
+        if isinstance(ref, str) and ref.startswith("companero:"):
+            mundo = ref.split(":", 1)[1]
+            r = self.companero(mundo)
+            if not r["existe"]:
+                raise ErrorVivero(404, "sin_companero", f"{mundo} no tiene compañero")
+            return {"ref": ref, "tipo": "companero", "nombre": r["nombre"], "mundo": mundo, "vidas": r["linaje"],
+                    "arquetipo": r["arquetipo"]}
+        el = self.elemento(ref)
+        if el["tipo_elemento"] == "ficha":
+            vidas = [v for v in el.get("vidas") or [] if isinstance(v, dict)]
+            arq = el.get("arquetipo") or {}
+            return {"ref": ref, "tipo": "ficha", "nombre": el.get("nombre"), "mundo": el.get("mundo"),
+                    "vidas": [vida_de_generacion(str(el.get("mundo")), v) for v in _orden_generacion(vidas)],
+                    "arquetipo": {r: arq.get(r) for r in RASGOS_CARACTER} if arq else None}
+        return {"ref": ref, "tipo": "estirpe", "nombre": el.get("nombre"), "mundo": el.get("mundo"), "vidas": el.get("linaje") or [],
+                "arquetipo": el.get("arquetipo")}
+
     def _entradas(self) -> List[Dict[str, Any]]:
         entradas: List[Dict[str, Any]] = []
         if os.path.isdir(self.dir_fichas):

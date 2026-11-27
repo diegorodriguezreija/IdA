@@ -125,6 +125,83 @@ def sin_tiempos(datos: Dict[str, Any]) -> Dict[str, Any]:
     return copia
 
 
+# Lo que hace que dos grabaciones sean de la misma configuración (T5b): con lo mismo, con plazo lógico y el mismo legado,
+# la vida es la misma (O11). El legado no va en la cabecera: dos grabaciones con la misma configuración pueden divergir
+# si la estirpe heredó cosas distintas, y la divergencia lo dice.
+CLAVES_CONFIGURACION = ("mundo", "semilla", "opciones", "arquetipo", "plazo_logico", "sin_experiencia")
+
+
+def posicion(r: Dict[str, Any]) -> Tuple[Any, Any, bool]:
+    """Dónde está un registro en su ejecución: ``(vida, latido, cierre)``. Alinea dos grabaciones por latido."""
+    return (r.get("vida"), r.get("latido"), bool(r.get("cierre")))
+
+
+def _comparable(r: Dict[str, Any]) -> Dict[str, Any]:
+    """Un registro para comparar con otro de la misma posición: sin los campos de tiempo, sin ``nivel`` y sin ``escena``
+    (solo viaja cuando cambia, y la grabación desde el Vivero la repite en su primer registro; lo que se ve ya está en
+    ``vista``)."""
+    c = sin_tiempos(r)
+    c.pop("nivel", None)
+    c.pop("escena", None)
+    return c
+
+
+def diferencias(a: Dict[str, Any], b: Dict[str, Any]) -> List[str]:
+    """Los campos de primer nivel en que difieren dos registros de la misma posición. Si los niveles son distintos se
+    comparan los campos que tienen los dos, y del ``saber`` las proposiciones que traen los dos (las 20 primeras del
+    cognitivo frente al saber entero del completo)."""
+    ca, cb = _comparable(a), _comparable(b)
+    campos = []
+    for k in sorted(set(ca) & set(cb)):
+        va, vb = ca[k], cb[k]
+        if k == "saber" and isinstance(va, list) and isinstance(vb, list):
+            m = min(len(va), len(vb))
+            va, vb = va[:m], vb[:m]
+        if va != vb:
+            campos.append(k)
+    return campos
+
+
+def _orden(pos: Tuple[Any, Any, bool]) -> Tuple[int, int, int]:
+    vida, latido, cierre = pos
+    return (int(vida or 0), int(latido or 0), int(cierre))
+
+
+def divergencia(registros_a: Iterable[Dict[str, Any]], registros_b: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    """Dónde divergen dos secuencias de registros alineadas por ``(vida, latido, cierre)`` (la base es ``comparar``, que
+    compara línea a línea). Dos grabaciones pueden empezar en latidos distintos (grabar a media vida): se comparan las
+    posiciones que tienen las dos, recorriéndolas a la vez (cada grabación va en orden), sin cargarlas enteras.
+    Devuelve ``{"comunes", "iguales", "primera"}``: ``primera`` es ``None`` si no divergen; si no, ``{vida, latido,
+    cierre, n_a, n_b, campos}`` con las posiciones de los dos registros en su grabación y los campos que difieren."""
+    ia, ib = enumerate(registros_a), enumerate(registros_b)
+    a, b = next(ia, None), next(ib, None)
+    comunes = iguales = 0
+    while a is not None and b is not None:
+        pa, pb = _orden(posicion(a[1])), _orden(posicion(b[1]))
+        if pa < pb:
+            a = next(ia, None)
+            continue
+        if pb < pa:
+            b = next(ib, None)
+            continue
+        comunes += 1
+        campos = diferencias(a[1], b[1])
+        if campos:
+            vida, latido, cierre = posicion(a[1])
+            return {"comunes": comunes, "iguales": iguales,
+                    "primera": {"vida": vida, "latido": latido, "cierre": cierre, "n_a": a[0], "n_b": b[0], "campos": campos}}
+        iguales += 1
+        a, b = next(ia, None), next(ib, None)
+    return {"comunes": comunes, "iguales": iguales, "primera": None}
+
+
+def configuracion(cab_a: Dict[str, Any], cab_b: Dict[str, Any]) -> Dict[str, Any]:
+    """Si dos cabeceras son de la misma configuración (``CLAVES_CONFIGURACION``) y en qué difieren."""
+    distintas = [k for k in CLAVES_CONFIGURACION if cab_a.get(k) != cab_b.get(k)]
+    return {"misma": not distintas, "distintas": distintas,
+            "otras": [k for k in ("commit", "nivel", "latidos", "generaciones") if cab_a.get(k) != cab_b.get(k)]}
+
+
 def comparar(ruta_a: str, ruta_b: str) -> Optional[str]:
     """``None`` si las dos grabaciones son iguales línea a línea salvo los campos de tiempo; si no, la primera diferencia."""
     a, b = iterar(ruta_a), iterar(ruta_b)

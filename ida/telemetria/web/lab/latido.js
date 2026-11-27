@@ -16,16 +16,17 @@ const MODULOS = ['Sentir', 'Interpretar', 'Reaccionar', 'Actuar'];
 const ANCHO = 1000;
 const ALTO = 560;
 // Cajas de cada paso: [x, y, ancho, alto]
+// La primera fila es más alta desde T5b: sus textos van en dos líneas en vez de cortarse.
 const CAJAS = {
-  onda: [8, 24, 172, 92], sentir: [206, 24, 172, 92], preatencion: [404, 24, 186, 92], plasticidad: [616, 24, 172, 92],
-  regulacion: [814, 24, 178, 92],
+  onda: [8, 24, 172, 112], sentir: [206, 24, 172, 112], preatencion: [404, 24, 186, 112], plasticidad: [616, 24, 172, 112],
+  regulacion: [814, 24, 178, 112],
   S1: [8, 158, 320, 236], S2: [340, 158, 320, 236], S3: [672, 158, 320, 236],
   tribunal: [8, 440, 430, 112], actuar: [462, 440, 258, 112], cierre: [744, 440, 248, 112],
 };
 // El camino de la Onda (polilínea ortogonal) y dónde se para en cada paso.
-const CAMINO = [[94, 70], [903, 70], [903, 138], [168, 138], [168, 276], [832, 276], [832, 418], [223, 418], [223, 496], [868, 496]];
+const CAMINO = [[94, 80], [903, 80], [903, 147], [168, 147], [168, 276], [832, 276], [832, 418], [223, 418], [223, 496], [868, 496]];
 const PARADAS = {
-  onda: [94, 70], sentir: [292, 70], preatencion: [497, 70], plasticidad: [702, 70], regulacion: [903, 70],
+  onda: [94, 80], sentir: [292, 80], preatencion: [497, 80], plasticidad: [702, 80], regulacion: [903, 80],
   S1: [168, 276], S2: [500, 276], S3: [832, 276], tribunal: [223, 496], actuar: [591, 496], cierre: [868, 496],
 };
 
@@ -105,9 +106,32 @@ function titulo(paso, extra = '') {
   return `${texto(x + 12, y + 20, `${NUMERO_PASO[paso]} · ${t(`lab.paso.${paso}`)}${extra}`, 'titulo-paso')}`;
 }
 
+/** Parte un texto en renglones de como mucho ``n`` caracteres, por palabras (una palabra más larga se corta). */
+function envolver(s, n) {
+  const renglones = [];
+  let actual = '';
+  for (const palabra of String(s ?? '').split(/\s+/).filter(Boolean)) {
+    if (!actual) actual = palabra;
+    else if (actual.length + 1 + palabra.length <= n) actual += ` ${palabra}`;
+    else { renglones.push(actual); actual = palabra; }
+  }
+  if (actual) renglones.push(actual);
+  return renglones.map((r) => recortar(r, n));
+}
+
 function nodoSimple(paso, lineas, sel, extraClase = '') {
-  const [x, y, w] = CAJAS[paso];
-  const cuerpo = lineas.map((l, i) => texto(x + 12, y + 40 + i * 16, recortar(l.texto, Math.floor((w - 20) / 7.1)), l.clase || 'linea')).join('');
+  const [x, y, w, h] = CAJAS[paso];
+  // Cada línea en tantos renglones como necesite, hasta los que caben en la caja; el último lleva «…» si sobra texto.
+  const caben = Math.max(1, Math.floor((h - 34) / 15) + 1);
+  const ancho = Math.floor((w - 22) / 6.9);
+  const renglones = [];
+  for (const l of lineas) for (const r of envolver(l.texto, ancho)) renglones.push({ texto: r, clase: l.clase, completo: l.texto });
+  if (renglones.length > caben) {
+    renglones.length = caben;
+    const u = renglones[caben - 1];
+    u.texto = u.texto.endsWith('…') ? u.texto : `${recortar(u.texto, ancho - 1)}…`;
+  }
+  const cuerpo = renglones.map((l, i) => `<text x="${x + 12}" y="${y + 40 + i * 15}" class="${l.clase || 'linea'}"><title>${esc(l.completo)}</title>${esc(l.texto)}</text>`).join('');
   return `<g class="nodo" data-paso="${paso}" tabindex="0" role="button" aria-label="${esc(t(`lab.paso.${paso}`))}">
     ${caja(paso, sel, extraClase)}${titulo(paso)}${cuerpo}</g>`;
 }

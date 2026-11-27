@@ -726,10 +726,12 @@ class IdaVivero extends HTMLElement {
     const caja = this.querySelector('[data-cajon-cuerpo]');
     if (!caja) return;
     const id = this.detalle;
-    // T5a: «Abrir en el Laboratorio» lleva a la sección y al latido que se está viendo (el directo en memoria)
+    // T5a: «Abrir en el Laboratorio» lleva a la sección y al latido que se está viendo (el directo en memoria). T5b: con
+    // el mundo, para que Carácter y Estirpe abran la comparación de estirpes aunque no haya directo.
     const r = this.registro;
     const latido = r ? `&vida=${encodeURIComponent(r.vida)}&latido=${encodeURIComponent(r.latido)}` : '';
-    this.querySelector('[data-lab]').href = `#/lab?seccion=${id}&fuente=directo${latido}`;
+    const mundo = this.vida && this.vida.mundo ? `&mundo=${encodeURIComponent(this.vida.mundo)}` : '';
+    this.querySelector('[data-lab]').href = `#/lab?seccion=${id}&fuente=directo${latido}${mundo}`;
     const html = id === 'cuerpo' ? this.htmlCuerpo(true) : id === 'ahora' ? this.htmlAhora(true) : id === 'sabe' ? this.htmlSabe(true)
       : id === 'logros' ? this.htmlLogros(true) : id === 'caracter' ? this.htmlCaracter(true) : this.htmlEstirpe(true);
     if (html === this._ultimoDetalle) return;
