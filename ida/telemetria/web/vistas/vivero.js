@@ -211,7 +211,6 @@ class IdaVivero extends HTMLElement {
           <span class="chip sin-punto">${esc(nombreMundo)}</span>
           <span class="chip sin-punto" data-generacion></span>
           <span class="chip listo" data-latido>${esc(t('vivero.latido', { n: v.latido ?? 0 }))}</span></div>
-        <a class="boton pequeno discreto" href="/panel">${esc(t('vivero.panel_clasico'))} ↗</a>
       </div>
       ${fin}${snake}
       <div class="vivero">

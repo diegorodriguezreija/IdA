@@ -43,7 +43,7 @@ class IdaAntesala extends HTMLElement {
       paso: 1, mundos: null, presets: null, rasgos: [], rangos: {}, error: '',
       mundo: previo.mundo || 'crafter', caracter: previo.caracter || 'optimo', arquetipo: null,
       companeros: {}, coleccion: {}, origen: null, adoptarId: '', fichaError: '',
-      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false, grabar: false,
+      opciones: {}, semilla: 1, latidos: 300, generaciones: 1, sin_experiencia: false, grabar: false, otel: false,
       instalaciones: {}, lanzando: false, errorLanzar: '',
     };
     this._alIdioma = () => this.pintar();
@@ -66,6 +66,7 @@ class IdaAntesala extends HTMLElement {
     try {
       const [m, p, c] = await Promise.all([api.mundos(), this.e.presets ? null : api.presets(), api.companeros()]);
       this.e.mundos = m.mundos;
+      this.e.observabilidad = Boolean(m.observabilidad);
       this.e.companeros = Object.fromEntries(c.companeros.map((x) => [x.mundo, x]));
       if (p) { this.e.presets = p.presets; this.e.rasgos = p.rasgos; this.e.rangos = p.rangos; }
       for (const mundo of this.e.mundos) {             // una instalación que siguió mientras no se veía la página
@@ -350,6 +351,9 @@ class IdaAntesala extends HTMLElement {
                 <span>${esc(t('empezar.sin_experiencia'))}</span></label><small>${esc(t('empezar.sin_experiencia_ayuda'))}</small></div>
               <div class="campo"><label class="interruptor"><input type="checkbox" id="grabar" ${e.grabar ? 'checked' : ''}>
                 <span>⏺ ${esc(t('empezar.grabar'))}</span></label><small>${esc(t('empezar.grabar_ayuda'))}</small></div>
+              <div class="campo"><label class="interruptor"><input type="checkbox" id="otel" ${e.otel && e.observabilidad ? 'checked' : ''} ${e.observabilidad ? '' : 'disabled'}>
+                <span>${esc(t('empezar.otel'))}</span></label><small>${esc(t(e.observabilidad ? 'empezar.otel_ayuda' : 'empezar.otel_sin_extra'))}
+                ${e.observabilidad ? `<a href="http://localhost:3000" target="_blank" rel="noopener">Grafana</a> · <a href="http://localhost:16686" target="_blank" rel="noopener">Jaeger</a> · <a href="http://localhost:9090" target="_blank" rel="noopener">Prometheus</a>` : ''}</small></div>
             </div>
           </details>
         </form>
@@ -490,6 +494,7 @@ class IdaAntesala extends HTMLElement {
     });
     this.querySelector('#sin_experiencia').addEventListener('change', (ev) => { e.sin_experiencia = ev.target.checked; });
     this.querySelector('#grabar').addEventListener('change', (ev) => { e.grabar = ev.target.checked; });   // T5a (O7)
+    this.querySelector('#otel').addEventListener('change', (ev) => { e.otel = ev.target.checked; });       // T6a (O15)
     this.querySelectorAll('input[name="origen"]').forEach((r) => r.addEventListener('change', () => {
       e.origen = r.value;
       if (r.value === 'adoptar' && !e.adoptarId) e.adoptarId = ((e.coleccion[e.mundo] || [])[0] || {}).id || '';
@@ -553,6 +558,7 @@ class IdaAntesala extends HTMLElement {
     else cuerpo.caracter = e.caracter;
     if (reemplazar) cuerpo.reemplazar = true;
     if (e.grabar) cuerpo.grabar = true;   // T5a: graba desde el primer latido, con el nivel completo
+    if (e.otel && e.observabilidad) cuerpo.otel = true;   // T6a: trazas y métricas por OTLP (extra [observabilidad])
     return cuerpo;
   }
 

@@ -28,7 +28,7 @@ from ida.telemetria.esquema import NIVELES, VERSION
 from ida.telemetria.hechos import Deductor, fuente, requisitos
 
 RASGOS_ARQUETIPO = ("apertura", "responsabilidad", "neuroticismo", "extraversion", "umbral_miedo")
-SABER_COGNITIVO = 20      # proposiciones de más confianza en el nivel cognitivo (como el panel de hoy)
+SABER_COGNITIVO = 20      # proposiciones de más confianza en el nivel cognitivo (las que enseñaba el panel clásico)
 PROFUNDIDAD_JSON = 6      # profundidad máxima al copiar cargas y registros de piezas
 
 

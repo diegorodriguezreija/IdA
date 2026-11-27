@@ -45,7 +45,7 @@
 | **O12** | **Frontal sin compilación.** JavaScript moderno con módulos ES, Web Components y SVG o Canvas. Sin Node ni npm. Las bibliotecas copiadas van en `ida/telemetria/web/vendor/`, solo con licencia MIT, BSD o Apache, cada una en `NOTICE` con su versión. Funciona sin conexión |
 | **O13** | **El Laboratorio se alimenta del diseño.** `componentes.toml` gana dos campos opcionales: `analogo` (correspondencia biológica: interocepción, saliencia, aliestesia, traza de elegibilidad...) y `descripcion` en es/en. El Laboratorio los lee; el mapa de Componentes del Laboratorio sale de la misma fuente que los diagramas 06 y 07 |
 | **O14** | **Servidor.** Solo biblioteca estándar, escucha solo en `127.0.0.1`. API REST versionada (`/api/v1/...`) y SSE para el directo. Sirve los ficheros estáticos de `ida/telemetria/web/` |
-| **O15** | **OTel se alimenta del registro.** Las mismas métricas y trazas de hoy, sacadas del registro del latido. Sigue siendo un extra (`[observabilidad]`) |
+| **O15** | **OTel se alimenta del registro.** Las mismas métricas y trazas de hoy, sacadas del registro del latido. Sigue siendo un extra (`[observabilidad]`). *Hecho en T6a (sección 16.2).* |
 | **O16** | **Idiomas.** Español e inglés desde el principio. Por defecto el del navegador (`navigator.language`; si no es español, inglés), con selector siempre visible y la elección recordada. Textos en `web/i18n/es.json` y `en.json`; un test comprueba que los dos tienen las mismas claves |
 | **O17** | **Mundos instalables desde la antesala.** La antesala muestra el estado de cada mundo (listo / no instalado). «Instalar» ejecuta `pip install -e ".[<extra>]"` con el Python del propio entorno de IdA (y `playwright install chromium` para Snake), con la salida en pantalla. Solo extras conocidos de `pyproject.toml`, nunca texto libre. Nuevo extra `[todos]` para instalarlo todo |
 | **O19** | **Profundidad por capas.** Tres niveles: el *Vivero* enseña lo justo para seguir a IdA de un vistazo; «Ver más» en cada tarjeta abre un panel lateral con su detalle (lo que daba el panel clásico, ordenado por temas); y «Abrir en el Laboratorio», al pie de cada detalle, lleva a la vista experta. Tarjetas del Vivero y su detalle: *Cuerpo y ánimo* (química, afecto, indicadores viscerales); *Ahora*, la acción en frase con su motivo (tribunal y candidatos, estrategia activa, reparto entre S1, S2 y S3); *Lo que sabe*, en frases con el sprite del objeto y lo nuevo resaltado (confianza, fuente, hipótesis, refutadas, aciertos y sorpresas); *Logros y puntuación* (historial de la vida); *Carácter* (rasgos y su mutación entre generaciones); *Estirpe* (linaje, ranking y fichas). Lo técnico (latido, rendimiento, Componentes, guillotina) no va al Vivero: va al Laboratorio. Todo sale del registro de nivel cognitivo; nada nuevo se pide al motor |
@@ -113,10 +113,11 @@ mismos ids en el mismo orden. `herramientas/invariancia.py --observador completo
 `python -m ida --mundo M --grabar RUTA [--nivel vital|cognitivo|completo] [--plazo-logico OPS]`; por defecto, nivel
 cognitivo. El lector (`leer`, `iterar`) rehace la secuencia y `comparar` compara dos grabaciones sin los campos de tiempo.
 
-**Consumidores.** La consola forma su línea desde el registro (`ida/consola.py`, la misma salida byte a byte). El panel,
-la antesala y OTel reciben, hasta T6, la forma de antes por la capa `ida/telemetria/compat.py` (`a_panel`). Lo lanzado
-desde la antesala usa plazo lógico 40 (O11) salvo en los mundos cuyo `Perfil.tiempo_real` es verdadero (Snake), y nivel
-completo (el panel enseña los tiempos por Componente).
+**Consumidores.** La consola forma su línea desde el registro (`ida/consola.py`, la misma salida byte a byte). La
+aplicación (Vivero y Laboratorio), la grabación y OTel (desde T6a, sección 16.2) leen el registro tal cual; la capa
+`compat.py` que daba la forma de antes al panel, a la antesala antigua y a OTel se retiró en T6a. Lo lanzado desde la
+antesala usa plazo lógico 40 (O11) salvo en los mundos cuyo `Perfil.tiempo_real` es verdadero (Snake), y nivel completo
+(el Laboratorio enseña los tiempos por Componente).
 
 ## 5. Catálogo de hechos v1
 
@@ -276,6 +277,8 @@ Cada fase sale de `main` en su rama (`vista/<fase>`) y vuelve con autorización 
 | **T4b** | Compañero por mundo y colección (O9, O10): estirpe, guardar, adoptar, archivar, ranking, fichas antiguas importables; lo aprendido de la muerte en el diario | Igual que T4a; nada se borra sin confirmación | Opus |
 | **T5** | Laboratorio: latido animado (Onda por las 8 fases), mapa de Componentes, epistemología, biología y química, análisis y comparación de vidas, reproductor de grabaciones | Lista de comprobación del Laboratorio | Opus |
 | **T6** | Cierre: OTel sobre el registro, README («Pruébalo en 1 minuto» con `[todos]`), capturas, `CHANGELOG`; retirar `panel.html` y `antesala.html` | Todo en verde; el autor revisa | Flash |
+| **T6a** | Cierre técnico: retirar lo antiguo, OTel sobre el registro, empaquetado no editable, aviso de Python antiguo, series con `?cada=k` (sección 16) | Equivalencia e invariancia OK; prueba de `pip install .` en un venv limpio; todo en verde | Opus |
+| **T6b** | README, `CHANGELOG`, capturas y etiqueta | El autor revisa | — |
 
 El orden pone el Vivero antes que el Laboratorio, como pidió el autor. T1 y T2 son la base de los dos.
 
@@ -369,6 +372,7 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 | 26/11/2026 | O3, O5, O9, O10, O19, secciones 4, 5, 11, 12 y 13 | T4b: compañero por mundo y colección (`<datos>/vivero/`: fichas v1, estirpes archivadas e índice), ficha de individuo v1 con conversión de las antiguas del panel, guardar, adoptar (archiva el compañero de antes), renombrar, exportar, importar y borrar en dos pasos con testigo; «Empezar de cero» desde la aplicación archiva en vez de borrar (la CLI no cambia); ranking por mundo; antesala con «Tu compañero»; tarjeta Estirpe con su «Ver más» (linaje y mutación de cada rasgo) y página Colección. Registro (sigue siendo v1): registro de cierre con lo aprendido al morir (`cierre: true`), `resumen_saber` (vital) y `requisitos` (cognitivo). Barras del cuerpo con nombre por mundo; reparto entre sistemas desde el inicio de la vida. Equivalencia OK; invariancia OK con observador completo; 1325 tests | Rama `vista/t4b-estirpe` |
 | 26/11/2026 | O1, O3, O7, O12, O13, O16, O19, secciones 11, 12 y 14 | T5a: base del Laboratorio (`#/lab`). Grabar desde la antesala y el Vivero en `<datos>/grabaciones/<mundo>-<fecha>.jsonl.gz` (nivel completo, desde el latido siguiente, cabecera con `origen` y `empieza_tras`), con un hilo propio que no alarga el latido; lista, descarga y borrado en dos pasos; el directo sin grabar (últimos 2000 latidos en memoria); reproductor con tres fuentes (directo, grabación, fichero), línea de tiempo con hechos, paso a paso, ir a un latido y velocidad; vista Latido (los 8 pasos de D1 con la Onda animada, piezas por autor, consumo, guillotina y tribunal); vista Ingeniería (mapa de Componentes desde `componentes.toml` con tiempos y medias); O13: `analogo` y `descripcion` en es/en en los 74 elementos (tres análogos vacíos a propósito) y ficha de Componente con su decisión. API nueva en la sección 11. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1345 tests | Rama `vista/t5a-laboratorio` |
 | 26/11/2026 | O1, O3, O5, O7, O13, O16, O19, secciones 11, 14 y 15 | T5b: vistas Epistemología (historia de cada proposición y requisito: estado, confianza, fuente y hechos; totales, aciertos, sorpresas y error de predicción; filtros), Biología (cuerpo con las etiquetas de cada mundo, química, afecto, indicadores y necesidades con hechos y sueño marcados; análogo de cada serie con su línea de código, tres sin análogo), Análisis y comparación (curvas de una vida; dos grabaciones alineadas por latido con la primera divergencia, `grabacion.divergencia` sobre `comparar`; estirpes generación a generación) y Cierre (la vida y lo aprendido al morir). `ida/telemetria/analisis.py` (series de una vida) y cuatro rutas de la API; ningún campo nuevo en el registro. Lo que sabe del Vivero lleva a Epistemología y Carácter y Estirpe a Análisis. Plurales `{n\|singular\|plural}` en 33 plantillas. Primera fila del Latido sin cortes. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1371 tests | Rama `vista/t5b-comprension` |
+| 27/11/2026 | O2, O14, O15, secciones 4, 7, 11, 15.1 y 16 | T6a: retirados `panel.html`, `antesala.html`, `compat.py`, la API sin versión y las rutas del linaje del panel (404); `--ver` abre el Vivero con la vida de la CLI y `--no-navegador`; lo único sin equivalente, lanzar con OpenTelemetry desde el navegador, se conserva (`otel` en `POST vidas`, `observabilidad` en `GET mundos`, interruptor en «Avanzado»); O15 hecho: OTel solo lee el registro, con las 13 métricas de siempre y 5 nuevas (`ida.consumo`, `ida.guillotinas.motivo`, `ida.hechos`, `ida.potencia`, `ida.componente.duracion`); `pip install .` no editable con los cinco mundos, la web y los manuales de Crafter, sin avisos; mensaje claro con Python < 3.12; series con `?cada=k` (5000 filas por defecto) que conservan los hechos marcados. Equivalencia OK; invariancia OK con observador completo en los cuatro mundos; 1391 tests | Rama `vista/t6a-cierre` |
 | 26/11/2026 | O1, O3, O12, O14, O16, O17, sección 11 | T3: servidor con API v1 (`/api/v1`: mundos, instalación, presets, vidas, ritmo y SSE), POST solo con Origin propio, estado de los mundos detectado en local, ritmo entre latidos con un regulador (×1 = lo de antes), aplicación web (`web/index.html`) con i18n es/en, tema claro/oscuro, antesala en tres pasos y esqueletos del Vivero y del Laboratorio; extra `[todos]`. Las rutas de antes siguen hasta T6. Equivalencia OK; invariancia OK con observador completo | Rama `vista/t3-antesala` |
 
 ## 11. API v1 del servidor (T3)
@@ -376,10 +380,11 @@ No quedó fuera ninguna de las opciones propuestas. En sus valores por defecto d
 Fijada en T3 (26/11/2026). El servidor (`ida/telemetria/servidor.py`) usa solo la biblioteca estándar y escucha en
 `127.0.0.1` (en un contenedor, `IDA_TELEMETRIA_HOST`). Las rutas de la API están en `ida/telemetria/api_v1.py`; la
 detección de mundos, en `catalogo.py`; la instalación, en `instalador.py`; los presets, en `presets.py`; el ritmo, en
-`ritmo.py`. La aplicación (`web/index.html`, rutas `#/antesala`, `#/vivero` y `#/lab`) se sirve en `/`; la antesala y el
-panel de antes siguen en `/antesala-antigua` (también `/antesala`) y `/panel`, con sus rutas sin versión, hasta T6.
+`ritmo.py`. La aplicación (`web/index.html`, rutas `#/antesala`, `#/vivero` y `#/lab`) se sirve en `/`, también con una
+vida en marcha. Fuera de la API solo quedan `/`, `/escena` (visor de T2a) y `/web/...` (ficheros de `web/`): el panel y la
+antesala de antes, su API sin versión y las rutas del linaje del panel se retiraron en T6a (dan 404; sección 16.1).
 
-**Seguridad.** Todo `POST` (de la API y de las rutas antiguas) exige que la cabecera `Origin` o, si falta, `Referer`
+**Seguridad.** Todo `POST` exige que la cabecera `Origin` o, si falta, `Referer`
 sea la del propio servidor (`http://127.0.0.1:<puerto>`, `http://localhost:<puerto>` o `http://[::1]:<puerto>`); si no,
 403 `origen_no_permitido`. La instalación solo ejecuta órdenes fijas con extras de la lista cerrada de
 `pyproject.toml`; ningún texto del cliente llega a una orden.
@@ -390,15 +395,16 @@ clave `error.<codigo>` y añade el mensaje. Códigos: `json_invalido`, `origen_n
 `ficha_de_otro_mundo`, `vida_en_curso`, `sin_vida`, `ritmo_invalido`, `ritmo_fijo`, `sin_pausa`, `sin_extra`, `extra_desconocido`,
 `instalacion_en_curso`, `instalacion_desconocida`, `error_interno` y, desde T4b, `sin_companero`, `id_invalido`,
 `elemento_desconocido`, `nombre_invalido`, `testigo_invalido` y, desde T5a, `grabacion_en_curso`, `sin_grabacion`,
-`grabacion_desconocida`, `grabacion_invalida`, `latido_fuera`, `componentes_no_disponibles`.
+`grabacion_desconocida`, `grabacion_invalida`, `latido_fuera`, `componentes_no_disponibles` y, desde T6a,
+`sin_observabilidad`.
 
 | Método y ruta | Cuerpo | Respuesta | Errores |
 |---|---|---|---|
-| `GET /api/v1/mundos` | — | 200 `{mundos: [{nombre, estado, lanzable, extra, tiempo_real, frecuencia_ms, ritmo_comodo_ms, estrella, opciones, instalacion}]}`, Crafter primero | — |
+| `GET /api/v1/mundos` | — | 200 `{mundos: [{nombre, estado, lanzable, extra, tiempo_real, frecuencia_ms, ritmo_comodo_ms, estrella, opciones, instalacion}], observabilidad}`, Crafter primero; `observabilidad` (T6a): si está el extra `[observabilidad]` | — |
 | `POST /api/v1/mundos/{m}/instalar` | (se ignora) | 202 `{instalacion: {id, mundo, extra, estado, codigo, lineas, url}}` | 404 `mundo_desconocido`; 400 `sin_extra`, `extra_desconocido`; 409 `instalacion_en_curso` |
 | `GET /api/v1/instalaciones/{id}` | — | SSE: `linea` `{texto}` por línea de salida (las anteriores se reenvían) y `fin` con el resumen (`estado` `ok` o `error`, `codigo`) | 404 `instalacion_desconocida` |
 | `GET /api/v1/presets` | — | 200 `{presets: [{id, icono, nombre{es,en}, descripcion{es,en}, arquetipo, por_mundo?}], rasgos, rangos}` | — |
-| `POST /api/v1/vidas` | `{mundo, opciones?, caracter?, arquetipo?, ficha?, semilla?, latidos?, generaciones?, sin_experiencia?, tabula_rasa?, nivel?, reemplazar?}` | 201 `{vida}` | 400 `mundo_desconocido`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`, `ficha_de_otro_mundo`, `json_invalido`; 409 `mundo_no_instalado`, `vida_en_curso` |
+| `POST /api/v1/vidas` | `{mundo, opciones?, caracter?, arquetipo?, ficha?, semilla?, latidos?, generaciones?, sin_experiencia?, tabula_rasa?, nivel?, reemplazar?, grabar?, otel?}` | 201 `{vida}` | 400 `mundo_desconocido`, `opcion_invalida`, `campo_invalido`, `caracter_invalido`, `ficha_invalida`, `ficha_de_otro_mundo`, `json_invalido`; 409 `mundo_no_instalado`, `vida_en_curso`, `sin_observabilidad` (`otel: true` sin el extra) |
 | `GET /api/v1/vidas/actual` | — | 200 `{vida}` (o `null`): la última lanzada, con `activa`, `ritmo`, `ritmo_ajustable`, `ritmos`, `ritmo_comodo_ms` y el último `latido`, `vida`, `generacion`, `individuo` | — |
 | `GET /api/v1/vidas/actual/registro[?nivel=vital\|cognitivo]` | — | SSE: `vida` y `diario` al conectar, `registro` (el registro del latido v1; con `nivel`, recortado a ese nivel), `ritmo` y `fin` | — |
 | `POST /api/v1/vidas/actual/ritmo` | `{ritmo: "pausa" \| "lento" \| "comodo" \| "x4" \| "max"}` (`x1` se admite como `comodo`) | 200 `{ritmo}` con el nombre canónico | 404 `sin_vida`; 400 `ritmo_invalido`; 409 `ritmo_fijo` (tiempo real) |
@@ -435,7 +441,8 @@ y, si no se da `nivel`, con el completo. Las opciones se completan con los defec
 JSON de individuo de hoy (`arquetipo`, `arquetipo_actual` o la última de `generaciones`, y `legado`); si dice otro
 `mundo`, es un error: lo aprendido no pasa de un mundo a otro. Límites: `semilla` 0–2 147 483 646 (defecto 1),
 `latidos` 1–1 000 000 (300), `generaciones` 1–100 (1). Plazo lógico 40 salvo en tiempo real (O11); nivel del registro
-`completo` por defecto (el panel clásico enseña los tiempos por Componente). Con una vida en marcha, 409 salvo
+`completo` por defecto (el Laboratorio enseña los tiempos por Componente). `otel: true` (T6a) envía sus trazas y métricas
+por OTLP (O15), como `--otel` en la CLI; sin el extra, 409 `sin_observabilidad`. Con una vida en marcha, 409 salvo
 `reemplazar: true`, que la para antes. Los datos van a `datos/<mundo>` o, si el servidor se arrancó con
 `python -m ida --datos RUTA`, a `RUTA/<mundo>`.
 
@@ -446,7 +453,7 @@ telemetría y no del motor): `comodo` espera ese periodo, `lento` el doble, `x4`
 hasta que cambie el ritmo, se pida un paso o se pare la vida. El periodo se mide entre dos salidas de la espera, así que
 lo que se ve avanza con un periodo regular aunque el latido tarde. **Paso a paso** (`POST vidas/actual/paso`, solo en
 pausa): cada petición deja pasar exactamente un latido (se acumulan: N peticiones, N latidos). Sin cómodo (la CLI con
-`--ver`, la antesala antigua) el periodo es `frecuencia_ms` del `Perfil`, como antes; `x1` sigue aceptándose como
+`--ver`) el periodo es `frecuencia_ms` del `Perfil`, como antes; `x1` sigue aceptándose como
 `comodo`. En los mundos de tiempo real no se llama y la API responde `ritmo_fijo`. Con plazo lógico la guillotina cuenta
 operaciones, no tiempo: `tests/test_ritmo.py` comprueba que una vida de mínimo hace las mismas acciones con lento,
 cómodo, ×4, máximo y avanzando de uno en uno en pausa.
@@ -475,7 +482,9 @@ recarga la página no pierde el diario ni lo que sabe. Es lo que ya salió por e
 | `sin_stockfish` | ajedrez con `chess` pero sin `stockfish` en el `PATH` (`shutil.which`) | sí: juega contra su rival local, el de por defecto (`stockfish=""`) |
 
 La ruta de Stockfish sigue siendo opción de la CLI (`--opcion stockfish=RUTA`), no del formulario. «Instalar» ejecuta
-`[sys.executable, "-m", "pip", "install", "-e", ".[<extra>]"]` desde la raíz del proyecto y, en Snake, además
+`[sys.executable, "-m", "pip", "install", "-e", ".[<extra>]"]` desde la raíz del proyecto (en una instalación que no es
+editable, sin `pyproject.toml` al lado, `pip install` de los requisitos del extra que dicen los metadatos del paquete
+instalado; T6a) y, en Snake, además
 `[sys.executable, "-m", "playwright", "install", "chromium"]`; una instalación a la vez. El extra `[todos]` de
 `pyproject.toml` reúne crafter, snake y ajedrez (sin `[observabilidad]`, que solo sirve con la pila de `infra/`).
 
@@ -618,7 +627,7 @@ guardar: el que heredaría la generación siguiente.
 **Guardar** hace una ficha del compañero: su último individuo (el de la vida que acaba de terminar) con el historial de
 la estirpe.
 
-**Fichas antiguas** (las que descarga `panel.html` y las que acepta la antesala de T3). Se convierten al importarlas;
+**Fichas antiguas** (las que descargaba `panel.html`, retirado en T6a, y las que acepta la antesala de T3). Se convierten al importarlas;
 lo que falta se apunta en `avisos` y la interfaz lo enseña:
 
 | Antigua | Cómo se convierte | Lo que suele faltar (aviso) |
@@ -866,8 +875,8 @@ mínimo de 400 latidos da 108 KB de series en JSON y se calculan en 32 ms (semil
 
 | Método y ruta | Respuesta | Errores |
 |---|---|---|
-| `GET /api/v1/vidas/actual/series` | 200 `{lanzamiento, primero, siguiente, mundo, registros, niveles, columnas, hechos, saber, vidas}` | — |
-| `GET /api/v1/grabaciones/{id}/series` | 200 `{grabacion, cabecera, truncada, mundo, registros, niveles, columnas, hechos, saber, vidas}` | 400 `id_invalido`, `grabacion_invalida`; 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
+| `GET /api/v1/vidas/actual/series[?cada=k]` | 200 `{lanzamiento, primero, siguiente, mundo, registros, registros_totales, cada, niveles, columnas, hechos, saber, vidas}` | 400 `campo_invalido` (`cada`) |
+| `GET /api/v1/grabaciones/{id}/series[?cada=k]` | 200 `{grabacion, cabecera, truncada, mundo, registros, registros_totales, cada, niveles, columnas, hechos, saber, vidas}` | 400 `id_invalido`, `grabacion_invalida`, `campo_invalido` (`cada`); 404 `grabacion_desconocida`; 409 `grabacion_en_curso` |
 | `GET /api/v1/grabaciones/{a}/comparar/{b}` | 200 `{a, b, configuracion: {misma, distintas, otras}, divergencia: {comunes, iguales, primera}}` | los de abrir una grabación |
 | `GET /api/v1/estirpes/comparar?a=REF&b=REF` | 200 `{a, b, mismo_mundo, filas: [{generacion, a, b, diferencia, rasgos}], rasgos}`; `REF` = `companero:<mundo>`, el id de una estirpe archivada o el de una ficha | 400 `campo_invalido`, `id_invalido`; 404 `sin_companero`, `elemento_desconocido`, `mundo_desconocido` |
 
@@ -988,3 +997,166 @@ Otras: [lado a lado, vitalidad](img/t5b_analisis_lado_a_lado.png), [curvas de un
 - **Daño con su causa**: «daño» es la vitalidad que baja; quién lo hizo solo sale en la muerte. Haría falta un campo
   `cuerpo.dano` con la causa del `Efecto` del latido.
 - **Tiempo y lecturas de cada Componente plástico**: lo mismo que en T5a (sección 14.4).
+
+## 16. Cierre técnico (T6a)
+
+Hecho el 27/11/2026 en la rama `vista/t6a-cierre`. Ningún cambio en la base ni en `ida/mundos`; `ida/ejecutor.py` solo
+pierde lo que usaba lo antiguo (`a_panel` y la rama `ver`, que ahora atiende `ida/__main__.py`) y elige el nivel completo
+cuando hay OTel y no se pide nivel (sección 16.2).
+
+### 16.1 Lo retirado y dónde está ahora
+
+Se retiran `ida/telemetria/panel.html`, `antesala.html` y `compat.py`, las rutas `/panel`, `/antesala`,
+`/antesala-antigua`, la API sin versión (`/eventos`, `/estado`, `/estado_simulacion`, `POST /iniciar`, `POST /detener`)
+y las rutas del linaje del panel (`GET /linaje`, `/linaje/descargar`, `POST /linaje/fijar`, `/linaje/restaurar`). Todas
+dan 404 (`tests/test_api_v1.py::test_las_rutas_retiradas_dan_404`, también con una vida en marcha). El enlace «Panel
+clásico» del Vivero desaparece. `--ver` abre la aplicación en el Vivero con la vida de la CLI (`Telemetria.acompanar`):
+el Vivero y el Laboratorio la siguen como una lanzada desde la antesala, con pausa, paso a paso y «Parar»; el ritmo es
+`frecuencia_ms` del `Perfil`, como antes, y el nivel por defecto, completo. Al terminar, el servidor sigue abierto hasta
+Ctrl+C para mirarla en el Laboratorio (antes se cerraba con la vida). `--no-navegador` arranca sin abrir el navegador.
+
+| Lo que daba el panel clásico o la antesala antigua | Dónde está ahora |
+|---|---|
+| Cabecera: mundo, individuo, generación, latido, afecto, «sin experiencia» | Vivero (cabecera y tarjeta Cuerpo y ánimo) |
+| Carácter (arquetipo) | Vivero, tarjeta Carácter; Análisis (estirpes) |
+| Onda: piezas en `ev` por canal | Laboratorio, Latido (piezas por autor y canal) |
+| Cuerpo y vitales, química y afecto, indicadores viscerales | Vivero, Cuerpo y ánimo; Laboratorio, Biología (series con análogo) |
+| Latido y rendimiento: amplitud, guillotina | Laboratorio, Latido (consumo, guillotina) y Biología/Análisis (series de amplitud y guillotina) |
+| Componentes más lentos (ms) | Laboratorio, Ingeniería (tiempos y medias por Componente) |
+| Decisión del Tribunal, motivo, candidatos evaluados | Vivero, Ahora (acción en frase); Laboratorio, Latido (tribunal con candidatos) |
+| Reparto de sistemas (últimos 100 latidos) | Vivero, reparto entre sistemas desde el inicio de la vida (T4b) |
+| Memoria y aprendizaje: recuentos, aprendizaje del latido, conocimiento demostrado | Vivero, Lo que sabe y diario; Laboratorio, Epistemología |
+| Historial y últimas decisiones | Vivero, diario de hechos; Laboratorio, línea de tiempo |
+| Linaje: conteo, mejor Score, gráfica por generación, tabla | Vivero, tarjeta Estirpe y su «Ver más»; Laboratorio, Análisis (estirpes generación a generación) |
+| Descargar un individuo o el linaje completo | Colección: exportar una ficha v1 (la del compañero lleva toda la estirpe en `vidas`) |
+| Ficha de individuo (carácter, Score, conocimiento) y «Restaurar en antesala» | Colección (fichas) y adoptar o importar; la antesala nueva lanza desde una ficha |
+| Fijar un individuo para la retención del linaje (`POST /linaje/fijar`) | Guardar en la colección: la ficha no se borra nunca sin confirmación, más que fijarlo en las 20 generaciones del linaje. `ida/historico.py` conserva `conmutar_fijado` (sin uso desde la aplicación) |
+| Antesala antigua: mundo, opciones, arquetipo, semilla, generaciones, tabula rasa, sin experiencia | Antesala nueva (T3, T4a, T4b) |
+| Antesala antigua: «cada» (latidos impresos en la consola) | Solo en la CLI (`--cada`): no afecta a la aplicación |
+| Antesala antigua: **OpenTelemetry** y enlaces a Grafana, Jaeger y Prometheus | Era lo único sin equivalente: se conserva. `POST /api/v1/vidas` acepta `otel`, `GET /api/v1/mundos` dice si está el extra (`observabilidad`) y la antesala lo ofrece en «Avanzado», con los tres enlaces (si falta el extra, el interruptor sale desactivado y dice cómo instalarlo) |
+
+No se pierde nada de valor.
+
+### 16.2 OTel sobre el registro (O15)
+
+`otel.Observabilidad.latido(registro)` solo lee el registro del latido v1: ni la Onda ni el organismo. Las fases
+(`fases`) y los tiempos por Componente (`tiempos_ms`) son del nivel completo, así que con `--otel` (o `otel: true` en la
+API) y sin nivel pedido se observa a ese nivel. Con un nivel menor la traza es solo el tramo `latido`, con la duración de
+la cognición (`ritmo.ms`). Los instantes absolutos se colocan hacia atrás desde que llega el registro (el observador
+corre al final del latido). El registro de cierre no da traza ni cuenta latidos.
+
+| Métrica (OTLP; en Prometheus, `.` → `_`) | Atributos | Antes de T6a | Después |
+|---|---|---|---|
+| `ida.latido.duracion` (ms) | mundo | Onda | registro (`fases`; sin ellas, `ritmo.ms`) |
+| `ida.fase.duracion` (ms) | mundo, fase | Onda | registro (`fases`) |
+| `ida.latidos` | mundo | solo si había fases | cada registro que no es de cierre |
+| `ida.guillotinas` | mundo | Onda | registro (`onda.guillotina` o `ritmo.guillotina`) |
+| `ida.decisiones` | mundo, sistema, verbo | resumen de `a_panel` | registro (`accion`) |
+| `ida.decisiones.cambiadas` | mundo | ídem | registro (`experiencia.cambio_decision`) |
+| `ida.aprendizajes` | mundo | ídem | registro (`experiencia.aprendizaje`) |
+| `ida.vidas`, `ida.vida.latidos` | mundo, final | ejecutor | igual |
+| `ida.soma` | mundo, medida | resumen de `a_panel` | registro (`cuerpo`, `quimica`, `afecto.indicadores` con prefijo `indicador_`) |
+| `ida.amplitud` | mundo, tipo | Onda | registro (`ritmo.amplitud`) |
+| `ida.conocimiento` | mundo, estado | resumen | registro (`memoria`) |
+| `ida.puntuacion` | mundo, clave | resumen | registro (`score.puntuacion`, sin booleanos) |
+| `ida.consumo` | mundo, sistema, recurso | — | **nueva**: `onda.consumo` (amplitud, potencia, rechazos de amplitud y recortes de potencia por sistema; nivel cognitivo) |
+| `ida.guillotinas.motivo` | mundo, motivo | — | **nueva**: `ritmo.guillotina` |
+| `ida.hechos` | mundo, tipo | — | **nueva**: los hechos del registro (también los del cierre, si llegan) |
+| `ida.potencia` | mundo, tipo | — | **nueva**: `ritmo.potencia` |
+| `ida.componente.duracion` (ms) | mundo, componente | — | **nueva**: `tiempos_ms` (nivel completo) |
+
+Las trazas no cambian: tramo `latido` con los atributos de siempre (`ida.individuo`, `ida.latido`, `ida.afecto`,
+`ida.decision.*`, `ida.experiencia_cambio`, `ida.amplitud.*`, `ida.plazo_ms`, `ida.guillotina`), un hijo por fase con
+`ida.componente_ms.<clave>` y los eventos `guillotina` (con su motivo) y `aprendizaje`. `ida.plazo_ms` sale de
+`ritmo.plazo_ms`, que el registro redondea a 0,1 ms.
+
+La pila de `infra/` (Docker) no se levantó: habría que descargar sus imágenes. Se probó con el exportador y el lector en
+memoria del SDK de OpenTelemetry 1.45.2, instalado en el `.venv` del autor (`tests/test_observabilidad.py`): las trazas,
+las métricas de siempre y las nuevas, y que cada métrica que consultan los paneles de
+`infra/grafana/dashboards/ida.json` sigue existiendo con su nombre.
+
+### 16.3 Empaquetado
+
+`pyproject.toml`: paquetes `ida` e `ida.*` sin espacios de nombres (`web/` va como datos de `ida.telemetria`), datos
+explícitos (la web entera, los manuales JSON de Crafter, que faltaban, y la licencia del rival de ajedrez) e
+`include-package-data = false`: con su valor por defecto, setuptools en Windows cruzaba las rutas del manifiesto («/»)
+con las de los paquetes («\\») y avisaba de que `ida.mundos.ajedrez` e `ida.telemetria.web.*` no estaban en `packages`,
+aunque los copiaba (el aviso que vio el autor). `tests/test_empaquetado.py` aplica esas reglas a cada carpeta de `ida/`.
+
+En una instalación que no es editable no hay `pyproject.toml`: los extras salen de los metadatos del paquete instalado
+(`Provides-Extra`) y «Instalar» hace `pip install` de los requisitos del extra (`crafter>=1.8`, `playwright>=1.40`,
+`chess>=1.10`).
+
+Prueba (27/11/2026): venv temporal `F:	mp	6aenv` creado con el Python del `.venv` (3.15.1) sin
+`--system-site-packages`, `pip install F:\code\IdA` (sin extras: setuptools 84.2.1 en el entorno de construcción;
+ningún aviso en la salida de pip; los 302 ficheros de `ida/` instalados, los mismos que en el repositorio) y, con el
+directorio de trabajo fuera del repositorio:
+
+```
+$ F:\tmp\t6a\venv\Scripts\python.exe -m ida --datos F:\tmp\t6a\datos --no-navegador   (cwd F:\tmp\t6a)
+  | [telemetría] aplicación web en http://127.0.0.1:8000
+  | 
+  | [antesala] Servidor interactivo listo en http://127.0.0.1:8000/#/antesala
+  | [antesala] Elige mundo y parámetros en el navegador. Pulsa Ctrl+C para salir.
+  | 
+GET / -> 200 text/html; charset=utf-8 4631 bytes; /web/app.js en la página: True
+GET /api/v1/mundos -> 200; crafter=no_instalado (extra crafter), minimo=listo (extra None), archivos=listo (extra None), snake=no_instalado (extra snake), ajedrez=no_instalado (extra ajedrez); observabilidad=False
+GET /web/sprites/minimo/baya.svg -> 200 image/svg+xml 319 bytes
+GET /web/sprites/archivos/Boletus_edulis.svg -> 200 image/svg+xml 209 bytes
+GET /web/sprites/crafter/arrow-down.png -> 200 image/png 1825 bytes
+GET /web/sprites/snake/cabeza.svg -> 200 image/svg+xml 340 bytes
+GET /web/sprites/ajedrez/indice.json -> 200 application/json; charset=utf-8 168 bytes
+GET /web/lab/series.js -> 200 9251 bytes
+GET /web/vistas/vivero.js -> 200 46234 bytes
+GET /web/i18n/en.json -> 200 55453 bytes
+GET /web/i18n/clases/crafter.json -> 200 11742 bytes
+POST /api/v1/vidas minimo (60 latidos, semilla 31) -> 201; nivel completo, plazo lógico 40.0
+vida terminada: activa=False, último latido 60; registros en el directo: 60; último registro v=1 nivel=completo latido=60 cierre=False hechos=['aprende', 'aprende', 'peligro']
+GET /api/v1/vidas/actual/series -> 60 filas, 16 hechos marcados
+GET /api/v1/componentes -> 404 componentes_no_disponibles
+GET /panel -> 404
+GET /estado -> 404
+servidor parado
+```
+
+Límites de una instalación no editable (para T6b o una decisión del autor):
+
+- **Mapa de Componentes.** `doc-repositorio/componentes.toml` y `docs/DISENO_COMPONENTES.md` no son parte del paquete:
+  `GET /api/v1/componentes` responde 404 `componentes_no_disponibles` y la vista Ingeniería enseña los tiempos sin
+  fichas, como estaba previsto en T5a.
+- **Datos por defecto.** Sin `--datos`, `ejecutor.DATOS` es `<carpeta del paquete>/../datos`, que en una instalación
+  normal cae dentro de `site-packages` (en la prueba, `F:\tmp\t6a\venv\Lib\site-packages\datos`). `ida/ejecutor.py` no
+  se podía tocar para esto en T6a.
+- **Commit de las grabaciones.** `grabacion.commit_actual` corre `git rev-parse HEAD` en la carpeta padre del paquete:
+  fuera de un repositorio da `None` (sin `commit` en la cabecera), y si el entorno vive dentro de un repositorio
+  cualquiera daría el commit de ese repositorio (no comprobado).
+
+### 16.4 Python antiguo
+
+`python -m ida` con un Python anterior a 3.12 escribe en stderr, sin traza:
+
+```
+IdA necesita Python 3.12 o posterior, y este es Python 3.11.9 (C:\ruta\a\python.exe).
+
+Cómo seguir:
+  - Windows, con el gestor de instalación de Python: «py install 3.12», y luego crea el entorno con ese Python:
+      py -3.12 -m venv .venv    y    .venv\Scripts\activate
+  - macOS y Linux: instala Python 3.12 (python.org o el gestor de paquetes del sistema) y crea el entorno con él:
+      python3.12 -m venv .venv    y    source .venv/bin/activate
+  - Comprueba con «python --version» que el entorno usa 3.12 o posterior, y vuelve a instalar IdA en él
+    (python -m pip install --upgrade pip; python -m pip install -e ".[todos]").
+```
+
+y devuelve 1. `ida/__main__.py` solo importa `sys` arriba, comprueba la versión antes de importar nada más de IdA y no usa
+f-strings, anotaciones ni sintaxis posterior a 3.7 (`tests/test_t6a.py` lo comprueba con `ast`; la versión se simula
+con `sys.version_info`; no se probó con un Python antiguo de verdad). `ida/__init__.py` (solo `__version__`) se ejecuta antes y
+también lo entiende cualquier Python 3. `pip install` ya rechazaba un Python antiguo por `requires-python = ">=3.12"`.
+
+### 16.5 Series largas
+
+`GET .../series?cada=k` (grabaciones y directo) da una fila de cada `k` (`analisis.reducir`); sin `cada`, la menor `k`
+que deja como mucho 5000 filas regulares (`analisis.MAX_PUNTOS`). Se conservan siempre las filas de los hechos marcados
+(logros, muerte, daños, aprendizajes, sorpresas, sueño), las de cierre, la primera y la última de cada vida y la última de
+todas; `hechos`, `saber` y `vidas` van enteros. La respuesta añade `cada` y `registros_totales`; `registros` es el número
+de filas que quedan y `columnas.n` dice qué registro es cada una (las vistas ya colocaban las marcas por `n`).
+`?cada=1` da la serie entera. Un fichero cargado en el navegador sigue calculando sus series enteras en JS.

@@ -11,6 +11,8 @@ esto cambia la conducta de IdA (O3). Tres piezas:
   proposiciones de más confianza (``saber``): una que sale de esas 20 queda «fuera» (no se sabe su confianza) hasta que
   vuelve; con nivel completo el ``saber`` es entero y la que desaparece se ha olvidado. Los hechos se ven siempre.
 - ``comparar_estirpes``: dos linajes (``Vivero.estirpe``) generación a generación.
+- ``reducir`` (T6a): las series de una grabación larga, una fila de cada ``k`` (``?cada=k``; sin él, las justas para no
+  pasar de ``MAX_PUNTOS``), conservando las filas de los hechos marcados, los cierres y el principio y el fin de cada vida.
 
 La Score de cada latido es la de la colección y el linaje (``ida/historico.py``, ``calcular_fitness``, sección 13.1):
 no es la Score oficial de D17, que no se puede dar por latido.
@@ -31,6 +33,7 @@ INDICADORES = ("peligro", "tension", "calma")
 RESUMEN = ("proposiciones", "demostradas", "hipotesis", "refutadas", "heredadas", "requisitos", "requisitos_confirmados",
            "aciertos", "sorpresas")
 DECIMALES = 4
+MAX_PUNTOS = 5000   # filas de las series que la API da por defecto (unos 270 bytes por fila en JSON; T6a)
 
 
 def redondear(x: float, decimales: int = DECIMALES) -> float:
@@ -265,6 +268,35 @@ def series_de(registros: List[Dict[str, Any]]) -> Dict[str, Any]:
     for i, r in enumerate(registros):
         s.anadir(r, i)
     return s.resultado()
+
+
+def reducir(series: Dict[str, Any], cada: Optional[int] = None, maximo: int = MAX_PUNTOS) -> Dict[str, Any]:
+    """Las series (``Series.resultado``) con una fila de cada ``cada``; sin ``cada``, la menor ``cada`` que deja como mucho
+    ``maximo`` filas regulares. Se conservan siempre, aunque caigan entre muestras, las filas de cada hecho marcado
+    (``hechos``: logros, muerte, daños, aprendizajes, sorpresas, sueño...), las de cierre, la primera y la última de cada
+    vida y la última de todas: las marcas de las vistas caen sobre un punto de la curva. ``hechos``, ``saber`` y ``vidas``
+    no se recortan (ya son por cambio). Añade ``cada`` y ``registros_totales``; ``registros`` es el número de filas que
+    quedan (``columnas.n`` dice qué registro de la fuente es cada una)."""
+    total = int(series.get("registros") or 0)
+    if cada is None:
+        cada = max(1, math.ceil(total / max(1, maximo)))
+    if cada < 1:
+        raise ValueError("cada: debe ser un entero ≥ 1")
+    salida = dict(series, cada=cada, registros_totales=total)
+    columnas = series.get("columnas") or {}
+    if cada == 1 or not total or "n" not in columnas:
+        return salida
+    ns = columnas["n"]
+    marcados = {h["n"] for h in series.get("hechos") or [] if "n" in h}
+    vidas, cierres = columnas.get("vida") or [None] * total, columnas.get("cierre") or [False] * total
+    quedan = []
+    for i in range(total):
+        frontera = i == 0 or i == total - 1 or vidas[i] != vidas[i - 1] or vidas[i] != vidas[min(i + 1, total - 1)]
+        if i % cada == 0 or frontera or cierres[i] or ns[i] in marcados:
+            quedan.append(i)
+    salida["columnas"] = {nombre: [col[i] for i in quedan] for nombre, col in columnas.items()}
+    salida["registros"] = len(quedan)
+    return salida
 
 
 def historia(series: Dict[str, Any], clave: str) -> Optional[Dict[str, Any]]:

@@ -5,6 +5,10 @@ mundo pedido (``catalogo.DEPENDENCIAS``), nunca de texto del cliente. Para Snake
 ``python -m playwright install chromium``. Se ejecutan desde la raíz del proyecto, una instalación a la vez, en un hilo;
 cada línea de salida se guarda y se avisa a quien la sigue por SSE (``GET /api/v1/instalaciones/{id}``).
 
+En una instalación que no es editable (``pip install .``, sin ``pyproject.toml`` al lado; T6a) no hay proyecto que
+reinstalar: se instalan los requisitos del extra que dicen los metadatos del paquete instalado
+(``catalogo.requisitos_del_extra``), igual de fijos.
+
 ``lanzar`` (por defecto ``subprocess.Popen``) se puede sustituir en las pruebas por un proceso simulado.
 """
 
@@ -32,9 +36,12 @@ def _popen(orden: List[str], cwd: str) -> Any:
                             text=True, encoding="utf-8", errors="replace", bufsize=1)
 
 
-def ordenes(mundo: str, extra: str) -> List[List[str]]:
+def ordenes(mundo: str, extra: str, editable: bool = True) -> List[List[str]]:
     """Las órdenes de instalación de un mundo (lista de argumentos: sin intérprete de órdenes)."""
-    salida = [[sys.executable, "-m", "pip", "install", "-e", f".[{extra}]"]]
+    if editable:
+        salida = [[sys.executable, "-m", "pip", "install", "-e", f".[{extra}]"]]
+    else:
+        salida = [[sys.executable, "-m", "pip", "install", *catalogo.requisitos_del_extra(extra)]]
     if mundo == "snake":
         salida.append([sys.executable, "-m", "playwright", "install", "chromium"])
     return salida
@@ -88,12 +95,13 @@ class Instalador:
         conocidos = catalogo.extras_conocidos(self._pyproject())
         if extra is None:
             raise ErrorInstalacion("sin_extra", f"{mundo} no necesita instalar nada")
-        if extra not in conocidos:
+        editable = catalogo.editable(self.raiz)
+        if extra not in conocidos or (not editable and not catalogo.requisitos_del_extra(extra)):
             raise ErrorInstalacion("extra_desconocido", f"el extra {extra!r} no está en pyproject.toml (conocidos: {', '.join(conocidos)})")
         with self._cerrojo:
             if self.en_curso() is not None:
                 raise ErrorInstalacion("instalacion_en_curso", "ya hay una instalación en curso", 409)
-            inst = Instalacion(f"i{next(self._contador)}", mundo, extra, ordenes(mundo, extra))
+            inst = Instalacion(f"i{next(self._contador)}", mundo, extra, ordenes(mundo, extra, editable))
             self.instalaciones[inst.id] = inst
         threading.Thread(target=self._correr, args=(inst,), daemon=True).start()
         return inst

@@ -39,12 +39,23 @@ dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.10"]
 [project.scripts]
 ida = "ida.__main__:main"
 
+# Todos los paquetes de ida/ (cada carpeta con __init__.py). web/ no es un paquete: va como datos de ida.telemetria.
+# tests/test_empaquetado.py comprueba que esta configuración incluye cada paquete y cada fichero que se lee al correr.
+[tool.setuptools]
+# Los datos son solo los de [tool.setuptools.package-data]: con include-package-data (el valor por defecto), setuptools en
+# Windows cruza las rutas del manifiesto («/») con las de los paquetes («\») y avisa de que ida.mundos.ajedrez e
+# ida.telemetria.web.* no están en `packages`, aunque los copia (lo vio el autor en su prueba de usuario del 26/11/2026).
+include-package-data = false
+
 [tool.setuptools.packages.find]
-include = ["ida*"]
+include = ["ida", "ida.*"]
+exclude = ["ida.telemetria.web", "ida.telemetria.web.*"]
+namespaces = false
 
 [tool.setuptools.package-data]
-"ida.telemetria" = ["*.html", "web/**/*"]   # web/: visor, sprites (O12)
-"ida.mundos.ajedrez" = ["*.md"]
+"ida.telemetria" = ["web/*", "web/**/*"]           # la aplicación: index, vistas, lab, componentes, i18n, sprites (O12)
+"ida.mundos.ajedrez" = ["*.md", "LICENSE"]         # licencia del rival (NOTICE)
+"ida.mundos.crafter" = ["*.json"]                  # manuales de Crafter (adaptador.cargar_manual)
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

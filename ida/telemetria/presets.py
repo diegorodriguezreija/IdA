@@ -1,6 +1,7 @@
 """Presets de carácter de la antesala (``GET /api/v1/presets``).
 
-Son los de ``antesala.html`` (``CONFIG_OPTIMA`` y ``PRESETS_ARQUETIPO``), con nombre y descripción en es/en. «Recomendado»
+Son los de la antesala de antes (``CONFIG_OPTIMA`` y ``PRESETS_ARQUETIPO``, retirada en T6a), con nombre y descripción en
+es/en. «Recomendado»
 depende del mundo (``por_mundo``); «Azar» no fija rasgos (``arquetipo: None``): los deriva la semilla, como
 ``Arquetipo.nuevo``. Los rangos de los deslizadores son los de la antesala de siempre.
 """
