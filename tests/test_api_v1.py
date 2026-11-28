@@ -129,10 +129,45 @@ def test_estado_de_cada_mundo(monkeypatch):
 
 
 def test_chromium_se_busca_en_la_cache_de_playwright(monkeypatch, tmp_path):
+    """Sin ``browsers.json`` legible, basta cualquier revisión de Chromium en la caché."""
     monkeypatch.setenv("PLAYWRIGHT_BROWSERS_PATH", str(tmp_path))
+    monkeypatch.setattr(catalogo, "browsers_json", lambda: "")
     assert catalogo.carpeta_navegadores() == str(tmp_path)
     assert not catalogo.chromium_instalado()
     (tmp_path / "chromium_headless_shell-1200").mkdir()
+    assert catalogo.chromium_instalado()
+
+
+def _browsers_json(ruta, revision):
+    ruta.write_text(json.dumps({"browsers": [
+        {"name": "chromium", "revision": revision}, {"name": "chromium-headless-shell", "revision": revision},
+        {"name": "firefox", "revision": "1572"}]}), encoding="utf-8")
+
+
+def test_revisiones_chromium_de_browsers_json(tmp_path):
+    ruta = tmp_path / "browsers.json"
+    _browsers_json(ruta, "1255")
+    assert catalogo.revisiones_chromium(str(ruta)) == {
+        "chromium": "chromium-1255", "chromium-headless-shell": "chromium_headless_shell-1255"}
+    assert catalogo.revisiones_chromium(str(tmp_path / "no_existe.json")) is None
+    ruta.write_text("{no es json", encoding="utf-8")
+    assert catalogo.revisiones_chromium(str(ruta)) is None
+
+
+def test_chromium_de_otra_revision_no_basta(monkeypatch, tmp_path):
+    """Una caché con el Chromium de un Playwright anterior no deja Snake listo (Playwright no lo usa)."""
+    cache = tmp_path / "cache"
+    cache.mkdir()
+    ruta = tmp_path / "browsers.json"
+    _browsers_json(ruta, "1255")
+    monkeypatch.setenv("PLAYWRIGHT_BROWSERS_PATH", str(cache))
+    monkeypatch.setattr(catalogo, "browsers_json", lambda: str(ruta))
+    (cache / "chromium-1248").mkdir()
+    (cache / "chromium_headless_shell-1248").mkdir()
+    assert not catalogo.chromium_instalado()
+    (cache / "chromium-1255").mkdir()
+    assert not catalogo.chromium_instalado()      # falta el headless shell de la misma revisión
+    (cache / "chromium_headless_shell-1255").mkdir()
     assert catalogo.chromium_instalado()
 
 
