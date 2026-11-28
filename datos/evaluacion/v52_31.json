@@ -1,0 +1,6569 @@
+{
+  "contabilidad": "entorno",
+  "pasos": 100000,
+  "pasos_entorno": 100000,
+  "latidos": 97199,
+  "primitivas_por_latido": 1.0288,
+  "episodios": 365,
+  "tiempo_segundos": 1685.58,
+  "ms_por_paso": 16.86,
+  "ms_por_latido": 17.34,
+  "score": 15.97,
+  "score_ci_95": [
+    14.69,
+    17.22
+  ],
+  "tasas_logros": {
+    "collect_coal": 14.25,
+    "collect_diamond": 0.0,
+    "collect_drink": 75.62,
+    "collect_iron": 0.82,
+    "collect_sapling": 61.92,
+    "collect_stone": 45.21,
+    "collect_wood": 92.88,
+    "defeat_skeleton": 7.67,
+    "defeat_zombie": 46.03,
+    "eat_cow": 63.84,
+    "eat_plant": 0.27,
+    "make_iron_pickaxe": 0.0,
+    "make_iron_sword": 0.0,
+    "make_stone_pickaxe": 11.78,
+    "make_stone_sword": 9.32,
+    "make_wood_pickaxe": 70.96,
+    "make_wood_sword": 53.7,
+    "place_furnace": 23.29,
+    "place_plant": 60.27,
+    "place_stone": 41.1,
+    "place_table": 85.48,
+    "wake_up": 19.73
+  },
+  "causas_muerte": {
+    "zombi": 260,
+    "sed": 41,
+    "hambre": 32,
+    "flecha": 31,
+    "cortado por presupuesto": 1
+  },
+  "perfil": "Equilibrado",
+  "semilla_base": 31,
+  "vista": "oficial",
+  "sin_estrategias_propias": false,
+  "sin_herencia": true,
+  "manual": "estricto",
+  "mecanismos": [],
+  "latidos_cortados": 0,
+  "latidos_cortados_por_episodio": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+  ],
+  "plazo_logico": 40.0,
+  "por_episodio": [
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 241,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 214,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 204,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 192,
+      "pasos_entorno": 192,
+      "latidos": 183,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 215,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 198,
+      "pasos_entorno": 198,
+      "latidos": 193,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 274,
+      "pasos_entorno": 274,
+      "latidos": 266,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 205,
+      "pasos_entorno": 205,
+      "latidos": 201,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 180,
+      "pasos_entorno": 180,
+      "latidos": 179,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 407,
+      "pasos_entorno": 407,
+      "latidos": 393,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 276,
+      "pasos_entorno": 276,
+      "latidos": 272,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 241,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 482,
+      "pasos_entorno": 482,
+      "latidos": 471,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 497,
+      "pasos_entorno": 497,
+      "latidos": 484,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 263,
+      "pasos_entorno": 263,
+      "latidos": 251,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 243,
+      "pasos_entorno": 243,
+      "latidos": 237,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 203,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 224,
+      "pasos_entorno": 224,
+      "latidos": 215,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 201,
+      "pasos_entorno": 201,
+      "latidos": 197,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 283,
+      "pasos_entorno": 283,
+      "latidos": 271,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 190,
+      "pasos_entorno": 190,
+      "latidos": 187,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 192,
+      "pasos_entorno": 192,
+      "latidos": 181,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 292,
+      "pasos_entorno": 292,
+      "latidos": 286,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 213,
+      "pasos_entorno": 213,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 376,
+      "pasos_entorno": 376,
+      "latidos": 364,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 202,
+      "pasos_entorno": 202,
+      "latidos": 198,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 446,
+      "pasos_entorno": 446,
+      "latidos": 432,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 308,
+      "pasos_entorno": 308,
+      "latidos": 296,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 239,
+      "pasos_entorno": 239,
+      "latidos": 233,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 218,
+      "pasos_entorno": 218,
+      "latidos": 214,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 280,
+      "pasos_entorno": 280,
+      "latidos": 269,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 206,
+      "pasos_entorno": 206,
+      "latidos": 196,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 289,
+      "pasos_entorno": 289,
+      "latidos": 283,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 202,
+      "pasos_entorno": 202,
+      "latidos": 196,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 207,
+      "pasos_entorno": 207,
+      "latidos": 191,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 517,
+      "pasos_entorno": 517,
+      "latidos": 511,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 188,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 178,
+      "pasos_entorno": 178,
+      "latidos": 173,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 202,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 224,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 251,
+      "pasos_entorno": 251,
+      "latidos": 245,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 547,
+      "pasos_entorno": 547,
+      "latidos": 533,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 802,
+      "pasos_entorno": 802,
+      "latidos": 776,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 181,
+      "pasos_entorno": 181,
+      "latidos": 179,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 485,
+      "pasos_entorno": 485,
+      "latidos": 476,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 379,
+      "pasos_entorno": 379,
+      "latidos": 371,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 205,
+      "pasos_entorno": 205,
+      "latidos": 204,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 234,
+      "pasos_entorno": 234,
+      "latidos": 225,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 167,
+      "pasos_entorno": 167,
+      "latidos": 159,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 206,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "defeat_skeleton",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 242,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 209,
+      "pasos_entorno": 209,
+      "latidos": 201,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 205,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 240,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 386,
+      "pasos_entorno": 386,
+      "latidos": 376,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 384,
+      "pasos_entorno": 384,
+      "latidos": 374,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 287,
+      "pasos_entorno": 287,
+      "latidos": 284,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 283,
+      "pasos_entorno": 283,
+      "latidos": 282,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 343,
+      "pasos_entorno": 343,
+      "latidos": 334,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 190,
+      "pasos_entorno": 190,
+      "latidos": 183,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 208,
+      "pasos_entorno": 208,
+      "latidos": 199,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_iron",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 314,
+      "pasos_entorno": 314,
+      "latidos": 310,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie",
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 240,
+      "pasos_entorno": 240,
+      "latidos": 240,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 176,
+      "pasos_entorno": 176,
+      "latidos": 169,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 289,
+      "pasos_entorno": 289,
+      "latidos": 282,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 210,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 220,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 217,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 354,
+      "pasos_entorno": 354,
+      "latidos": 347,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 321,
+      "pasos_entorno": 321,
+      "latidos": 311,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 181,
+      "pasos_entorno": 181,
+      "latidos": 178,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 239,
+      "pasos_entorno": 239,
+      "latidos": 231,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 358,
+      "pasos_entorno": 358,
+      "latidos": 350,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 381,
+      "pasos_entorno": 381,
+      "latidos": 376,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 242,
+      "pasos_entorno": 242,
+      "latidos": 229,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 181,
+      "pasos_entorno": 181,
+      "latidos": 179,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 185,
+      "pasos_entorno": 185,
+      "latidos": 177,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 235,
+      "pasos_entorno": 235,
+      "latidos": 226,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 459,
+      "pasos_entorno": 459,
+      "latidos": 443,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 224,
+      "pasos_entorno": 224,
+      "latidos": 217,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 245,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 183,
+      "pasos_entorno": 183,
+      "latidos": 176,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 215,
+      "pasos_entorno": 215,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 261,
+      "pasos_entorno": 261,
+      "latidos": 255,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 449,
+      "pasos_entorno": 449,
+      "latidos": 434,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 512,
+      "pasos_entorno": 512,
+      "latidos": 494,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 209,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 256,
+      "pasos_entorno": 256,
+      "latidos": 251,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 199,
+      "pasos_entorno": 199,
+      "latidos": 193,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 505,
+      "pasos_entorno": 505,
+      "latidos": 489,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 242,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 237,
+      "pasos_entorno": 237,
+      "latidos": 232,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 238,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 215,
+      "pasos_entorno": 215,
+      "latidos": 206,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 275,
+      "pasos_entorno": 275,
+      "latidos": 272,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 220,
+      "pasos_entorno": 220,
+      "latidos": 213,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 223,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 217,
+      "pasos_entorno": 217,
+      "latidos": 212,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 187,
+      "pasos_entorno": 187,
+      "latidos": 185,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 364,
+      "pasos_entorno": 364,
+      "latidos": 352,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 254,
+      "pasos_entorno": 254,
+      "latidos": 246,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 539,
+      "pasos_entorno": 539,
+      "latidos": 521,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 194,
+      "pasos_entorno": 194,
+      "latidos": 189,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 253,
+      "pasos_entorno": 253,
+      "latidos": 239,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 444,
+      "pasos_entorno": 444,
+      "latidos": 436,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 270,
+      "pasos_entorno": 270,
+      "latidos": 263,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 179,
+      "pasos_entorno": 179,
+      "latidos": 178,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": []
+    },
+    {
+      "pasos": 435,
+      "pasos_entorno": 435,
+      "latidos": 427,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 290,
+      "pasos_entorno": 290,
+      "latidos": 288,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 453,
+      "pasos_entorno": 453,
+      "latidos": 436,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 218,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 166,
+      "pasos_entorno": 166,
+      "latidos": 159,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 177,
+      "pasos_entorno": 177,
+      "latidos": 173,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 805,
+      "pasos_entorno": 805,
+      "latidos": 784,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "eat_plant",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 195,
+      "pasos_entorno": 195,
+      "latidos": 189,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 227,
+      "pasos_entorno": 227,
+      "latidos": 221,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 440,
+      "pasos_entorno": 440,
+      "latidos": 432,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 167,
+      "pasos_entorno": 167,
+      "latidos": 162,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 227,
+      "pasos_entorno": 227,
+      "latidos": 215,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 189,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 346,
+      "pasos_entorno": 346,
+      "latidos": 338,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 523,
+      "pasos_entorno": 523,
+      "latidos": 507,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 323,
+      "pasos_entorno": 323,
+      "latidos": 319,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 250,
+      "pasos_entorno": 250,
+      "latidos": 240,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 208,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 375,
+      "pasos_entorno": 375,
+      "latidos": 366,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 218,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 216,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 266,
+      "pasos_entorno": 266,
+      "latidos": 253,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 240,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 345,
+      "pasos_entorno": 345,
+      "latidos": 335,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 257,
+      "pasos_entorno": 257,
+      "latidos": 251,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 195,
+      "pasos_entorno": 195,
+      "latidos": 186,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 432,
+      "pasos_entorno": 432,
+      "latidos": 428,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 435,
+      "pasos_entorno": 435,
+      "latidos": 426,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 213,
+      "pasos_entorno": 213,
+      "latidos": 210,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 279,
+      "pasos_entorno": 279,
+      "latidos": 273,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 173,
+      "pasos_entorno": 173,
+      "latidos": 165,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 241,
+      "pasos_entorno": 241,
+      "latidos": 234,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 308,
+      "pasos_entorno": 308,
+      "latidos": 300,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 209,
+      "pasos_entorno": 209,
+      "latidos": 199,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 207,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 311,
+      "pasos_entorno": 311,
+      "latidos": 300,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 584,
+      "pasos_entorno": 584,
+      "latidos": 570,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 242,
+      "pasos_entorno": 242,
+      "latidos": 237,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 191,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 221,
+      "pasos_entorno": 221,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 192,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 186,
+      "pasos_entorno": 186,
+      "latidos": 183,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "defeat_zombie",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 290,
+      "pasos_entorno": 290,
+      "latidos": 281,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "defeat_zombie",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 148,
+      "pasos_entorno": 148,
+      "latidos": 136,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 435,
+      "pasos_entorno": 435,
+      "latidos": 421,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 462,
+      "pasos_entorno": 462,
+      "latidos": 446,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_iron",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 229,
+      "pasos_entorno": 229,
+      "latidos": 222,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 354,
+      "pasos_entorno": 354,
+      "latidos": 344,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 52,
+      "pasos_entorno": 52,
+      "latidos": 52,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": []
+    },
+    {
+      "pasos": 185,
+      "pasos_entorno": 185,
+      "latidos": 176,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 132,
+      "pasos_entorno": 132,
+      "latidos": 128,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 209,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 473,
+      "pasos_entorno": 473,
+      "latidos": 464,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 188,
+      "pasos_entorno": 188,
+      "latidos": 185,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_skeleton"
+      ]
+    },
+    {
+      "pasos": 206,
+      "pasos_entorno": 206,
+      "latidos": 200,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 191,
+      "pasos_entorno": 191,
+      "latidos": 182,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 205,
+      "pasos_entorno": 205,
+      "latidos": 201,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 209,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 1139,
+      "pasos_entorno": 1139,
+      "latidos": 1116,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 553,
+      "pasos_entorno": 553,
+      "latidos": 539,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 394,
+      "pasos_entorno": 394,
+      "latidos": 382,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 189,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 195,
+      "pasos_entorno": 195,
+      "latidos": 188,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 411,
+      "pasos_entorno": 411,
+      "latidos": 400,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 172,
+      "pasos_entorno": 172,
+      "latidos": 169,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 218,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 279,
+      "pasos_entorno": 279,
+      "latidos": 271,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 201,
+      "pasos_entorno": 201,
+      "latidos": 197,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 208,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 243,
+      "pasos_entorno": 243,
+      "latidos": 241,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 171,
+      "pasos_entorno": 171,
+      "latidos": 167,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 401,
+      "pasos_entorno": 401,
+      "latidos": 396,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 227,
+      "pasos_entorno": 227,
+      "latidos": 218,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 263,
+      "pasos_entorno": 263,
+      "latidos": 254,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 25,
+      "pasos_entorno": 25,
+      "latidos": 25,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 207,
+      "pasos_entorno": 207,
+      "latidos": 200,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 245,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 230,
+      "pasos_entorno": 230,
+      "latidos": 225,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_skeleton",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 194,
+      "pasos_entorno": 194,
+      "latidos": 189,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 224,
+      "pasos_entorno": 224,
+      "latidos": 215,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 570,
+      "pasos_entorno": 570,
+      "latidos": 561,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 280,
+      "pasos_entorno": 280,
+      "latidos": 270,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 238,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 232,
+      "pasos_entorno": 232,
+      "latidos": 227,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 215,
+      "pasos_entorno": 215,
+      "latidos": 210,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 204,
+      "pasos_entorno": 204,
+      "latidos": 199,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 186,
+      "pasos_entorno": 186,
+      "latidos": 181,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 221,
+      "pasos_entorno": 221,
+      "latidos": 215,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 366,
+      "pasos_entorno": 366,
+      "latidos": 357,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 658,
+      "pasos_entorno": 658,
+      "latidos": 639,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 221,
+      "pasos_entorno": 221,
+      "latidos": 212,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 170,
+      "pasos_entorno": 170,
+      "latidos": 163,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 195,
+      "pasos_entorno": 195,
+      "latidos": 188,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 237,
+      "pasos_entorno": 237,
+      "latidos": 231,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 233,
+      "pasos_entorno": 233,
+      "latidos": 226,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 175,
+      "pasos_entorno": 175,
+      "latidos": 167,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 197,
+      "pasos_entorno": 197,
+      "latidos": 192,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 206,
+      "pasos_entorno": 206,
+      "latidos": 203,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 237,
+      "pasos_entorno": 237,
+      "latidos": 228,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 239,
+      "pasos_entorno": 239,
+      "latidos": 233,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 177,
+      "pasos_entorno": 177,
+      "latidos": 173,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 292,
+      "pasos_entorno": 292,
+      "latidos": 282,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 204,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 210,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 193,
+      "pasos_entorno": 193,
+      "latidos": 187,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 255,
+      "pasos_entorno": 255,
+      "latidos": 251,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 203,
+      "pasos_entorno": 203,
+      "latidos": 197,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 220,
+      "pasos_entorno": 220,
+      "latidos": 206,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 180,
+      "pasos_entorno": 180,
+      "latidos": 178,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 238,
+      "pasos_entorno": 238,
+      "latidos": 233,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 241,
+      "pasos_entorno": 241,
+      "latidos": 230,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 232,
+      "pasos_entorno": 232,
+      "latidos": 225,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 236,
+      "pasos_entorno": 236,
+      "latidos": 229,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 270,
+      "pasos_entorno": 270,
+      "latidos": 263,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 197,
+      "pasos_entorno": 197,
+      "latidos": 187,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 237,
+      "pasos_entorno": 237,
+      "latidos": 232,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 418,
+      "pasos_entorno": 418,
+      "latidos": 416,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 202,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 174,
+      "pasos_entorno": 174,
+      "latidos": 167,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 463,
+      "pasos_entorno": 463,
+      "latidos": 454,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 218,
+      "pasos_entorno": 218,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 242,
+      "pasos_entorno": 242,
+      "latidos": 231,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 174,
+      "pasos_entorno": 174,
+      "latidos": 166,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 181,
+      "pasos_entorno": 181,
+      "latidos": 177,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_skeleton",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 207,
+      "pasos_entorno": 207,
+      "latidos": 191,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 168,
+      "pasos_entorno": 168,
+      "latidos": 166,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 201,
+      "pasos_entorno": 201,
+      "latidos": 194,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 200,
+      "pasos_entorno": 200,
+      "latidos": 194,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 224,
+      "pasos_entorno": 224,
+      "latidos": 215,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 246,
+      "pasos_entorno": 246,
+      "latidos": 243,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 229,
+      "pasos_entorno": 229,
+      "latidos": 221,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 299,
+      "pasos_entorno": 299,
+      "latidos": 290,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 186,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 174,
+      "pasos_entorno": 174,
+      "latidos": 167,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 248,
+      "pasos_entorno": 248,
+      "latidos": 241,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 290,
+      "pasos_entorno": 290,
+      "latidos": 279,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 475,
+      "pasos_entorno": 475,
+      "latidos": 463,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 351,
+      "pasos_entorno": 351,
+      "latidos": 342,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 258,
+      "pasos_entorno": 258,
+      "latidos": 253,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 186,
+      "pasos_entorno": 186,
+      "latidos": 183,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 206,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 211,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 355,
+      "pasos_entorno": 355,
+      "latidos": 348,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 167,
+      "pasos_entorno": 167,
+      "latidos": 159,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 201,
+      "pasos_entorno": 201,
+      "latidos": 191,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 481,
+      "pasos_entorno": 481,
+      "latidos": 466,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 204,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 253,
+      "pasos_entorno": 253,
+      "latidos": 245,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 411,
+      "pasos_entorno": 411,
+      "latidos": 400,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 184,
+      "pasos_entorno": 184,
+      "latidos": 178,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 205,
+      "pasos_entorno": 205,
+      "latidos": 199,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 225,
+      "pasos_entorno": 225,
+      "latidos": 217,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 179,
+      "pasos_entorno": 179,
+      "latidos": 175,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 313,
+      "pasos_entorno": 313,
+      "latidos": 303,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 247,
+      "pasos_entorno": 247,
+      "latidos": 244,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 419,
+      "pasos_entorno": 419,
+      "latidos": 412,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 360,
+      "pasos_entorno": 360,
+      "latidos": 353,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 190,
+      "pasos_entorno": 190,
+      "latidos": 178,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 271,
+      "pasos_entorno": 271,
+      "latidos": 264,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 179,
+      "pasos_entorno": 179,
+      "latidos": 173,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 249,
+      "pasos_entorno": 249,
+      "latidos": 241,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 176,
+      "pasos_entorno": 176,
+      "latidos": 170,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 334,
+      "pasos_entorno": 334,
+      "latidos": 328,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 166,
+      "pasos_entorno": 166,
+      "latidos": 157,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 203,
+      "pasos_entorno": 203,
+      "latidos": 196,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 263,
+      "pasos_entorno": 263,
+      "latidos": 259,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 373,
+      "pasos_entorno": 373,
+      "latidos": 357,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 231,
+      "pasos_entorno": 231,
+      "latidos": 224,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 758,
+      "pasos_entorno": 758,
+      "latidos": 742,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 199,
+      "pasos_entorno": 199,
+      "latidos": 194,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 289,
+      "pasos_entorno": 289,
+      "latidos": 283,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 383,
+      "pasos_entorno": 383,
+      "latidos": 365,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 199,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 212,
+      "pasos_entorno": 212,
+      "latidos": 209,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 180,
+      "pasos_entorno": 180,
+      "latidos": 179,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 228,
+      "pasos_entorno": 228,
+      "latidos": 216,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 251,
+      "pasos_entorno": 251,
+      "latidos": 246,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 186,
+      "pasos_entorno": 186,
+      "latidos": 181,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 818,
+      "pasos_entorno": 818,
+      "latidos": 787,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 298,
+      "pasos_entorno": 298,
+      "latidos": 292,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 578,
+      "pasos_entorno": 578,
+      "latidos": 556,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 235,
+      "pasos_entorno": 235,
+      "latidos": 224,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 254,
+      "pasos_entorno": 254,
+      "latidos": 245,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 238,
+      "pasos_entorno": 238,
+      "latidos": 233,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 373,
+      "pasos_entorno": 373,
+      "latidos": 369,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 193,
+      "pasos_entorno": 193,
+      "latidos": 186,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 387,
+      "pasos_entorno": 387,
+      "latidos": 373,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 257,
+      "pasos_entorno": 257,
+      "latidos": 248,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 205,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 250,
+      "pasos_entorno": 250,
+      "latidos": 243,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 457,
+      "pasos_entorno": 457,
+      "latidos": 447,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 322,
+      "pasos_entorno": 322,
+      "latidos": 312,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 367,
+      "pasos_entorno": 367,
+      "latidos": 353,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 300,
+      "pasos_entorno": 300,
+      "latidos": 289,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 194,
+      "pasos_entorno": 194,
+      "latidos": 188,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 217,
+      "pasos_entorno": 217,
+      "latidos": 204,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 181,
+      "pasos_entorno": 181,
+      "latidos": 175,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 755,
+      "pasos_entorno": 755,
+      "latidos": 744,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 223,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 184,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 303,
+      "pasos_entorno": 303,
+      "latidos": 297,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 219,
+      "pasos_entorno": 219,
+      "latidos": 210,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 221,
+      "pasos_entorno": 221,
+      "latidos": 208,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 230,
+      "pasos_entorno": 230,
+      "latidos": 227,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 228,
+      "pasos_entorno": 228,
+      "latidos": 221,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 240,
+      "pasos_entorno": 240,
+      "latidos": 232,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 773,
+      "pasos_entorno": 773,
+      "latidos": 751,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 261,
+      "pasos_entorno": 261,
+      "latidos": 250,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 230,
+      "pasos_entorno": 230,
+      "latidos": 226,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 278,
+      "pasos_entorno": 278,
+      "latidos": 262,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink"
+      ]
+    },
+    {
+      "pasos": 211,
+      "pasos_entorno": 211,
+      "latidos": 207,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 216,
+      "pasos_entorno": 216,
+      "latidos": 208,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 176,
+      "pasos_entorno": 176,
+      "latidos": 173,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 192,
+      "pasos_entorno": 192,
+      "latidos": 189,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 232,
+      "pasos_entorno": 232,
+      "latidos": 225,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 480,
+      "pasos_entorno": 480,
+      "latidos": 464,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 222,
+      "pasos_entorno": 222,
+      "latidos": 216,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 270,
+      "pasos_entorno": 270,
+      "latidos": 263,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 274,
+      "pasos_entorno": 274,
+      "latidos": 268,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 171,
+      "pasos_entorno": 171,
+      "latidos": 163,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 196,
+      "pasos_entorno": 196,
+      "latidos": 192,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 179,
+      "pasos_entorno": 179,
+      "latidos": 172,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow"
+      ]
+    },
+    {
+      "pasos": 346,
+      "pasos_entorno": 346,
+      "latidos": 343,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "defeat_zombie"
+      ]
+    },
+    {
+      "pasos": 373,
+      "pasos_entorno": 373,
+      "latidos": 363,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_stone",
+        "collect_wood",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 208,
+      "pasos_entorno": 208,
+      "latidos": 198,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 178,
+      "pasos_entorno": 178,
+      "latidos": 178,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": []
+    },
+    {
+      "pasos": 198,
+      "pasos_entorno": 198,
+      "latidos": 192,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 209,
+      "pasos_entorno": 209,
+      "latidos": 207,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 223,
+      "pasos_entorno": 223,
+      "latidos": 214,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 202,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_skeleton",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 162,
+      "pasos_entorno": 162,
+      "latidos": 159,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 241,
+      "pasos_entorno": 241,
+      "latidos": 235,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 207,
+      "pasos_entorno": 207,
+      "latidos": 198,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 438,
+      "pasos_entorno": 438,
+      "latidos": 430,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 226,
+      "pasos_entorno": 226,
+      "latidos": 219,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "defeat_zombie",
+        "eat_cow",
+        "place_plant"
+      ]
+    },
+    {
+      "pasos": 276,
+      "pasos_entorno": 276,
+      "latidos": 269,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 455,
+      "pasos_entorno": 455,
+      "latidos": 451,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 276,
+      "pasos_entorno": 276,
+      "latidos": 267,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 190,
+      "pasos_entorno": 190,
+      "latidos": 185,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 203,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 255,
+      "pasos_entorno": 255,
+      "latidos": 248,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 214,
+      "pasos_entorno": 214,
+      "latidos": 209,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 155,
+      "pasos_entorno": 155,
+      "latidos": 148,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 232,
+      "pasos_entorno": 232,
+      "latidos": 221,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 765,
+      "pasos_entorno": 765,
+      "latidos": 750,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_furnace",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 250,
+      "pasos_entorno": 250,
+      "latidos": 239,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 460,
+      "pasos_entorno": 460,
+      "latidos": 442,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_coal",
+        "collect_drink",
+        "collect_iron",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 210,
+      "pasos_entorno": 210,
+      "latidos": 200,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_stone_pickaxe",
+        "make_stone_sword",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_furnace",
+        "place_plant",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 461,
+      "pasos_entorno": 461,
+      "latidos": 457,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 298,
+      "pasos_entorno": 298,
+      "latidos": 287,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 208,
+      "pasos_entorno": 208,
+      "latidos": 203,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 191,
+      "pasos_entorno": 191,
+      "latidos": 185,
+      "causa_muerte": "zombi",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 189,
+      "pasos_entorno": 189,
+      "latidos": 186,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 274,
+      "pasos_entorno": 274,
+      "latidos": 265,
+      "causa_muerte": "sed",
+      "vivo": false,
+      "logros": [
+        "collect_stone",
+        "collect_wood",
+        "defeat_zombie",
+        "eat_cow",
+        "make_wood_pickaxe",
+        "make_wood_sword",
+        "place_stone",
+        "place_table"
+      ]
+    },
+    {
+      "pasos": 154,
+      "pasos_entorno": 154,
+      "latidos": 151,
+      "causa_muerte": "flecha",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_wood"
+      ]
+    },
+    {
+      "pasos": 408,
+      "pasos_entorno": 408,
+      "latidos": 403,
+      "causa_muerte": "hambre",
+      "vivo": false,
+      "logros": [
+        "collect_drink",
+        "collect_sapling",
+        "collect_wood",
+        "defeat_zombie",
+        "make_wood_pickaxe",
+        "place_plant",
+        "place_table",
+        "wake_up"
+      ]
+    },
+    {
+      "pasos": 49,
+      "pasos_entorno": 49,
+      "latidos": 46,
+      "causa_muerte": null,
+      "vivo": true,
+      "logros": [
+        "collect_drink",
+        "eat_cow"
+      ]
+    }
+  ]
+}
