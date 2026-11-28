@@ -4,8 +4,11 @@ La detección no usa la red ni importa las dependencias de los mundos:
 
 - **Paquetes de Python**: ``importlib.util.find_spec`` del paquete del que depende el mundo (``crafter``, ``playwright``,
   ``chess``). Solo busca en las rutas de importación; no ejecuta el paquete.
-- **Chromium de Playwright** (Snake): que exista una carpeta ``chromium-*`` o ``chromium_headless_shell-*`` en la caché
-  de navegadores de Playwright (``PLAYWRIGHT_BROWSERS_PATH`` si está fijada; si no, la de cada sistema:
+- **Chromium de Playwright** (Snake): que estén en la caché de navegadores de Playwright las carpetas de la revisión que
+  pide el Playwright instalado (``chromium-<rev>`` y ``chromium_headless_shell-<rev>``, leídas de
+  ``playwright/driver/package/browsers.json`` sin importar el paquete). Una carpeta de otra revisión, de una
+  instalación anterior, no basta: Playwright no la usa. Si ``browsers.json`` no se puede leer, basta cualquier carpeta
+  ``chromium-*`` o ``chromium_headless_shell-*``. La caché es la de Playwright (``PLAYWRIGHT_BROWSERS_PATH`` si está fijada; si no, la de cada sistema:
   ``%LOCALAPPDATA%\\ms-playwright`` en Windows, ``~/Library/Caches/ms-playwright`` en macOS y
   ``$XDG_CACHE_HOME/ms-playwright`` o ``~/.cache/ms-playwright`` en Linux). Es un ``os.listdir``.
 - **Stockfish** (ajedrez): ``shutil.which("stockfish")``. Sin Stockfish el ajedrez juega contra su rival local
@@ -16,6 +19,7 @@ lo que se puede instalar. Nunca se instala un texto que venga del cliente.
 """
 
 import importlib
+import json
 import importlib.util
 import os
 import shutil
@@ -133,12 +137,43 @@ def carpeta_navegadores() -> str:
     return os.path.join(os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache")), "ms-playwright")
 
 
+def browsers_json() -> str:
+    """La ruta de ``browsers.json`` del Playwright instalado, o ``""`` si no está (no importa el paquete)."""
+    try:
+        espec = importlib.util.find_spec("playwright")
+    except (ImportError, ValueError):
+        return ""
+    if not espec or not espec.origin:
+        return ""
+    return os.path.join(os.path.dirname(espec.origin), "driver", "package", "browsers.json")
+
+
+def revisiones_chromium(ruta: Optional[str] = None) -> Optional[Dict[str, str]]:
+    """Las carpetas de Chromium que pide el Playwright instalado, como ``{"chromium": "chromium-1255", ...}``.
+
+    ``None`` si ``browsers.json`` no está o no se entiende."""
+    ruta = browsers_json() if ruta is None else ruta
+    if not ruta:
+        return None
+    try:
+        with open(ruta, encoding="utf-8") as f:
+            navegadores = json.load(f)["browsers"]
+        salida = {n["name"]: n["name"].replace("-", "_") + "-" + str(n["revision"])
+                  for n in navegadores if n.get("name") in ("chromium", "chromium-headless-shell")}
+    except (OSError, ValueError, KeyError, TypeError, AttributeError):
+        return None
+    return salida or None
+
+
 def chromium_instalado() -> bool:
     try:
-        nombres = os.listdir(carpeta_navegadores())
+        nombres = set(os.listdir(carpeta_navegadores()))
     except OSError:
         return False
-    return any(n.startswith(("chromium-", "chromium_headless_shell-")) for n in nombres)
+    carpetas = revisiones_chromium()
+    if carpetas is None:
+        return any(n.startswith(("chromium-", "chromium_headless_shell-")) for n in nombres)
+    return all(c in nombres for c in carpetas.values())
 
 
 def stockfish_disponible() -> bool:

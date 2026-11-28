@@ -297,6 +297,7 @@ def test_el_servidor_marca_los_hechos_del_cierre_y_cuenta_el_reparto(servidor, m
 
 # --- resumen del saber -----------------------------------------------------------------------------------------------------------
 def test_resumen_del_saber_con_los_totales_de_toda_la_memoria(tmp_path):
+    pytest.importorskip("crafter")
     regs: List[Dict[str, Any]] = []
     ejecutar("crafter", latidos=25, semilla=31, consola=False, datos=str(tmp_path / "c"), plazo_logico=40, nivel="completo",
              al_latir=lambda o, onda, r: regs.append(r), opciones_mundo={"vista": "oficial"})

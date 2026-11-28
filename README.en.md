@@ -58,11 +58,14 @@ python --version          # Windows: if it is not 3.12 or later, see the note be
 git clone https://github.com/diegorodriguezreija/IdA.git
 cd IdA
 python -m venv .venv
-source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate (see the note below)
 python -m pip install --upgrade pip
 pip install -e ".[todos]"                 # all five worlds; without "[todos]", only minimal and files
+python -m playwright install chromium     # the browser Snake uses
 python -m ida                             # opens the app at http://127.0.0.1:8000
 ```
+
+**Windows: "running scripts is disabled on this system".** PowerShell blocks the activation script by default. Allow local scripts for your user once with `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` and activate again. Without changing the policy: in `cmd`, `.venv\Scripts\activate.bat`, or skip activation and call the environment's Python (`.venv\Scripts\python.exe -m ida`).
 
 **Windows with several Pythons.** If `python --version` shows an old version, the `python` on your PATH is the wrong one. With the Python install manager for Windows, `py list` shows what you have and `py install 3.12` installs one. Create the environment with that Python, e.g. `py -V:3.12 -m venv .venv`, or with its full path (`& "C:\...\python.exe" -m venv .venv`). With an old Python, pip fails with a misleading message ("File 'setup.py' not found").
 
