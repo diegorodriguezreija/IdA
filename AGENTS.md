@@ -29,6 +29,7 @@ La reorganización por Componentes (fase A) está en `main` con la etiqueta `cra
   - En mínimo y archivos, `benchmark.py` pareado (N = 10) con `--plazo-logico 40`, frente a `datos/benchmark/v5_*_logico40.json`, sin empeoramiento significativo.
   - Se informa también de cada logro con un cambio significativo, aunque no decida.
   - Si no se cumple: un diagnóstico y una ronda. Si sigue sin cumplirse, el cambio queda tras un parámetro del cuerpo o del `Perfil` con el valor de la fase A, y se documenta como resultado negativo.
+- **El presupuesto de Crafter se cuenta en pasos del entorno** (`env.step`, P0), no en latidos: `evaluar_crafter.py --pasos N` da N pasos del entorno (N + 1 como mucho, por la segunda primitiva de una sinergia) y la referencia de D17 es `datos/evaluacion/v52_31.json` y `v52_32.json`. `--contar latidos` solo sirve para comparar con los datos anteriores (`v5_*.json`, `datos/equivalencia/`).
 - **Comprobar la equivalencia antes de tocar conducta:** en pasos que no cambian conducta, `.venv\Scripts\python.exe herramientas/equivalencia.py` debe terminar en `EQUIVALENCIA: OK`.
 - **Componentes de mundo:**
   - se declaran en el registro del mundo (`añade` o `sustituye`), nunca por el nombre de un fichero;

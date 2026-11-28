@@ -276,7 +276,7 @@ M1 deja de ser «reservar amplitud para S3» y pasa a ser **la eficiencia de S1 
 
 Al final de la fase, la medición de 100 000 pasos repite campo a campo `mapa_31.json` y `mapa_32.json`.
 
-**Fase B (cambios de conducta), no inferioridad fijada de antemano.** Comparación pareada conjunta de las semillas 31 y 32 a 100 000 pasos (`resumen_evaluacion.py --pareada-conjunta`):
+**Fase B (cambios de conducta), no inferioridad fijada de antemano.** Comparación pareada conjunta de las semillas 31 y 32 a 100 000 pasos del entorno (`resumen_evaluacion.py --pareada-conjunta`) frente a la referencia `datos/evaluacion/v52_31.json` y `v52_32.json` (conducta de `crafter-general-v5.2`; pendiente de aprobación del autor). Desde P0, `evaluar_crafter.py` cuenta el presupuesto en pasos del entorno (`env.step`), no en latidos; los JSON anteriores (`v5_*.json` y los de `datos/equivalencia/`) cuentan latidos y no se comparan con los nuevos (`resumen_evaluacion.py` avisa si se mezclan):
 - la diferencia de Score tiene una estimación ≥ −0,3 puntos **y** el límite inferior de su IC 95 % ≥ −1,0 puntos (la resolución de la medición, sección 1);
 - en mínimo y archivos, `benchmark.py` pareado (N = 10) con `--plazo-logico 40`, frente a `datos/benchmark/v5_*_logico40.json`, sin empeoramiento significativo;
 - se informa también de cada logro con un cambio significativo, aunque no decida.
@@ -394,3 +394,4 @@ Los `docs/*_PROGRESO.md` citados abajo se retiraron al cerrar la fase A; siguen 
 | 25/11/2026 | D6 | Un solo gancho `aprender` con fases declaradas (`cuerpo`, `efecto`, `general`) y la traza de elegibilidad (`marcar_elegibilidad`); desaparecen `aprende_con_efecto` y `antes_de_actuar`. Aprobado por el autor (25/11/2026) | C4: mismo punto y orden de llamadas; equivalencia OK |
 | 25/11/2026 | D15 | `Perfil.escala` se mantiene: es la escala declarada del mundo, no un cajón de parámetros. Aprobado por el autor (25/11/2026) | C4 (deuda de la fase A en `PENDIENTES.md`) |
 | 25/11/2026 | — | C3: montaje en `ida/core/montaje.py`; memoria por responsabilidades (paquete `ida/nucleo/memoria/`: `proposiciones`, `lugares`, `secciones`, `mecanismos` y la fachada `Memoria` en `almacen`). Sin decisión nueva | C3 (rama `limpieza/c3-ficheros`): legibilidad; equivalencia OK |
+| 28/11/2026 | D17 | La medición oficial cuenta pasos del entorno; nueva referencia v52_* (`datos/evaluacion/v52_31.json` y `v52_32.json`). Pendiente de aprobación del autor | P0: con sinergias de 2 primitivas, el presupuesto contado en latidos daba más pasos del entorno de los declarados (razón 1,029–1,031 en v52) |
