@@ -123,9 +123,10 @@ def test_estado_de_cada_mundo(monkeypatch):
     assert catalogo.estado("snake") == "falta_navegador"
     assert catalogo.estado("ajedrez") == "sin_stockfish"
     assert catalogo.estado("minimo") == catalogo.estado("archivos") == "listo"
+    assert catalogo.ficha("snake")["lanzable"] is False
+    pytest.importorskip("chess")                  # ficha() carga la clase del mundo, que importa chess
     ajedrez = catalogo.ficha("ajedrez")
     assert ajedrez["lanzable"] is True            # sin Stockfish juega contra su rival local (stockfish="" por defecto)
-    assert catalogo.ficha("snake")["lanzable"] is False
 
 
 def test_chromium_se_busca_en_la_cache_de_playwright(monkeypatch, tmp_path):

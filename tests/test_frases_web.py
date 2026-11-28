@@ -85,6 +85,7 @@ def _declaradas(mundo):
                 clases |= {h[k] for k in ("sujeto", "objetivo") if h.get(k)}
                 clases |= set(h.get("requiere_inventario") or {}) | set(h.get("requiere_cerca") or [])
     elif mundo == "ajedrez":
+        pytest.importorskip("chess")
         from ida.mundos import ajedrez as a
         piezas = set(a.NOMBRE.values())
         clases |= piezas | {f"captura_{p}" for p in piezas} | {f"{p}_atacado" for p in piezas}
