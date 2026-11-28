@@ -58,11 +58,14 @@ python --version          # Windows: si no dice 3.12 o más, mira la nota de aba
 git clone https://github.com/diegorodriguezreija/IdA.git
 cd IdA
 python -m venv .venv
-source .venv/bin/activate                 # Windows: .venv\Scripts\activate
+source .venv/bin/activate                 # Windows: .venv\Scripts\activate (mira la nota de abajo)
 python -m pip install --upgrade pip
 pip install -e ".[todos]"                 # los cinco mundos; sin «[todos]», solo mínimo y archivos
+python -m playwright install chromium     # el navegador que usa Snake
 python -m ida                             # abre la aplicación en http://127.0.0.1:8000
 ```
+
+**Windows: «la ejecución de scripts está deshabilitada».** PowerShell bloquea por defecto el script de activación. Permite los scripts locales para tu usuario una sola vez con `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` y vuelve a activar. Sin cambiar la política: en `cmd`, `.venv\Scripts\activate.bat`, o sin activar, llamando al Python del entorno (`.venv\Scripts\python.exe -m ida`).
 
 **Windows con varios Python.** Si `python --version` dice una versión antigua, el `python` del PATH no es el bueno. Con el gestor de instalación de Python para Windows: `py list` enseña los que tienes y `py install 3.12` instala uno. Crea el entorno con ese Python, por ejemplo `py -V:3.12 -m venv .venv`, o con su ruta completa (`& "C:\...\python.exe" -m venv .venv`). Con un Python antiguo, pip falla con un mensaje engañoso («File 'setup.py' not found»).
 
