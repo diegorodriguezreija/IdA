@@ -33,7 +33,7 @@ def main() -> int:
                    help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")
     args = p.parse_args()
     import evaluar_crafter as ev
-    from ida.s1.reaccionar.estrategias import proteger as P
+    from ida.mundos.crafter.s1.interpretar import recinto as P   # Recinto pasó al mundo de Crafter (componente propio)
 
     razones: Counter = Counter()
     formas: Counter = Counter()
@@ -65,8 +65,10 @@ def main() -> int:
         return r
 
     P.Recinto._requisitos = envuelto   # type: ignore[method-assign]
-    ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto", sin_estrategias_propias=True,
-                **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
+    # Con las estrategias del mundo: desde A6a, Recinto es de Crafter y «sin estrategias propias» lo quita (no habría nada
+    # que instrumentar). --pasos son latidos, como en sus datos (contabilidad anterior a P0).
+    ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto", contar="latidos",
+               **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
     print(f"## semilla {args.semilla} · {args.pasos} pasos · latidos con luz < 0,5 en que _requisitos no devuelve nada")
     for k, v in razones.most_common():
         print(f"- {k}: {v}")

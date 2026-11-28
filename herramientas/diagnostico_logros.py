@@ -13,6 +13,7 @@ diagnóstico de pocas vidas, no una medición.
 """
 
 import argparse
+import inspect
 import json
 import os
 import sys
@@ -84,6 +85,8 @@ def main() -> int:
         kw["manual"] = args.manual
     if args.plazo_logico:
         kw["plazo_logico"] = args.plazo_logico
+    if "contar" in inspect.signature(ev.evaluar).parameters:   # --raiz puede ser un árbol anterior a P0 (solo latidos)
+        kw["contar"] = "latidos"     # --pasos son latidos, como en sus datos
     res = ev.evaluar(args.pasos, args.semilla, **kw)
 
     t: Counter = Counter()

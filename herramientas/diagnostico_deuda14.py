@@ -1,6 +1,6 @@
 """Diagnóstico de la deuda 14 en Crafter: la cadena de herramientas tras colocar la mesa.
 
-Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia, manual estricto, sin estrategias propias) con un gancho
+Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia, manual estricto, con las estrategias del mundo) con un gancho
 en cada latido. No cambia la conducta. Con ``--salida`` guarda un JSON por semilla; con ``--resumir`` junta varios.
 
 Lo que mide (sección 2, 14.1, de ``docs/ENCARGO_DEUDA14_HERRAMIENTAS.md``), en los episodios con mesa y sin pico o sin
@@ -143,8 +143,10 @@ def ejecutar(args: argparse.Namespace) -> int:
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
     t0 = time.perf_counter()
+    # Con las estrategias del mundo: desde A6a, Recinto y SalirDelRecinto son de Crafter y «sin estrategias propias» ya no
+    # es el suelo con que se escribió este diagnóstico. --pasos son latidos, como en sus datos (contabilidad anterior a P0).
     res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto",
-                     sin_estrategias_propias=True, mecanismos=args.mecanismos or None, plazo_logico=args.plazo_logico)
+                     mecanismos=args.mecanismos or None, plazo_logico=args.plazo_logico, contar="latidos")
     datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "mecanismos": sorted(args.mecanismos or []),
              "plazo_logico": args.plazo_logico, "tiempo_segundos": round(time.perf_counter() - t0, 1),
              "tasas_logros": res["tasas_logros"], "causas_muerte": res["causas_muerte"], "campos": CAMPOS,

@@ -44,14 +44,14 @@ def main() -> int:
     from ida.s3.reaccionar.estrategias import PerseguirMetas
 
     if args.sin_estrategias_propias:
-        original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)
-        cargar("crafter").registro = lambda self: Registro(cuerpo=original(self).cuerpo)
+        registro_original = cargar("crafter").registro   # sin estrategias propias, pero con su cuerpo (D10)
+        cargar("crafter").registro = lambda self: Registro(cuerpo=registro_original(self).cuerpo)
     propuestos: List[int] = []
-    original = PerseguirMetas.proponer
+    proponer_original = PerseguirMetas.proponer
 
     def proponer(self: Any, ctx: Any, verbo: Any, objetivo: str, a: float, c: float, motivo: str, clase: str = "", **d: Any) -> None:
         propuestos.append(ctx.latido)
-        original(self, ctx, verbo, objetivo, a, c, motivo, clase, **d)
+        proponer_original(self, ctx, verbo, objetivo, a, c, motivo, clase, **d)
 
     setattr(PerseguirMetas, "proponer", proponer)  # noqa: B010 (se envuelve para contar)
     resultados = {"gana": 0, "acecha": 0, "fuera_top8": 0, "pierde": 0}
@@ -63,7 +63,8 @@ def main() -> int:
             return
         ev = onda.notas.get("evaluados", [])
         meta = next((e for e in ev if str(e["motivo"]).startswith("metas:")), None)
-        dec, motivo = r["decision"], str(r.get("motivo", ""))
+        dec = r.get("accion") or {"verbo": "", "objetivo": ""}     # registro v1: la acción ejecutada, con su motivo
+        motivo = str(dec.get("motivo", ""))
         if meta is None:
             resultados["fuera_top8"] += 1
         elif motivo.startswith("acecha: metas:"):
@@ -81,8 +82,9 @@ def main() -> int:
             g["metas"].append(meta["total"])
 
     with tempfile.TemporaryDirectory() as datos:
+        # nivel cognitivo: sin consola ni telemetría el ejecutor no observa y al_latir recibe registro None (O4)
         res = ejecutar("crafter", latidos=args.latidos, semilla=args.semilla, consola=False, datos=datos, al_latir=al,
-                       opciones_mundo={"vista": "oficial"})
+                       opciones_mundo={"vista": "oficial"}, nivel="cognitivo")
     n = len(propuestos)
     condicion = "suelo" if args.sin_estrategias_propias else "con estrategias"
     print(f"## {condicion}, semilla {args.semilla}: {res[0]['latidos']} latidos, {n} propuestas de PerseguirMetas, "

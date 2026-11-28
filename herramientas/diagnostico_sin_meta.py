@@ -1,6 +1,6 @@
 """Diagnóstico de la deuda 14: por qué ``PerseguirMetas`` no propone ninguna meta en muchos latidos tras la mesa.
 
-Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia, manual estricto, sin estrategias propias) y clasifica
+Ejecuta ``evaluar_crafter.evaluar`` (vista oficial, sin herencia, manual estricto, con las estrategias del mundo) y clasifica
 cada latido desde la primera mesa de cada episodio en una sola causa, en este orden:
 
 1. ``dormido``: no hubo cognición en el latido (dormía al empezarlo);
@@ -111,8 +111,10 @@ def ejecutar(args: argparse.Namespace) -> int:
         return vivir_original(self, max_latidos, al_latir=al_latir)
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
+    # Con las estrategias del mundo: desde A6a, Recinto y SalirDelRecinto son de Crafter y «sin estrategias propias» ya no
+    # es el suelo con que se escribió este diagnóstico. --pasos son latidos, como en sus datos (contabilidad anterior a P0).
     res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual="estricto",
-                     sin_estrategias_propias=True, plazo_logico=args.plazo_logico, mecanismos=args.mecanismos or None)
+                     plazo_logico=args.plazo_logico, mecanismos=args.mecanismos or None, contar="latidos")
     datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "episodios": res["episodios"],
              "mecanismos": sorted(args.mecanismos or []),
              "latidos_cortados": res["latidos_cortados"], "filas": filas}

@@ -109,7 +109,8 @@ def main() -> int:
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign]
     kw: Dict[str, Any] = {"vista": "oficial", "sin_herencia": True, "quiet": True, "manual": args.manual,
-                          "sin_estrategias_propias": args.sin_estrategias_propias, "mecanismos": args.mecanismos}
+                          "sin_estrategias_propias": args.sin_estrategias_propias, "mecanismos": args.mecanismos,
+                          "contar": "latidos"}    # --pasos son latidos, como en sus datos (contabilidad anterior a P0)
     if args.plazo_logico:
         kw["plazo_logico"] = args.plazo_logico
     res = ev.evaluar(args.pasos, args.semilla, **kw)

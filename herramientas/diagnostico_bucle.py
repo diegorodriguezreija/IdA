@@ -48,12 +48,14 @@ def main() -> int:
             m = o.mundo
             pos = tuple(int(v) for v in m.jugador.pos)
             instancias = [c[2] for c in m._cosas() if c[1] == args.detalle][:2]
-            ganador = next((e["motivo"][:45] for e in ev if e["objetivo"] == r["decision"]["objetivo"]), "")
-            detalle.append((r["latido"], pos, instancias, meta["objetivo"], round(meta["total"], 3), r["decision"]["verbo"], ganador))
+            dec = r.get("accion") or {"verbo": "", "objetivo": ""}    # registro v1: la acción ejecutada
+            ganador = next((e["motivo"][:45] for e in ev if e["objetivo"] == dec["objetivo"]), "")
+            detalle.append((r["latido"], pos, instancias, meta["objetivo"], round(meta["total"], 3), dec["verbo"], ganador))
 
     with tempfile.TemporaryDirectory() as datos:
+        # nivel cognitivo: sin consola ni telemetría el ejecutor no observa y al_latir recibe registro None (O4)
         res = ejecutar("crafter", latidos=args.latidos, semilla=args.semilla, consola=False, datos=datos, al_latir=al,
-                       opciones_mundo={"vista": "oficial"})
+                       opciones_mundo={"vista": "oficial"}, nivel="cognitivo")
     racha, mejor, previo = 0, (0, None), None
     maxima: Tuple[int, Optional[Tuple[int, str, str, str]]] = mejor
     for t in props:

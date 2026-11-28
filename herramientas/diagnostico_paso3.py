@@ -313,8 +313,9 @@ def ejecutar(args: argparse.Namespace) -> int:
         return r
 
     latido.Organismo.vivir = vivir   # type: ignore[method-assign,assignment]
-    res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual=args.manual,
-                     sin_estrategias_propias=args.sin_estrategias_propias,
+    # Con las estrategias del mundo: desde A6a, Recinto (cuya pieza se lee aquí) es de Crafter y «sin estrategias propias»
+    # lo quita. --pasos son latidos, como en sus datos (contabilidad anterior a P0).
+    res = ev.evaluar(args.pasos, args.semilla, vista="oficial", sin_herencia=True, quiet=True, manual=args.manual, contar="latidos",
                      **({"plazo_logico": args.plazo_logico} if args.plazo_logico else {}))
     datos = {"semilla": args.semilla, "pasos": args.pasos, "score": res["score"], "episodios": [e.resumen() for e in eps]}
     with open(args.salida, "w", encoding="utf-8") as f:
@@ -499,7 +500,6 @@ def main() -> int:
     p.add_argument("--pasos", type=int, default=10000)
     p.add_argument("--semilla", type=int, default=31)
     p.add_argument("--manual", default="estricto")
-    p.add_argument("--con-estrategias-propias", dest="sin_estrategias_propias", action="store_false")
     p.add_argument("--salida", default="diagnostico_paso3.json")
     p.add_argument("--plazo-logico", type=float, default=None, metavar="OPS",
                    help="guillotina lógica (operaciones por ms de plazo), como en evaluar_crafter.py")

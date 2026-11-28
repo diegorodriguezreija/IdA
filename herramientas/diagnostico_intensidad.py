@@ -71,12 +71,14 @@ def main() -> int:
             k, v = max(apurados, key=lambda x: x[1])
             pares[(imp_g or "CORE", k)] += 1
             if len(ejemplos) < 4:
-                ejemplos.append((r["latido"], imp_g, round(i_g, 2), str(r["motivo"])[:40], k, round(v, 2), round(o.soma.estres, 3)))
+                motivo = str((r.get("accion") or {}).get("motivo", ""))   # registro v1: el motivo va en la acción
+                ejemplos.append((r["latido"], imp_g, round(i_g, 2), motivo[:40], k, round(v, 2), round(o.soma.estres, 3)))
 
     opciones = {"vista": "oficial"} if args.mundo == "crafter" else {}
     with tempfile.TemporaryDirectory() as datos:
+        # nivel cognitivo: sin consola ni telemetría el ejecutor no observa y al_latir recibe registro None (O4)
         res = ejecutar(args.mundo, latidos=args.latidos, semilla=args.semilla, consola=False, datos=datos, al_latir=al,
-                       opciones_mundo=opciones)
+                       opciones_mundo=opciones, nivel="cognitivo")
     n = max(1, cuenta["competencia"])
     print(f"## {args.mundo} {'suelo' if args.sin_estrategias_propias else 'con estrategias'} semilla {args.semilla}: "
           f"{res[0]['latidos']} latidos; mecanismos: {', '.join(args.mecanismos) or 'ninguno'}")
