@@ -25,6 +25,16 @@ PLAZO_LOGICO = "40"
 REF_DEFECTO = "eaeadaa"
 DIR_DATOS = os.path.join(RAIZ, "datos", "equivalencia")
 CLAVES_IGNORADAS: Set[str] = {"tiempo_segundos", "ms_por_paso", "plazo_logico"}
+# P0: claves que evaluar_crafter.py añadió al contar pasos del entorno. Las bases guardadas no las tienen (no se
+# regeneran); se comparan solo si la base las tiene. ``pasos`` sigue siendo latidos con ``--contar latidos``.
+CLAVES_NUEVAS_P0: Set[str] = {"contabilidad", "pasos_entorno", "latidos", "primitivas_por_latido", "ms_por_latido"}
+
+
+def argumentos_contabilidad(raiz_arbol: str) -> List[str]:
+    """``--contar latidos`` (la contabilidad de las bases guardadas) si el evaluar_crafter.py del árbol la admite; los
+    árboles anteriores a P0 solo cuentan latidos y no conocen la opción."""
+    with open(os.path.join(raiz_arbol, "herramientas", "evaluar_crafter.py"), encoding="utf-8") as f:
+        return ["--contar", "latidos"] if '"--contar"' in f.read() else []
 
 
 def resolver_hash_git(ref: str) -> str:
@@ -56,6 +66,7 @@ def ejecutar_evaluacion(
         "estricto",
         "--plazo-logico",
         PLAZO_LOGICO,
+        *argumentos_contabilidad(raiz_arbol),
         "--quiet",
         "--salida",
         salida_json,
@@ -98,7 +109,7 @@ def comparar_estructuras(base: Any, actual: Any, ruta: str = "") -> List[str]:
     if isinstance(base, dict) and isinstance(actual, dict):
         todas_claves = sorted(set(base.keys()) | set(actual.keys()))
         for k in todas_claves:
-            if k in CLAVES_IGNORADAS:
+            if k in CLAVES_IGNORADAS or (k in CLAVES_NUEVAS_P0 and k not in base):
                 continue
             subruta = f"{ruta}.{k}" if ruta else str(k)
             if k not in base:

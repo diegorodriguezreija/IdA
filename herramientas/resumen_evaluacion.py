@@ -11,6 +11,11 @@ la deuda 13).
 ``--pareada-conjunta A1 B1 A2 B2 ...`` junta los episodios emparejados de varias semillas (cada par con su misma
 semilla base): la Score y las tasas se calculan con todos juntos y el IC sale de un bootstrap pareado estratificado
 por semilla (cada réplica remuestrea dentro de cada semilla tantos episodios como tiene).
+
+Contabilidad (P0): ``evaluar_crafter.py`` cuenta el presupuesto en pasos del entorno (``contabilidad: "entorno"``) o, con
+``--contar latidos``, en latidos (los JSON anteriores, sin el campo, cuentan como ``"latidos"``). Las dos comparaciones
+pareadas avisan si un par mezcla contabilidades: el último episodio se corta en sitios distintos y ``pasos`` no mide lo
+mismo.
 """
 
 import argparse
@@ -29,6 +34,18 @@ DATOS_DIR = os.path.join(RAIZ, "datos", "evaluacion")
 def cortados(d: Dict[str, Any]) -> str:
     """Latidos cortados por la guillotina; «no registrado» en los datos anteriores a que ``evaluar_crafter`` los guardara."""
     return str(d["latidos_cortados"]) if "latidos_cortados" in d else "no registrado"
+
+
+def contabilidad(d: Dict[str, Any]) -> str:
+    """Qué contó el presupuesto de un JSON de ``evaluar_crafter.py``: «entorno» o «latidos» (los anteriores a P0)."""
+    return str(d.get("contabilidad", "latidos"))
+
+
+def avisos_contabilidad(pares: List[Tuple[Dict[str, Any], Dict[str, Any]]]) -> List[str]:
+    """Un aviso por cada par cuyos dos JSON usan contabilidades distintas."""
+    return [f"AVISO: el par {i + 1} (semilla {a.get('semilla_base')}) mezcla contabilidades: A cuenta «{contabilidad(a)}» "
+            f"y B «{contabilidad(b)}»; los pasos y el corte del último episodio no son comparables"
+            for i, (a, b) in enumerate(pares) if contabilidad(a) != contabilidad(b)]
 
 
 def formatear_float_es(valor: float, decimales: int = 2) -> str:
@@ -123,6 +140,7 @@ def comparar_pareado_conjunto(pares: List[Tuple[Dict[str, Any], Dict[str, Any]]]
         return {"diferencia": dif, "ic": ic, "excluye_cero": ic[0] > 0.0 or ic[1] < 0.0}
 
     return {
+        "avisos": avisos_contabilidad(pares),
         "episodios_pareados": total,
         "por_semilla": [{"semilla_base": a.get("semilla_base"), "episodios_pareados": n,
                          "episodios": (len(a["por_episodio"]), len(b["por_episodio"]))}
@@ -1713,6 +1731,7 @@ def main() -> int:
             return 1
         nombres = [os.path.splitext(os.path.basename(r))[0] for r in args.pareada_conjunta]
         salida = generar_tabla_pareada_conjunta([(nombres[i], nombres[i + 1]) for i in range(0, len(nombres), 2)], res)
+        salida = "\n".join([*res["avisos"], salida]) if res["avisos"] else salida
     elif args.pareada:
         datos = []
         for ruta in args.pareada:
@@ -1725,6 +1744,7 @@ def main() -> int:
             return 1
         nombres = [os.path.splitext(os.path.basename(r))[0] for r in args.pareada]
         salida = generar_tabla_pareada(nombres[0], nombres[1], res)
+        salida = "\n".join([*res["avisos"], salida]) if res["avisos"] else salida
     elif args.oficial:
         salida = generar_markdown_oficial()
     elif args.paso5_paso0:
