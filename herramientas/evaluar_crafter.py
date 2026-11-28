@@ -13,8 +13,18 @@ ejecuta dos veces los primeros N pasos y falla si las decisiones difieren.
 operaciones (llamadas a ``Onda.control_vital``) a razón de OPS operaciones por milisegundo de plazo, y la misma semilla
 da la misma vida aunque la máquina esté cargada. Sin la opción, la guillotina sigue cortando por reloj.
 
-El JSON guarda por episodio (``por_episodio``) los pasos, la causa de muerte y los logros, para la comparación
-pareada de ``resumen_evaluacion.py --pareada``.
+El JSON guarda por episodio (``por_episodio``) los pasos, los latidos, la causa de muerte y los logros, para la
+comparación pareada de ``resumen_evaluacion.py --pareada``.
+
+Contabilidad (P0). Un latido ejecuta hasta ``max_sinergia`` primitivas del cuerpo y cada primitiva es un ``env.step``
+(``ida/mundos/crafter/adaptador.py``, ``_paso``). Por defecto (``--contar entorno``) el presupuesto cuenta pasos del
+entorno (el contador ``t`` del adaptador, sumado por episodio) y el último episodio se lanza con
+``longitud = min(--longitud, pasos que quedan)`` en el propio ``crafter.Env``. El entorno solo se comprueba entre
+latidos: si la primera primitiva de una sinergia agota la longitud, la segunda se ejecuta igual, así que un episodio
+puede durar ``longitud + max_sinergia - 1`` pasos y el total pasar del presupuesto en ``max_sinergia - 1`` (1 con el
+cuerpo de Crafter). Ese paso se cuenta: el JSON da los pasos que el entorno ejecutó de verdad.
+``--contar latidos`` es la contabilidad anterior (la de los datos guardados hasta v5): el presupuesto y ``pasos``
+cuentan latidos y el entorno se lanza siempre con ``--longitud``. El JSON dice cuál se usó (``contabilidad``).
 
 Uso:
     python herramientas/evaluar_crafter.py --pasos 10000 --semilla 31
@@ -22,6 +32,7 @@ Uso:
     python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --vista oficial
     python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --sin-estrategias-propias
     python herramientas/evaluar_crafter.py --pasos 100000 --semilla 31 --plazo-logico 6
+    python herramientas/evaluar_crafter.py --pasos 3000 --semilla 31 --contar latidos
 """
 
 import argparse
@@ -52,6 +63,8 @@ PERFILES = {
     "Prudente": {"apertura": 0.25, "responsabilidad": 0.70, "neuroticismo": 0.75, "extraversion": 0.30, "umbral_miedo": 0.75},
     "Reactivo": {"apertura": 0.50, "responsabilidad": 0.20, "neuroticismo": 0.80, "extraversion": 0.50, "umbral_miedo": 0.50},
 }
+
+CONTABILIDADES = ("entorno", "latidos")   # qué cuenta el presupuesto: pasos del entorno (P0) o latidos (datos hasta v5)
 
 
 def calcular_crafter_score(tasas_exito: Dict[str, float]) -> float:
@@ -111,9 +124,14 @@ def evaluar(
     traza: Optional[List[Tuple[int, int, str, str]]] = None,
     plazo_logico: Optional[float] = None,
     legado_salida: Optional[str] = None,
+    contar: str = "entorno",
 ) -> Dict[str, Any]:
     """``traza``: si se da, se le añade (episodio, latido, verbo, objetivo) de cada acción ejecutada.
-    ``plazo_logico``: operaciones por ms de plazo (guillotina lógica); ``None`` = plazo de reloj."""
+    ``plazo_logico``: operaciones por ms de plazo (guillotina lógica); ``None`` = plazo de reloj.
+    ``contar``: ``entorno`` (el presupuesto son pasos del entorno) o ``latidos`` (la contabilidad anterior)."""
+    if contar not in CONTABILIDADES:
+        raise ValueError(f"contabilidad desconocida: {contar!r} (se admite {', '.join(CONTABILIDADES)})")
+    contar_entorno = contar == "entorno"
     import crafter.constants
 
     logros_oficiales = sorted(crafter.constants.achievements)
@@ -134,7 +152,9 @@ def evaluar(
     linaje = Linaje(os.path.join(temp_dir, "linaje.json"))
     persistencia = Persistencia(os.path.join(temp_dir, "memoria.db"))
 
-    pasos_acumulados = 0
+    pasos_acumulados = 0          # lo que cuenta el presupuesto: pasos del entorno o latidos, según ``contar``
+    pasos_entorno = 0             # env.step ejecutados (contador del adaptador)
+    latidos = 0
     episodios: List[Dict[str, Any]] = []
     t_inicio = time.perf_counter()
     g = 0
@@ -162,9 +182,16 @@ def evaluar(
                 memoria.heredar(legado_a_heredar, m.perfil.mecanismos.tasa_herencia)
 
             pasos_restantes = pasos_objetivo - pasos_acumulados
-            max_latidos_ep = min(longitud_episodio, pasos_restantes)
+            if contar_entorno:
+                # el propio entorno corta el último episodio en lo que queda de presupuesto. Cada latido da al menos un
+                # paso del entorno, así que el tope de latidos no corta antes que el entorno.
+                longitud_env = min(longitud_episodio, pasos_restantes)
+                max_latidos_ep = longitud_env
+            else:
+                longitud_env = longitud_episodio
+                max_latidos_ep = min(longitud_episodio, pasos_restantes)
 
-            m.reiniciar(azar_g.semilla, longitud=longitud_episodio)
+            m.reiniciar(azar_g.semilla, longitud=longitud_env)
             org = Organismo(m, crear_sistemas(), arq, memoria, azar_g, con_experiencia=True)
             org.ops_por_ms = plazo_logico
             persistencia.nueva_vida()
@@ -180,7 +207,10 @@ def evaluar(
                                   str(a.carga.get("objetivo", "")) if a else ""))
                 vividos = org.vivir(max_latidos_ep, al_latir=anotar)
             t_ep = time.perf_counter() - t0_ep
-            pasos_acumulados += vividos
+            pasos_ep = int(m.t)       # env.step de este episodio (el adaptador lo pone a 0 al reiniciar)
+            pasos_entorno += pasos_ep
+            latidos += vividos
+            pasos_acumulados += pasos_ep if contar_entorno else vividos
 
             persistencia.volcar(memoria, arq.id, org.ciclo)
 
@@ -210,7 +240,9 @@ def evaluar(
             ep_info = {
                 "episodio": g + 1,
                 "semilla": azar_g.semilla,
-                "pasos": vividos,
+                "pasos": pasos_ep if contar_entorno else vividos,
+                "pasos_entorno": pasos_ep,
+                "latidos": vividos,
                 "vivo": org.soma.esta_vivo,
                 "causa_muerte": causa_muerte,
                 "logros": logros_ep,
@@ -221,8 +253,10 @@ def evaluar(
 
             if not quiet:
                 estado = "vivo" if org.soma.esta_vivo else f"muerto ({causa_muerte or 'desconocida'})"
+                unidad = "pasos del entorno" if contar_entorno else "latidos"
                 print(
-                    f"Episodio {g + 1:3d} (semilla {azar_g.semilla:6d}): {vividos:5d} pasos ({pasos_acumulados:6d}/{pasos_objetivo}), "
+                    f"Episodio {g + 1:3d} (semilla {azar_g.semilla:6d}): {ep_info['pasos']:5d} {unidad} "
+                    f"({pasos_acumulados:6d}/{pasos_objetivo}; {vividos} latidos, {pasos_ep} pasos del entorno), "
                     f"{len(logros_ep):2d} logros, {estado} · {t_ep:.1f}s"
                 )
 
@@ -236,7 +270,8 @@ def evaluar(
         shutil.rmtree(temp_dir, ignore_errors=True)
 
     t_total = time.perf_counter() - t_inicio
-    ms_por_paso = (t_total * 1000.0) / max(1, pasos_acumulados)
+    ms_por_paso = (t_total * 1000.0) / max(1, pasos_acumulados)   # por la unidad que cuenta el presupuesto
+    ms_por_latido = (t_total * 1000.0) / max(1, latidos)
 
     # Tasas de éxito por logro
     n_ep = len(episodios)
@@ -262,10 +297,15 @@ def evaluar(
             json.dump(legados, f, indent=2)
 
     return {
+        "contabilidad": contar,
         "pasos": pasos_acumulados,
+        "pasos_entorno": pasos_entorno,
+        "latidos": latidos,
+        "primitivas_por_latido": round(pasos_entorno / max(1, latidos), 4),
         "episodios": n_ep,
         "tiempo_segundos": round(t_total, 2),
         "ms_por_paso": round(ms_por_paso, 2),
+        "ms_por_latido": round(ms_por_latido, 2),
         "score": round(score_total, 2),
         "score_ci_95": (round(ci_inf, 2), round(ci_sup, 2)),
         "tasas_logros": tasas_exito,
@@ -280,7 +320,8 @@ def evaluar(
         "latidos_cortados": sum(ep["latidos_cortados"] for ep in episodios),
         "latidos_cortados_por_episodio": [ep["latidos_cortados"] for ep in episodios],
         "plazo_logico": plazo_logico,
-        "por_episodio": [{"pasos": ep["pasos"], "causa_muerte": ep["causa_muerte"], "vivo": ep["vivo"],
+        "por_episodio": [{"pasos": ep["pasos"], "pasos_entorno": ep["pasos_entorno"], "latidos": ep["latidos"],
+                          "causa_muerte": ep["causa_muerte"], "vivo": ep["vivo"],
                           "logros": sorted(ep["logros"])} for ep in episodios],
     }
 
@@ -293,8 +334,15 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
     herencia_str = "SIN herencia" if res["sin_herencia"] else "CON linaje"
     print(f"Configuración: Perfil {res['perfil']} · Vista {res['vista']} · {config_estr} · {herencia_str}")
     print(f"Mecanismos:    {', '.join(res.get('mecanismos') or []) or 'ninguno'}")
-    print(f"Presupuesto:   {res['pasos']} pasos en {res['episodios']} episodios (semilla base {res['semilla_base']})")
-    print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms/paso)")
+    if res.get("contabilidad", "latidos") == "entorno":
+        print(f"Presupuesto:   {res['pasos']} pasos del entorno en {res['episodios']} episodios (semilla base {res['semilla_base']}); "
+              f"{res['latidos']} latidos, {res['primitivas_por_latido']:.4f} primitivas por latido")
+        print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms por paso del entorno, "
+              f"{res['ms_por_latido']:.2f} ms por latido)")
+    else:
+        print(f"Presupuesto:   {res['pasos']} latidos en {res['episodios']} episodios (semilla base {res['semilla_base']}; "
+              f"contabilidad antigua); {res['pasos_entorno']} pasos del entorno")
+        print(f"Rendimiento:   {res['tiempo_segundos']:.1f} s total ({res['ms_por_paso']:.2f} ms por latido)")
     cortados = res.get("latidos_cortados", 0)
     con_cortes = sum(1 for n in res.get("latidos_cortados_por_episodio", []) if n)
     plazo = f"plazo lógico, {res['plazo_logico']:g} operaciones/ms" if res.get("plazo_logico") else "plazo de reloj"
@@ -317,22 +365,24 @@ def imprimir_informe(res: Dict[str, Any]) -> None:
 
 
 def verificar_determinismo(args: argparse.Namespace) -> int:
-    """Dos ejecuciones de los primeros N pasos: deben dar la misma secuencia de acciones (episodio, latido, verbo, objetivo).
-    Devuelve 0 si coinciden y 1 si no, con el primer latido distinto y los latidos cortados de cada ejecución."""
+    """Dos ejecuciones de los primeros N pasos (en la unidad de ``--contar``): deben dar la misma secuencia de acciones
+    (episodio, latido, verbo, objetivo). Devuelve 0 si coinciden y 1 si no, con el primer latido distinto y los latidos
+    cortados de cada ejecución."""
     trazas: List[List[Tuple[int, int, str, str]]] = []
     cortados: List[int] = []
     for _ in range(2):
         traza: List[Tuple[int, int, str, str]] = []
         res = evaluar(args.verificar_determinismo, args.semilla, perfil=args.perfil, vista=args.vista, longitud_episodio=args.longitud,
                       sin_estrategias_propias=args.sin_estrategias_propias, sin_herencia=args.sin_herencia, manual=args.manual,
-                      quiet=True, mecanismos=args.mecanismos, traza=traza, plazo_logico=args.plazo_logico)
+                      quiet=True, mecanismos=args.mecanismos, traza=traza, plazo_logico=args.plazo_logico, contar=args.contar)
         trazas.append(traza)
         cortados.append(int(res["latidos_cortados"]))
     a, b = trazas
     distinto = next((i for i, (x, y) in enumerate(zip(a, b, strict=False)) if x != y), None)
     if distinto is None and len(a) != len(b):
         distinto = min(len(a), len(b))
-    print(f"Determinismo ({args.verificar_determinismo} pasos, semilla {args.semilla}): {len(a)} y {len(b)} acciones; "
+    unidad = "pasos del entorno" if args.contar == "entorno" else "latidos"
+    print(f"Determinismo ({args.verificar_determinismo} {unidad}, semilla {args.semilla}): {len(a)} y {len(b)} acciones; "
           f"latidos cortados {cortados[0]} y {cortados[1]}")
     if distinto is None:
         print("OK: las dos ejecuciones coinciden.")
@@ -345,7 +395,10 @@ def verificar_determinismo(args: argparse.Namespace) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--pasos", type=int, default=10000, help="Presupuesto total de pasos acumulados")
+    parser.add_argument("--pasos", type=int, default=10000,
+                        help="Presupuesto total: pasos del entorno (o latidos con --contar latidos)")
+    parser.add_argument("--contar", type=str, default="entorno", choices=list(CONTABILIDADES),
+                        help="Qué cuenta el presupuesto: pasos del entorno (defecto) o latidos (contabilidad de los datos hasta v5)")
     parser.add_argument("--semilla", type=int, default=31, help="Semilla base inicial")
     parser.add_argument("--perfil", type=str, default="Equilibrado", choices=list(PERFILES.keys()), help="Perfil psicológico")
     parser.add_argument("--vista", type=str, default="oficial", choices=["oficial", "cuadrada"], help="Tipo de vista")
@@ -380,6 +433,7 @@ def main() -> int:
         mecanismos=args.mecanismos,
         plazo_logico=args.plazo_logico,
         legado_salida=args.legado_salida,
+        contar=args.contar,
     )
     imprimir_informe(res)
     if args.salida:
